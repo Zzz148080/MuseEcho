@@ -33,3 +33,4 @@
 - **真实性门禁**：未创建 `HUMAN_APPROVAL.md`，未写应用实现，未声称测试/CI/PR/部署已运行；真实 cold-start 仍需在 PLAN 获批后执行。
 - **Subagent**：未使用；当前只是计划编写与文档发布阶段。
 - **Git**：PLAN 与书面批准记录的根提交为 `a8eeaea`（`docs: define MuseEcho implementation plan`）；该提交只包含 5 个计划/规格过程文件，未纳入课程输入或旧项目目录。
+- **GitHub**：使用用户已登录的 GitHub CLI 真实验证账户 `Zzz148080`、HTTPS 协议、私有空仓库 `Zzz148080/MuseEcho`；将本地分支由 `master` 规范为 `main`，配置 `origin=https://github.com/Zzz148080/MuseEcho.git`，并成功首次推送文档历史。空仓库首次建立默认分支无法先建 PR；后续实现任务严格走独立分支/PR。
