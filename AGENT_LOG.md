@@ -24,3 +24,11 @@
 - **设计影响**：采用 Open Design `Warm Editorial` + `frontend-design`，新增 `DESIGN.md` 品牌契约，并把完整 Superpowers 设计文档改为中文。
 - **实现状态**：未生成应用代码、PLAN 或 HUMAN_APPROVAL；本次只修订书面规格与设计依据。
 - **Git**：修订提交为 `c36beb2`（`docs: adopt Open Design and localize design spec`）。
+
+## 2026-08-08T04:30:12+08:00 — PLAN / 书面规格已批准
+
+- **人工批准**：用户原话“好，批准书面SPEC，进行下一步”，真实批准 Open Design 与中文化修订后的书面 SPEC。
+- **适用 Skill**：使用 `superpowers:writing-plans` 把规格拆成可执行 TDD 任务；使用 `github:yeet` 的发布前检查规则处理初始文档推送。
+- **PLAN 范围**：锁定模块目录、核心接口、依赖图、并行边界，并为 24 个任务逐项指定文件、首个失败测试、RED/GREEN、重构、验证命令、验收标准、分支与提交意图。
+- **真实性门禁**：未创建 `HUMAN_APPROVAL.md`，未写应用实现，未声称测试/CI/PR/部署已运行；真实 cold-start 仍需在 PLAN 获批后执行。
+- **Subagent**：未使用；当前只是计划编写与文档发布阶段。
