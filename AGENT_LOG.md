@@ -44,3 +44,6 @@
 - **实现/测试**：未写应用实现，未运行任务测试，未创建 `HUMAN_APPROVAL.md`。
 - **隔离区**：在用户批准后创建 `.worktrees/opencode-cold-start`，分支 `validation/opencode-cold-start`；sparse checkout 仅暴露 `SPEC.md`、`PLAN.md`、`.gitignore`，基线无应用文件或测试。
 - **启动结果**：对 `opencode/deepseek-v4-flash-free` 的全新非交互 session 调用再次被外部审批通道连接中断拒绝；OpenCode 未启动，隔离分支无代码改动。等待在披露第三方数据传输和命令执行边界后的再次明确授权。
+- **DeepSeek 配置核验**：用户说明已配置 `deepseek-v4-flash`；OpenCode 真实返回 `DeepSeek api` 1 个凭据，并列出 `deepseek/deepseek-v4-flash`。未读取或输出密钥正文。
+- **参数失败**：获批后的首次实际命令在调用模型前失败，错误为 `File not found: <完整 prompt>`；根因是 `--file` 数组选项吞并了后置位置参数。使用 `systematic-debugging` 后计划以位置参数前置的最小探针验证。
+- **审批 Blocker**：最小探针仍在 OpenCode 进程启动前被外部审批器以 `stream disconnected before completion` 拒绝。连同此前两次相同审批连接中断，已达到三次真实重复；这只阻塞 cold-start，不代表 DeepSeek/OpenCode 不可用，也不阻塞文档工作。

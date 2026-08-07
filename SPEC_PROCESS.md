@@ -171,3 +171,5 @@ AI 调研并提出腾讯云香港 Lighthouse。用户一度提出：
 尚未启动 cold-start session；查看 `opencode run --help` 时外部审批通道断开并拒绝命令，因此等待用户针对运行 OpenCode cold-start 的明确批准后继续。未伪造 Agent 输出或测试结果。
 
 用户随后原话批准“批准运行 OpenCode cold-start 并推送记录”。主 Agent 已创建 `validation/opencode-cold-start` 分支及 `.worktrees/opencode-cold-start` 隔离 worktree，并用 sparse checkout 将可见的既有文件限制为 `SPEC.md`、`PLAN.md`、`.gitignore`。实际启动 `opencode/deepseek-v4-flash-free` 新会话时，外部审批器因连接中断再次拒绝命令；OpenCode 进程没有启动，未产生 Agent 输出、实现或测试证据。由于第三方模型调用会传输规格、计划、生成代码和测试输出并可在隔离区运行命令，需在披露该边界后取得用户再次明确授权。
+
+用户随后配置了 DeepSeek API Key，并在完整披露后原话再次批准“已了解上述数据边界，批准重试 OpenCode cold-start 并推送记录”。只读核验显示 OpenCode 已识别 `DeepSeek api` 1 个凭据，并列出精确模型 `deepseek/deepseek-v4-flash`。首次实际执行没有调用模型：OpenCode CLI 把位于 `--file` 之后的长 prompt 解析成第三个文件，返回 `File not found: <prompt>`。主 Agent 使用 `systematic-debugging` 追踪到 `--file` 数组选项吞并后续位置参数，准备以“message 在前、file 选项在后”的最小解析探针验证；该探针又在进程启动前被相同的外部审批连接中断拒绝。隔离分支仍无改动，尚无任何 cold-start Agent 输出或任务测试。
