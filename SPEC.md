@@ -1,6 +1,6 @@
 # MuseEcho V1 产品与工程规格
 
-状态：已完成 brainstorming 设计确认，等待用户书面规格审阅
+状态：已完成 Open Design 与中文化修订，等待用户重新审阅书面规格
 
 日期：2026-08-08
 
@@ -356,18 +356,19 @@ LLM 通过窄接口适配，首版只要求一个服务端可配置的 OpenAI-co
 
 ## 14. 前端设计系统
 
-产品采用经过批准的“温暖共鸣·引导式单画布”方向：
+产品采用经过批准的“温暖共鸣·引导式单画布”方向，并正式绑定 Open Design：
 
-- 暖白/浅灰背景；
-- 深墨色正文；
-- 青绿色表示分析数据；
-- 珊瑚橙表示情绪与重点；
-- 金黄色表示乐理知识；
+- 设计系统：Open Design `Warm Editorial`；
+- 实现 Skill：Open Design `frontend-design`；
+- 暖纸色背景与近黑正文；
+- 森林绿表示可用分析事实；
+- 陶土色表示主要操作与当前重点；
+- 琥珀色表示乐理知识；
 - 克制圆角、清晰层级和较少装饰。
 
-建立语义 Design Tokens，不在组件中散落颜色和间距常量。页面顺序为上传/状态、播放器与 Music DNA、结构地图、和弦详情、Evidence Q&A、隐私删除。桌面横向组织关联信息，平板减少并排，手机纵向重排并保持播放器易达。
+项目级品牌契约位于 `DESIGN.md`，其颜色、字体、布局、组件、状态、动效和可访问性规则是实现阶段的设计输入。建立语义 Design Tokens，不在组件中散落颜色和间距常量。页面顺序为上传/状态、播放器与 Music DNA、结构地图、和弦详情、Evidence Q&A、隐私删除。桌面横向组织关联信息，平板减少并排，手机纵向重排并保持播放器易达。
 
-课程推荐的 Open Design 当前未作为已安装 Skill 提供，因此不伪造使用记录。实现阶段将以产品原始设计和仓库内 tokens/components 为依据，并在 `DECISIONS.md` 保留这一事实。
+`frontend-design` 已从课程指定的 `nexu-io/open-design` 仓库安装到本地 Codex Skills；选型与复核基于仓库提交 `f580271`。实现时以 `DESIGN.md` 和产品原始设计为品牌约束，以该 Skill 的真实状态、响应式、可访问性和反通用 AI 风格检查为工艺补充。Open Design 桌面应用与云服务不是 V1 运行依赖。
 
 ## 15. 外部依赖
 
@@ -376,6 +377,7 @@ LLM 通过窄接口适配，首版只要求一个服务端可配置的 OpenAI-co
 - 浏览器 Web Audio/HTMLMediaElement；
 - 可选 LLM API；
 - Docker 与 Docker Compose；
+- Open Design `Warm Editorial` 与 `frontend-design`（仅设计/实现阶段使用，不是产品运行时依赖）；
 - 腾讯云 Lighthouse、域名/DNS 和 HTTPS 证书服务；
 - GitHub 与 NJU Git/GitLab（以实际凭据和 remote 为准）。
 
@@ -479,6 +481,7 @@ GitHub Actions 运行 backend tests、frontend tests、integration tests、lint�
 - 后端、前端、集成、E2E、lint、typecheck、build 和 Docker 验证均有最新成功证据。
 - GitHub Actions 和 `.gitlab-ci.yml` 存在，后者含 `unit-test`。
 - README 支持陌生用户本地与 Docker 启动。
+- `DESIGN.md`、语义 tokens 与前端实现符合选定的 Open Design 契约。
 - 公网 URL 通过完整 smoke test。
 - Functional、Engineering、Product 三轮 Audit 完成。
 

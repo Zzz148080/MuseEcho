@@ -1,105 +1,139 @@
-# MuseEcho V1 Design
+# MuseEcho V1 完整设计文档
 
-Date: 2026-08-08
+日期：2026-08-08
 
-Status: Approved conversational design; awaiting written-spec review
+状态：对话设计已确认；根据用户书面审阅意见完成 Open Design 与中文化修订，等待重新审阅
 
-Canonical product specification: `SPEC.md`
+规范正文：`SPEC.md`
 
-## Purpose
+设计系统契约：`DESIGN.md`
 
-MuseEcho turns a legally uploaded WAV or MP3 into time-aligned musical evidence that ordinary listeners can explore and understand. It uses deterministic DSP/MIR analysis and a deterministic music-theory engine to establish facts. An optional LLM explains those facts in accessible language but cannot create or change them.
+## 1. 设计目的
 
-## Approved Product Boundary
+MuseEcho 将用户合法上传的 WAV 或 MP3 转换为可探索、可理解、时间对齐的音乐证据。确定性 DSP/MIR 分析和确定性乐理引擎负责建立事实；可选 LLM 只把已有事实解释为自然语言，不能创建或修改音乐事实。
 
-V1 supports files up to 30 MB and 10 minutes. It provides:
+核心体验不是“让 AI 猜一首歌”，而是让普通听众在同一时间轴上看见节奏、调性、结构、和弦与能量如何共同形成听感。
 
-1. asynchronous upload and real analysis;
-2. Music DNA derived from the current analysis;
-3. a synchronized waveform, section, chord and energy timeline;
-4. deterministic chord deconstruction;
-5. evidence-grounded segment Q&A with a no-key fallback;
-6. encrypted playback, explicit deletion and 24-hour expiry.
+## 2. 已确认的产品边界
 
-V1 excludes accounts, a persistent music library, recommendations, social features, source separation, instrument recognition, HarmonyOS, agent behavior and horizontal scaling.
+V1 支持不超过 30 MB、10 分钟的单个 WAV 或 MP3，并提供：
 
-## Architecture
+1. 异步上传、真实校验和真实分析进度；
+2. 来自当前分析的 Music DNA；
+3. 同步波形、段落、和弦、能量与重要事件时间轴；
+4. 确定性和弦解构与乐理说明；
+5. 带证据引用的片段问答，以及无 Key fallback；
+6. 加密播放、主动删除和 24 小时到期清理。
 
-The selected approach is a modular monolith:
+V1 不包含账户、长期音乐库、推荐、社交、分轨、乐器识别、HarmonyOS、自主 Agent 行为或水平扩展。
+
+## 3. 总体架构
+
+采用模块化单体：
 
 ```text
-React/Vite/TypeScript browser
-          │
-          ▼
-Caddy HTTPS reverse proxy
-          │
-          ▼
-FastAPI application and static frontend
-├── access/upload/security services
-├── bounded process pool (one analysis at a time)
-├── deterministic DSP/MIR pipeline
-├── deterministic music-theory engine
-├── optional LLM adapter and deterministic fallback
+React + Vite + TypeScript 浏览器应用
+                 │
+                 ▼
+             Caddy HTTPS
+                 │
+                 ▼
+FastAPI 应用与静态前端
+├── 访问、上传与安全服务
+├── 有界分析进程池（同时分析 1 个任务）
+├── 确定性 DSP/MIR 管线
+├── 确定性音乐理论引擎
+├── 可选 LLM 适配器与确定性 fallback
 ├── SQLite repositories
-└── expiry/orphan cleanup scheduler
-          │
-          ▼
-Persistent SQLite + encrypted audio chunks
+└── 到期与孤儿数据清理调度器
+                 │
+                 ▼
+      SQLite + 加密音频分块
 ```
 
-The production target is a Tencent Cloud Lighthouse instance in Hong Kong with 2 vCPU, 4 GB RAM and persistent system storage. Docker and volume contracts remain platform-neutral.
+生产目标为腾讯云 Lighthouse 中国香港实例，2 vCPU、4 GB RAM 和持久化系统盘。Docker 和卷接口保持平台中立，Fly.io 已排除，AutoDL 不作为公网 WebUI 托管目标。
 
-## Evidence Pipeline
+模块边界遵循以下原则：UI 不依赖具体分析实现；分析管线只输出版本化结构；乐理引擎不依赖 Web 与 LLM；LLM 不能写事实表；数据库通过 repository 接口隔离。
 
-1. Validate the file signature, byte limit and real decoder output.
-2. Encrypt the accepted audio with a per-analysis data key.
-3. Decode a controlled PCM stream for analysis.
-4. Compute waveform buckets, beat/tempo, RMS energy and chroma.
-5. Estimate key/mode, structural boundaries and chord events.
-6. Attach confidence, algorithm provenance and time bounds to every fact.
-7. Convert low-confidence facts to `unknown` and exclude them from LLM input.
-8. Derive chord notes, intervals, quality, scale degree and possible function in the theory engine.
-9. Build a whitelisted evidence packet for LLM explanation or deterministic fallback.
+## 4. 音乐证据管线
 
-The LLM never generates chord labels, key, structure, timestamps, instruments, modulation or energy changes. Specialized MIR models may generate facts only when their output is structured, traceable and confidence-scored.
+1. 校验文件签名、字节上限和真实解码结果。
+2. 使用每次分析独立的数据密钥加密已接受音频。
+3. 以受控 PCM 数据流执行分析。
+4. 计算波形桶、节拍/速度、RMS 能量与 chroma。
+5. 估计 key/mode、结构边界和和弦事件。
+6. 为每项事实附加置信度、算法来源和时间范围。
+7. 将低置信度事实转换为 `unknown`，并排除在 LLM 输入之外。
+8. 由乐理引擎计算和弦组成音、音程、性质、级数和可能功能。
+9. 为 LLM 或确定性 fallback 构建白名单证据包。
 
-## Interaction Design
+LLM 永远不生成 chord label、key、structure、timestamp、instrument、modulation 或 energy change。专用 MIR 模型可以参与事实分析，但输出必须结构化、可追溯且带置信度。上述音乐功能全部保留，只是由适合验证的分析模块而非通用 LLM 产生。
 
-The approved direction is “Warm Resonance” in a guided single canvas. The user moves from upload and analysis status to player and Music DNA, synchronized structure map, chord details and segment Q&A. Desktop layouts place related views side by side; mobile layouts stack them while keeping playback reachable.
+## 5. 交互设计
 
-The player, cursor, waveform, sections, chords and energy curve share one time coordinate. Clicking a chord seeks to its start and opens theory details. Dragging a segment constrains the evidence available to Q&A.
+核心布局采用“引导式单画布”。用户依次经过上传与分析状态、播放器与 Music DNA、结构地图、和弦详情、片段问答和隐私删除。桌面端把相关内容并排；手机端纵向排列，并让播放器保持易于触达。
 
-## Data and Privacy
+播放器、游标、波形、段落、和弦和能量曲线共享同一时间坐标。点击和弦会跳转至事件起点并打开乐理详情；拖选片段会限定问答可使用的证据窗口。页面刷新后，能力 Cookie 恢复对尚未过期任务的访问。
 
-An analysis has an unguessable ID and a separate access token whose hash is stored in SQLite. The browser receives the token only through a Secure, HttpOnly, SameSite=Strict cookie.
+任务进度只显示真实阶段，不伪造平滑增长。静音、证据不足和低置信度场景显示 partial/unknown，不展示固定演示分析。
 
-Audio is retained for at most 24 hours because the user explicitly chose refresh-safe playback over immediate server deletion. Each file uses chunked AEAD with a unique data key; a deployment key wraps the data key. Explicit deletion or expiry destroys the key, ciphertext, results, explanations and access grant. The persistent volume never contains plaintext source audio.
+## 6. Open Design 设计系统
 
-## Failure Behavior
+实现采用课程指定 [Open Design](https://github.com/nexu-io/open-design) 的以下组合：
 
-Unsupported, oversized, over-duration and corrupt files fail with stable user-facing errors and immediate cleanup. Silence and insufficient evidence return partial/unknown analysis rather than fabricated results. Worker failure produces a failed or retryable job. Missing credentials, provider timeout and invalid LLM output use deterministic fallback. Expired or unauthorized access does not reveal whether another user's record exists.
+- 设计系统：`Warm Editorial`；
+- Skill：`frontend-design`；
+- 项目级品牌契约：根目录 `DESIGN.md`；
+- 选型来源：`nexu-io/open-design@f580271`。
 
-## Security Design
+`Warm Editorial` 与用户已批准的“温暖共鸣”方向一致：暖纸色画布、近黑正文、陶土色重点、森林绿分析信息、琥珀色乐理信息、编辑型标题和克制层级。MuseEcho 不照搬营销页 Hero，而是把该系统的字体、语义色、留白和单级抬升规则适配到数据密集的音乐工作区。
 
-- Validate signatures and decoder output; never trust extension, MIME or filename.
-- Use random internal names and bounded streaming I/O.
-- Rate-limit uploads and Q&A; cap queue length, decoder time and worker resources.
-- Keep all long-lived credentials server-side.
-- Manage credentials with a local CLI; use the OS credential store locally and repository-external read-only secret files in Docker.
-- Redact keys, cookies, original filenames, audio and question bodies from logs.
-- Use HTTPS, restricted same-origin CORS, CSP, security headers, Origin checks and CSRF defense.
-- Run dependency and secret scans in CI.
+`frontend-design` 要求设计真实界面而非占位海报，覆盖 loading/error/empty/disabled 等状态，使用语义标记、可见焦点、响应式约束与 CSS variables，并避免紫蓝渐变、玻璃卡片、过度圆角和可互换的 SaaS 布局。这些检查已写入 `DESIGN.md`，实现阶段必须执行。
 
-## Test and Delivery Design
+Open Design 桌面应用、云服务和模型服务不是 MuseEcho 的运行时依赖。V1 只使用其可审计的设计系统与本地 Skill。
 
-TDD is mandatory. Synthetic fixtures cover tones, major/minor chords, metronomes, simple progressions, silence, short and corrupt audio. Backend unit tests cover theory, confidence, state, access, encryption, cleanup and fallback. Frontend tests cover the workspace and error states. Playwright exercises the full upload-to-delete flow at desktop, tablet and mobile widths.
+## 7. 数据与隐私
 
-GitHub Actions and GitLab CI run tests, lint, typecheck, production build and Docker validation; GitLab includes a `unit-test` job. A multi-stage Docker image and Docker Compose provide local distribution. Production uses Caddy and Tencent Cloud Lighthouse, followed by a real public smoke test.
+每个分析使用不可猜测的 ID 和独立访问令牌；SQLite 只保存令牌哈希，浏览器通过 `Secure`、`HttpOnly`、`SameSite=Strict` Cookie 使用令牌。
 
-## Objective Completion Gate
+用户已明确选择“刷新后可播放”，因此音频最多保留 24 小时，而非分析后立即删除。每个文件使用独立数据密钥和分块 AEAD；部署主密钥封装数据密钥。主动删除或到期时销毁密钥、密文、结果、解释和访问授权。持久卷不保存明文原始音频。
 
-Completion requires current evidence for every acceptance criterion in `SPEC.md`, all test/build/Docker/E2E commands, public deployment smoke testing, security scanning and three final audits. Human review, deployment authorization and the student's reflection remain human-owned.
+Range 播放只解密请求所需分块并验证认证标签。LLM 不接收音频字节、访问令牌、原始文件名或用户身份。
 
-## Approval Record
+## 8. 失败与降级行为
 
-The user approved the architecture/data flow, function boundaries, data/API design, UI/UX, security/privacy and revised testing/deployment design in the 2026-08-08 brainstorming conversation. The written files themselves still require the separate Superpowers written-spec review gate.
+- 不支持、超大小、超时长或损坏的文件返回稳定错误并立即清理临时数据。
+- 静音、极短或证据不足的音频返回 partial/unknown，不伪造结果。
+- Worker 崩溃后任务进入失败或可重试状态，不标记完成。
+- 缺少凭据、供应商超时或 LLM 输出校验失败时使用确定性 fallback。
+- 过期或未授权请求不泄漏其他任务是否存在。
+- 队列已满时拒绝新任务并返回可重试繁忙状态。
+
+## 9. 安全设计
+
+- 校验文件签名和解码结果，不信任扩展名、MIME 或文件名。
+- 使用随机内部文件名、有界流式 I/O、上传/Q&A 速率限制、队列上限与 Worker 资源上限。
+- 所有长期凭据只存在服务端；本地通过 CLI 和系统凭据库管理，Docker 使用仓库外只读 Secret 文件。
+- 日志脱敏 API Key、Cookie、访问令牌、原始文件名、音频内容和完整问题正文。
+- 使用 HTTPS、同源 CORS、CSP、安全响应头、Origin 校验和 CSRF 防护。
+- CI 执行依赖与 Secret 扫描。
+
+## 10. 测试与交付设计
+
+所有适合测试的功能采用 RED → GREEN → REFACTOR。合成音频覆盖单音、大小三和弦、节拍器、简单和弦进行、静音、极短和损坏文件。后端单元测试覆盖乐理、置信度、状态机、访问控制、分块加密、清理和 fallback；前端测试覆盖主要工作区和失败状态；Playwright 覆盖桌面、平板与手机视口下从上传到删除的完整流程。
+
+GitHub Actions 和 GitLab CI 运行测试、lint、typecheck、生产构建与 Docker 验证；GitLab 必须包含名为 `unit-test` 的 job。多阶段 Docker 镜像与 Docker Compose 提供本地分发，腾讯云生产部署使用 Caddy，并在公网执行真实 smoke test。
+
+Open Design 验收额外检查：语义 tokens、真实状态、桌面/手机布局、键盘与焦点、对比度、文本替代、反通用 AI 风格，以及“暖色编辑感 + 同步音乐时间轴”的可识别性。
+
+## 11. 客观完成门槛
+
+只有 `SPEC.md` 中所有验收标准、测试/构建/Docker/E2E 命令、公网部署 smoke test、安全扫描和三轮最终 Audit 都有最新真实证据时，才能声明 V1 Ready。人工审阅、云资源购买、部署授权和学生 `REFLECTION.md` 仍由人类负责。
+
+当前只完成了书面设计修订。尚未生成 `PLAN.md`、`HUMAN_APPROVAL.md` 或应用实现，因此不得声明 MuseEcho V1 已完成。
+
+## 12. 审批记录
+
+用户已在 2026-08-08 brainstorming 中确认架构与数据流、功能边界、数据/API、UI/UX、安全隐私以及修订后的测试和腾讯云部署方案。书面规格审阅阶段，用户进一步要求安装使用 Open Design 并将本完整设计文档改为中文。
+
+本次修订落盘后仍需要用户重新审阅并明确批准书面 `SPEC.md`；该批准不等于实现审批或 `HUMAN_APPROVAL.md`。

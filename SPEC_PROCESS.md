@@ -95,6 +95,16 @@ AI 调研并提出腾讯云香港 Lighthouse。用户一度提出：
 
 部署规格修订为腾讯云 Lighthouse 中国香港、2 vCPU/4 GB、Docker Compose、Caddy、持久目录和仓库外 Secret 文件。用户选择购买低价域名用于 HTTPS。
 
+### 迭代 4：把 Open Design 从“未安装”改为正式设计依赖
+
+初版规格因当前 Skill 列表没有 Open Design 而如实写明未使用。用户在书面规格审阅阶段明确提出：
+
+> SPEC中，课程推荐的open design可以安装使用，完整设计文档改为中文
+
+课程文档中的链接确认目标仓库为 `nexu-io/open-design`。官方 OpenAI Skill 目录查询先返回 `HTTP 403`，但这不是正确来源；课程指定仓库的常规安装又因仓库体积在 120 秒后超时。随后使用安装器的稀疏 Git 模式，只安装 `skills/frontend-design`，命令成功并返回目标目录 `C:\Users\P\.codex\skills\frontend-design`。
+
+设计系统从 Open Design 目录中选择与既有“温暖共鸣”最一致的 `Warm Editorial`，并新增项目级 `DESIGN.md`。完整设计文档改为中文；`SPEC.md` 与 ADR-007 同步记录设计系统、Skill、来源提交和非运行时依赖边界。
+
 ## 5. 分节设计确认
 
 用户依次明确批准：
@@ -107,6 +117,8 @@ AI 调研并提出腾讯云香港 Lighthouse。用户一度提出：
 6. 修订后的测试、CI、腾讯云部署与交付设计。
 
 最后用户回复“是”，授权生成 `SPEC.md` 和 Superpowers 设计文档。该授权仅覆盖书面规格，不等于批准实现，也不等于 `HUMAN_APPROVAL.md`。
+
+书面审阅期间，用户提出 Open Design 与中文化修订；修订后仍需重新确认书面规格。
 
 ## 6. Visual Companion 记录
 
