@@ -1,0 +1,35 @@
+# Local brainstorming companion state
+.superpowers/
+tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+
+# Node
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# Runtime data and secrets
+.env
+.env.*
+!.env.example
+data/
+storage/
+secrets/
+*.db
+*.sqlite
+*.sqlite3
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
