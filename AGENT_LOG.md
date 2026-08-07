@@ -23,3 +23,4 @@
 - **安装证据**：官方 OpenAI Skill 目录查询返回 `HTTP 403`；常规整仓安装超时且目标不存在；`--method git` 稀疏安装成功到 `C:\Users\P\.codex\skills\frontend-design`。
 - **设计影响**：采用 Open Design `Warm Editorial` + `frontend-design`，新增 `DESIGN.md` 品牌契约，并把完整 Superpowers 设计文档改为中文。
 - **实现状态**：未生成应用代码、PLAN 或 HUMAN_APPROVAL；本次只修订书面规格与设计依据。
+- **Git**：修订提交为 `c36beb2`（`docs: adopt Open Design and localize design spec`）。
