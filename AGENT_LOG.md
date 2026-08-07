@@ -68,3 +68,13 @@
 - **GitHub Actions**：仓库 Actions 已启用，`allowed_actions=all`，无需 SHA pinning；默认工作流权限为 `read`，不能批准 PR review。
 - **机器资源**：物理内存 29,860,155,392 字节，16 个逻辑处理器；D 盘可用空间 236,358,885,376 字节，满足本地 V1 构建的容量预期。
 - **数据边界**：以上结果均由用户运行事先列出的只读命令提供，不含 API Key 或其他密钥正文，未修改任何设置。
+
+## 2026-08-08 — OPENCODE COLD-START REVIEW
+
+- **Agent 与范围**：OpenCode `1.17.14` / `njusehub/deepseek-v4-flash` 在隔离分支尝试 PLAN 任务 1–2，生成 `COLD_START_REPORT.md` 与未提交实现；未创建 `HUMAN_APPROVAL.md`，未合并代码。
+- **复现通过**：`python -m pytest -q` 为 13 passed；`python -m ruff check src tests`、`python -m mypy src`、前端 1 test、TypeScript typecheck 与 Vite build 通过。
+- **复现失败**：PLAN 任务 1 的完整 `python -m ruff check .` 返回 11 个 migration lint 错误。
+- **仓储/删除探针**：未找到 `SqliteAnalysisRepository`；全新 Alembic 数据库能建表和索引，但 `PRAGMA foreign_keys=0`，删除父任务后 Chord 子记录仍存在。
+- **领域探针**：非法区间、`confidence=1.5` 可构造；AnalysisJob 无 progress；queued→failed 被拒；UTC datetime 经 SQLite 往返后 `tzinfo=None`。
+- **交付卫生**：缺少 `uv.lock` 和 README；`src/museecho.egg-info`、`frontend/tsconfig.tsbuildinfo` 未被忽略；被忽略的 `data/` 依赖手工创建。
+- **结论**：cold-start 有效但任务 1–2 不接受为正式实现。SPEC 功能范围不变；PLAN 已按发现增强。等待用户针对修订提交哈希批准正式实施。

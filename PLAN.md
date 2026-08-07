@@ -14,11 +14,21 @@
 - 本 `PLAN.md` 已由用户在 2026-08-08 以原话“批准 PLAN”书面批准；该批准只授权进入 cold-start，不等于最终正式实施授权。
 - `HUMAN_APPROVAL.md` 当前不存在；在下列门禁全部完成前不得创建，更不得开始正式实现：
   1. 用户批准当前 `PLAN.md`（已完成）；
-  2. 使用与 Codex 不同类型的全新 Agent，仅凭已批准的 SPEC、PLAN 和必要文件冷启动尝试任务 1–2；
-  3. 在 `SPEC_PROCESS.md`、`AGENT_LOG.md` 中如实记录结果、误解和修订；
+  2. 使用与 Codex 不同类型的全新 Agent，仅凭已批准的 SPEC、PLAN 和必要文件冷启动尝试任务 1–2（已完成）；
+  3. 在 `SPEC_PROCESS.md`、`AGENT_LOG.md` 中如实记录结果、误解和修订（已完成）；
   4. 用户针对修订后的 SPEC/PLAN 当前提交哈希明确确认正式实施，届时才创建 `HUMAN_APPROVAL.md`。
 - 不伪造测试、CI、PR、审查、人工参与、部署或公网可用性证据。
 - `ai4coding-agentos-lab/` 与 `docs/input/` 是未跟踪的课程/旧项目资料，不纳入 MuseEcho 提交。
+
+### 0.1 Cold-start 审查结论
+
+- OpenCode 使用 `njusehub/deepseek-v4-flash` 在隔离分支 `validation/opencode-cold-start` 尝试了任务 1–2，并生成 `COLD_START_REPORT.md`；该分支仅作为规约验证证据，不合并其实现。
+- 报告中的 13 个后端测试、1 个前端测试、mypy、限定范围 Ruff 和前端构建已由 Codex 复现通过；但 PLAN 规定的 `ruff check .` 真实返回 11 个迁移文件错误。
+- 任务 1 暴露出正式实施必须补齐 `uv.lock`、README、生成物忽略规则，并保证干净 checkout 无需手工创建 `data/` 即可迁移和启动。
+- 任务 2 暴露出正式实施必须真实实现 `SqliteAnalysisRepository`；测试必须经仓储端口往返，不能只直接操作 ORM。
+- SQLite 每个连接必须显式启用并验证 `PRAGMA foreign_keys=ON`。审查探针证明当前 cold-start 代码为 `0`，删除父任务后 `ChordEvent` 仍存在，因此“级联删除通过”的报告只覆盖了单个 ORM relationship，不能作为隐私删除证据。
+- 所有秒级区间、置信度、来源类型、UTC 时间、阶段与进度不变量必须在领域边界拒绝非法值；失败、删除、过期必须有明确合法转换，而不是被通用顺序索引偶然阻止。
+- 正式实施仍从最新 `main` 按任务 1 的 RED 测试开始，不复制未审查 cold-start 产物或把其测试结果冒充正式任务证据。
 
 ## 1. 全局工程合同
 
@@ -121,7 +131,7 @@ def test_health_reports_ready(client):
 
 **RED：** `uv run pytest tests/api/test_health.py -q`，预期因 `museecho.app` 不存在而失败。随后为前端写 `expect(screen.getByRole('main')).toBeInTheDocument()`，执行 `npm --prefix frontend test -- --run`，预期入口不存在。
 
-**实现：** 创建应用工厂 `create_app() -> FastAPI`；健康路由只报告进程就绪。配置 pytest、Ruff、mypy、Vitest、Testing Library；前端只渲染语义化 `<main>` 和产品名。
+**实现：** 创建应用工厂 `create_app() -> FastAPI`；健康路由只报告进程就绪。配置 pytest、Ruff、mypy、Vitest、Testing Library；前端只渲染语义化 `<main>` 和产品名。正式实施先安装/固定 `uv` 并提交 `uv.lock`；`.gitignore` 必须排除 `*.egg-info/`、`*.tsbuildinfo` 等生成物；README 必须包含从干净 checkout 启动所需步骤。
 
 **GREEN 条件：** 两个首测通过；后端可导入，前端可构建。
 
@@ -147,9 +157,9 @@ def test_job_cannot_skip_from_queued_to_chords(job):
 
 **RED：** `uv run pytest tests/unit/test_job_state.py -q`，预期领域模块不存在。
 
-**实现：** 建立 `AnalysisJob`、`AccessGrant`、`EncryptedAudio`、`TrackAnalysis`、`SectionEvent`、`ChordEvent`、`TimeSeries`、`Evidence`、`Explanation`；状态序列严格遵循 SPEC，终态不可回退；迁移包含外键、级联、索引和 UTC 时间；实现 `SqliteAnalysisRepository`。
+**实现：** 建立 `AnalysisJob`、`AccessGrant`、`EncryptedAudio`、`TrackAnalysis`、`SectionEvent`、`ChordEvent`、`TimeSeries`、`Evidence`、`Explanation`；状态序列严格遵循 SPEC，终态不可回退；迁移包含外键、级联、索引和 UTC 时间；实现 `SqliteAnalysisRepository`。SQLite engine 在每个连接上启用 `PRAGMA foreign_keys=ON`；应用负责安全创建忽略的运行时数据目录；领域构造边界验证区间、置信度、来源类型和 UTC 时间；失败、删除、过期使用显式合法转换。
 
-**GREEN 条件：** 非法跃迁失败，合法阶段进度单调；区间越界被拒；仓储往返和级联删除测试通过。
+**GREEN 条件：** 非法跃迁失败，合法阶段进度单调；区间越界、置信度越界、非 UTC 时间和非法来源被拒；`SqliteAnalysisRepository` 经端口完成往返；新 SQLite 连接确认外键开启；删除任务后所有已实现子表均无孤儿；全新临时数据库可从零迁移到 head。
 
 **重构：** 用领域枚举与值对象消除字符串散落，事务边界留在仓储。
 

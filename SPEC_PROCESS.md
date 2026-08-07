@@ -140,7 +140,21 @@ AI 调研并提出腾讯云香港 Lighthouse。用户一度提出：
 
 ## 8. Cold-Start Validation
 
-尚未执行。课程要求在 `SPEC.md` 与 `PLAN.md` 均通过书面审阅后，由与 Codex 不同类型的全新 Agent 仅凭规格、计划和必要代码尝试 1–2 个任务。执行结果、问题、误解和修订必须在此处追加真实证据。
+已执行并审查。课程要求在 `SPEC.md` 与 `PLAN.md` 均通过书面审阅后，由与 Codex 不同类型的全新 Agent 仅凭规格、计划和必要文件尝试 1–2 个任务。用户在本机终端使用 OpenCode `1.17.14`、自定义 OpenAI-compatible 提供方 `njusehub` 和模型 `deepseek-v4-flash` 完成任务 1–2 尝试；未向该 Agent 提供父目录、密钥正文、账户或对话历史。
+
+OpenCode 在 `validation/opencode-cold-start` 隔离分支生成了 `COLD_START_REPORT.md`、后端/前端骨架、领域/ORM/迁移和测试。报告如实指出 `uv` 缺失、SQLite UUID 类型适配、`data/` 目录需手工创建和 ORM cascade 修复；它记录 13 个后端测试、1 个前端测试、限定范围 Ruff、mypy、前端构建和 Alembic 迁移通过。
+
+Codex 独立复核确认上述限定命令可复现，但发现以下规约缺口：
+
+1. PLAN 要求的 `ruff check .` 返回 11 个迁移文件错误；报告实际只运行 `ruff check src tests`。
+2. `SqliteAnalysisRepository` 未实现，所谓仓储测试直接操作 ORM，不能证明端口合同。
+3. SQLite `PRAGMA foreign_keys` 为 `0`；删除父任务后 Chord 子记录仍存在。现有测试只因 TrackAnalysis relationship 获得局部 ORM cascade，不能证明数据库全量级联。
+4. 区间、置信度和 UTC 时间不变量未实现；非法 `start >= end` 与 `confidence > 1` 可被构造，SQLite 时间往返丢失时区。
+5. 状态对象没有进度，且从 queued 进入 failed 被通用顺序检查拒绝；真实失败/删除/过期转换未建模。
+6. `uv.lock`、README 缺失；`*.egg-info` 和 `*.tsbuildinfo` 生成物未忽略；手工创建且被忽略的 `data/` 不会出现在干净 clone。
+7. 报告末尾称“没有 branch”，但工作实际发生在预先创建的 `validation/opencode-cold-start` 分支；Files Changed 也漏列生成物。
+
+这次 cold-start 达到了规约验证目的：它证明任务拆分可启动，同时暴露了测试边界和干净环境假设。产品 SPEC 无需改变；PLAN 已增强锁文件、生成物、仓储端口、SQLite 外键、全量级联、领域不变量、UTC 与显式终态转换要求。cold-start 代码不合并，正式实施必须从最新 `main` 重新执行 RED→GREEN→REFACTOR。
 
 ## 9. 书面 SPEC 批准
 
