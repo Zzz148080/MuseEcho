@@ -60,3 +60,11 @@
 - **外部阶段依赖**：NJU Git/GitLab 登录与 remote 尚无；腾讯云主机、域名、DNS、SSH 主机授权尚无。它们分别只阻塞课程同步与部署，不阻塞本地实现。
 - **生产 LLM**：未发现可供 MuseEcho 服务端使用的产品运行时密钥；V1 可先用确定性 fallback/stub 完成，增强问答上线前需由用户单独配置服务端 secret，不自动复用 OpenCode 密钥。
 - **审批结果**：用户逐字批准只读用户会话复核后，命令仍在执行前被自动审批服务以 `stream disconnected before completion` 拒绝。未读取密钥正文、未修改任何设置、未绕过审批。
+
+## 2026-08-08 — USER-SESSION READINESS EVIDENCE
+
+- **Docker**：首次用户会话检查返回 `dockerDesktopLinuxEngine` named pipe 不存在；启动 Docker Desktop 后复测成功，返回 Server `29.1.3`、OS `Docker Desktop`、16 CPU、14,551,777,280 字节内存。根因确认是 daemon 当时未运行，而非仓库或 Dockerfile 故障。
+- **WSL**：`wsl --status` 确认默认分发 Ubuntu 20.04、默认版本 WSL 2。
+- **GitHub Actions**：仓库 Actions 已启用，`allowed_actions=all`，无需 SHA pinning；默认工作流权限为 `read`，不能批准 PR review。
+- **机器资源**：物理内存 29,860,155,392 字节，16 个逻辑处理器；D 盘可用空间 236,358,885,376 字节，满足本地 V1 构建的容量预期。
+- **数据边界**：以上结果均由用户运行事先列出的只读命令提供，不含 API Key 或其他密钥正文，未修改任何设置。

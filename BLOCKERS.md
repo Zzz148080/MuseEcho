@@ -17,7 +17,7 @@
 
 ## CS-001：Codex 外部命令审批通道连接中断
 
-- **状态**：OPEN；OpenCode cold-start 已由用户在可见终端手动启动，但同一故障仍阻塞 Codex 对 Docker/WSL/GitHub Actions/机器资源的用户会话只读复核，以及其他需要外部权限的命令。
+- **状态**：OPEN；OpenCode cold-start 与本次环境复核均已由用户在可见终端完成，但同一故障仍可能阻止 Codex 今后代为执行其他需要外部权限的命令。
 - **问题**：Codex 在执行已获用户明确批准、且不读取密钥正文的外部命令前，自动审批服务反复连接中断；命令本身没有开始执行。
 - **精确错误**：`Automatic approval review failed: stream disconnected before completion: error sending request for url (https://chatgpt.com/backend-api/codex/responses)`。
 - **相关命令**：`opencode.cmd run --help`；隔离 worktree 中的 `opencode.cmd run ... --model deepseek/deepseek-v4-flash ...`；位置参数前置的最小 parser probe。所有记录均不含 API Key。
@@ -26,9 +26,10 @@
 - **推荐恢复**：等待审批服务恢复后重试；在此之前，用户可在自己的 PowerShell 中手动运行明确列出的只读命令并交回输出。不得通过其他命令间接绕过审批。
 - **仍可继续**：仓库内编码、测试、文档审阅和隔离 worktree 工作；不得在 cold-start 报告未完成审查、书面规格/计划未按报告修订并获得最终批准前创建 `HUMAN_APPROVAL.md` 或开始正式实现。
 
-## 尚待用户会话确认的准备项
+## 用户会话与外部准备状态
 
-- Docker CLI 与 Compose 已安装；沙箱内无法连接 Docker named pipe，需在用户会话确认 Docker Desktop/daemon 状态。
-- WSL 状态、机器 CPU/内存/磁盘余量因权限边界未确认。
-- GitHub 登录、私有仓库访问和历史推送已确认；仓库级 Actions 权限开关尚未从用户会话读取。
+- Docker CLI、Compose 与 Docker Desktop Linux daemon 已确认可用；`docker info` 返回 Server `29.1.3`、Docker Desktop、16 CPU、14,551,777,280 字节容器内存。
+- WSL 已确认可用：默认分发为 Ubuntu 20.04，默认版本为 WSL 2。
+- 机器资源已确认：16 个逻辑处理器、29,860,155,392 字节物理内存，D 盘剩余 236,358,885,376 字节。
+- GitHub Actions 已启用，允许全部 Actions；默认 `GITHUB_TOKEN` 工作流权限为只读，且不能批准 PR review。CI 应显式声明最小 `permissions`，需要写权限的发布任务必须单独授权。
 - NJU Git/GitLab remote、腾讯云服务器/域名/DNS/SSH 授权只在课程同步与部署阶段需要，目前未配置。
