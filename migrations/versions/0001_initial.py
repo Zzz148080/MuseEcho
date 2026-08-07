@@ -1,11 +1,12 @@
 """initial schema"""
+
+import sqlalchemy as sa
+from alembic import op
+
 revision = "0001"
 down_revision = None
 branch_labels = None
 depends_on = None
-
-from alembic import op
-import sqlalchemy as sa
 
 
 def upgrade() -> None:
@@ -20,12 +21,48 @@ def upgrade() -> None:
         sa.Column("expires_at", sa.DateTime(), nullable=True),
         sa.Column("error_code", sa.String(50), nullable=True),
         sa.Column("retry_count", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("pipeline_version", sa.String(20), nullable=True),
+        sa.Column("pipeline_version", sa.String(50), nullable=True),
         sa.Column("source_kind", sa.String(20), nullable=False, server_default="real"),
+        sa.CheckConstraint("status = stage", name="ck_analysis_jobs_status_stage"),
+    )
+    op.create_table(
+        "access_grants",
+        sa.Column("token_hash", sa.Text(), primary_key=True),
+        sa.Column(
+            "analysis_id",
+            sa.String(36),
+            sa.ForeignKey("analysis_jobs.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("expires_at", sa.DateTime(), nullable=False),
+        sa.Column("revoked_at", sa.DateTime(), nullable=True),
+    )
+    op.create_table(
+        "encrypted_audio",
+        sa.Column(
+            "analysis_id",
+            sa.String(36),
+            sa.ForeignKey("analysis_jobs.id", ondelete="CASCADE"),
+            primary_key=True,
+        ),
+        sa.Column("cipher_path", sa.Text(), nullable=False),
+        sa.Column("wrapped_data_key", sa.LargeBinary(), nullable=False),
+        sa.Column("chunk_size", sa.Integer(), nullable=False),
+        sa.Column("chunk_count", sa.Integer(), nullable=False),
+        sa.Column("plaintext_size", sa.Integer(), nullable=False),
+        sa.Column("media_type", sa.String(100), nullable=False),
+        sa.Column("sha256", sa.String(64), nullable=False),
     )
     op.create_table(
         "track_analyses",
-        sa.Column("analysis_id", sa.String(36), sa.ForeignKey("analysis_jobs.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column(
+            "analysis_id",
+            sa.String(36),
+            sa.ForeignKey("analysis_jobs.id", ondelete="CASCADE"),
+            primary_key=True,
+        ),
         sa.Column("duration_seconds", sa.Float(), nullable=False),
         sa.Column("sample_rate", sa.Integer(), nullable=False),
         sa.Column("channels", sa.Integer(), nullable=False),
@@ -41,7 +78,13 @@ def upgrade() -> None:
     op.create_table(
         "section_events",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("analysis_id", sa.String(36), sa.ForeignKey("analysis_jobs.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "analysis_id",
+            sa.String(36),
+            sa.ForeignKey("analysis_jobs.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("start_seconds", sa.Float(), nullable=False),
         sa.Column("end_seconds", sa.Float(), nullable=False),
         sa.Column("label", sa.String(50), nullable=False),
@@ -51,7 +94,13 @@ def upgrade() -> None:
     op.create_table(
         "chord_events",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("analysis_id", sa.String(36), sa.ForeignKey("analysis_jobs.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "analysis_id",
+            sa.String(36),
+            sa.ForeignKey("analysis_jobs.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("start_seconds", sa.Float(), nullable=False),
         sa.Column("end_seconds", sa.Float(), nullable=False),
         sa.Column("symbol", sa.String(20), nullable=False),
@@ -62,7 +111,13 @@ def upgrade() -> None:
     op.create_table(
         "time_series",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("analysis_id", sa.String(36), sa.ForeignKey("analysis_jobs.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "analysis_id",
+            sa.String(36),
+            sa.ForeignKey("analysis_jobs.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("kind", sa.String(50), nullable=False),
         sa.Column("resolution_seconds", sa.Float(), nullable=False),
         sa.Column("points_json", sa.Text(), nullable=False),
@@ -71,7 +126,13 @@ def upgrade() -> None:
     op.create_table(
         "evidence",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("analysis_id", sa.String(36), sa.ForeignKey("analysis_jobs.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "analysis_id",
+            sa.String(36),
+            sa.ForeignKey("analysis_jobs.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("kind", sa.String(50), nullable=False),
         sa.Column("start_seconds", sa.Float(), nullable=False),
         sa.Column("end_seconds", sa.Float(), nullable=False),
@@ -83,7 +144,13 @@ def upgrade() -> None:
     op.create_table(
         "explanations",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("analysis_id", sa.String(36), sa.ForeignKey("analysis_jobs.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "analysis_id",
+            sa.String(36),
+            sa.ForeignKey("analysis_jobs.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("segment_start", sa.Float(), nullable=False),
         sa.Column("segment_end", sa.Float(), nullable=False),
         sa.Column("question_digest", sa.String(64), nullable=False),
@@ -101,4 +168,6 @@ def downgrade() -> None:
     op.drop_table("chord_events")
     op.drop_table("section_events")
     op.drop_table("track_analyses")
+    op.drop_table("encrypted_audio")
+    op.drop_table("access_grants")
     op.drop_table("analysis_jobs")

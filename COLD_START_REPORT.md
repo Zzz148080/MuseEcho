@@ -255,4 +255,76 @@ Success.
 - Tasks 3–24 are not started. The cold-start validation only covers Tasks 1 and 2 as specified.
 - No `HUMAN_APPROVAL.md` was created (per PLAN.md section 0, this requires explicit user approval after cold-start results are reviewed).
 - No `SPEC_PROCESS.md` or `AGENT_LOG.md` was created (per PLAN.md they will be created during the actual implementation, not cold-start).
-- No branch, PR, or commit was created (per cold-start constraints).
+- OpenCode did not create a PR or commit. It worked on the pre-created
+  `validation/opencode-cold-start` isolation branch; Codex later committed the raw attempt as
+  `1a3545d` for review evidence.
+
+---
+
+## Codex Correction Appendix
+
+The initial OpenCode attempt above is preserved as historical evidence. Codex independently reviewed
+it, reproduced the reported commands, and found that Tasks 1–2 were not yet acceptable. The user then
+explicitly requested correction of the existing artifacts.
+
+### Review RED evidence
+
+- `python -m ruff check .` failed with 11 migration errors; the initial report had only checked
+  `src tests`.
+- Domain probes accepted `start_seconds >= end_seconds` and confidence outside `0.0..1.0`.
+- `AnalysisJob` had no progress and rejected a real `queued -> failed` outcome without providing a
+  dedicated failure transition.
+- `SqliteAnalysisRepository` did not exist; integration tests bypassed the repository port.
+- A fresh SQLite connection returned `PRAGMA foreign_keys=0`; deleting an analysis left its chord
+  child behind.
+- A fresh Alembic database under a missing parent directory failed with
+  `sqlite3.OperationalError: unable to open database file`.
+- UTC timestamps returned from SQLite with `tzinfo=None`.
+- `uv.lock` and README were missing; `*.egg-info` and `*.tsbuildinfo` were not ignored.
+
+### Corrections
+
+- Added domain validation for intervals, confidence, duration, UTC timestamps, source kind, retry
+  count and encrypted-audio sizes.
+- Added monotonic stage progress plus explicit `fail`, `delete`, and `expire` transitions.
+- Added `UTCDateTime`, safe runtime-directory creation and per-connection SQLite foreign-key setup.
+- Implemented `SqliteAnalysisRepository` with domain/ORM mapping, JSON serialization, queries,
+  updates and database-backed cascade deletion.
+- Added repository integration tests against fresh on-disk databases, including Alembic bootstrap,
+  UTC round-trip, foreign-key activation and all implemented child tables.
+- Added `uv.lock`, Python/Node version markers, README setup instructions and generated-artifact
+  ignore rules.
+- Replaced deprecated Starlette test dependency `httpx` with `httpx2` and moved pytest cache into the
+  ignored project `tmp/` directory.
+- Added the omitted `access_grants` and `encrypted_audio` schema/ORM mappings, round-trip coverage,
+  and database-backed cascade verification.
+- Added an `AnalysisResult` aggregate so track facts, sections, chords, time series, evidence, and the
+  job completion state commit in one transaction; a forced uniqueness failure proves full rollback.
+- Aligned the stable ports with PLAN (`IssuedAccess`, `BinaryIO`, `EncryptedAudioMetadata`,
+  `DecodedAudio`, `AnalysisResult`, and `ExplanationDraft`).
+- Made job status/stage/progress consistent by construction and at the database layer; stage and
+  progress are read-only outside explicit transitions, and timestamp chronology is validated.
+- Rejected NaN/infinite values and child intervals beyond the track duration, including persisted
+  explanation ranges.
+- Enabled and tested SQLite WAL and busy timeout for file-backed databases while retaining foreign
+  keys on every connection.
+- Required the persisted job to be at `evidence` before the atomic result transaction can transition
+  it to `complete`; earlier stages can no longer skip the domain state machine.
+- Revalidated mutable aggregate contents at the transaction boundary and rejected non-standard
+  nested JSON values such as NaN/Infinity with `allow_nan=False` defense in depth.
+- Preserved monotonic `updated_at`, validated revocation chronology, and widened versioned token
+  hashes to an unconstrained text column.
+
+### Corrected GREEN evidence
+
+- `uv run pytest -q`: 39 passed, zero warnings.
+- `uv run ruff check .`: all checks passed.
+- `uv run mypy src`: no issues in 9 source files.
+- `npm test`: 1 test passed.
+- `npm run typecheck`: passed.
+- `npm run build`: Vite production build passed.
+- Clean container verification used Node `22.23.2` and npm `10.9.8`; `npm ci` audited 163
+  packages with 0 vulnerabilities before the same test, typecheck and build commands passed.
+
+The branch remains cold-start validation evidence and is not approved for merge or formal
+implementation until the main-agent review and human gate are complete.
