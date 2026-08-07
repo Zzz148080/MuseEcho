@@ -42,3 +42,5 @@
 - **第二 Agent 检测**：Gemini、Claude、Copilot CLI 未安装；OpenCode `1.17.14` 已安装。其凭据列表为 0，但真实模型列表返回 6 个 OpenCode 免费模型，故尚不能判定不可用。
 - **失败证据**：`.ps1` shim 被 PowerShell 执行策略拒绝；沙箱 `.cmd` 访问用户配置失败；用户会话 `.cmd` 成功。随后 `opencode run --help` 因审批通道断开被拒，尚未创建 cold-start session。
 - **实现/测试**：未写应用实现，未运行任务测试，未创建 `HUMAN_APPROVAL.md`。
+- **隔离区**：在用户批准后创建 `.worktrees/opencode-cold-start`，分支 `validation/opencode-cold-start`；sparse checkout 仅暴露 `SPEC.md`、`PLAN.md`、`.gitignore`，基线无应用文件或测试。
+- **启动结果**：对 `opencode/deepseek-v4-flash-free` 的全新非交互 session 调用再次被外部审批通道连接中断拒绝；OpenCode 未启动，隔离分支无代码改动。等待在披露第三方数据传输和命令执行边界后的再次明确授权。

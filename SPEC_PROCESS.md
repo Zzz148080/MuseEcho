@@ -169,3 +169,5 @@ AI 调研并提出腾讯云香港 Lighthouse。用户一度提出：
 3. 用户会话中 `.cmd` shim 成功运行，显示 `0 credentials`，但模型列表仍提供 `opencode/deepseek-v4-flash-free`、`opencode/north-mini-code-free` 等 6 个 OpenCode 免费模型。
 
 尚未启动 cold-start session；查看 `opencode run --help` 时外部审批通道断开并拒绝命令，因此等待用户针对运行 OpenCode cold-start 的明确批准后继续。未伪造 Agent 输出或测试结果。
+
+用户随后原话批准“批准运行 OpenCode cold-start 并推送记录”。主 Agent 已创建 `validation/opencode-cold-start` 分支及 `.worktrees/opencode-cold-start` 隔离 worktree，并用 sparse checkout 将可见的既有文件限制为 `SPEC.md`、`PLAN.md`、`.gitignore`。实际启动 `opencode/deepseek-v4-flash-free` 新会话时，外部审批器因连接中断再次拒绝命令；OpenCode 进程没有启动，未产生 Agent 输出、实现或测试证据。由于第三方模型调用会传输规格、计划、生成代码和测试输出并可在隔离区运行命令，需在披露该边界后取得用户再次明确授权。
