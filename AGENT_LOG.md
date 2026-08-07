@@ -12,4 +12,5 @@
 - **测试**：未运行应用测试，因为尚无实现且 brainstorming hard gate 禁止写实现。
 - **CI**：未配置、未运行。
 - **PR**：无；初始工作区没有 Git 仓库。
+- **Git**：在工作区根目录初始化仓库；使用明确的代理身份 `OpenAI Codex <codex@local.invalid>` 创建设计根提交 `e9ca961`（`docs: define MuseEcho V1 approved design`）。该提交只包含 MuseEcho 规格与过程文件，未纳入旧项目目录或课程输入资料。
 - **经验**：数据生命周期必须与播放交互共同设计；部署平台必须同时验证技术能力、支付条件和服务条款。
