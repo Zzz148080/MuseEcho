@@ -151,3 +151,21 @@ AI 调研并提出腾讯云香港 Lighthouse。用户一度提出：
 > 好，批准书面SPEC，进行下一步
 
 该批准仅表示 `SPEC.md` 与配套设计文档通过书面审阅，授权进入 `PLAN.md` 阶段；它不等于批准实施，不触发 `HUMAN_APPROVAL.md`。计划仍需单独审阅，随后还需真实 cold-start 验证和最终人工实施确认。
+
+## 10. 书面 PLAN 批准与 cold-start 准备
+
+时间：2026-08-08T04:49:31+08:00
+
+用户在审阅门禁中原话确认：
+
+> 批准 PLAN
+
+该批准授权进入不同类型 Agent 的 cold-start 规约验证，仍不等于正式实施授权，也不触发 `HUMAN_APPROVAL.md`。
+
+环境检测发现 OpenCode `1.17.14` 已安装，可作为与 Codex 不同类型的 Agent。真实检测过程为：
+
+1. npm PowerShell `.ps1` shim 被本机执行策略拒绝；
+2. 沙箱内 `.cmd` shim 因无法访问用户配置目录报告 `EEXIST`；
+3. 用户会话中 `.cmd` shim 成功运行，显示 `0 credentials`，但模型列表仍提供 `opencode/deepseek-v4-flash-free`、`opencode/north-mini-code-free` 等 6 个 OpenCode 免费模型。
+
+尚未启动 cold-start session；查看 `opencode run --help` 时外部审批通道断开并拒绝命令，因此等待用户针对运行 OpenCode cold-start 的明确批准后继续。未伪造 Agent 输出或测试结果。

@@ -1,5 +1,6 @@
 # Local brainstorming companion state
 .superpowers/
+.worktrees/
 tmp/
 
 # Python

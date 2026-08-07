@@ -34,3 +34,11 @@
 - **Subagent**：未使用；当前只是计划编写与文档发布阶段。
 - **Git**：PLAN 与书面批准记录的根提交为 `a8eeaea`（`docs: define MuseEcho implementation plan`）；该提交只包含 5 个计划/规格过程文件，未纳入课程输入或旧项目目录。
 - **GitHub**：使用用户已登录的 GitHub CLI 真实验证账户 `Zzz148080`、HTTPS 协议、私有空仓库 `Zzz148080/MuseEcho`；将本地分支由 `master` 规范为 `main`，配置 `origin=https://github.com/Zzz148080/MuseEcho.git`，并成功首次推送文档历史。空仓库首次建立默认分支无法先建 PR；后续实现任务严格走独立分支/PR。
+
+## 2026-08-08T04:49:31+08:00 — COLD-START PREP / PLAN 已批准
+
+- **人工批准**：用户原话“批准 PLAN”，真实批准当前 `PLAN.md`；未批准正式实施。
+- **Superpowers Skill**：使用 `using-git-worktrees` 检查隔离策略；当前是主 checkout，项目协议已明确要求 worktree，因此 cold-start 将使用项目内 `.worktrees/` 隔离区。
+- **第二 Agent 检测**：Gemini、Claude、Copilot CLI 未安装；OpenCode `1.17.14` 已安装。其凭据列表为 0，但真实模型列表返回 6 个 OpenCode 免费模型，故尚不能判定不可用。
+- **失败证据**：`.ps1` shim 被 PowerShell 执行策略拒绝；沙箱 `.cmd` 访问用户配置失败；用户会话 `.cmd` 成功。随后 `opencode run --help` 因审批通道断开被拒，尚未创建 cold-start session。
+- **实现/测试**：未写应用实现，未运行任务测试，未创建 `HUMAN_APPROVAL.md`。
