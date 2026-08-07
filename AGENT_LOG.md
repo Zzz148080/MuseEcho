@@ -47,3 +47,16 @@
 - **DeepSeek 配置核验**：用户说明已配置 `deepseek-v4-flash`；OpenCode 真实返回 `DeepSeek api` 1 个凭据，并列出 `deepseek/deepseek-v4-flash`。未读取或输出密钥正文。
 - **参数失败**：获批后的首次实际命令在调用模型前失败，错误为 `File not found: <完整 prompt>`；根因是 `--file` 数组选项吞并了后置位置参数。使用 `systematic-debugging` 后计划以位置参数前置的最小探针验证。
 - **审批 Blocker**：最小探针仍在 OpenCode 进程启动前被外部审批器以 `stream disconnected before completion` 拒绝。连同此前两次相同审批连接中断，已达到三次真实重复；这只阻塞 cold-start，不代表 DeepSeek/OpenCode 不可用，也不阻塞文档工作。
+
+## 2026-08-08T05:54:35+08:00 — PRE-IMPLEMENTATION READINESS AUDIT
+
+- **请求范围**：检查后续独立构建可能需要的审批、登录和环境依赖；不读取密钥正文，不修改设置。
+- **仓库与门禁**：`main` 与 `origin/main` 在 `85cdf88` 同步；隔离 worktree/分支为 `.worktrees/opencode-cold-start` / `validation/opencode-cold-start`；`HUMAN_APPROVAL.md` 仍不存在，正式实现门禁未放行。
+- **cold-start 现场**：用户已在可见终端成功启动自定义提供方 `njusehub/deepseek-v4-flash`；隔离 worktree 中出现 FastAPI 最小后端、Vite/React 前端与测试文件，但 `COLD_START_REPORT.md` 尚未生成。未干预仍在运行的 OpenCode。
+- **已确认工具链**：Git `2.48.1`、Node `24.16.0`、npm `11.13.0`、Python `3.12.5`、pip `25.3`、Docker CLI `29.1.3`、Compose `2.40.3`；Chrome、Edge、SSH/SCP/SFTP、curl 可用。
+- **待安装或固定**：`uv`、FFmpeg/ffprobe、PowerShell 7、Caddy、ShellCheck 当前未找到；Node 需按项目约束固定到 22 LTS。它们可在实现/CI/容器阶段按计划安装或由容器提供，不要求现在读取任何凭据。
+- **Docker/WSL/资源**：沙箱内 Docker named pipe 不可访问，WSL 返回 `E_ACCESSDENIED`，CIM 机器资源查询被权限边界阻止；这些结果不能等同于用户会话中的真实状态。
+- **GitHub**：账户 `Zzz148080`、HTTPS remote、私有仓库访问和既往推送已确认；仓库级 Actions 权限端点尚未复核。
+- **外部阶段依赖**：NJU Git/GitLab 登录与 remote 尚无；腾讯云主机、域名、DNS、SSH 主机授权尚无。它们分别只阻塞课程同步与部署，不阻塞本地实现。
+- **生产 LLM**：未发现可供 MuseEcho 服务端使用的产品运行时密钥；V1 可先用确定性 fallback/stub 完成，增强问答上线前需由用户单独配置服务端 secret，不自动复用 OpenCode 密钥。
+- **审批结果**：用户逐字批准只读用户会话复核后，命令仍在执行前被自动审批服务以 `stream disconnected before completion` 拒绝。未读取密钥正文、未修改任何设置、未绕过审批。
