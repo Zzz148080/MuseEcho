@@ -32,3 +32,4 @@
 - **PLAN 范围**：锁定模块目录、核心接口、依赖图、并行边界，并为 24 个任务逐项指定文件、首个失败测试、RED/GREEN、重构、验证命令、验收标准、分支与提交意图。
 - **真实性门禁**：未创建 `HUMAN_APPROVAL.md`，未写应用实现，未声称测试/CI/PR/部署已运行；真实 cold-start 仍需在 PLAN 获批后执行。
 - **Subagent**：未使用；当前只是计划编写与文档发布阶段。
+- **Git**：PLAN 与书面批准记录的根提交为 `a8eeaea`（`docs: define MuseEcho implementation plan`）；该提交只包含 5 个计划/规格过程文件，未纳入课程输入或旧项目目录。
