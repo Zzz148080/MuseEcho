@@ -159,7 +159,7 @@ def test_one_second_final_section_respects_minimum_duration(first_seconds: float
     assert segments[-1].end_seconds - segments[-1].start_seconds >= 1.0
 
 
-@pytest.mark.parametrize("section_seconds", [2.0, 4.0, 8.0])
+@pytest.mark.parametrize("section_seconds", [2.0, 4.0, 8.0, 12.0])
 def test_static_abc_sections_keep_all_novelty_boundaries(section_seconds: float):
     frequencies = (
         (261.6256, 329.6276, 391.9954),
@@ -205,6 +205,59 @@ def test_recurrent_one_second_sections_never_fall_below_minimum_duration():
 
     assert [segment.label for segment in segments] == ["A", "B", "A"]
     assert all(segment.end_seconds - segment.start_seconds >= 1.0 for segment in segments)
+
+
+@pytest.mark.parametrize(
+    ("outer_seconds", "inner_seconds"),
+    [(4.0, 1.0), (4.0, 2.0), (6.0, 2.0)],
+)
+def test_recurrent_outer_section_does_not_hide_distinct_middle_sections(
+    outer_seconds: float,
+    inner_seconds: float,
+):
+    frequencies = {
+        "A": (261.6256, 329.6276, 391.9954),
+        "B": (184.9972, 233.0819, 277.1826),
+        "C": (146.8324, 184.9972, 220.0000),
+    }
+    samples = (
+        _tones(frequencies["A"], outer_seconds)
+        + _tones(frequencies["B"], inner_seconds)
+        + _tones(frequencies["C"], inner_seconds)
+        + _tones(frequencies["A"], outer_seconds)
+    )
+
+    segments = segment_structure(samples, SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == ["A", "B", "C", "A"]
+    assert all(segment.end_seconds - segment.start_seconds >= 1.0 for segment in segments)
+
+
+@pytest.mark.parametrize("section_seconds", [1.0, 1.1, 1.2, 1.4])
+def test_short_abcba_sections_keep_recurrence_and_minimum_duration(section_seconds: float):
+    frequencies = {
+        "A": (261.6256, 329.6276, 391.9954),
+        "B": (184.9972, 233.0819, 277.1826),
+        "C": (146.8324, 184.9972, 220.0000),
+    }
+    samples = [
+        sample for label in "ABCBA" for sample in _tones(frequencies[label], section_seconds)
+    ]
+
+    segments = segment_structure(samples, SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == ["A", "B", "C", "B", "A"]
+    assert all(segment.end_seconds - segment.start_seconds >= 1.0 for segment in segments)
+
+
+@pytest.mark.parametrize("section_seconds", [1.4, 1.5, 1.6])
+def test_threefold_uniform_loop_is_unknown_without_duration_cliff(section_seconds: float):
+    a = _tones((261.6256, 329.6276, 391.9954), section_seconds)
+    b = _tones((184.9972, 233.0819, 277.1826), section_seconds)
+
+    segments = segment_structure((a + b) * 3, SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == [None]
 
 
 def test_segments_cover_audio_without_gaps_or_overrun():
