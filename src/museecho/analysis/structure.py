@@ -104,13 +104,13 @@ def _select_multiscale_boundaries(
     aggregate_frames = max(1, round(0.25 * features.sample_rate / HOP_LENGTH))
     aggregated = _aggregate_chroma(features.chroma, aggregate_frames)
     bin_seconds = aggregate_frames * HOP_LENGTH / features.sample_rate
-    if _has_repeating_loop(aggregated, bin_seconds):
-        return [], []
     general_times, general_strengths = _general_novelty_boundaries(
         aggregated,
         bin_seconds,
         features.duration_seconds,
     )
+    if _has_repeating_loop(aggregated, general_times, bin_seconds):
+        return [], []
     recurrent_aba = _prefix_suffix_recurrence_boundaries(
         aggregated,
         bin_seconds,
@@ -299,24 +299,41 @@ def _prefix_suffix_recurrence_boundaries(
     return None
 
 
-def _has_repeating_loop(chroma: np.ndarray, bin_seconds: float) -> bool:
-    minimum_lag = max(2, math.floor(2.0 / bin_seconds))
-    maximum_lag = math.ceil(chroma.shape[1] / 3)
-    if maximum_lag < minimum_lag:
+def _has_repeating_loop(
+    chroma: np.ndarray,
+    boundary_times: list[float],
+    bin_seconds: float,
+) -> bool:
+    boundary_bins = [0]
+    boundary_bins.extend(round(timestamp / bin_seconds) for timestamp in boundary_times)
+    boundary_bins.append(chroma.shape[1])
+    if len(boundary_bins) < 7:
         return False
-    for lag in range(minimum_lag, maximum_lag + 1):
-        cycle_profile = np.mean(chroma[:, :lag], axis=1)
-        if 1.0 - float(np.linalg.norm(cycle_profile)) < 0.05:
+    profiles: list[np.ndarray] = []
+    for start, end in zip(boundary_bins, boundary_bins[1:]):
+        frames = chroma[:, start:end]
+        if frames.shape[1] == 0:
+            return False
+        profile = np.mean(frames, axis=1)
+        norm = float(np.linalg.norm(profile))
+        if norm <= 1e-12:
+            return False
+        profiles.append(profile / norm)
+    count = len(profiles)
+    for period in range(2, count // 3 + 1):
+        if count % period != 0:
             continue
-        frame_similarities = np.sum(chroma[:, :-lag] * chroma[:, lag:], axis=0)
-        left_active = np.linalg.norm(chroma[:, :-lag], axis=0) > 1e-8
-        right_active = np.linalg.norm(chroma[:, lag:], axis=0) > 1e-8
-        active_similarities = frame_similarities[left_active & right_active]
-        if active_similarities.size < 2 * lag - 1:
+        cycle = profiles[:period]
+        if all(
+            float(np.dot(cycle[left], cycle[right])) >= 0.90
+            for left in range(period)
+            for right in range(left + 1, period)
+        ):
             continue
-        if float(np.mean(active_similarities)) < 0.98:
-            continue
-        if float(np.mean(active_similarities >= 0.90)) >= 0.92:
+        if all(
+            float(np.dot(profile, cycle[index % period])) >= 0.90
+            for index, profile in enumerate(profiles)
+        ):
             return True
     return False
 

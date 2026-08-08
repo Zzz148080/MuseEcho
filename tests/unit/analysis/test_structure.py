@@ -306,10 +306,14 @@ def test_unique_stable_middle_sections_are_independent_of_pitch_class_and_octave
     assert [segment.label for segment in segments] == ["A", "B", "C", "D", "E", "A"]
 
 
+@pytest.mark.parametrize("section_seconds", [1.0, 1.1, 1.2, 1.5, 2.0, 3.0])
 @pytest.mark.parametrize("repeat_count", [3, 4, 5])
-def test_uniform_loop_is_unknown_for_any_three_or_more_repeats(repeat_count: int):
-    a = _tones((261.6256, 329.6276, 391.9954), 1.5)
-    b = _tones((184.9972, 233.0819, 277.1826), 1.5)
+def test_uniform_loop_is_unknown_for_any_three_or_more_repeats(
+    repeat_count: int,
+    section_seconds: float,
+):
+    a = _tones((261.6256, 329.6276, 391.9954), section_seconds)
+    b = _tones((184.9972, 233.0819, 277.1826), section_seconds)
 
     segments = segment_structure((a + b) * repeat_count, SAMPLE_RATE)
 
