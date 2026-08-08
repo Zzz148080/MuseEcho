@@ -50,7 +50,7 @@ def estimate_chords(
     if features.chroma.shape[1] == 0 or duration_seconds < _MINIMUM_EVENT_SECONDS:
         return (_unknown_event(duration_seconds),)
     states, frame_confidences = _decode_chord_states(features, key_prior)
-    states = _discard_short_runs(states, frame_confidences, normalized_rate)
+    states = _discard_short_runs(states, frame_confidences, features.rms, normalized_rate)
     return _events_from_states(states, frame_confidences, features)
 
 
@@ -186,6 +186,7 @@ def _viterbi(emissions: np.ndarray) -> np.ndarray:
 def _discard_short_runs(
     states: np.ndarray,
     frame_confidences: np.ndarray,
+    frame_rms: np.ndarray,
     sample_rate: int,
 ) -> np.ndarray:
     result = states.copy()
@@ -202,10 +203,14 @@ def _discard_short_runs(
                 left = int(result[start - 1]) if start > 0 else _UNKNOWN_STATE
                 right = int(result[index]) if index < result.size else _UNKNOWN_STATE
                 has_both_neighbors = start > 0 and index < result.size
-                if has_both_neighbors and left == right and left != _UNKNOWN_STATE:
+                if state == _UNKNOWN_STATE:
+                    has_active_evidence = bool(np.all(frame_rms[start:index] > MINIMUM_SIGNAL_RMS))
+                    if has_both_neighbors and has_active_evidence:
+                        replacement = left if left != _UNKNOWN_STATE else right
+                    else:
+                        replacement = _UNKNOWN_STATE
+                elif has_both_neighbors and left == right and left != _UNKNOWN_STATE:
                     replacement = left
-                elif has_both_neighbors and state == _UNKNOWN_STATE:
-                    replacement = left if left != _UNKNOWN_STATE else right
                 else:
                     replacement = _UNKNOWN_STATE
                 result[start:index] = replacement
@@ -235,7 +240,12 @@ def _events_from_states(
         symbol = _symbol_for_state(state)
         confidence = None
         if symbol is not None:
-            confidence = float(np.clip(np.mean(frame_confidences[start:index]), 0.0, 1.0))
+            supported = frame_confidences[start:index]
+            supported = supported[supported >= 0.7]
+            if supported.size == 0 or supported.size / (index - start) < 0.6:
+                symbol = None
+            else:
+                confidence = float(np.clip(np.mean(supported), 0.0, 1.0))
         event = ChordEvent(
             symbol,
             float(boundaries[start]),

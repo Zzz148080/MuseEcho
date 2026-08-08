@@ -56,20 +56,23 @@ def test_recurrent_multichord_sections_are_grouped_as_aba():
     assert segments[1].end_seconds == pytest.approx(4.0, abs=0.25)
 
 
-def test_four_chord_sections_use_nonlocal_recurrence_for_aba_boundaries():
-    c = _tones((261.6256, 329.6276, 391.9954), 1.0)
-    g = _tones((195.9977, 246.9417, 293.6648), 1.0)
-    am = _tones((220.0000, 261.6256, 329.6276), 1.0)
-    f = _tones((174.6141, 220.0000, 261.6256), 1.0)
-    dm = _tones((146.8324, 174.6141, 220.0000), 1.0)
+@pytest.mark.parametrize("chord_seconds", [0.5, 1.0])
+def test_four_chord_sections_use_nonlocal_recurrence_for_aba_boundaries(
+    chord_seconds: float,
+):
+    c = _tones((261.6256, 329.6276, 391.9954), chord_seconds)
+    g = _tones((195.9977, 246.9417, 293.6648), chord_seconds)
+    am = _tones((220.0000, 261.6256, 329.6276), chord_seconds)
+    f = _tones((174.6141, 220.0000, 261.6256), chord_seconds)
+    dm = _tones((146.8324, 174.6141, 220.0000), chord_seconds)
     section_a = c + g + am + f
     section_b = f + c + dm + g
 
     segments = segment_structure(section_a + section_b + section_a, SAMPLE_RATE)
 
     assert [segment.label for segment in segments] == ["A", "B", "A"]
-    assert segments[0].end_seconds == pytest.approx(4.0, abs=0.3)
-    assert segments[1].end_seconds == pytest.approx(8.0, abs=0.3)
+    assert segments[0].end_seconds == pytest.approx(4 * chord_seconds, abs=0.3)
+    assert segments[1].end_seconds == pytest.approx(8 * chord_seconds, abs=0.3)
 
 
 def test_energy_only_change_does_not_create_a_structure_boundary():
@@ -97,6 +100,63 @@ def test_signal_without_structural_change_is_unknown(frequencies):
     assert len(segments) == 1
     assert segments[0].label is None
     assert segments[0].confidence is None
+
+
+@pytest.mark.parametrize("middle_seconds", [1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0])
+def test_unequal_middle_section_keeps_recurrent_aba_boundaries(middle_seconds: float):
+    section_a = _tones((261.6256, 329.6276, 391.9954), 4.0)
+    section_b = _tones((184.9972, 233.0819, 277.1826), middle_seconds)
+
+    segments = segment_structure(section_a + section_b + section_a, SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == ["A", "B", "A"]
+    assert segments[0].end_seconds == pytest.approx(4.0, abs=0.3)
+    assert segments[1].end_seconds == pytest.approx(4.0 + middle_seconds, abs=0.3)
+
+
+@pytest.mark.parametrize(
+    "cycle",
+    [
+        ((261.6256, 329.6276, 391.9954), (195.9977, 246.9417, 293.6648)),
+        (
+            (261.6256, 329.6276, 391.9954),
+            (195.9977, 246.9417, 293.6648),
+            (220.0000, 261.6256, 329.6276),
+            (174.6141, 220.0000, 261.6256),
+        ),
+    ],
+)
+def test_uniform_repeating_progression_is_not_forced_into_sections(cycle):
+    samples = [sample for _ in range(3) for chord in cycle for sample in _tones(chord, 1.0)]
+
+    segments = segment_structure(samples, SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == [None]
+
+
+@pytest.mark.parametrize("middle", ["silence", "noise"])
+def test_section_without_harmonic_evidence_has_unknown_label(middle: str):
+    section_a = np.asarray(_tones((261.6256, 329.6276, 391.9954), 4.0), dtype=np.float32)
+    if middle == "silence":
+        section_b = np.zeros(SAMPLE_RATE * 2, dtype=np.float32)
+    else:
+        section_b = np.random.default_rng(13).normal(0.0, 0.2, SAMPLE_RATE * 2)
+
+    segments = segment_structure(np.concatenate((section_a, section_b, section_a)), SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == ["A", None, "A"]
+    assert segments[1].confidence is None
+
+
+@pytest.mark.parametrize("first_seconds", [3.0, 4.0])
+def test_one_second_final_section_respects_minimum_duration(first_seconds: float):
+    first = _tones((261.6256, 329.6276, 391.9954), first_seconds)
+    final = _tones((184.9972, 233.0819, 277.1826), 1.0)
+
+    segments = segment_structure(first + final, SAMPLE_RATE)
+
+    assert len(segments) == 2
+    assert segments[-1].end_seconds - segments[-1].start_seconds >= 1.0
 
 
 def test_segments_cover_audio_without_gaps_or_overrun():

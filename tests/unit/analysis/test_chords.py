@@ -114,6 +114,16 @@ def test_brief_chord_change_does_not_create_a_subminimum_known_event():
     assert all(event.confidence is None or event.confidence >= 0.7 for event in events)
 
 
+def test_short_internal_digital_silence_remains_unknown():
+    c_major = _tones((261.6256, 329.6276, 391.9954), 0.5)
+    silence = [0.0] * round(0.25 * SAMPLE_RATE)
+
+    events = estimate_chords(c_major + silence + c_major, SAMPLE_RATE)
+
+    assert [event.symbol for event in events] == ["C", None, "C"]
+    assert all(event.confidence is None or event.confidence >= 0.7 for event in events)
+
+
 @pytest.mark.parametrize("sample_rate", [8_000, 44_100, 96_000, 192_000])
 def test_supported_sample_rate_is_normalized_before_analysis(sample_rate: int):
     events = estimate_chords(_progression(sample_rate=sample_rate), sample_rate)

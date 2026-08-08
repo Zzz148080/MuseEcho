@@ -9,7 +9,6 @@ from scipy.signal import find_peaks
 
 from museecho.analysis.harmonic_features import (
     HOP_LENGTH,
-    N_FFT,
     HarmonicFeatures,
     extract_harmonic_features,
     validate_harmonic_input,
@@ -17,6 +16,7 @@ from museecho.analysis.harmonic_features import (
 
 _MINIMUM_SEGMENT_SECONDS = 1.0
 _RECURRENCE_THRESHOLD = 0.82
+_ABA_RECURRENCE_THRESHOLD = 0.95
 
 
 @dataclass(frozen=True)
@@ -45,21 +45,31 @@ def segment_structure(
     features = extract_harmonic_features(array, normalized_rate, duration_seconds)
     if features.chroma.shape[1] == 0 or not _has_structural_evidence(features):
         return (_unknown_segment(duration_seconds),)
-    boundary_frames, boundary_strengths = _select_multiscale_boundaries(features)
-    if not boundary_frames:
+    selected_times, boundary_strengths = _select_multiscale_boundaries(features)
+    if not selected_times:
         return (_unknown_segment(duration_seconds),)
-    boundary_times = _boundary_times(boundary_frames, features)
+    boundary_times = [0.0, *selected_times, float(duration_seconds)]
     profiles = _segment_profiles(features, boundary_times)
+    evidence = _segment_evidence(features, boundary_times)
     labels, similarities = _cluster_recurrent_profiles(profiles)
     segments: list[StructureSegment] = []
-    for index, label in enumerate(labels):
+    for index, clustered_label in enumerate(labels):
+        label: str | None = clustered_label
         adjacent_strengths = boundary_strengths[
             max(0, index - 1) : min(len(boundary_strengths), index + 1)
         ]
         boundary_evidence = float(np.mean(adjacent_strengths))
-        confidence = float(
-            np.clip(0.65 + 0.25 * boundary_evidence + 0.1 * similarities[index], 0.0, 1.0)
-        )
+        if evidence[index]:
+            confidence = float(
+                np.clip(
+                    0.65 + 0.25 * boundary_evidence + 0.1 * similarities[index],
+                    0.0,
+                    1.0,
+                )
+            )
+        else:
+            label = None
+            confidence = None
         segments.append(
             StructureSegment(
                 label,
@@ -89,15 +99,13 @@ def _has_structural_evidence(features: HarmonicFeatures) -> bool:
 
 def _select_multiscale_boundaries(
     features: HarmonicFeatures,
-) -> tuple[list[int], list[float]]:
+) -> tuple[list[float], list[float]]:
     aggregate_frames = max(1, round(0.25 * features.sample_rate / HOP_LENGTH))
     aggregated = _aggregate_chroma(features.chroma, aggregate_frames)
     bin_seconds = aggregate_frames * HOP_LENGTH / features.sample_rate
     recurrent_aba = _prefix_suffix_recurrence_boundaries(
         aggregated,
-        aggregate_frames,
         bin_seconds,
-        features.chroma.shape[1],
         features.duration_seconds,
     )
     if recurrent_aba is not None:
@@ -108,7 +116,7 @@ def _select_multiscale_boundaries(
     while scale <= maximum_scale + 1e-9:
         scales.append(scale)
         scale *= 2
-    best_single: tuple[list[int], list[float]] | None = None
+    best_single: tuple[list[float], list[float]] | None = None
     for scale_seconds in reversed(scales):
         window_bins = max(2, round(scale_seconds / bin_seconds))
         novelty = _window_profile_novelty(aggregated, window_bins)
@@ -133,24 +141,27 @@ def _select_multiscale_boundaries(
         if not accepted:
             continue
         strengths = [float(np.clip(novelty[peak] / maximum, 0.0, 1.0)) for peak in accepted]
-        mapped = [min(features.chroma.shape[1] - 1, peak * aggregate_frames) for peak in accepted]
-        candidate = (mapped, strengths)
-        if len(mapped) >= 2:
-            return candidate
-        if best_single is None:
-            best_single = candidate
+        if len(accepted) == 1 and best_single is None:
+            timestamp = float(
+                np.clip(
+                    accepted[0] * bin_seconds,
+                    _MINIMUM_SEGMENT_SECONDS,
+                    features.duration_seconds - _MINIMUM_SEGMENT_SECONDS,
+                )
+            )
+            best_single = ([timestamp], strengths)
+    if _has_multiple_fine_changes(aggregated, bin_seconds):
+        return [], []
     return best_single or ([], [])
 
 
 def _prefix_suffix_recurrence_boundaries(
     chroma: np.ndarray,
-    aggregate_frames: int,
     bin_seconds: float,
-    original_frame_count: int,
     duration_seconds: float,
-) -> tuple[list[int], list[float]] | None:
+) -> tuple[list[float], list[float]] | None:
     minimum_bins = max(2, round(_MINIMUM_SEGMENT_SECONDS / bin_seconds))
-    maximum_bins = chroma.shape[1] // 3
+    maximum_bins = (chroma.shape[1] - minimum_bins) // 2
     for section_bins in range(maximum_bins, minimum_bins - 1, -1):
         prefix = chroma[:, :section_bins]
         suffix = chroma[:, -section_bins:]
@@ -159,20 +170,21 @@ def _prefix_suffix_recurrence_boundaries(
         middle = chroma[:, section_bins:-section_bins]
         if middle.shape[1] < minimum_bins:
             continue
-        middle_indices = np.rint(np.linspace(0, middle.shape[1] - 1, num=section_bins)).astype(int)
-        aligned_middle = middle[:, middle_indices]
-        similarity_to_middle = float(np.mean(np.sum(prefix * aligned_middle, axis=0)))
+        recurrent_profile = np.mean(np.concatenate((prefix, suffix), axis=1), axis=1)
+        middle_profile = np.mean(middle, axis=1)
+        recurrent_norm = float(np.linalg.norm(recurrent_profile))
+        middle_norm = float(np.linalg.norm(middle_profile))
+        if recurrent_norm <= 1e-12 or middle_norm <= 1e-12:
+            continue
+        similarity_to_middle = float(
+            np.dot(recurrent_profile, middle_profile) / (recurrent_norm * middle_norm)
+        )
         contrast = 1.0 - similarity_to_middle
-        if recurrence < 0.82 or contrast < 0.08:
+        if recurrence < _ABA_RECURRENCE_THRESHOLD or contrast < 0.03:
             continue
         section_seconds = section_bins * bin_seconds
-        sample_rate = round(aggregate_frames * HOP_LENGTH / bin_seconds)
-        first = _frame_nearest_time(section_seconds, sample_rate, original_frame_count)
-        second = _frame_nearest_time(
-            duration_seconds - section_seconds,
-            sample_rate,
-            original_frame_count,
-        )
+        first = section_seconds
+        second = duration_seconds - section_seconds
         if second <= first:
             continue
         strength = float(np.clip(0.5 * recurrence + 0.5 * contrast / 0.25, 0.0, 1.0))
@@ -180,13 +192,19 @@ def _prefix_suffix_recurrence_boundaries(
     return None
 
 
-def _frame_nearest_time(
-    timestamp_seconds: float,
-    sample_rate: int,
-    frame_count: int,
-) -> int:
-    frame = round((timestamp_seconds * sample_rate - N_FFT / 2) / HOP_LENGTH)
-    return int(np.clip(frame, 0, frame_count - 1))
+def _has_multiple_fine_changes(chroma: np.ndarray, bin_seconds: float) -> bool:
+    window_bins = max(2, round(0.5 / bin_seconds))
+    novelty = _window_profile_novelty(chroma, window_bins)
+    maximum = float(np.max(novelty, initial=0.0))
+    if maximum < 0.08:
+        return False
+    peaks, _properties = find_peaks(
+        novelty,
+        height=max(0.08, 0.45 * maximum),
+        prominence=max(0.04, 0.2 * maximum),
+        distance=max(1, round(_MINIMUM_SEGMENT_SECONDS / bin_seconds)),
+    )
+    return bool(peaks.size > 1)
 
 
 def _aggregate_chroma(chroma: np.ndarray, aggregate_frames: int) -> np.ndarray:
@@ -212,16 +230,6 @@ def _window_profile_novelty(chroma: np.ndarray, window_bins: int) -> np.ndarray:
         difference = left - right
         novelty[boundary] = 0.5 * float(np.dot(difference, difference))
     return novelty
-
-
-def _boundary_times(boundary_frames: list[int], features: HarmonicFeatures) -> list[float]:
-    centers = features.frame_centers_seconds
-    times = [0.0]
-    times.extend(
-        float(np.clip(centers[frame], 0.0, features.duration_seconds)) for frame in boundary_frames
-    )
-    times.append(float(features.duration_seconds))
-    return times
 
 
 def _segment_profiles(
@@ -250,6 +258,31 @@ def _segment_profiles(
         norm = float(np.linalg.norm(profile))
         profiles.append(profile / norm if norm > 1e-12 else profile)
     return profiles
+
+
+def _segment_evidence(
+    features: HarmonicFeatures,
+    boundary_times: list[float],
+) -> list[bool]:
+    centers = features.frame_centers_seconds
+    chroma = np.maximum(features.chroma, 0.0)
+    totals = np.sum(chroma, axis=0)
+    sorted_chroma = np.sort(chroma, axis=0)
+    concentration = np.divide(
+        np.sum(sorted_chroma[-3:, :], axis=0),
+        totals,
+        out=np.zeros_like(totals),
+        where=totals > 1e-12,
+    )
+    evidence: list[bool] = []
+    for start, end in zip(boundary_times, boundary_times[1:]):
+        mask = (centers >= start) & (centers < end)
+        if not bool(np.any(mask)):
+            evidence.append(False)
+            continue
+        active = (features.rms[mask] > 1e-4) & (concentration[mask] >= 0.55)
+        evidence.append(float(np.mean(active)) >= 0.6)
+    return evidence
 
 
 def _cluster_recurrent_profiles(
