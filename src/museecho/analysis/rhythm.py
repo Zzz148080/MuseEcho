@@ -43,6 +43,8 @@ def estimate_rhythm(
 
     stride = max(1, math.ceil(sample_rate / maximum_sample_rate))
     rhythm_samples = np.ascontiguousarray(samples[::stride], dtype=np.float32)
+    if rhythm_samples.size < n_fft:
+        return _unknown_rhythm()
     rhythm_sample_rate = sample_rate / stride
     rhythm_hop_length = max(1, round(hop_length / stride))
     onset_envelope = _chunked_onset_strength(

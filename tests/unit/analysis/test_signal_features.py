@@ -109,6 +109,17 @@ def test_segmented_energy_detects_rise_and_fall_near_boundaries():
     assert result.energy.algorithm
 
 
+@pytest.mark.parametrize("boundary_seconds", [0.15, 0.25])
+def test_early_sustained_energy_rise_is_not_hidden(boundary_seconds: float):
+    samples = sine_samples(boundary_seconds, 440.0, SAMPLE_RATE, 0.1)
+    samples += sine_samples(2.0 - boundary_seconds, 440.0, SAMPLE_RATE, 0.7)
+
+    result = extract_signal_features(samples, SAMPLE_RATE)
+
+    rise = next(change for change in result.energy_changes if change.direction == "rise")
+    assert rise.timestamp_seconds == pytest.approx(boundary_seconds, abs=0.12)
+
+
 @pytest.mark.parametrize("bpm", [60.0, 120.0, 180.0, 220.0])
 def test_stable_metronome_beats_are_not_macro_energy_changes(bpm: float):
     result = extract_signal_features(
@@ -159,6 +170,20 @@ def test_silence_returns_unknown_rhythm_and_zero_energy():
     assert result.beat_positions_seconds == ()
     assert result.energy_changes == ()
     assert set(result.energy.points) == {0.0}
+
+
+def test_low_sample_rate_short_signal_returns_unknown_before_fft(monkeypatch):
+    def fail_if_fft_starts(*args, **kwargs):
+        raise AssertionError("FFT extraction must not start when n_fft exceeds input length")
+
+    monkeypatch.setattr("museecho.analysis.rhythm._chunked_onset_strength", fail_if_fft_starts)
+    samples = sine_samples(2.1, 20.0, 200, 0.5)
+
+    result = extract_signal_features(samples, 200)
+
+    assert result.bpm is None
+    assert result.bpm_confidence is None
+    assert result.beat_positions_seconds == ()
 
 
 def test_aperiodic_noise_returns_unknown_rhythm():

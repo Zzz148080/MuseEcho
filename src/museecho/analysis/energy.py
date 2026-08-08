@@ -97,7 +97,7 @@ def _find_energy_changes(
     maximum_window = normalized.size if normalized.size % 2 == 1 else normalized.size - 1
     window_frames = max(1, min(requested_window, maximum_window))
     smoothed = (
-        median_filter(normalized, size=window_frames, mode="nearest")
+        median_filter(normalized, size=window_frames, mode="reflect")
         if window_frames >= 3
         else normalized
     )
@@ -107,11 +107,7 @@ def _find_energy_changes(
     deviations = np.abs(deltas - median)
     robust_sigma = 1.4826 * float(np.median(deviations))
     threshold = max(minimum_change, change_zscore * robust_sigma)
-    candidates = [
-        index
-        for index, delta in enumerate(deltas)
-        if index >= comparison_lag and abs(float(delta)) >= threshold
-    ]
+    candidates = [index for index, delta in enumerate(deltas) if abs(float(delta)) >= threshold]
     if not candidates:
         return ()
     refractory_frames = max(window_frames, math.ceil(frame_length / hop_length))
