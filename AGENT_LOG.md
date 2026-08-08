@@ -105,3 +105,14 @@
 - **环境事实**：Windows 的非标准系统 Python 缺少 `python3.dll`，验证改用 uv 管理的 CPython 3.12.13，未修改系统 Python；本机只有 Node 24，npm 发出项目要求 Node 22 的 `EBADENGINE` 警告，但本任务未改前端且全部前端验证通过。既有 cold-start 已在 Node 22 容器验证前端基线。
 - **Git**：实现检查点 `4cc4c88`；安全审查修复 `36a0729`；Argon2 异常耗时修复 `66b0ed0`。等待人工选择本地合并、推送 PR 或保留分支。
 - **额度策略**：为节省周额度未并行派发实现 Agent，只使用一次聚焦 reviewer 并复用其复核会话。当前工具不提供周额度读数或账户重置操作；若后续平台明确报告额度耗尽，将先提交并记录进度，然后总结并停止。
+
+## 2026-08-08 — TASK 4 / PROVIDER SECRET MANAGEMENT
+
+- **范围**：从 Task 3 合并后的 `main` 创建隔离分支 `feat/04-secret-cli`；实现本机 OS keyring CLI、容器只读外部 Secret 文件和非秘密 provider 配置，未实现远程 Secret API。
+- **TDD**：首个 RED 为 `museecho.cli` 不存在；逐步覆盖 `set/status/update/clear`、隐藏提示、覆盖/清除、stdout/stderr/log/exception repr 脱敏、resolver 冲突、生产工厂接线、Keyring 异常、路径边界、只读权限、换行长度、缺失文件和无效 UTF-8。
+- **安全边界**：CLI 不接受 Key 命令行参数；Keyring 后端原始异常使用 `from None` 转换为固定安全错误；文件必须是仓库外绝对路径、常规只读文件，POSIX 权限仅允许 owner，读取时使用可用的 `O_NOFOLLOW` 并核对 fd/path 设备与 inode，拒绝符号链接替换、宽权限和异常编码。
+- **配置**：`MUSEECHO_PROVIDER_BASE_URL`、`MUSEECHO_PROVIDER_MODEL` 仅保存非秘密值；`MUSEECHO_PROVIDER_SECRET_FILE` 选择容器只读文件，否则默认使用 OS keyring；`.env.example` 不含真实 Key。
+- **审查**：一次聚焦 reviewer 初审发现 3 个 Important 与 1 个 Minor；两轮修复复核后 Critical 0、Important 0，最终结论 `READY`。
+- **验证**：最终后端全量 `81 passed, 1 skipped`；跳过项仅因当前 Windows 会话无创建符号链接权限，代码仍使用 `O_NOFOLLOW` 与打开后身份校验；Ruff format/check、mypy、`uv lock --check` 和真实 `museecho --help` 通过；前端 1 test、typecheck、production build 通过。
+- **Git**：实现 `b826810`；Secret 后端边界修复 `3267e86`；无效 UTF-8 脱敏修复 `48d5d0f`。按用户新流程，完成后自动合并并推送 `main`，同时保留任务分支。
+- **额度策略**：未并行派发实现 Agent，仅复用一次聚焦 reviewer 会话；未出现平台额度耗尽提示，当前工具仍不提供额度读数或重置入口。
