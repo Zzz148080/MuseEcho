@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import stat
 from pathlib import Path
 
 import pytest
@@ -133,3 +134,21 @@ def test_missing_file_backend_error_is_stable_and_hides_path(tmp_path: Path):
     assert "secret file is unavailable" in result.output.lower()
     assert str(missing_path) not in result.output
     assert str(missing_path) not in repr(result.exception)
+
+
+def test_invalid_utf8_file_error_never_leaks_raw_secret_bytes(tmp_path: Path):
+    repository_root = tmp_path / "repository"
+    repository_root.mkdir()
+    secret_path = tmp_path / "provider-key"
+    secret_path.write_bytes(b"sk-byte-leak\xff")
+    secret_path.chmod(stat.S_IREAD)
+    try:
+        app = create_app(lambda: FileSecretStore(secret_path, repository_root=repository_root))
+        result = CliRunner().invoke(app, ["secret", "status"])
+
+        assert result.exit_code != 0
+        assert "secret file is unavailable" in result.output.lower()
+        assert "sk-byte-leak" not in result.output
+        assert "sk-byte-leak" not in repr(result.exception)
+    finally:
+        secret_path.chmod(stat.S_IREAD | stat.S_IWRITE)

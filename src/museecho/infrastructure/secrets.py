@@ -112,7 +112,7 @@ class FileSecretStore:
             raise ValueError("secret file cannot be a symbolic link")
         try:
             resolved_path = path.resolve(strict=True)
-        except OSError:
+        except (OSError, UnicodeError):
             raise SecretStoreError("Secret file is unavailable.") from None
         resolved_repository = repository_root.resolve()
         self._assert_outside_repository(resolved_path, resolved_repository)
@@ -146,7 +146,7 @@ class FileSecretStore:
             with os.fdopen(descriptor, encoding="utf-8", closefd=True) as handle:
                 descriptor = None
                 value = handle.read(MAX_SECRET_LENGTH + 3)
-        except OSError:
+        except (OSError, UnicodeError):
             raise SecretStoreError("Secret file is unavailable.") from None
         finally:
             if descriptor is not None:
