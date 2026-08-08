@@ -219,7 +219,7 @@ def test_status_never_prints_secret(runner, memory_store):
 
 **最终命令：** `uv run pytest tests/unit/test_secret_store.py tests/cli/test_secret_cli.py -q && uv run ruff check src tests`
 
-**并行：** 是。**依赖：** T1。**对应验收标准：** AC-D 无 Key 回退前提与 AC-E/AC-F Secret 安全交付。**分支：** `feat/04-secret-cli`。**计划提交：** `feat: add secure provider secret management`。**实际提交：** 待执行。
+**并行：** 是。**依赖：** T1。**对应验收标准：** AC-D 无 Key 回退前提与 AC-E/AC-F Secret 安全交付。**分支：** `feat/04-secret-cli`。**计划提交：** `feat: add secure provider secret management`。**实际提交：** `b826810`、`3267e86`、`48d5d0f`（实现与安全审查修复，已完成）。
 
 ### 任务 5：分块 AEAD 音频存储与密码擦除
 
