@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import stat
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,7 +31,11 @@ class KeyringBackend(Protocol):
     def delete_password(self, service: str, username: str) -> None: ...
 
 
-class ReadOnlySecretStoreError(RuntimeError):
+class SecretStoreError(RuntimeError):
+    pass
+
+
+class ReadOnlySecretStoreError(SecretStoreError):
     pass
 
 
@@ -65,16 +70,34 @@ class KeyringSecretStore:
         return "os-keyring"
 
     def get(self) -> str | None:
-        value = self._backend.get_password(self._service, self._username)
-        return None if value is None else _validate_secret(value)
+        try:
+            value = self._backend.get_password(self._service, self._username)
+        except Exception:
+            raise SecretStoreError("Credential store operation failed.") from None
+        if value is None:
+            return None
+        try:
+            return _validate_secret(value)
+        except ValueError:
+            raise SecretStoreError("Stored provider secret is invalid.") from None
 
     def set(self, value: str) -> None:
-        self._backend.set_password(self._service, self._username, _validate_secret(value))
+        try:
+            validated = _validate_secret(value)
+        except ValueError as exc:
+            raise SecretStoreError(str(exc)) from None
+        try:
+            self._backend.set_password(self._service, self._username, validated)
+        except Exception:
+            raise SecretStoreError("Credential store operation failed.") from None
 
     def clear(self) -> bool:
         if self.get() is None:
             return False
-        self._backend.delete_password(self._service, self._username)
+        try:
+            self._backend.delete_password(self._service, self._username)
+        except Exception:
+            raise SecretStoreError("Credential store operation failed.") from None
         return True
 
     def __repr__(self) -> str:
@@ -85,22 +108,54 @@ class FileSecretStore:
     def __init__(self, path: Path, *, repository_root: Path) -> None:
         if not path.is_absolute():
             raise ValueError("secret file path must be absolute")
-        resolved_path = path.resolve()
+        if path.is_symlink():
+            raise ValueError("secret file cannot be a symbolic link")
+        try:
+            resolved_path = path.resolve(strict=True)
+        except OSError:
+            raise SecretStoreError("Secret file is unavailable.") from None
         resolved_repository = repository_root.resolve()
-        if resolved_path == resolved_repository or resolved_repository in resolved_path.parents:
-            raise ValueError("secret file must be outside the repository")
+        self._assert_outside_repository(resolved_path, resolved_repository)
         self._path = resolved_path
+        self._repository_root = resolved_repository
 
     @property
     def source(self) -> str:
         return "read-only-file"
 
     def get(self) -> str | None:
-        with self._path.open(encoding="utf-8") as handle:
-            value = handle.read(MAX_SECRET_LENGTH + 1)
-        if len(value) > MAX_SECRET_LENGTH:
-            raise ValueError("secret is too large")
-        value = value.rstrip("\r\n")
+        descriptor: int | None = None
+        try:
+            current_path = self._path.resolve(strict=True)
+            self._assert_outside_repository(current_path, self._repository_root)
+            if current_path != self._path or self._path.is_symlink():
+                raise ValueError("secret file cannot be a symbolic link")
+            flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+            descriptor = os.open(self._path, flags)
+            opened = os.fstat(descriptor)
+            current = self._path.stat(follow_symlinks=False)
+            if (opened.st_dev, opened.st_ino) != (current.st_dev, current.st_ino):
+                raise ValueError("secret file changed while opening")
+            if not stat.S_ISREG(opened.st_mode):
+                raise ValueError("secret file must be a regular file")
+            writable_bits = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
+            if opened.st_mode & writable_bits:
+                raise ValueError("secret file must be read-only")
+            if os.name == "posix" and opened.st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+                raise ValueError("secret file permissions must be limited to its owner")
+            with os.fdopen(descriptor, encoding="utf-8", closefd=True) as handle:
+                descriptor = None
+                value = handle.read(MAX_SECRET_LENGTH + 3)
+        except OSError:
+            raise SecretStoreError("Secret file is unavailable.") from None
+        finally:
+            if descriptor is not None:
+                os.close(descriptor)
+
+        if value.endswith("\r\n"):
+            value = value[:-2]
+        elif value.endswith(("\n", "\r")):
+            value = value[:-1]
         return _validate_secret(value)
 
     def set(self, value: str) -> None:
@@ -111,6 +166,11 @@ class FileSecretStore:
 
     def __repr__(self) -> str:
         return f"FileSecretStore(path={self._path!s})"
+
+    @staticmethod
+    def _assert_outside_repository(path: Path, repository_root: Path) -> None:
+        if path == repository_root or repository_root in path.parents:
+            raise ValueError("secret file must be outside the repository")
 
 
 @dataclass(frozen=True)

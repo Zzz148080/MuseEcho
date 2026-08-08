@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from click.testing import CliRunner
 
 from museecho.cli import create_app
+from museecho.infrastructure.secrets import FileSecretStore, KeyringSecretStore
 
 
 class MemorySecretStore:
@@ -94,3 +97,39 @@ def test_clear_removes_secret_and_status_reports_fallback():
     assert "cleared" in cleared.output
     assert "not configured" in status.output
     assert "secret-to-clear" not in cleared.output + status.output
+
+
+def test_keyring_backend_error_is_stable_and_never_leaks_prompted_secret():
+    class LeakyKeyringBackend:
+        def get_password(self, service: str, username: str) -> str | None:
+            return None
+
+        def set_password(self, service: str, username: str, password: str) -> None:
+            raise RuntimeError(f"backend rejected {password}")
+
+        def delete_password(self, service: str, username: str) -> None:
+            raise RuntimeError("delete failed")
+
+    store = KeyringSecretStore(backend=LeakyKeyringBackend())
+    app = create_app(lambda: store)
+
+    result = CliRunner().invoke(app, ["secret", "set"], input="sk-must-not-leak\n")
+
+    assert result.exit_code != 0
+    assert "credential store operation failed" in result.output.lower()
+    assert "sk-must-not-leak" not in result.output
+    assert "sk-must-not-leak" not in repr(result.exception)
+
+
+def test_missing_file_backend_error_is_stable_and_hides_path(tmp_path: Path):
+    repository_root = tmp_path / "repository"
+    repository_root.mkdir()
+    missing_path = tmp_path / "sensitive-path-name"
+    app = create_app(lambda: FileSecretStore(missing_path, repository_root=repository_root))
+
+    result = CliRunner().invoke(app, ["secret", "status"])
+
+    assert result.exit_code != 0
+    assert "secret file is unavailable" in result.output.lower()
+    assert str(missing_path) not in result.output
+    assert str(missing_path) not in repr(result.exception)
