@@ -22,22 +22,34 @@ class SignalFeatureConfig:
     minimum_rhythm_seconds: float = 2.0
     minimum_signal_rms: float = 1e-4
     minimum_rhythm_confidence: float = 0.55
+    minimum_onset_periodicity: float = 0.2
+    maximum_rhythm_sample_rate: int = 3_000
+    rhythm_n_fft: int = 512
+    rhythm_band_count: int = 32
+    rhythm_chunk_seconds: float = 30.0
 
     def __post_init__(self) -> None:
         if not self.version.strip():
             raise ValueError("version cannot be empty")
-        if self.waveform_bucket_count <= 0:
-            raise ValueError("waveform_bucket_count must be positive")
-        if self.frame_length <= 0:
-            raise ValueError("frame_length must be positive")
-        if self.hop_length <= 0:
-            raise ValueError("hop_length must be positive")
+        _require_positive_int(self.waveform_bucket_count, "waveform_bucket_count")
+        _require_positive_int(self.frame_length, "frame_length")
+        _require_positive_int(self.hop_length, "hop_length")
+        if self.hop_length > self.frame_length:
+            raise ValueError("hop_length cannot exceed frame_length")
         _require_positive_finite(self.energy_change_zscore, "energy_change_zscore")
-        _require_nonnegative_finite(self.minimum_energy_change, "minimum_energy_change")
+        _require_positive_finite(self.minimum_energy_change, "minimum_energy_change")
+        if self.minimum_energy_change > 1.0:
+            raise ValueError("minimum_energy_change cannot exceed 1")
         _require_positive_finite(self.minimum_rhythm_seconds, "minimum_rhythm_seconds")
         _require_nonnegative_finite(self.minimum_signal_rms, "minimum_signal_rms")
         if not 0.0 <= self.minimum_rhythm_confidence <= 1.0:
             raise ValueError("minimum_rhythm_confidence must be between 0 and 1")
+        if not 0.0 <= self.minimum_onset_periodicity <= 1.0:
+            raise ValueError("minimum_onset_periodicity must be between 0 and 1")
+        _require_positive_int(self.maximum_rhythm_sample_rate, "maximum_rhythm_sample_rate")
+        _require_positive_int(self.rhythm_n_fft, "rhythm_n_fft")
+        _require_positive_int(self.rhythm_band_count, "rhythm_band_count")
+        _require_positive_finite(self.rhythm_chunk_seconds, "rhythm_chunk_seconds")
 
 
 @dataclass(frozen=True)
@@ -112,6 +124,11 @@ def extract_signal_features(
         minimum_duration_seconds=selected.minimum_rhythm_seconds,
         minimum_signal_rms=selected.minimum_signal_rms,
         minimum_confidence=selected.minimum_rhythm_confidence,
+        minimum_onset_periodicity=selected.minimum_onset_periodicity,
+        maximum_sample_rate=selected.maximum_rhythm_sample_rate,
+        n_fft=selected.rhythm_n_fft,
+        band_count=selected.rhythm_band_count,
+        chunk_seconds=selected.rhythm_chunk_seconds,
     )
     return SignalFeatures(
         duration_seconds=float(array.size / sample_rate),
@@ -131,3 +148,8 @@ def _require_positive_finite(value: float, name: str) -> None:
 def _require_nonnegative_finite(value: float, name: str) -> None:
     if not math.isfinite(value) or value < 0.0:
         raise ValueError(f"{name} must be nonnegative and finite")
+
+
+def _require_positive_int(value: int, name: str) -> None:
+    if type(value) is not int or value <= 0:
+        raise ValueError(f"{name} must be a positive integer")

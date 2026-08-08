@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import math
 
+import numpy as np
 import pytest
 
+from museecho.analysis.energy import extract_energy
 from museecho.analysis.signal_features import SignalFeatureConfig, extract_signal_features
 from tests.fixtures.audio_factory import sine_samples
 
@@ -35,6 +37,18 @@ def test_metronome_estimates_120_bpm_with_monotonic_beats():
     assert list(result.beat_positions_seconds) == sorted(result.beat_positions_seconds)
     assert all(0.0 <= value <= result.duration_seconds for value in result.beat_positions_seconds)
     assert result.rhythm_algorithm
+
+
+@pytest.mark.parametrize("bpm", [180.0, 220.0])
+def test_fast_metronome_does_not_report_a_high_confidence_half_tempo(bpm: float):
+    result = extract_signal_features(
+        _metronome_samples(bpm=bpm, duration_seconds=12.0),
+        SAMPLE_RATE,
+    )
+
+    assert result.bpm == pytest.approx(bpm, abs=5.0)
+    assert result.bpm_confidence is not None
+    assert result.bpm_confidence >= 0.7
 
 
 def test_waveform_buckets_preserve_minimum_and_maximum_peaks():
@@ -69,6 +83,38 @@ def test_segmented_energy_detects_rise_and_fall_near_boundaries():
     assert result.energy.algorithm
 
 
+def test_incomplete_tail_frame_does_not_create_a_false_energy_change():
+    sample_count = 10 * 512 + 1
+    samples = [0.5 * math.sin(2.0 * math.pi * index / 512.0) for index in range(sample_count)]
+    config = SignalFeatureConfig(frame_length=512, hop_length=512)
+
+    result = extract_signal_features(samples, SAMPLE_RATE, config=config)
+
+    assert result.energy_changes == ()
+
+
+def test_energy_change_confidence_varies_with_margin_above_threshold():
+    samples = np.concatenate(
+        (
+            np.full(512 * 5, 0.5, dtype=np.float32),
+            np.full(512 * 5, 0.55, dtype=np.float32),
+        )
+    )
+
+    _, changes = extract_energy(
+        samples,
+        SAMPLE_RATE,
+        frame_length=512,
+        hop_length=512,
+        change_zscore=3.5,
+        minimum_change=0.08,
+        silence_rms=1e-4,
+    )
+
+    assert len(changes) == 1
+    assert 0.7 <= changes[0].confidence < 1.0
+
+
 def test_silence_returns_unknown_rhythm_and_zero_energy():
     result = extract_signal_features([0.0] * (SAMPLE_RATE * 2), SAMPLE_RATE)
 
@@ -77,6 +123,16 @@ def test_silence_returns_unknown_rhythm_and_zero_energy():
     assert result.beat_positions_seconds == ()
     assert result.energy_changes == ()
     assert set(result.energy.points) == {0.0}
+
+
+def test_aperiodic_noise_returns_unknown_rhythm():
+    noise = np.random.default_rng(7).normal(0.0, 0.2, SAMPLE_RATE * 8).astype(np.float32)
+
+    result = extract_signal_features(noise, SAMPLE_RATE)
+
+    assert result.bpm is None
+    assert result.bpm_confidence is None
+    assert result.beat_positions_seconds == ()
 
 
 def test_output_is_strict_json_and_contains_versioned_algorithms():
@@ -109,10 +165,15 @@ def test_invalid_signal_inputs_are_rejected(samples, sample_rate, message):
     "kwargs",
     [
         {"waveform_bucket_count": 0},
+        {"waveform_bucket_count": 4.5},
         {"frame_length": 0},
+        {"frame_length": 1024.0},
         {"hop_length": 0},
+        {"hop_length": 512.0},
+        {"frame_length": 256, "hop_length": 512},
         {"energy_change_zscore": 0.0},
         {"minimum_energy_change": -0.1},
+        {"minimum_energy_change": 0.0},
         {"minimum_rhythm_seconds": 0.0},
     ],
 )

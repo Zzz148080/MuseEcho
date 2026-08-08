@@ -58,7 +58,10 @@ def extract_energy(
 def _frame_rms(
     samples: NDArray[np.float32], *, frame_length: int, hop_length: int
 ) -> NDArray[np.float64]:
-    starts = range(0, samples.size, hop_length)
+    if samples.size <= frame_length:
+        starts: tuple[int, ...] | range = (0,)
+    else:
+        starts = range(0, samples.size - frame_length + 1, hop_length)
     values = [
         math.sqrt(
             float(
@@ -106,7 +109,11 @@ def _find_energy_changes(
         strongest = max(group, key=lambda index: abs(float(deltas[index]) - median))
         delta = float(deltas[strongest])
         magnitude = abs(delta - median)
-        confidence = min(1.0, 0.7 + 0.3 * magnitude / max(threshold, 1e-12))
+        confidence_margin = max(1e-12, 1.0 - threshold)
+        confidence = 0.7 + 0.3 * min(
+            1.0,
+            max(0.0, magnitude - threshold) / confidence_margin,
+        )
         changes.append(
             EnergyChange(
                 timestamp_seconds=float((strongest + 1) * hop_length / sample_rate),
