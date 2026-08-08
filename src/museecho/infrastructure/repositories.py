@@ -247,6 +247,16 @@ class SqliteAnalysisRepository:
             model.pipeline_version = job.pipeline_version
             model.source_kind = job.source_kind.value
 
+    def list_active(self) -> list[AnalysisJob]:
+        terminal = tuple(stage.value for stage in AnalysisStage if stage.is_terminal)
+        with session_scope(self._session_factory) as session:
+            models = session.scalars(
+                select(AnalysisJobModel)
+                .where(AnalysisJobModel.status.not_in(terminal))
+                .order_by(AnalysisJobModel.created_at, AnalysisJobModel.id)
+            ).all()
+            return [_job_from_model(model) for model in models]
+
     def save_result(self, result: AnalysisResult) -> None:
         with session_scope(self._session_factory) as session:
             result.validate()

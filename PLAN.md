@@ -272,7 +272,7 @@ def test_rejects_mp3_name_with_non_audio_bytes(client):
 
 **最终命令：** `uv run pytest tests/api/test_upload.py tests/unit/test_queue.py -q`
 
-**并行：** 否。**依赖：** T2/T3/T5/T7。**对应验收标准：** AC-A 有效/无效上传、真实任务与资源边界。**分支：** `feat/06-upload-queue`。**计划提交：** `feat: validate uploads and queue analyses`。**实际提交：** 待执行。
+**并行：** 否。**依赖：** T2/T3/T5/T7。**对应验收标准：** AC-A 有效/无效上传、真实任务与资源边界。**分支：** `feat/06-upload-queue`。**计划提交：** `feat: validate uploads and queue analyses`。**实际提交：** `8217cb4`、`c1da09e`、`76a642c`、`622ebe4`（上传与队列、资源边界、所有权与异常隔离、仓储故障重排，已完成）。
 
 ### 任务 7：FFmpeg 解码与合成音频夹具
 

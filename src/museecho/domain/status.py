@@ -166,6 +166,12 @@ class AnalysisJob:
         self._progress = _PIPELINE.index(stage) / (len(_PIPELINE) - 1)
         self._touch()
 
+    def record_retry(self) -> None:
+        if self.stage.is_terminal:
+            raise InvalidStageTransition(f"Cannot retry terminal state {self.stage.value}")
+        self.retry_count += 1
+        self._touch()
+
     def fail(self, error_code: str) -> None:
         if self.stage.is_terminal or not error_code.strip():
             raise InvalidStageTransition(f"Cannot fail from {self.stage.value}")
