@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Protocol
 
 from argon2 import PasswordHasher
-from argon2.exceptions import InvalidHashError, VerificationError
+from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 from argon2.low_level import Type
 
 from museecho.domain.models import AccessGrant, IssuedAccess
@@ -65,13 +65,11 @@ class AccessService:
 
         try:
             return self._hasher.verify(token_hash, raw_token)
-        except InvalidHashError:
+        except VerifyMismatchError:
+            pass
+        except (InvalidHashError, VerificationError, UnicodeError):
             if token_hash != self._dummy_hash:
                 self._verify_dummy(raw_token)
-        except VerificationError:
-            pass
-        except UnicodeError:
-            self._verify_dummy(raw_token)
         return False
 
     @staticmethod

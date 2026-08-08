@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from argon2.exceptions import VerificationError, VerifyMismatchError
 
 import museecho.application.access as access_module
 from museecho.application.access import AccessService
@@ -111,6 +112,43 @@ def test_authorize_performs_one_hash_verification_with_multiple_legacy_grants():
 
     assert not service.authorize(analysis_id, "candidate")
     assert hasher.calls == [("$argon2id$legacy-2", "candidate")]
+
+
+def test_authorize_runs_dummy_verification_after_hash_decoding_error(monkeypatch):
+    class DecodingErrorHasher:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, str]] = []
+
+        def hash(self, raw_token: str) -> str:
+            return f"$argon2id$dummy-{raw_token}"
+
+        def verify(self, token_hash: str, raw_token: str) -> bool:
+            self.calls.append((token_hash, raw_token))
+            if token_hash == "$argon2id$malformed":
+                raise VerificationError("Decoding failed")
+            raise VerifyMismatchError("mismatch")
+
+    now = datetime(2026, 8, 8, tzinfo=timezone.utc)
+    analysis_id = uuid.uuid4()
+    repository = MemoryAccessRepository()
+    repository.save_access_grant(
+        AccessGrant(
+            analysis_id=analysis_id,
+            token_hash="$argon2id$malformed",
+            created_at=now,
+            expires_at=now + timedelta(hours=1),
+            revoked_at=None,
+        )
+    )
+    hasher = DecodingErrorHasher()
+    monkeypatch.setattr(access_module, "PasswordHasher", lambda **_: hasher)
+    service = AccessService(repository, clock=lambda: now)
+
+    assert not service.authorize(analysis_id, "candidate")
+    assert hasher.calls == [
+        ("$argon2id$malformed", "candidate"),
+        (service._dummy_hash, "candidate"),
+    ]
 
 
 def test_authorize_returns_false_after_grant_expires():
