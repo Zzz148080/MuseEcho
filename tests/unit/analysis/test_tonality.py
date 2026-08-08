@@ -13,13 +13,19 @@ from museecho.analysis.tonality import estimate_tonality
 SAMPLE_RATE = 22_050
 
 
-def _mixed_tones(frequencies: tuple[float, ...], duration_seconds: float) -> list[float]:
-    frame_count = round(duration_seconds * SAMPLE_RATE)
-    scale = 0.7 / len(frequencies)
+def _mixed_tones(
+    frequencies: tuple[float, ...],
+    duration_seconds: float,
+    *,
+    amplitude: float = 0.7,
+    sample_rate: int = SAMPLE_RATE,
+) -> list[float]:
+    frame_count = round(duration_seconds * sample_rate)
+    scale = amplitude / len(frequencies)
     return [
         scale
         * sum(
-            math.sin(2.0 * math.pi * frequency * index / SAMPLE_RATE) for frequency in frequencies
+            math.sin(2.0 * math.pi * frequency * index / sample_rate) for frequency in frequencies
         )
         for index in range(frame_count)
     ]
@@ -178,6 +184,18 @@ def test_long_audio_chroma_extraction_is_chunked(monkeypatch):
     assert max(observed_sample_counts) <= round(31.0 * SAMPLE_RATE)
 
 
+def test_silent_analysis_chunks_do_not_invoke_empty_tuning_estimation():
+    samples = _c_major_progression() + [0.0] * (SAMPLE_RATE * 36)
+
+    with warnings.catch_warnings(record=True) as captured:
+        warnings.simplefilter("always")
+        estimate = estimate_tonality(samples, SAMPLE_RATE)
+
+    assert estimate.tonic is None
+    assert estimate.mode is None
+    assert captured == []
+
+
 def test_detuned_progression_keeps_the_same_tonic():
     detune_ratio = 2 ** (30 / 1_200)
     chords = (
@@ -197,10 +215,117 @@ def test_detuned_progression_keeps_the_same_tonic():
     assert (estimate.tonic, estimate.mode) == ("C", "major")
 
 
+@pytest.mark.parametrize(
+    "frequencies",
+    [
+        (261.6256, 329.6276, 391.9954),
+        (220.0000, 261.6256, 329.6276),
+    ],
+)
+def test_single_triad_is_not_enough_evidence_for_a_key(frequencies):
+    estimate = estimate_tonality(_mixed_tones(frequencies, 4.0), SAMPLE_RATE)
+
+    assert estimate.tonic is None
+    assert estimate.mode is None
+    assert estimate.confidence is None
+
+
+def test_barely_audible_progression_does_not_keep_full_confidence():
+    chords = (
+        (220.0000, 261.6256, 329.6276),
+        (293.6648, 349.2282, 440.0000),
+        (329.6276, 415.3047, 493.8833),
+        (220.0000, 261.6256, 329.6276),
+    )
+    samples = [sample for chord in chords for sample in _mixed_tones(chord, 1.0, amplitude=0.0003)]
+
+    estimate = estimate_tonality(samples, SAMPLE_RATE)
+
+    assert estimate.tonic is None
+    assert estimate.mode is None
+    assert estimate.confidence is None
+
+
+def test_half_second_of_active_harmony_is_not_enough_for_a_track_key():
+    chords = (
+        (261.6256, 329.6276, 391.9954),
+        (220.0000, 261.6256, 329.6276),
+        (174.6141, 220.0000, 261.6256),
+        (195.9977, 246.9417, 293.6648),
+    )
+    samples = [sample for chord in chords for sample in _mixed_tones(chord, 0.125)] + [0.0] * round(
+        1.5 * SAMPLE_RATE
+    )
+
+    estimate = estimate_tonality(samples, SAMPLE_RATE)
+
+    assert estimate.tonic is None
+    assert estimate.mode is None
+    assert estimate.confidence is None
+
+
+@pytest.mark.parametrize("order", [(0, 1, 0, 1), (0, 0, 1, 1)])
+def test_incompatible_minor_key_sections_return_unknown(order):
+    a_minor = (
+        (220.0000, 261.6256, 329.6276),
+        (293.6648, 349.2282, 440.0000),
+        (329.6276, 415.3047, 493.8833),
+        (220.0000, 261.6256, 329.6276),
+    )
+    major_third_ratio = 2 ** (4 / 12)
+    c_sharp_minor = tuple(
+        tuple(frequency * major_third_ratio for frequency in chord) for chord in a_minor
+    )
+    progressions = (a_minor, c_sharp_minor)
+    samples = [
+        sample
+        for progression_index in order
+        for chord in progressions[progression_index]
+        for sample in _mixed_tones(chord, 1.0)
+    ]
+
+    estimate = estimate_tonality(samples, SAMPLE_RATE)
+
+    assert estimate.tonic is None
+    assert estimate.mode is None
+    assert estimate.confidence is None
+    assert estimate.stability < 0.7
+
+
 @pytest.mark.parametrize("sample_rate", [0, -1, True, 22_050.0])
 def test_sample_rate_must_be_a_strict_positive_integer(sample_rate):
     with pytest.raises(ValueError, match="sample_rate must be a positive integer"):
         estimate_tonality([0.0] * 4_096, sample_rate)
+
+
+@pytest.mark.parametrize("sample_rate", [4_000, 192_001])
+def test_sample_rate_must_be_in_the_decoder_supported_range(sample_rate):
+    with pytest.raises(ValueError, match="sample_rate must be between 8000 and 192000"):
+        estimate_tonality([0.0] * max(4_096, sample_rate), sample_rate)
+
+
+def test_audio_longer_than_v1_limit_is_rejected_before_analysis():
+    samples = np.zeros(600 * 8_000 + 1, dtype=np.float32)
+
+    with pytest.raises(ValueError, match="duration cannot exceed 600 seconds"):
+        estimate_tonality(samples, 8_000)
+
+
+@pytest.mark.parametrize("sample_rate", [8_000, 44_100, 96_000, 192_000])
+def test_supported_sample_rates_are_normalized_before_key_estimation(sample_rate):
+    chords = (
+        (261.6256, 329.6276, 391.9954),
+        (220.0000, 261.6256, 329.6276),
+        (174.6141, 220.0000, 261.6256),
+        (195.9977, 246.9417, 293.6648),
+    )
+    samples = [
+        sample for chord in chords for sample in _mixed_tones(chord, 1.0, sample_rate=sample_rate)
+    ]
+
+    estimate = estimate_tonality(samples, sample_rate)
+
+    assert (estimate.tonic, estimate.mode) == ("C", "major")
 
 
 @pytest.mark.parametrize(
