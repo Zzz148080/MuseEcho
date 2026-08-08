@@ -9,6 +9,7 @@ from alembic.config import Config
 from sqlalchemy import func, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 
+from museecho.application.access import AccessService
 from museecho.domain.models import (
     AccessGrant,
     AnalysisResult,
@@ -295,6 +296,36 @@ def test_repository_round_trips_access_and_encrypted_audio(tmp_path):
 
     assert repository.get_access_grants(job.id) == [grant]
     assert repository.get_encrypted_audio(job.id) == audio
+
+
+def test_access_service_with_sqlite_persists_only_hash_and_authorizes(tmp_path):
+    _, _, repository = _database(tmp_path)
+    job = _job()
+    repository.add(job)
+    service = AccessService(repository, clock=lambda: job.created_at)
+
+    issued = service.issue(job.id, job.created_at + timedelta(hours=1))
+
+    stored = repository.get_access_grants(job.id)
+    assert len(stored) == 1
+    assert stored[0].token_hash.startswith("$argon2id$")
+    assert stored[0].token_hash != issued.raw_token
+    assert service.authorize(job.id, issued.raw_token)
+
+
+def test_access_service_with_sqlite_replaces_previous_capability(tmp_path):
+    _, _, repository = _database(tmp_path)
+    job = _job()
+    repository.add(job)
+    service = AccessService(repository, clock=lambda: job.created_at)
+
+    previous = service.issue(job.id, job.created_at + timedelta(hours=1))
+    current = service.issue(job.id, job.created_at + timedelta(hours=1))
+
+    stored = repository.get_access_grants(job.id)
+    assert len(stored) == 1
+    assert not service.authorize(job.id, previous.raw_token)
+    assert service.authorize(job.id, current.raw_token)
 
 
 def test_explanation_cannot_exceed_saved_track_duration(tmp_path):

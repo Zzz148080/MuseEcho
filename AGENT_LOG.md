@@ -93,3 +93,15 @@
 - **批准锚点**：最终 SPEC/PLAN 修订提交 `e1ecaae359db129b779f1ddcc83665bca8cdfe1c`；`HUMAN_APPROVAL.md` 同时记录 SPEC/PLAN 的 Git blob 和 SHA-256。
 - **真实性**：批准文件逐字引用用户“合并到主分支，最后审查修订SPEC和PLAN，批准生成HUMAN_APPROVAL.md”的指示；不伪造签名或扩大授权。
 - **实施状态**：正式门禁已放行；Tasks 1–2 已完成，后续从 Task 3 开始。Tasks 3–24、CI、部署、公网验证和最终验收仍未完成。
+
+## 2026-08-08 — TASK 3 / CAPABILITY ACCESS
+
+- **范围**：在隔离工作树 `.worktrees/feat-03-capability-access` 和分支 `feat/03-capability-access` 实施 PLAN Task 3；未修改 SPEC，未合并到 `main`。
+- **TDD**：从服务模块不存在开始 RED→GREEN，覆盖签发、Argon2id 哈希、错误/过期/撤销/跨分析令牌、24 小时上限、Cookie、可信 Origin、双提交 CSRF 和统一 404；审查问题也先以失败测试复现后修复。
+- **安全实现**：原始 capability 只返回浏览器且不持久化；SQLite 仅保存 Argon2id 哈希；每个分析只保留一个当前 capability，替换在同一事务完成；遗留多 grant 只校验最新有效记录；无记录、过期、非 ASCII、超长或解码失败哈希均执行 dummy Argon2 路径，正常 mismatch 与损坏记录分流。
+- **Cookie 边界**：能力 Cookie 使用 `Secure`、`HttpOnly`、`SameSite=Strict`、分析路径和最长 24 小时；CSRF Cookie 保持脚本可读用于双提交；`Max-Age` 按设置时刻的剩余授权寿命计算并在过期时归零。
+- **审查**：一次独立聚焦审查最初发现 2 个 Important 和 1 个 Minor；经两轮修复复核后为 Critical 0、Important 0，结论 `Ready to merge: Yes`。
+- **验证**：最终后端全量 `62 passed`；Ruff format/check、mypy、`uv lock --check` 通过；全新 SQLite `alembic upgrade head` 与 `alembic check` 通过；前端 1 test、TypeScript typecheck 和 Vite production build 通过。
+- **环境事实**：Windows 的非标准系统 Python 缺少 `python3.dll`，验证改用 uv 管理的 CPython 3.12.13，未修改系统 Python；本机只有 Node 24，npm 发出项目要求 Node 22 的 `EBADENGINE` 警告，但本任务未改前端且全部前端验证通过。既有 cold-start 已在 Node 22 容器验证前端基线。
+- **Git**：实现检查点 `4cc4c88`；安全审查修复 `36a0729`；Argon2 异常耗时修复 `66b0ed0`。等待人工选择本地合并、推送 PR 或保留分支。
+- **额度策略**：为节省周额度未并行派发实现 Agent，只使用一次聚焦 reviewer 并复用其复核会话。当前工具不提供周额度读数或账户重置操作；若后续平台明确报告额度耗尽，将先提交并记录进度，然后总结并停止。

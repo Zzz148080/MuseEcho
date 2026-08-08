@@ -455,6 +455,23 @@ class SqliteAnalysisRepository:
                 )
             )
 
+    def replace_access_grant(self, grant: AccessGrant) -> None:
+        with session_scope(self._session_factory) as session:
+            session.execute(
+                delete(AccessGrantModel).where(
+                    AccessGrantModel.analysis_id == str(grant.analysis_id)
+                )
+            )
+            session.add(
+                AccessGrantModel(
+                    token_hash=grant.token_hash,
+                    analysis_id=str(grant.analysis_id),
+                    created_at=grant.created_at,
+                    expires_at=grant.expires_at,
+                    revoked_at=grant.revoked_at,
+                )
+            )
+
     def get_access_grants(self, analysis_id: uuid.UUID) -> list[AccessGrant]:
         with session_scope(self._session_factory) as session:
             models = session.scalars(
