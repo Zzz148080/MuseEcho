@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -100,6 +101,10 @@ class DecodedAudio:
             raise ValueError("decoded audio must be positive-rate mono PCM")
         if len(self.pcm) % 4 != 0:
             raise ValueError("decoded PCM must contain complete float32 samples")
+        if sys.byteorder != "little":
+            raise ValueError("decoded PCM requires a little-endian host")
+        if not all(isfinite(sample) for sample in self.samples):
+            raise ValueError("decoded PCM samples must be finite")
 
     @property
     def samples(self) -> memoryview[float]:

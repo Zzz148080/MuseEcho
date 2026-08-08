@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import shutil
 import struct
-import subprocess
+import sys
 from pathlib import Path
 from typing import Sequence
 
@@ -16,6 +17,7 @@ from museecho.analysis.decode import (
     CommandResult,
     InvalidAudioError,
     SubprocessCommandRunner,
+    _safe_diagnostic,
     decode_audio,
     probe_audio,
 )
@@ -39,7 +41,7 @@ def _find_tool(name: str) -> str:
     executable = f"{name}.exe" if (Path("tmp") / "ffmpeg-download").exists() else name
     matches = list(Path("tmp/ffmpeg-download/expanded").glob(f"**/{executable}"))
     if not matches:
-        pytest.skip(f"{name} is required for real decoding integration tests")
+        pytest.fail(f"{name} is required for real decoding integration tests", pytrace=False)
     return str(matches[0].resolve())
 
 
@@ -102,20 +104,17 @@ def test_probe_rejects_duration_over_limit_before_decode(tmp_path: Path):
     assert len(runner.calls) == 1
 
 
-def test_subprocess_timeout_maps_to_stable_domain_error(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
-    input_path = write_corrupt_audio(tmp_path / "placeholder.wav")
-
-    def time_out(*args, **kwargs):
-        raise subprocess.TimeoutExpired(cmd="ffprobe", timeout=0.01)
-
-    monkeypatch.setattr(subprocess, "run", time_out)
-
+def test_subprocess_timeout_maps_to_stable_domain_error():
     with pytest.raises(AudioDecodeTimeoutError) as captured:
-        probe_audio(input_path, timeout_seconds=0.01, runner=SubprocessCommandRunner())
+        SubprocessCommandRunner().run(
+            [sys.executable, "-c", "import time; time.sleep(5)"],
+            timeout=0.05,
+            stdout_limit=64,
+            stderr_limit=64,
+        )
 
     assert captured.value.code == "audio_decode_timeout"
+    assert captured.value.__suppress_context__
 
 
 def test_factory_outputs_are_repeatable_and_cover_analysis_boundaries(tmp_path: Path):
@@ -152,10 +151,17 @@ def test_factory_outputs_are_repeatable_and_cover_analysis_boundaries(tmp_path: 
 class ScriptedRunner:
     def __init__(self, *results: CommandResult) -> None:
         self._results = iter(results)
-        self.calls: list[tuple[tuple[str, ...], float]] = []
+        self.calls: list[tuple[tuple[str, ...], float, int, int]] = []
 
-    def run(self, arguments: Sequence[str], *, timeout: float) -> CommandResult:
-        self.calls.append((tuple(arguments), timeout))
+    def run(
+        self,
+        arguments: Sequence[str],
+        *,
+        timeout: float,
+        stdout_limit: int,
+        stderr_limit: int,
+    ) -> CommandResult:
+        self.calls.append((tuple(arguments), timeout, stdout_limit, stderr_limit))
         return next(self._results)
 
 
@@ -204,7 +210,7 @@ def test_decode_uses_bounded_mono_float_pipeline(tmp_path: Path):
         runner=runner,
     )
 
-    decode_arguments, decode_timeout = runner.calls[1]
+    decode_arguments, decode_timeout, stdout_limit, stderr_limit = runner.calls[1]
     assert decoded.duration_seconds == pytest.approx(0.0125)
     assert decode_arguments[0] == "safe-ffmpeg"
     assert decode_arguments[decode_arguments.index("-ac") + 1] == "1"
@@ -212,6 +218,8 @@ def test_decode_uses_bounded_mono_float_pipeline(tmp_path: Path):
     assert decode_arguments[decode_arguments.index("-t") + 1] == "1"
     assert decode_arguments[-2:] == ("f32le", "pipe:1")
     assert decode_timeout == 90.0
+    assert stdout_limit == 32_000
+    assert stderr_limit == 64 * 1024
 
 
 def test_decode_rejects_output_beyond_configured_duration(tmp_path: Path):
@@ -254,3 +262,49 @@ def test_decode_failure_diagnostic_is_bounded_and_path_redacted(tmp_path: Path):
     assert str(input_path.resolve()) not in captured.value.diagnostic
     assert input_path.name not in captured.value.diagnostic
     assert len(captured.value.diagnostic) <= 512
+
+
+def test_non_finite_pcm_is_rejected(tmp_path: Path):
+    input_path = write_corrupt_audio(tmp_path / "nan.wav")
+    pcm = struct.pack("<3f", 0.0, math.nan, 0.0)
+    runner = ScriptedRunner(
+        CommandResult(0, _probe_json(duration=3 / 8_000), b""),
+        CommandResult(0, pcm, b""),
+    )
+
+    with pytest.raises(InvalidAudioError, match="invalid PCM"):
+        decode_audio(input_path, target_sample_rate=8_000, runner=runner)
+
+
+@pytest.mark.parametrize("stream_name", ["stdout", "stderr"])
+def test_subprocess_runner_enforces_hard_output_limits(stream_name: str):
+    command = f"import sys; sys.{stream_name}.buffer.write(b'x' * 4096); sys.{stream_name}.flush()"
+
+    with pytest.raises(InvalidAudioError, match="output limit"):
+        SubprocessCommandRunner().run(
+            [sys.executable, "-c", command],
+            timeout=5.0,
+            stdout_limit=64,
+            stderr_limit=64,
+        )
+
+
+def test_decode_rejects_configuration_over_pcm_memory_budget(tmp_path: Path):
+    input_path = write_corrupt_audio(tmp_path / "placeholder.wav")
+
+    with pytest.raises(ValueError, match="PCM memory budget"):
+        decode_audio(
+            input_path,
+            target_sample_rate=192_000,
+            max_duration_seconds=600.0,
+            runner=ScriptedRunner(),
+        )
+
+
+def test_diagnostic_redacts_long_path_before_truncating():
+    long_path = Path("/").joinpath(*(["private-segment"] * 180), "upload.wav")
+    diagnostic = _safe_diagnostic(str(long_path).encode(), long_path)
+
+    assert "private-segment" not in diagnostic
+    assert "upload.wav" not in diagnostic
+    assert diagnostic == "<input>"

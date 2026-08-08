@@ -5,7 +5,8 @@ import math
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, Sequence
+from threading import Event, Thread
+from typing import BinaryIO, Protocol, Sequence
 
 from museecho.domain.models import DecodedAudio
 
@@ -14,7 +15,10 @@ DEFAULT_MAX_DURATION_SECONDS = 600.0
 DEFAULT_PROBE_TIMEOUT_SECONDS = 10.0
 DEFAULT_DECODE_TIMEOUT_SECONDS = 90.0
 MAX_PROBE_OUTPUT_BYTES = 64 * 1024
+MAX_STDERR_BYTES = 64 * 1024
+MAX_DECODED_PCM_BYTES = 128 * 1024 * 1024
 MAX_DIAGNOSTIC_LENGTH = 512
+READ_CHUNK_BYTES = 64 * 1024
 SUPPORTED_FORMATS = frozenset({"wav", "mp3"})
 
 
@@ -26,25 +30,100 @@ class CommandResult:
 
 
 class CommandRunner(Protocol):
-    def run(self, arguments: Sequence[str], *, timeout: float) -> CommandResult: ...
+    def run(
+        self,
+        arguments: Sequence[str],
+        *,
+        timeout: float,
+        stdout_limit: int,
+        stderr_limit: int,
+    ) -> CommandResult: ...
 
 
 class SubprocessCommandRunner:
-    def run(self, arguments: Sequence[str], *, timeout: float) -> CommandResult:
+    def run(
+        self,
+        arguments: Sequence[str],
+        *,
+        timeout: float,
+        stdout_limit: int,
+        stderr_limit: int,
+    ) -> CommandResult:
+        if timeout <= 0 or stdout_limit <= 0 or stderr_limit <= 0:
+            raise ValueError("subprocess limits must be positive")
         try:
-            completed = subprocess.run(
+            process: subprocess.Popen[bytes] = subprocess.Popen(
                 list(arguments),
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                check=False,
-                timeout=timeout,
             )
-        except subprocess.TimeoutExpired:
-            raise AudioDecodeTimeoutError("audio tool timed out") from None
         except OSError:
             raise AudioToolUnavailableError("audio tool is unavailable") from None
-        return CommandResult(completed.returncode, completed.stdout, completed.stderr)
+
+        stdout = bytearray()
+        stderr = bytearray()
+        output_limit_exceeded = Event()
+        readers = (
+            Thread(
+                target=_read_limited,
+                args=(process.stdout, stdout_limit, stdout, process, output_limit_exceeded),
+                daemon=True,
+            ),
+            Thread(
+                target=_read_limited,
+                args=(process.stderr, stderr_limit, stderr, process, output_limit_exceeded),
+                daemon=True,
+            ),
+        )
+        for reader in readers:
+            reader.start()
+        try:
+            returncode = process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+            for reader in readers:
+                reader.join()
+            raise AudioDecodeTimeoutError("audio tool timed out") from None
+        for reader in readers:
+            reader.join()
+        if output_limit_exceeded.is_set():
+            raise InvalidAudioError("audio tool output limit exceeded")
+        return CommandResult(returncode, bytes(stdout), bytes(stderr))
+
+
+def _read_limited(
+    stream: BinaryIO | None,
+    limit: int,
+    target: bytearray,
+    process: subprocess.Popen[bytes],
+    output_limit_exceeded: Event,
+) -> None:
+    if stream is None:
+        return
+    try:
+        while True:
+            remaining = limit - len(target)
+            chunk = stream.read(min(READ_CHUNK_BYTES, remaining + 1))
+            if not chunk:
+                return
+            target.extend(chunk[:remaining])
+            if len(chunk) > remaining:
+                output_limit_exceeded.set()
+                try:
+                    process.kill()
+                except OSError:
+                    pass
+                return
+    except OSError:
+        output_limit_exceeded.set()
+        try:
+            process.kill()
+        except OSError:
+            pass
+    finally:
+        stream.close()
 
 
 class AudioDecodeError(RuntimeError):
@@ -98,6 +177,10 @@ def decode_audio(
         decode_timeout_seconds,
     )
     command_runner = runner or SubprocessCommandRunner()
+    maximum_output_bytes = math.ceil(max_duration_seconds * target_sample_rate) * 4
+    if maximum_output_bytes > MAX_DECODED_PCM_BYTES:
+        raise ValueError("configured decode exceeds the PCM memory budget")
+
     probe = probe_audio(
         input_path,
         max_duration_seconds=max_duration_seconds,
@@ -105,7 +188,6 @@ def decode_audio(
         ffprobe_executable=ffprobe_executable,
         runner=command_runner,
     )
-    maximum_output_bytes = math.ceil(max_duration_seconds * target_sample_rate) * 4
     arguments = (
         ffmpeg_executable,
         "-v",
@@ -127,7 +209,12 @@ def decode_audio(
         "pipe:1",
     )
     try:
-        result = command_runner.run(arguments, timeout=decode_timeout_seconds)
+        result = command_runner.run(
+            arguments,
+            timeout=decode_timeout_seconds,
+            stdout_limit=maximum_output_bytes,
+            stderr_limit=MAX_STDERR_BYTES,
+        )
     except AudioDecodeTimeoutError:
         raise
     except AudioDecodeError:
@@ -144,7 +231,10 @@ def decode_audio(
     if len(result.stdout) > maximum_output_bytes:
         raise AudioDurationLimitError("audio duration exceeds the supported limit")
 
-    decoded = DecodedAudio(result.stdout, target_sample_rate, channels=1)
+    try:
+        decoded = DecodedAudio(result.stdout, target_sample_rate, channels=1)
+    except ValueError:
+        raise InvalidAudioError("audio decoder returned invalid PCM") from None
     expected_duration = probe.duration_seconds
     tolerance = max(0.05, 2.0 / target_sample_rate)
     if decoded.duration_seconds > max_duration_seconds + tolerance:
@@ -181,7 +271,12 @@ def probe_audio(
         str(input_path),
     )
     try:
-        result = command_runner.run(arguments, timeout=timeout_seconds)
+        result = command_runner.run(
+            arguments,
+            timeout=timeout_seconds,
+            stdout_limit=MAX_PROBE_OUTPUT_BYTES,
+            stderr_limit=MAX_STDERR_BYTES,
+        )
     except AudioDecodeTimeoutError:
         raise
     except AudioDecodeError:
@@ -259,7 +354,7 @@ def _validate_limits(
 
 
 def _safe_diagnostic(stderr: bytes, input_path: Path) -> str:
-    value = stderr[: MAX_DIAGNOSTIC_LENGTH * 4].decode("utf-8", errors="replace")
+    value = stderr.decode("utf-8", errors="replace")
     candidates = {
         str(input_path),
         input_path.as_posix(),
