@@ -274,3 +274,46 @@ def test_job_that_expires_while_queued_is_not_executed():
     assert expired is not None
     assert expired.status is AnalysisStage.EXPIRED
     assert observed == [first.id]
+
+
+def test_expiration_persistence_failure_does_not_kill_worker_or_leak_pending():
+    from datetime import datetime, timedelta, timezone
+
+    current_time = [datetime.now(timezone.utc)]
+    expires_at = current_time[0] + timedelta(minutes=1)
+    first = AnalysisJob(expires_at=expires_at)
+    expiring = AnalysisJob(expires_at=expires_at)
+    after_failure = AnalysisJob(expires_at=expires_at + timedelta(hours=1))
+
+    class FailingExpirationRepository(MemoryQueueRepository):
+        def update(self, job: AnalysisJob) -> None:
+            if job.id == expiring.id and job.status is AnalysisStage.EXPIRED:
+                raise RuntimeError("database unavailable")
+            super().update(job)
+
+    repository = FailingExpirationRepository([first, expiring, after_failure])
+    first_started = threading.Event()
+    release_first = threading.Event()
+    after_started = threading.Event()
+
+    def handler(analysis_id: uuid.UUID) -> None:
+        if analysis_id == first.id:
+            first_started.set()
+            assert release_first.wait(timeout=2)
+        elif analysis_id == after_failure.id:
+            after_started.set()
+
+    queue = SingleWorkerQueue(repository, handler, clock=lambda: current_time[0])
+    queue.start(recover=False)
+    try:
+        queue.submit(first.id)
+        queue.submit(expiring.id)
+        assert first_started.wait(timeout=2)
+        current_time[0] = expires_at + timedelta(seconds=1)
+        release_first.set()
+        assert queue.wait_for_idle(timeout=2)
+        queue.submit(after_failure.id)
+        assert after_started.wait(timeout=2)
+        assert queue.wait_for_idle(timeout=2)
+    finally:
+        queue.stop()

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import os
+import re
 import shutil
 import threading
 import uuid
@@ -22,6 +23,10 @@ DEFAULT_MAX_DURATION_SECONDS = 600.0
 COPY_CHUNK_BYTES = 64 * 1024
 _ALLOWED_EXTENSIONS = {".wav": "wav", ".mp3": "mp3"}
 _CANONICAL_MEDIA_TYPES = {"wav": "audio/wav", "mp3": "audio/mpeg"}
+_UPLOAD_TEMP_PREFIX = "museecho-upload-"
+_UPLOAD_OWNER_MARKER = ".owner"
+_UPLOAD_OWNER_BYTES = b"MuseEcho temporary plaintext v1\n"
+_UPLOAD_DIRECTORY_PATTERN = re.compile(rf"^{_UPLOAD_TEMP_PREFIX}[0-9a-f]{{32}}-[a-z0-9_]{{8}}$")
 
 _VALIDATION_GATE = threading.Lock()
 _TEMP_ROOT_INIT_LOCK = threading.Lock()
@@ -146,8 +151,11 @@ class UploadSubmissionService:
         self, source: BinaryIO, *, filename: str, media_type: str | None
     ) -> SubmittedAnalysis:
         expected_format = _expected_format(filename)
-        with TemporaryDirectory(prefix="upload-", dir=self._temp_root) as directory:
-            isolated_path = Path(directory) / uuid.uuid4().hex
+        prefix = f"{_UPLOAD_TEMP_PREFIX}{uuid.uuid4().hex}-"
+        with TemporaryDirectory(prefix=prefix, dir=self._temp_root) as directory:
+            isolated_directory = Path(directory)
+            _write_upload_owner_marker(isolated_directory)
+            isolated_path = isolated_directory / uuid.uuid4().hex
             _copy_bounded(source, isolated_path, self._max_bytes)
             probe = self._validator(isolated_path)
             detected_formats = set(probe.format_name.split(","))
@@ -214,19 +222,37 @@ def _prepare_temp_root(root: Path) -> Path:
             raise UploadError("temporary upload root could not be prepared") from None
 
 
+def _write_upload_owner_marker(directory: Path) -> None:
+    try:
+        with (directory / _UPLOAD_OWNER_MARKER).open("xb") as marker:
+            marker.write(_UPLOAD_OWNER_BYTES)
+            marker.flush()
+            os.fsync(marker.fileno())
+    except OSError:
+        raise UploadError("temporary upload ownership could not be recorded") from None
+
+
+def _has_upload_owner_marker(directory: Path) -> bool:
+    marker = directory / _UPLOAD_OWNER_MARKER
+    try:
+        if _is_link(marker) or not marker.is_file():
+            return False
+        with marker.open("rb") as source:
+            return source.read(len(_UPLOAD_OWNER_BYTES) + 1) == _UPLOAD_OWNER_BYTES
+    except OSError:
+        return False
+
+
 def _remove_abandoned_uploads(root: Path) -> None:
     for entry in root.iterdir():
-        if not entry.name.startswith("upload-"):
+        if _UPLOAD_DIRECTORY_PATTERN.fullmatch(entry.name) is None:
             continue
         try:
-            if entry.is_symlink():
-                entry.unlink()
-            elif _is_junction(entry):
-                os.rmdir(entry)
-            elif entry.is_dir():
-                shutil.rmtree(entry)
-            else:
-                entry.unlink()
+            if _is_link(entry) or not entry.is_dir():
+                continue
+            if not _has_upload_owner_marker(entry):
+                continue
+            shutil.rmtree(entry)
         except FileNotFoundError:
             continue
         except OSError:

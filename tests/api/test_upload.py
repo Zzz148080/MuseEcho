@@ -370,6 +370,41 @@ def test_chunked_request_without_content_length_is_still_capped(tmp_path: Path):
     assert list(tmp_path.iterdir()) == []
 
 
+def test_body_limit_never_double_sends_after_downstream_responds_early():
+    import asyncio
+
+    from starlette.types import Message
+
+    from museecho.api.analyses import UploadBodyLimitMiddleware
+
+    sent: list[Message] = []
+    request_messages = iter([{"type": "http.request", "body": b"x" * 9, "more_body": False}])
+
+    async def downstream(_scope, receive, send):
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await receive()
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    async def receive() -> Message:
+        return next(request_messages)
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/analyses",
+        "headers": [],
+    }
+    asyncio.run(UploadBodyLimitMiddleware(downstream, max_body_bytes=8)(scope, receive, send))
+
+    response_starts = [
+        message["status"] for message in sent if message["type"] == "http.response.start"
+    ]
+    assert response_starts == [413]
+
+
 def test_validation_is_serialized_across_service_instances(tmp_path: Path, monkeypatch):
     import threading
 
@@ -425,11 +460,17 @@ def test_validation_is_serialized_across_service_instances(tmp_path: Path, monke
 
 def test_startup_removes_abandoned_plaintext_but_preserves_unrelated_files(tmp_path: Path):
     temp_root = tmp_path / "uploads"
-    stale = temp_root / "upload-abandoned"
+    stale = temp_root / ("museecho-upload-" + "a" * 32 + "-deadbeef")
     stale.mkdir(parents=True)
+    (stale / ".owner").write_bytes(b"MuseEcho temporary plaintext v1\n")
     (stale / "plaintext.wav").write_bytes(b"private audio")
     unrelated = temp_root / "keep.txt"
     unrelated.write_text("keep", encoding="utf-8")
+    confusing_file = temp_root / "upload-personal-not-owned.txt"
+    confusing_file.write_text("keep", encoding="utf-8")
+    unmarked_directory = temp_root / ("museecho-upload-" + "b" * 32 + "-personal")
+    unmarked_directory.mkdir()
+    (unmarked_directory / "notes.txt").write_text("keep", encoding="utf-8")
 
     UploadSubmissionService(
         repository=MemoryRepository(),
@@ -442,6 +483,8 @@ def test_startup_removes_abandoned_plaintext_but_preserves_unrelated_files(tmp_p
 
     assert not stale.exists()
     assert unrelated.read_text(encoding="utf-8") == "keep"
+    assert confusing_file.read_text(encoding="utf-8") == "keep"
+    assert (unmarked_directory / "notes.txt").read_text(encoding="utf-8") == "keep"
 
 
 def test_resource_limits_can_be_lowered_but_not_raised(tmp_path: Path):

@@ -124,17 +124,17 @@ class SingleWorkerQueue:
     def _run(self) -> None:
         while True:
             item = self._items.get()
+            analysis_id = item if isinstance(item, uuid.UUID) else None
             try:
                 if item is _STOP:
                     return
-                analysis_id = item
-                if not isinstance(analysis_id, uuid.UUID):
+                if analysis_id is None:
                     continue
-                job = self._repository.get(analysis_id)
-                if job is None or self._expire_if_needed(job):
-                    with self._condition:
-                        self._pending.discard(analysis_id)
-                        self._condition.notify_all()
+                try:
+                    job = self._repository.get(analysis_id)
+                    if job is None or self._expire_if_needed(job):
+                        continue
+                except Exception:
                     continue
                 with self._condition:
                     self._active = True
@@ -142,13 +142,16 @@ class SingleWorkerQueue:
                 try:
                     self._handler(analysis_id)
                 except Exception as exc:
-                    self._mark_failed(analysis_id, exc)
-                finally:
+                    try:
+                        self._mark_failed(analysis_id, exc)
+                    except Exception:
+                        pass
+            finally:
+                if analysis_id is not None:
                     with self._condition:
                         self._active = False
                         self._pending.discard(analysis_id)
                         self._condition.notify_all()
-            finally:
                 self._items.task_done()
 
     def _mark_failed(self, analysis_id: uuid.UUID, exc: Exception) -> None:

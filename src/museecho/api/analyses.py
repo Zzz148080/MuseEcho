@@ -105,6 +105,7 @@ class UploadBodyLimitMiddleware:
 
         received = 0
         too_large = False
+        buffered_messages: list[Message] = []
 
         async def limited_receive() -> Message:
             nonlocal received, too_large
@@ -120,8 +121,7 @@ class UploadBodyLimitMiddleware:
             return message
 
         async def limited_send(message: Message) -> None:
-            if not too_large:
-                await send(message)
+            buffered_messages.append(message)
 
         try:
             await self._app(scope, limited_receive, limited_send)
@@ -130,6 +130,9 @@ class UploadBodyLimitMiddleware:
                 raise
         if too_large:
             await _send_upload_too_large(scope, receive, send)
+            return
+        for message in buffered_messages:
+            await send(message)
 
 
 def install_analyses_api(
