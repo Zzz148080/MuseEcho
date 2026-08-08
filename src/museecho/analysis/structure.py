@@ -104,7 +104,7 @@ def _select_multiscale_boundaries(
     aggregate_frames = max(1, round(0.25 * features.sample_rate / HOP_LENGTH))
     aggregated = _aggregate_chroma(features.chroma, aggregate_frames)
     bin_seconds = aggregate_frames * HOP_LENGTH / features.sample_rate
-    if _is_threefold_loop(aggregated):
+    if _has_repeating_loop(aggregated, bin_seconds):
         return [], []
     general_times, general_strengths = _general_novelty_boundaries(
         aggregated,
@@ -137,10 +137,10 @@ def _select_multiscale_boundaries(
             local_candidates,
             second - first,
         )
-        if len(local_times) > 1 and not _local_segments_recur(
-            middle_chroma,
-            local_times,
-            bin_seconds,
+        if (
+            len(local_times) > 1
+            and not _local_segments_recur(middle_chroma, local_times, bin_seconds)
+            and not _local_segments_are_stable(middle_chroma, local_times, bin_seconds)
         ):
             local_times = []
             local_strengths = []
@@ -180,6 +180,28 @@ def _local_segments_recur(
             if float(np.dot(profiles[left], profiles[right])) >= 0.9:
                 return True
     return False
+
+
+def _local_segments_are_stable(
+    chroma: np.ndarray,
+    boundary_times: list[float],
+    bin_seconds: float,
+) -> bool:
+    boundary_bins = [0]
+    boundary_bins.extend(round(timestamp / bin_seconds) for timestamp in boundary_times)
+    boundary_bins.append(chroma.shape[1])
+    for start, end in zip(boundary_bins, boundary_bins[1:]):
+        frames = chroma[:, start:end]
+        if frames.shape[1] == 0:
+            return False
+        profile = np.mean(frames, axis=1)
+        norm = float(np.linalg.norm(profile))
+        if norm <= 1e-12:
+            return False
+        stability = float(np.mean((profile / norm) @ frames))
+        if stability < 0.94:
+            return False
+    return True
 
 
 def _general_novelty_boundaries(
@@ -271,48 +293,21 @@ def _prefix_suffix_recurrence_boundaries(
     return None
 
 
-def _is_threefold_loop(chroma: np.ndarray) -> bool:
-    if chroma.shape[1] < 12:
+def _has_repeating_loop(chroma: np.ndarray, bin_seconds: float) -> bool:
+    minimum_lag = max(2, math.floor(2.0 / bin_seconds))
+    maximum_lag = chroma.shape[1] // 3
+    if maximum_lag < minimum_lag:
         return False
-    first = _resample_chroma_interval(chroma, 0.0, 1.0 / 3.0)
-    second = _resample_chroma_interval(chroma, 1.0 / 3.0, 2.0 / 3.0)
-    third_piece = _resample_chroma_interval(chroma, 2.0 / 3.0, 1.0)
-    similarities = (
-        float(np.mean(np.sum(first * second, axis=0))),
-        float(np.mean(np.sum(first * third_piece, axis=0))),
-        float(np.mean(np.sum(second * third_piece, axis=0))),
-    )
-    return min(similarities) >= 0.95
-
-
-def _resample_chroma_interval(
-    chroma: np.ndarray,
-    start_fraction: float,
-    end_fraction: float,
-) -> np.ndarray:
-    sample_count = 64
-    positions = (
-        start_fraction * chroma.shape[1]
-        + (np.arange(sample_count, dtype=np.float64) + 0.5)
-        * (end_fraction - start_fraction)
-        * chroma.shape[1]
-        / sample_count
-        - 0.5
-    )
-    lower = np.clip(np.floor(positions).astype(int), 0, chroma.shape[1] - 1)
-    upper = np.clip(lower + 1, 0, chroma.shape[1] - 1)
-    fractions = positions - np.floor(positions)
-    interpolated = chroma[:, lower] * (1.0 - fractions) + chroma[:, upper] * fractions
-    norms = np.linalg.norm(interpolated, axis=0)
-    return np.asarray(
-        np.divide(
-            interpolated,
-            norms,
-            out=np.zeros_like(interpolated),
-            where=norms > 1e-12,
-        ),
-        dtype=np.float64,
-    )
+    for lag in range(minimum_lag, maximum_lag + 1):
+        cycle_profile = np.mean(chroma[:, :lag], axis=1)
+        if 1.0 - float(np.linalg.norm(cycle_profile)) < 0.05:
+            continue
+        frame_similarities = np.sum(chroma[:, :-lag] * chroma[:, lag:], axis=0)
+        if float(np.mean(frame_similarities)) < 0.90:
+            continue
+        if float(np.mean(frame_similarities >= 0.85)) >= 0.80:
+            return True
+    return False
 
 
 def _enforce_minimum_segments(

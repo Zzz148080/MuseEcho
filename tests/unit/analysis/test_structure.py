@@ -260,6 +260,54 @@ def test_threefold_uniform_loop_is_unknown_without_duration_cliff(section_second
     assert [segment.label for segment in segments] == [None]
 
 
+@pytest.mark.parametrize(
+    ("outer_seconds", "middle_labels"),
+    [(2.0, "BCD"), (4.0, "BCD"), (6.0, "BCD"), (2.0, "BCDE")],
+)
+def test_recurrent_outer_section_keeps_unique_stable_middle_sections(
+    outer_seconds: float,
+    middle_labels: str,
+):
+    frequencies = {
+        "A": (261.6256, 329.6276, 391.9954),
+        "B": (184.9972, 233.0819, 277.1826),
+        "C": (146.8324, 184.9972, 220.0000),
+        "D": (164.8138, 207.6523, 246.9417),
+        "E": (207.6523, 261.6256, 311.1270),
+    }
+    samples = _tones(frequencies["A"], outer_seconds)
+    samples += [sample for label in middle_labels for sample in _tones(frequencies[label], 2.0)]
+    samples += _tones(frequencies["A"], outer_seconds)
+
+    segments = segment_structure(samples, SAMPLE_RATE)
+
+    expected = ["A", *list(middle_labels), "A"]
+    assert [segment.label for segment in segments] == expected
+
+
+@pytest.mark.parametrize("repeat_count", [3, 4, 5])
+def test_uniform_loop_is_unknown_for_any_three_or_more_repeats(repeat_count: int):
+    a = _tones((261.6256, 329.6276, 391.9954), 1.5)
+    b = _tones((184.9972, 233.0819, 277.1826), 1.5)
+
+    segments = segment_structure((a + b) * repeat_count, SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == [None]
+
+
+@pytest.mark.parametrize("silence_first", [True, False])
+def test_short_edge_padding_does_not_bypass_loop_detection(silence_first: bool):
+    a = _tones((261.6256, 329.6276, 391.9954), 1.5)
+    b = _tones((184.9972, 233.0819, 277.1826), 1.5)
+    loop = np.asarray((a + b) * 3, dtype=np.float32)
+    silence = np.zeros(round(0.25 * SAMPLE_RATE), dtype=np.float32)
+    samples = np.concatenate((silence, loop) if silence_first else (loop, silence))
+
+    segments = segment_structure(samples, SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == [None]
+
+
 def test_segments_cover_audio_without_gaps_or_overrun():
     segments = segment_structure(_aba(), SAMPLE_RATE)
 
