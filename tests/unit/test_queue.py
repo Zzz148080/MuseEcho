@@ -286,8 +286,21 @@ def test_expiration_persistence_failure_does_not_kill_worker_or_leak_pending():
     after_failure = AnalysisJob(expires_at=expires_at + timedelta(hours=1))
 
     class FailingExpirationRepository(MemoryQueueRepository):
+        failed_once = False
+
         def update(self, job: AnalysisJob) -> None:
-            if job.id == expiring.id and job.status is AnalysisStage.EXPIRED:
+            if (
+                job.id == expiring.id
+                and job.status is AnalysisStage.EXPIRED
+                and not self.failed_once
+            ):
+                self.failed_once = True
+                self.jobs[job.id] = AnalysisJob(
+                    id=job.id,
+                    created_at=job.created_at,
+                    updated_at=job.created_at,
+                    expires_at=job.expires_at,
+                )
                 raise RuntimeError("database unavailable")
             super().update(job)
 
@@ -317,3 +330,36 @@ def test_expiration_persistence_failure_does_not_kill_worker_or_leak_pending():
         assert queue.wait_for_idle(timeout=2)
     finally:
         queue.stop()
+
+
+def test_transient_repository_read_failure_requeues_accepted_job():
+    job = AnalysisJob()
+
+    class TransientReadRepository(MemoryQueueRepository):
+        get_calls = 0
+
+        def get(self, analysis_id: uuid.UUID) -> AnalysisJob | None:
+            self.get_calls += 1
+            if self.get_calls == 2:
+                raise RuntimeError("database unavailable")
+            return super().get(analysis_id)
+
+    repository = TransientReadRepository([job])
+    handled = threading.Event()
+    observed: list[uuid.UUID] = []
+
+    def handler(analysis_id: uuid.UUID) -> None:
+        observed.append(analysis_id)
+        handled.set()
+
+    queue = SingleWorkerQueue(repository, handler)
+    queue.start(recover=False)
+    try:
+        queue.submit(job.id)
+        assert handled.wait(timeout=2)
+        assert queue.wait_for_idle(timeout=2)
+    finally:
+        queue.stop()
+
+    assert observed == [job.id]
+    assert repository.get_calls >= 3

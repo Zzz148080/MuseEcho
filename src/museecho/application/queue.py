@@ -13,6 +13,7 @@ from museecho.domain.status import AnalysisJob, AnalysisStage, InvalidStageTrans
 
 _STOP = object()
 _SAFE_ERROR_CODE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+_REPOSITORY_RETRY_DELAY_SECONDS = 0.05
 DEFAULT_PIPELINE_STAGES = (
     AnalysisStage.VALIDATING,
     AnalysisStage.DECODING,
@@ -52,12 +53,14 @@ class SingleWorkerQueue:
         self._active = False
         self._thread: threading.Thread | None = None
         self._accepting = False
+        self._retry_stop = threading.Event()
 
     def start(self, *, recover: bool = True) -> None:
         with self._condition:
             if self._thread is not None and self._thread.is_alive():
                 return
             self._accepting = True
+            self._retry_stop.clear()
             if recover:
                 for job in self._repository.list_active():
                     if self._expire_if_needed(job):
@@ -110,8 +113,10 @@ class SingleWorkerQueue:
             thread = self._thread
             if thread is None:
                 self._accepting = False
+                self._retry_stop.set()
                 return True
             self._accepting = False
+            self._retry_stop.set()
             self._items.put(_STOP)
         thread.join(timeout=timeout)
         stopped = not thread.is_alive()
@@ -125,6 +130,7 @@ class SingleWorkerQueue:
         while True:
             item = self._items.get()
             analysis_id = item if isinstance(item, uuid.UUID) else None
+            retry_scheduled = False
             try:
                 if item is _STOP:
                     return
@@ -135,6 +141,7 @@ class SingleWorkerQueue:
                     if job is None or self._expire_if_needed(job):
                         continue
                 except Exception:
+                    retry_scheduled = self._schedule_repository_retry(analysis_id)
                     continue
                 with self._condition:
                     self._active = True
@@ -145,14 +152,25 @@ class SingleWorkerQueue:
                     try:
                         self._mark_failed(analysis_id, exc)
                     except Exception:
-                        pass
+                        retry_scheduled = self._schedule_repository_retry(analysis_id)
             finally:
                 if analysis_id is not None:
                     with self._condition:
                         self._active = False
-                        self._pending.discard(analysis_id)
+                        if not retry_scheduled:
+                            self._pending.discard(analysis_id)
                         self._condition.notify_all()
                 self._items.task_done()
+
+    def _schedule_repository_retry(self, analysis_id: uuid.UUID) -> bool:
+        if self._retry_stop.wait(_REPOSITORY_RETRY_DELAY_SECONDS):
+            return False
+        with self._condition:
+            if not self._accepting:
+                return False
+            self._items.put(analysis_id)
+            self._condition.notify_all()
+            return True
 
     def _mark_failed(self, analysis_id: uuid.UUID, exc: Exception) -> None:
         job = self._repository.get(analysis_id)
