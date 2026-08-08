@@ -50,7 +50,7 @@ def estimate_chords(
     if features.chroma.shape[1] == 0 or duration_seconds < _MINIMUM_EVENT_SECONDS:
         return (_unknown_event(duration_seconds),)
     states, frame_confidences = _decode_chord_states(features, key_prior)
-    states = _discard_short_runs(states, normalized_rate)
+    states = _discard_short_runs(states, frame_confidences, normalized_rate)
     return _events_from_states(states, frame_confidences, features)
 
 
@@ -156,22 +156,36 @@ def _viterbi(emissions: np.ndarray) -> np.ndarray:
     return path
 
 
-def _discard_short_runs(states: np.ndarray, sample_rate: int) -> np.ndarray:
+def _discard_short_runs(
+    states: np.ndarray,
+    frame_confidences: np.ndarray,
+    sample_rate: int,
+) -> np.ndarray:
     result = states.copy()
+    result[frame_confidences < 0.7] = _UNKNOWN_STATE
     minimum_frames = max(1, math.ceil(_MINIMUM_EVENT_SECONDS * sample_rate / HOP_LENGTH))
-    start = 0
-    for index in range(1, states.size + 1):
-        if index < states.size and states[index] == states[start]:
-            continue
-        if index - start < minimum_frames:
-            if states[start] == _UNKNOWN_STATE:
-                previous_state = int(states[start - 1]) if start > 0 else _UNKNOWN_STATE
-                next_state = int(states[index]) if index < states.size else _UNKNOWN_STATE
-                replacement = previous_state if previous_state != _UNKNOWN_STATE else next_state
+    for _pass in range(states.size):
+        previous_result = result.copy()
+        start = 0
+        for index in range(1, result.size + 1):
+            if index < result.size and result[index] == result[start]:
+                continue
+            if index - start < minimum_frames:
+                state = int(result[start])
+                left = int(result[start - 1]) if start > 0 else _UNKNOWN_STATE
+                right = int(result[index]) if index < result.size else _UNKNOWN_STATE
+                if left == right and left != _UNKNOWN_STATE:
+                    replacement = left
+                elif state == _UNKNOWN_STATE and left != _UNKNOWN_STATE:
+                    replacement = left
+                elif state == _UNKNOWN_STATE and right != _UNKNOWN_STATE:
+                    replacement = right
+                else:
+                    replacement = _UNKNOWN_STATE
                 result[start:index] = replacement
-            else:
-                result[start:index] = _UNKNOWN_STATE
-        start = index
+            start = index
+        if np.array_equal(result, previous_result):
+            break
     return result
 
 

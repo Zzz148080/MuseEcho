@@ -88,6 +88,19 @@ def test_too_short_chord_evidence_is_unknown():
     assert events[0].symbol is None
 
 
+def test_brief_chord_change_does_not_create_a_subminimum_known_event():
+    c_major = (261.6256, 329.6276, 391.9954)
+    g_major = (195.9977, 246.9417, 293.6648)
+    samples = _tones(c_major, 1.0) + _tones(g_major, 0.2) + _tones(c_major, 1.0)
+
+    events = estimate_chords(samples, SAMPLE_RATE)
+
+    assert all(
+        event.symbol is None or event.end_seconds - event.start_seconds >= 0.35 for event in events
+    )
+    assert all(event.confidence is None or event.confidence >= 0.7 for event in events)
+
+
 def test_supported_sample_rate_is_normalized_before_analysis():
     events = estimate_chords(_progression(sample_rate=44_100), 44_100)
 
