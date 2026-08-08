@@ -6,7 +6,10 @@ import math
 import shutil
 import struct
 import sys
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from threading import Event, Thread
 from typing import Sequence
 
 import pytest
@@ -218,6 +221,14 @@ def test_decode_uses_bounded_mono_float_pipeline(tmp_path: Path):
     assert decode_arguments[decode_arguments.index("-t") + 1] == "1"
     assert decode_arguments[-2:] == ("f32le", "pipe:1")
     assert decode_timeout == 90.0
+    probe_arguments = runner.calls[0][0]
+    assert probe_arguments[probe_arguments.index("-protocol_whitelist") + 1] == "file,pipe"
+    assert probe_arguments[probe_arguments.index("-format_whitelist") + 1] == "wav,mp3"
+    assert probe_arguments.index("-protocol_whitelist") < len(probe_arguments) - 1
+    assert decode_arguments[decode_arguments.index("-protocol_whitelist") + 1] == "file,pipe"
+    assert decode_arguments[decode_arguments.index("-format_whitelist") + 1] == "wav,mp3"
+    assert decode_arguments.index("-protocol_whitelist") < decode_arguments.index("-i")
+    assert decode_arguments.index("-format_whitelist") < decode_arguments.index("-i")
     assert stdout_limit == 32_000
     assert stderr_limit == 64 * 1024
 
@@ -295,8 +306,8 @@ def test_decode_rejects_configuration_over_pcm_memory_budget(tmp_path: Path):
     with pytest.raises(ValueError, match="PCM memory budget"):
         decode_audio(
             input_path,
-            target_sample_rate=192_000,
-            max_duration_seconds=600.0,
+            target_sample_rate=48_000,
+            max_duration_seconds=400.0,
             runner=ScriptedRunner(),
         )
 
@@ -308,3 +319,59 @@ def test_diagnostic_redacts_long_path_before_truncating():
     assert "private-segment" not in diagnostic
     assert "upload.wav" not in diagnostic
     assert diagnostic == "<input>"
+
+
+def test_playlist_cannot_trigger_nested_http_request(tmp_path: Path):
+    requested = Event()
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            requested.set()
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"not audio")
+
+        def log_message(self, format: str, *args: object) -> None:
+            return
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    server_thread = Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    playlist = tmp_path / "disguised.wav"
+    playlist.write_text(
+        "#EXTM3U\n"
+        "#EXT-X-TARGETDURATION:1\n"
+        "#EXTINF:1,\n"
+        f"http://127.0.0.1:{server.server_port}/segment.wav\n"
+        "#EXT-X-ENDLIST\n",
+        encoding="utf-8",
+    )
+    try:
+        with pytest.raises(InvalidAudioError):
+            probe_audio(playlist, ffprobe_executable=_find_tool("ffprobe"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        server_thread.join(timeout=2)
+
+    assert not requested.is_set()
+
+
+def test_timeout_terminates_descendant_holding_output_pipes():
+    wrapper = (
+        "import subprocess, sys, time; "
+        "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'], "
+        "stdout=sys.stdout, stderr=sys.stderr); "
+        "time.sleep(30)"
+    )
+    started = time.monotonic()
+
+    with pytest.raises(AudioDecodeTimeoutError):
+        SubprocessCommandRunner().run(
+            [sys.executable, "-c", wrapper],
+            timeout=0.1,
+            stdout_limit=64,
+            stderr_limit=64,
+        )
+
+    assert time.monotonic() - started < 5.0

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import ctypes
 import json
 import math
+import os
+import signal
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Event, Thread
-from typing import BinaryIO, Protocol, Sequence
+from typing import BinaryIO, Callable, Protocol, Sequence, cast
 
 from museecho.domain.models import DecodedAudio
 
@@ -16,9 +19,14 @@ DEFAULT_PROBE_TIMEOUT_SECONDS = 10.0
 DEFAULT_DECODE_TIMEOUT_SECONDS = 90.0
 MAX_PROBE_OUTPUT_BYTES = 64 * 1024
 MAX_STDERR_BYTES = 64 * 1024
-MAX_DECODED_PCM_BYTES = 128 * 1024 * 1024
+MAX_PCM_RESULT_BYTES = 64 * 1024 * 1024
+MAX_PCM_PEAK_BYTES = 128 * 1024 * 1024
 MAX_DIAGNOSTIC_LENGTH = 512
 READ_CHUNK_BYTES = 64 * 1024
+PROCESS_EXIT_TIMEOUT_SECONDS = 5.0
+READER_JOIN_TIMEOUT_SECONDS = 5.0
+INPUT_FORMAT_WHITELIST = "wav,mp3"
+INPUT_PROTOCOL_WHITELIST = "file,pipe"
 SUPPORTED_FORMATS = frozenset({"wav", "mp3"})
 
 
@@ -40,6 +48,47 @@ class CommandRunner(Protocol):
     ) -> CommandResult: ...
 
 
+class _ProcessTree:
+    def __init__(self, process: subprocess.Popen[bytes]) -> None:
+        self._process = process
+        self._windows_job = _assign_windows_job(process) if os.name == "nt" else None
+
+    def terminate(self) -> None:
+        if self._windows_job is not None:
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            kernel32.TerminateJobObject(ctypes.c_void_p(self._windows_job), 1)
+            return
+        if os.name == "posix":
+            try:
+                kill_process_group = cast(Callable[[int, int], None], getattr(os, "killpg"))
+                kill_signal = cast(int, getattr(signal, "SIGKILL"))
+                kill_process_group(self._process.pid, kill_signal)
+            except ProcessLookupError:
+                pass
+            return
+        try:
+            subprocess.run(
+                ["taskkill", "/PID", str(self._process.pid), "/T", "/F"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                timeout=PROCESS_EXIT_TIMEOUT_SECONDS,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            try:
+                self._process.kill()
+            except OSError:
+                pass
+
+    def close(self) -> None:
+        if self._windows_job is None:
+            return
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CloseHandle(ctypes.c_void_p(self._windows_job))
+        self._windows_job = None
+
+
 class SubprocessCommandRunner:
     def run(
         self,
@@ -51,53 +100,114 @@ class SubprocessCommandRunner:
     ) -> CommandResult:
         if timeout <= 0 or stdout_limit <= 0 or stderr_limit <= 0:
             raise ValueError("subprocess limits must be positive")
-        try:
-            process: subprocess.Popen[bytes] = subprocess.Popen(
-                list(arguments),
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-        except OSError:
-            raise AudioToolUnavailableError("audio tool is unavailable") from None
-
+        process = _spawn_process(arguments)
+        process_tree = _ProcessTree(process)
         stdout = bytearray()
         stderr = bytearray()
         output_limit_exceeded = Event()
         readers = (
             Thread(
                 target=_read_limited,
-                args=(process.stdout, stdout_limit, stdout, process, output_limit_exceeded),
+                args=(process.stdout, stdout_limit, stdout, process_tree, output_limit_exceeded),
                 daemon=True,
             ),
             Thread(
                 target=_read_limited,
-                args=(process.stderr, stderr_limit, stderr, process, output_limit_exceeded),
+                args=(process.stderr, stderr_limit, stderr, process_tree, output_limit_exceeded),
                 daemon=True,
             ),
         )
         for reader in readers:
             reader.start()
         try:
-            returncode = process.wait(timeout=timeout)
-        except subprocess.TimeoutExpired:
+            try:
+                returncode = process.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                process_tree.terminate()
+                _wait_for_exit(process)
+                _finish_readers(process, readers)
+                raise AudioDecodeTimeoutError("audio tool timed out") from None
+
+            # A direct process may exit while a wrapper descendant still holds a pipe.
+            process_tree.terminate()
+            _finish_readers(process, readers)
+            if output_limit_exceeded.is_set():
+                raise InvalidAudioError("audio tool output limit exceeded")
+            return CommandResult(returncode, bytes(stdout), bytes(stderr))
+        finally:
+            process_tree.close()
+
+
+def _spawn_process(arguments: Sequence[str]) -> subprocess.Popen[bytes]:
+    try:
+        if os.name == "nt":
+            return subprocess.Popen(
+                list(arguments),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+            )
+        return subprocess.Popen(
+            list(arguments),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
+    except OSError:
+        raise AudioToolUnavailableError("audio tool is unavailable") from None
+
+
+def _assign_windows_job(process: subprocess.Popen[bytes]) -> int | None:
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateJobObjectW.restype = ctypes.c_void_p
+    job_handle = kernel32.CreateJobObjectW(None, None)
+    if not job_handle:
+        return None
+    process_handle = ctypes.c_void_p(int(getattr(process, "_handle")))
+    if not kernel32.AssignProcessToJobObject(ctypes.c_void_p(job_handle), process_handle):
+        kernel32.CloseHandle(ctypes.c_void_p(job_handle))
+        return None
+    return int(job_handle)
+
+
+def _wait_for_exit(process: subprocess.Popen[bytes]) -> None:
+    try:
+        process.wait(timeout=PROCESS_EXIT_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        try:
             process.kill()
-            process.wait()
-            for reader in readers:
-                reader.join()
-            raise AudioDecodeTimeoutError("audio tool timed out") from None
-        for reader in readers:
-            reader.join()
-        if output_limit_exceeded.is_set():
-            raise InvalidAudioError("audio tool output limit exceeded")
-        return CommandResult(returncode, bytes(stdout), bytes(stderr))
+        except OSError:
+            pass
+        try:
+            process.wait(timeout=PROCESS_EXIT_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired:
+            raise AudioDecodeError("audio tool process cleanup failed") from None
+
+
+def _finish_readers(process: subprocess.Popen[bytes], readers: Sequence[Thread]) -> None:
+    for reader in readers:
+        reader.join(timeout=READER_JOIN_TIMEOUT_SECONDS)
+    if not any(reader.is_alive() for reader in readers):
+        return
+    for stream in (process.stdout, process.stderr):
+        if stream is not None:
+            try:
+                stream.close()
+            except OSError:
+                pass
+    for reader in readers:
+        reader.join(timeout=1.0)
+    if any(reader.is_alive() for reader in readers):
+        raise AudioDecodeError("audio tool pipe cleanup failed")
 
 
 def _read_limited(
     stream: BinaryIO | None,
     limit: int,
     target: bytearray,
-    process: subprocess.Popen[bytes],
+    process_tree: _ProcessTree,
     output_limit_exceeded: Event,
 ) -> None:
     if stream is None:
@@ -111,19 +221,16 @@ def _read_limited(
             target.extend(chunk[:remaining])
             if len(chunk) > remaining:
                 output_limit_exceeded.set()
-                try:
-                    process.kill()
-                except OSError:
-                    pass
+                process_tree.terminate()
                 return
-    except OSError:
+    except (OSError, ValueError):
         output_limit_exceeded.set()
+        process_tree.terminate()
+    finally:
         try:
-            process.kill()
+            stream.close()
         except OSError:
             pass
-    finally:
-        stream.close()
 
 
 class AudioDecodeError(RuntimeError):
@@ -178,7 +285,7 @@ def decode_audio(
     )
     command_runner = runner or SubprocessCommandRunner()
     maximum_output_bytes = math.ceil(max_duration_seconds * target_sample_rate) * 4
-    if maximum_output_bytes > MAX_DECODED_PCM_BYTES:
+    if maximum_output_bytes > MAX_PCM_RESULT_BYTES or maximum_output_bytes * 2 > MAX_PCM_PEAK_BYTES:
         raise ValueError("configured decode exceeds the PCM memory budget")
 
     probe = probe_audio(
@@ -193,6 +300,10 @@ def decode_audio(
         "-v",
         "error",
         "-nostdin",
+        "-protocol_whitelist",
+        INPUT_PROTOCOL_WHITELIST,
+        "-format_whitelist",
+        INPUT_FORMAT_WHITELIST,
         "-i",
         str(input_path),
         "-map",
@@ -262,6 +373,10 @@ def probe_audio(
         ffprobe_executable,
         "-v",
         "error",
+        "-protocol_whitelist",
+        INPUT_PROTOCOL_WHITELIST,
+        "-format_whitelist",
+        INPUT_FORMAT_WHITELIST,
         "-select_streams",
         "a:0",
         "-show_entries",
