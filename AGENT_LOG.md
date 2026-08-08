@@ -159,3 +159,14 @@
 - **TDD 与独立复审**：从模块缺失 RED 开始；四轮聚焦复审依次关闭白噪声误报、快节奏半拍、尾帧、置信度常量、长音频内存、弱细分翻倍、拍点级能量事件、资源参数、早期持续能量盲区和低采样率 FFT 警告。最终独立复审为 Critical 0、Important 0、Minor 0，结论 `READY`。
 - **验证**：Task 8 定向 `43 passed`；后端全量 `193 passed, 2 skipped`；`ruff format --check src tests`、`ruff check src tests`、mypy 与 `uv lock --check` 通过。前端 Vitest 1 项、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件，生产代码主动拒绝链接输入。
 - **Git**：核心实现 `f941d53`；置信度与资源加固 `3de45a1`；弱细分/宏观趋势修复 `d0af694`；早期能量与实际 FFT 输入保护 `80bda00`。按既定流程保留 `feat/08-signal-features`，最终验证后自动合并并推送 `main`。
+
+## 2026-08-09 — TASK 9 / 调性与调式估计
+
+- **事实契约**：新增 `TonalityEstimate` 与严格 JSON 原生输出，公开 tonic、mode、confidence、stability 和算法版本；24 个候选调性只作为内部诊断，不进入公开载荷或后续 LLM 输入。音名统一使用升号规范名，降 D 实际音高输出 C#。
+- **真实调性证据**：把 PCM 规范化到 22.05 kHz，使用 tuning-aware chroma 与 Krumhansl 大小调模板排序；C 大调、A 小调、30 cents 偏调和不同受支持输入采样率均获得一致结果。
+- **低置信门控**：除模板分数外，同时要求足够的音级覆盖、RMS 强度、活跃音频比例和至少 2 秒持续证据。静音、半音阶歧义、单一大小三和弦、极弱信号及仅 0.5 秒和声均返回 unknown，不把有限证据包装成确定音乐事实。
+- **稳定性**：用 1/2/4 秒多尺度局部调性赢家与调性兼容关系计算时间稳定度，并取最弱尺度；远关系调性频繁切换或前后分段切换均降为 unknown。
+- **资源与输入边界**：分析以 30 秒带上下文分块执行，静音块不调用 tuning estimator；采样率只接受 8–192 kHz 的整数，超过 600 秒在进入分析前拒绝。600 秒输入实测未形成与全长谱图等比例的大型中间对象。
+- **TDD 与独立复审**：从模块不存在的 RED 开始，审查发现的单三和弦误判、调性切换稳定度、弱/短证据、采样率不一致和静音块警告均先以失败测试复现后修复。最终独立复审为 Critical 0、Important 0、Minor 0，结论 `READY`。
+- **验证**：Task 9 定向 `32 passed`；后端全量 `225 passed, 2 skipped`；Ruff format/check、mypy 与 `uv lock --check` 通过。两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件，生产代码主动拒绝链接输入。
+- **Git**：核心实现 `902a5b8`；持续调性证据、采样率与资源边界修复 `e793097`。按既定流程保留 `feat/09-tonality`，最终验证后自动合并并推送 `main`。

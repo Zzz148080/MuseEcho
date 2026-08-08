@@ -354,7 +354,7 @@ def test_c_major_progression_is_classified(c_major_progression_pcm):
 
 **最终命令：** `uv run pytest tests/unit/analysis/test_tonality.py -q`
 
-**并行：** 是。**依赖：** T7。**对应验收标准：** AC-B 调性/调式来源与低置信度 unknown。**分支：** `feat/09-tonality`。**计划提交：** `feat: estimate key mode and confidence`。**实际提交：** 待执行。
+**并行：** 是。**依赖：** T7。**对应验收标准：** AC-B 调性/调式来源与低置信度 unknown。**分支：** `feat/09-tonality`。**计划提交：** `feat: estimate key mode and confidence`。**实际提交：** `902a5b8`（调性模板、稳定性与 unknown 契约）、`e793097`（持续调性证据、采样率与资源边界），已完成。
 
 ### 任务 10：结构分段与和弦时间线
 
