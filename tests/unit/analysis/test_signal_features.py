@@ -1,0 +1,121 @@
+from __future__ import annotations
+
+import json
+import math
+
+import pytest
+
+from museecho.analysis.signal_features import SignalFeatureConfig, extract_signal_features
+from tests.fixtures.audio_factory import sine_samples
+
+SAMPLE_RATE = 22_050
+
+
+def _metronome_samples(*, bpm: float = 120.0, duration_seconds: float = 8.0) -> list[float]:
+    beat_length = round((60.0 / bpm) * SAMPLE_RATE)
+    click_length = round(0.02 * SAMPLE_RATE)
+    samples: list[float] = []
+    for index in range(round(duration_seconds * SAMPLE_RATE)):
+        within_beat = index % beat_length
+        envelope = max(0.0, 1.0 - within_beat / click_length)
+        click = math.sin(2.0 * math.pi * 1_500.0 * index / SAMPLE_RATE)
+        samples.append(0.8 * envelope * click if within_beat < click_length else 0.0)
+    return samples
+
+
+def test_metronome_estimates_120_bpm_with_monotonic_beats():
+    samples = _metronome_samples()
+
+    result = extract_signal_features(samples, SAMPLE_RATE)
+
+    assert result.bpm == pytest.approx(120.0, abs=3.0)
+    assert result.bpm_confidence is not None
+    assert result.bpm_confidence >= 0.7
+    assert len(result.beat_positions_seconds) >= 8
+    assert list(result.beat_positions_seconds) == sorted(result.beat_positions_seconds)
+    assert all(0.0 <= value <= result.duration_seconds for value in result.beat_positions_seconds)
+    assert result.rhythm_algorithm
+
+
+def test_waveform_buckets_preserve_minimum_and_maximum_peaks():
+    samples = [-0.8, 0.2, -0.1, 0.9, -0.4, 0.5, -1.0, 0.7]
+    config = SignalFeatureConfig(waveform_bucket_count=4, frame_length=4, hop_length=2)
+
+    result = extract_signal_features(samples, 8, config=config)
+
+    assert result.waveform.minimums == pytest.approx((-0.8, -0.1, -0.4, -1.0))
+    assert result.waveform.maximums == pytest.approx((0.2, 0.9, 0.5, 0.7))
+    assert result.waveform.resolution_seconds == pytest.approx(0.25)
+    assert result.waveform.confidence == 1.0
+    assert result.waveform.algorithm
+
+
+def test_segmented_energy_detects_rise_and_fall_near_boundaries():
+    samples: list[float] = []
+    for amplitude in (0.1, 0.7, 0.25):
+        samples.extend(sine_samples(1.0, 440.0, SAMPLE_RATE, amplitude))
+
+    result = extract_signal_features(samples, SAMPLE_RATE)
+
+    assert result.energy.points
+    assert min(result.energy.points) >= 0.0
+    assert max(result.energy.points) <= 1.0
+    rise = next(change for change in result.energy_changes if change.direction == "rise")
+    fall = next(change for change in result.energy_changes if change.direction == "fall")
+    assert rise.timestamp_seconds == pytest.approx(1.0, abs=0.15)
+    assert fall.timestamp_seconds == pytest.approx(2.0, abs=0.15)
+    assert rise.confidence >= 0.7
+    assert fall.confidence >= 0.7
+    assert result.energy.algorithm
+
+
+def test_silence_returns_unknown_rhythm_and_zero_energy():
+    result = extract_signal_features([0.0] * (SAMPLE_RATE * 2), SAMPLE_RATE)
+
+    assert result.bpm is None
+    assert result.bpm_confidence is None
+    assert result.beat_positions_seconds == ()
+    assert result.energy_changes == ()
+    assert set(result.energy.points) == {0.0}
+
+
+def test_output_is_strict_json_and_contains_versioned_algorithms():
+    result = extract_signal_features(_metronome_samples(duration_seconds=4.0), SAMPLE_RATE)
+
+    payload = result.to_dict()
+    encoded = json.dumps(payload, allow_nan=False, sort_keys=True)
+
+    assert '"config_version": "signal-v1"' in encoded
+    assert payload["waveform"]["algorithm"]
+    assert payload["energy"]["algorithm"]
+    assert payload["rhythm"]["algorithm"]
+
+
+@pytest.mark.parametrize(
+    ("samples", "sample_rate", "message"),
+    [
+        ([], SAMPLE_RATE, "samples cannot be empty"),
+        ([0.0], 0, "sample_rate must be positive"),
+        ([math.nan], SAMPLE_RATE, "samples must be finite"),
+        ([math.inf], SAMPLE_RATE, "samples must be finite"),
+    ],
+)
+def test_invalid_signal_inputs_are_rejected(samples, sample_rate, message):
+    with pytest.raises(ValueError, match=message):
+        extract_signal_features(samples, sample_rate)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"waveform_bucket_count": 0},
+        {"frame_length": 0},
+        {"hop_length": 0},
+        {"energy_change_zscore": 0.0},
+        {"minimum_energy_change": -0.1},
+        {"minimum_rhythm_seconds": 0.0},
+    ],
+)
+def test_signal_feature_config_rejects_invalid_values(kwargs):
+    with pytest.raises(ValueError):
+        SignalFeatureConfig(**kwargs)
