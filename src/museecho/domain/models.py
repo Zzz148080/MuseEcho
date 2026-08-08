@@ -96,8 +96,18 @@ class DecodedAudio:
     def __post_init__(self) -> None:
         if not self.pcm:
             raise ValueError("pcm cannot be empty")
-        if self.sample_rate <= 0 or self.channels <= 0:
-            raise ValueError("sample_rate and channels must be positive")
+        if self.sample_rate <= 0 or self.channels != 1:
+            raise ValueError("decoded audio must be positive-rate mono PCM")
+        if len(self.pcm) % 4 != 0:
+            raise ValueError("decoded PCM must contain complete float32 samples")
+
+    @property
+    def samples(self) -> memoryview[float]:
+        return memoryview(self.pcm).cast("f")
+
+    @property
+    def duration_seconds(self) -> float:
+        return len(self.pcm) / (4 * self.sample_rate)
 
 
 @dataclass
