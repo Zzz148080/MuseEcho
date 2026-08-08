@@ -5,6 +5,7 @@ import uuid
 from dataclasses import replace
 from io import BytesIO
 from pathlib import Path
+from threading import Event, Thread
 
 import pytest
 
@@ -233,6 +234,49 @@ def test_ciphertext_delete_failure_still_leaves_key_destroyed(
     assert path.exists()
     with pytest.raises(DestroyedAudioKeyError):
         store.read_range(stale_metadata, 0, stale_metadata.plaintext_size)
+
+
+def test_read_and_delete_are_serialized_across_store_instances(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    repository = MemoryAudioRepository()
+    key_store = MemorySecretStore.for_key(b"k" * 32)
+    root = tmp_path / "ciphertext"
+    reader = ChunkedEncryptedAudioStore(
+        root, key_store=key_store, repository=repository, chunk_size=64
+    )
+    deleter = ChunkedEncryptedAudioStore(
+        root, key_store=key_store, repository=repository, chunk_size=64
+    )
+    plaintext = b"concurrent-audio" * 16
+    metadata = reader.write(uuid.uuid4(), BytesIO(plaintext), "audio/wav")
+    authoritative_check_complete = Event()
+    allow_read_to_return = Event()
+    delete_complete = Event()
+    result: list[bytes] = []
+    original_check = reader._assert_key_still_authoritative
+
+    def pause_after_authoritative_check(audio: EncryptedAudio) -> None:
+        original_check(audio)
+        authoritative_check_complete.set()
+        assert allow_read_to_return.wait(timeout=2)
+
+    monkeypatch.setattr(reader, "_assert_key_still_authoritative", pause_after_authoritative_check)
+    read_thread = Thread(
+        target=lambda: result.append(reader.read_range(metadata, 0, len(plaintext)))
+    )
+    delete_thread = Thread(target=lambda: (deleter.delete(metadata), delete_complete.set()))
+
+    read_thread.start()
+    assert authoritative_check_complete.wait(timeout=2)
+    delete_thread.start()
+    assert not delete_complete.wait(timeout=0.1)
+    allow_read_to_return.set()
+    read_thread.join(timeout=2)
+    delete_thread.join(timeout=2)
+
+    assert result == [plaintext]
+    assert delete_complete.is_set()
 
 
 def test_write_failure_does_not_leave_ciphertext(tmp_path: Path):

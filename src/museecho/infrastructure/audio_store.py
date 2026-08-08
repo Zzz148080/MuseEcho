@@ -30,7 +30,8 @@ from museecho.infrastructure.crypto import (
 from museecho.infrastructure.secrets import SecretStore, SecretStoreError
 
 MAX_CHUNK_SIZE = 8 * 1024 * 1024
-LOCK_STRIPES = 64
+PROCESS_LOCK_STRIPES = 256
+_PROCESS_LOCKS = tuple(RLock() for _ in range(PROCESS_LOCK_STRIPES))
 
 
 class EncryptedAudioIntegrityError(RuntimeError):
@@ -69,8 +70,6 @@ class ChunkedEncryptedAudioStore:
         self._key_store = key_store
         self._repository = repository
         self._chunk_size = chunk_size
-        # A fixed-size striped lock set avoids an unbounded per-analysis lock cache.
-        self._locks = tuple(RLock() for _ in range(LOCK_STRIPES))
 
     def write(
         self,
@@ -243,15 +242,13 @@ class ChunkedEncryptedAudioStore:
             self._assert_key_still_authoritative(metadata)
             return bytes(result)
         except DestroyedAudioKeyError:
-            wipe(result)
             raise
         except EncryptedAudioIntegrityError:
-            wipe(result)
             raise
         except (InvalidTag, OSError, ValueError):
-            wipe(result)
             raise EncryptedAudioIntegrityError("encrypted audio authentication failed") from None
         finally:
+            wipe(result)
             wipe(key_encryption_key)
 
     def delete(self, metadata: EncryptedAudio) -> None:
@@ -324,7 +321,10 @@ class ChunkedEncryptedAudioStore:
             os.close(descriptor)
 
     def _lock_for(self, analysis_id: uuid.UUID) -> RLock:
-        return self._locks[analysis_id.int % len(self._locks)]
+        # Locks are module-global so separate store instances in this process cannot
+        # race plaintext delivery against crypto-erasure for the same storage root.
+        identity = (os.path.normcase(str(self._root)), analysis_id.int)
+        return _PROCESS_LOCKS[hash(identity) % len(_PROCESS_LOCKS)]
 
     def _path_for(self, analysis_id: uuid.UUID) -> Path:
         return self._root / f"{analysis_id.hex}.meaf"
