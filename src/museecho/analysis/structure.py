@@ -140,7 +140,12 @@ def _select_multiscale_boundaries(
         if (
             len(local_times) > 1
             and not _local_segments_recur(middle_chroma, local_times, bin_seconds)
-            and not _local_segments_are_stable(middle_chroma, local_times, bin_seconds)
+            and not _recurrent_sections_are_stable(
+                aggregated,
+                first,
+                second,
+                bin_seconds,
+            )
         ):
             local_times = []
             local_strengths = []
@@ -182,26 +187,27 @@ def _local_segments_recur(
     return False
 
 
-def _local_segments_are_stable(
+def _recurrent_sections_are_stable(
     chroma: np.ndarray,
-    boundary_times: list[float],
+    first_boundary: float,
+    second_boundary: float,
     bin_seconds: float,
 ) -> bool:
-    boundary_bins = [0]
-    boundary_bins.extend(round(timestamp / bin_seconds) for timestamp in boundary_times)
-    boundary_bins.append(chroma.shape[1])
-    for start, end in zip(boundary_bins, boundary_bins[1:]):
-        frames = chroma[:, start:end]
-        if frames.shape[1] == 0:
-            return False
-        profile = np.mean(frames, axis=1)
-        norm = float(np.linalg.norm(profile))
-        if norm <= 1e-12:
-            return False
-        stability = float(np.mean((profile / norm) @ frames))
-        if stability < 0.94:
-            return False
-    return True
+    prefix_end = max(1, round(first_boundary / bin_seconds))
+    suffix_start = min(chroma.shape[1] - 1, round(second_boundary / bin_seconds))
+    return _frames_are_stable(chroma[:, :prefix_end]) and _frames_are_stable(
+        chroma[:, suffix_start:]
+    )
+
+
+def _frames_are_stable(frames: np.ndarray) -> bool:
+    if frames.shape[1] == 0:
+        return False
+    profile = np.mean(frames, axis=1)
+    norm = float(np.linalg.norm(profile))
+    if norm <= 1e-12:
+        return False
+    return float(np.mean((profile / norm) @ frames)) >= 0.94
 
 
 def _general_novelty_boundaries(
@@ -295,7 +301,7 @@ def _prefix_suffix_recurrence_boundaries(
 
 def _has_repeating_loop(chroma: np.ndarray, bin_seconds: float) -> bool:
     minimum_lag = max(2, math.floor(2.0 / bin_seconds))
-    maximum_lag = chroma.shape[1] // 3
+    maximum_lag = math.ceil(chroma.shape[1] / 3)
     if maximum_lag < minimum_lag:
         return False
     for lag in range(minimum_lag, maximum_lag + 1):
@@ -303,9 +309,14 @@ def _has_repeating_loop(chroma: np.ndarray, bin_seconds: float) -> bool:
         if 1.0 - float(np.linalg.norm(cycle_profile)) < 0.05:
             continue
         frame_similarities = np.sum(chroma[:, :-lag] * chroma[:, lag:], axis=0)
-        if float(np.mean(frame_similarities)) < 0.90:
+        left_active = np.linalg.norm(chroma[:, :-lag], axis=0) > 1e-8
+        right_active = np.linalg.norm(chroma[:, lag:], axis=0) > 1e-8
+        active_similarities = frame_similarities[left_active & right_active]
+        if active_similarities.size < 2 * lag - 1:
             continue
-        if float(np.mean(frame_similarities >= 0.85)) >= 0.80:
+        if float(np.mean(active_similarities)) < 0.98:
+            continue
+        if float(np.mean(active_similarities >= 0.90)) >= 0.92:
             return True
     return False
 

@@ -25,6 +25,13 @@ def _tones(frequencies: tuple[float, ...], duration_seconds: float) -> list[floa
     ]
 
 
+def _major_chord_from_midi(root: int, duration_seconds: float) -> list[float]:
+    return _tones(
+        tuple(440.0 * 2.0 ** ((root + interval - 69) / 12.0) for interval in (0, 4, 7)),
+        duration_seconds,
+    )
+
+
 def _aba() -> list[float]:
     section_a = _tones((261.6256, 329.6276, 391.9954), 2.0)
     section_b = _tones((184.9972, 233.0819, 277.1826), 2.0)
@@ -285,6 +292,20 @@ def test_recurrent_outer_section_keeps_unique_stable_middle_sections(
     assert [segment.label for segment in segments] == expected
 
 
+@pytest.mark.parametrize("final_middle_root", [49, 58, 59, 61, 70, 71])
+def test_unique_stable_middle_sections_are_independent_of_pitch_class_and_octave(
+    final_middle_root: int,
+):
+    roots = [60, 54, 50, 52, final_middle_root, 60]
+    samples = [
+        sample for root in roots for sample in _major_chord_from_midi(root, 2.0)
+    ]
+
+    segments = segment_structure(samples, SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == ["A", "B", "C", "D", "E", "A"]
+
+
 @pytest.mark.parametrize("repeat_count", [3, 4, 5])
 def test_uniform_loop_is_unknown_for_any_three_or_more_repeats(repeat_count: int):
     a = _tones((261.6256, 329.6276, 391.9954), 1.5)
@@ -293,6 +314,20 @@ def test_uniform_loop_is_unknown_for_any_three_or_more_repeats(repeat_count: int
     segments = segment_structure((a + b) * repeat_count, SAMPLE_RATE)
 
     assert [segment.label for segment in segments] == [None]
+
+
+@pytest.mark.parametrize("repeat_count", [4, 5, 6])
+def test_harmonic_loop_variation_is_preserved(repeat_count: int):
+    a = _tones((261.6256, 329.6276, 391.9954), 1.5)
+    b = _tones((184.9972, 233.0819, 277.1826), 1.5)
+    c = _tones((146.8324, 184.9972, 220.0000), 1.5)
+    samples = (a + b) * (repeat_count - 1) + a + c
+
+    segments = segment_structure(samples, SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] != [None]
+    assert segments[-1].label not in {None, segments[-2].label}
+    assert segments[-1].end_seconds - segments[-1].start_seconds >= 1.0
 
 
 @pytest.mark.parametrize("silence_first", [True, False])
