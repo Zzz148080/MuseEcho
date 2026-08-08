@@ -116,3 +116,14 @@
 - **验证**：最终后端全量 `81 passed, 1 skipped`；跳过项仅因当前 Windows 会话无创建符号链接权限，代码仍使用 `O_NOFOLLOW` 与打开后身份校验；Ruff format/check、mypy、`uv lock --check` 和真实 `museecho --help` 通过；前端 1 test、typecheck、production build 通过。
 - **Git**：实现 `b826810`；Secret 后端边界修复 `3267e86`；无效 UTF-8 脱敏修复 `48d5d0f`。按用户新流程，完成后自动合并并推送 `main`，同时保留任务分支。
 - **额度策略**：未并行派发实现 Agent，仅复用一次聚焦 reviewer 会话；未出现平台额度耗尽提示，当前工具仍不提供额度读数或重置入口。
+
+## 2026-08-08 — TASK 5 / CHUNKED ENCRYPTED AUDIO
+
+- **范围**：从 Task 4 合并后的 `main` 创建隔离工作树与分支 `feat/05-encrypted-audio`；实现分块认证加密、精确 Range 解密、密钥先销毁和密文后删除，未接入尚未实施的上传/API 编排。
+- **密码设计**：每个分析生成随机 256-bit DEK，AES-256-GCM 每块使用随机 8-byte 前缀与 32-bit 块号组成唯一 nonce；AAD 绑定格式版本、分析 ID、块大小、块号和明文长度。DEK 使用专用 SecretStore 按操作加载的 256-bit KEK 包装，持久卷与数据库均不保存 KEK 明文。
+- **文件生命周期**：密文先写入同目录随机临时文件，执行文件 `fsync` 后原子替换最终路径；POSIX 下同步目录。数据库写入失败时清理密文且不遮蔽原异常；数据库无 metadata 时重试可回收同分析的崩溃孤儿文件。
+- **擦除与并发**：Range 读取只信任数据库权威 metadata，陈旧调用方副本不能在 key 删除后解密；同进程内所有 store 实例按规范化 root 与 analysis ID 共享条带锁，避免 read/delete 交付窗口；删除先销毁数据库 wrapped DEK，再删除密文。可变 DEK、KEK、分块明文和返回缓冲均尽可能清零，并明确 Python immutable 对象无法可靠零化的限制。
+- **TDD 与审查**：首个 RED 为存储模块不存在；后续审查缺陷均先以失败测试复现，包括合法短读、陈旧 metadata、孤儿最终文件和跨实例 read/delete 竞态。复用一个聚焦 reviewer 两轮复核，最终 Critical 0、Important 0、Minor 0，结论 `READY`。
+- **验证**：Task 5 定向测试 `21 passed`；后端全量 `102 passed, 1 skipped`；Ruff format/check、mypy、`uv lock --check` 通过。前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 与 npm audit 通过；宿主 Node 24 仍对项目 Node 22 约束发出 `EBADENGINE` 警告，既有 cold-start 已在 Node 22 容器验证该基线。
+- **Git**：实现 `ad2f0b7`；生命周期与 SecretStore 加固 `db9898d`；跨实例擦除串行化 `ffa0fe4`。按用户既定流程，在最终验证后自动合并并推送 `main`，同时保留任务分支。
+- **额度策略**：未并行派发实现 Agent，只复用一个聚焦 reviewer；未出现平台额度耗尽提示，当前工具仍不提供额度读数或重置入口。

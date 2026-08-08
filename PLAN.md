@@ -245,7 +245,7 @@ def test_ciphertext_does_not_contain_plaintext(store, tmp_path):
 
 **最终命令：** `uv run pytest tests/unit/test_encrypted_audio_store.py tests/integration/test_audio_range.py -q`
 
-**并行：** 是。**依赖：** T2/T4。**对应验收标准：** AC-E 持久卷无明文、Range 认证解密和密码擦除。**分支：** `feat/05-encrypted-audio`。**计划提交：** `feat: add chunked encrypted audio storage`。**实际提交：** 待执行。
+**并行：** 是。**依赖：** T2/T4。**对应验收标准：** AC-E 持久卷无明文、Range 认证解密和密码擦除。**分支：** `feat/05-encrypted-audio`。**计划提交：** `feat: add chunked encrypted audio storage`。**实际提交：** `ad2f0b7`、`db9898d`、`ffa0fe4`（实现、生命周期加固与跨实例擦除串行化，已完成）。
 
 ### 任务 6：流式上传、真实校验与单并发任务队列
 
