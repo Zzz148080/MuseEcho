@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import uuid
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
@@ -11,6 +12,23 @@ from museecho.domain.status import AnalysisJob, AnalysisStage, SourceKind
 from museecho.infrastructure.audio_store import ChunkedEncryptedAudioStore, DestroyedAudioKeyError
 from museecho.infrastructure.db import create_session_factory
 from museecho.infrastructure.repositories import SqliteAnalysisRepository, init_db
+
+
+class MemorySecretStore:
+    source = "test-memory"
+
+    def __init__(self, key: bytes) -> None:
+        self.value = base64.urlsafe_b64encode(key).decode("ascii")
+
+    def get(self) -> str:
+        return self.value
+
+    def set(self, value: str) -> None:
+        self.value = value
+
+    def clear(self) -> bool:
+        self.value = ""
+        return True
 
 
 def test_sqlite_metadata_range_read_and_crypto_erasure(tmp_path: Path):
@@ -33,7 +51,7 @@ def test_sqlite_metadata_range_read_and_crypto_erasure(tmp_path: Path):
     plaintext = bytes(range(256)) * 4
     store = ChunkedEncryptedAudioStore(
         tmp_path / "ciphertext",
-        kek=b"m" * 32,
+        key_store=MemorySecretStore(b"m" * 32),
         repository=repository,
         chunk_size=128,
     )

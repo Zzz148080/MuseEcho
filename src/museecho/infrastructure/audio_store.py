@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
-import math
 import os
+import secrets
 import uuid
+from contextlib import suppress
 from pathlib import Path
+from threading import RLock
 from typing import BinaryIO, Protocol
 
 from cryptography.exceptions import InvalidTag
@@ -23,8 +27,10 @@ from museecho.infrastructure.crypto import (
     wipe,
     wrap_data_key,
 )
+from museecho.infrastructure.secrets import SecretStore, SecretStoreError
 
 MAX_CHUNK_SIZE = 8 * 1024 * 1024
+LOCK_STRIPES = 64
 
 
 class EncryptedAudioIntegrityError(RuntimeError):
@@ -35,8 +41,14 @@ class DestroyedAudioKeyError(RuntimeError):
     pass
 
 
+class KeyEncryptionKeyError(RuntimeError):
+    pass
+
+
 class AudioMetadataRepository(Protocol):
     def save_encrypted_audio(self, audio: EncryptedAudio) -> None: ...
+
+    def get_encrypted_audio(self, analysis_id: uuid.UUID) -> EncryptedAudio | None: ...
 
     def destroy_encrypted_audio_key(self, analysis_id: uuid.UUID) -> None: ...
 
@@ -46,19 +58,19 @@ class ChunkedEncryptedAudioStore:
         self,
         root: Path,
         *,
-        kek: bytes,
+        key_store: SecretStore,
         repository: AudioMetadataRepository,
         chunk_size: int = 1024 * 1024,
     ) -> None:
-        if len(kek) != 32:
-            raise ValueError("KEK must be 32 bytes")
         if not 0 < chunk_size <= MAX_CHUNK_SIZE:
             raise ValueError("chunk_size is outside the supported range")
         root.mkdir(parents=True, exist_ok=True)
         self._root = root.resolve()
-        self._kek = kek
+        self._key_store = key_store
         self._repository = repository
         self._chunk_size = chunk_size
+        # A fixed-size striped lock set avoids an unbounded per-analysis lock cache.
+        self._locks = tuple(RLock() for _ in range(LOCK_STRIPES))
 
     def write(
         self,
@@ -68,28 +80,45 @@ class ChunkedEncryptedAudioStore:
     ) -> EncryptedAudio:
         if not media_type:
             raise ValueError("media_type cannot be empty")
+
+        with self._lock_for(analysis_id):
+            return self._write_locked(analysis_id, source, media_type)
+
+    def _write_locked(
+        self,
+        analysis_id: uuid.UUID,
+        source: BinaryIO,
+        media_type: str,
+    ) -> EncryptedAudio:
+        if self._repository.get_encrypted_audio(analysis_id) is not None:
+            raise ValueError("encrypted audio already exists")
+
         target = self._path_for(analysis_id)
+        self._remove_orphan_files(analysis_id, target)
+        temporary = self._root / f".{analysis_id.hex}.{secrets.token_hex(8)}.tmp"
         data_key = bytearray(os.urandom(32))
+        key_encryption_key = bytearray()
         nonce_prefix = os.urandom(NONCE_PREFIX_SIZE)
         plaintext_hash = hashlib.sha256()
         plaintext_size = 0
         chunk_count = 0
-        wrapped_data_key = wrap_data_key(self._kek, analysis_id, bytes(data_key))
+        installed_target = False
         try:
-            with target.open("xb") as handle:
-                os.chmod(target, 0o600)
+            key_encryption_key = self._load_key_encryption_key()
+            wrapped_data_key = wrap_data_key(
+                bytes(key_encryption_key), analysis_id, bytes(data_key)
+            )
+            with temporary.open("xb") as handle:
+                os.chmod(temporary, 0o600)
                 handle.write(build_header(analysis_id, self._chunk_size, nonce_prefix))
                 cipher = AESGCM(bytes(data_key))
                 while True:
-                    raw_chunk = source.read(self._chunk_size)
-                    if not raw_chunk:
+                    chunk = self._read_plaintext_chunk(source)
+                    if not chunk:
                         break
-                    if len(raw_chunk) > self._chunk_size:
-                        raise ValueError("source returned an oversized chunk")
-                    if chunk_count >= 2**32:
-                        raise ValueError("audio contains too many chunks")
-                    chunk = bytearray(raw_chunk)
                     try:
+                        if chunk_count >= 2**32:
+                            raise ValueError("audio contains too many chunks")
                         plaintext_hash.update(chunk)
                         aad = chunk_aad(
                             analysis_id,
@@ -112,6 +141,9 @@ class ChunkedEncryptedAudioStore:
                 handle.flush()
                 os.fsync(handle.fileno())
 
+            os.replace(temporary, target)
+            installed_target = True
+            self._fsync_root()
             metadata = EncryptedAudio(
                 analysis_id=analysis_id,
                 cipher_path=str(target),
@@ -125,22 +157,31 @@ class ChunkedEncryptedAudioStore:
             self._repository.save_encrypted_audio(metadata)
             return metadata
         except Exception:
-            target.unlink(missing_ok=True)
+            self._unlink_without_masking(temporary)
+            if installed_target:
+                self._unlink_without_masking(target)
             raise
         finally:
             wipe(data_key)
+            wipe(key_encryption_key)
 
     def read_range(self, metadata: EncryptedAudio, start: int, end: int) -> bytes:
+        with self._lock_for(metadata.analysis_id):
+            return self._read_range_locked(metadata.analysis_id, start, end)
+
+    def _read_range_locked(self, analysis_id: uuid.UUID, start: int, end: int) -> bytes:
+        metadata = self._authoritative_metadata(analysis_id)
         if not 0 <= start <= end <= metadata.plaintext_size:
             raise ValueError("range must satisfy 0 <= start <= end <= plaintext_size")
-        if not metadata.wrapped_data_key:
-            raise DestroyedAudioKeyError("encrypted audio key has been destroyed")
         self._validate_metadata(metadata)
         if start == end:
+            self._assert_key_still_authoritative(metadata)
             return b""
 
         path = self._validated_path(metadata)
         expected_size = HEADER_SIZE + metadata.plaintext_size + metadata.chunk_count * GCM_TAG_SIZE
+        key_encryption_key = self._load_key_encryption_key()
+        result = bytearray()
         try:
             if path.stat().st_size != expected_size:
                 raise EncryptedAudioIntegrityError("encrypted audio length mismatch")
@@ -154,13 +195,16 @@ class ChunkedEncryptedAudioStore:
                 ):
                     raise EncryptedAudioIntegrityError("encrypted audio header mismatch")
                 data_key = bytearray(
-                    unwrap_data_key(self._kek, metadata.analysis_id, metadata.wrapped_data_key)
+                    unwrap_data_key(
+                        bytes(key_encryption_key),
+                        metadata.analysis_id,
+                        metadata.wrapped_data_key,
+                    )
                 )
                 try:
                     cipher = AESGCM(bytes(data_key))
                     first_chunk = start // metadata.chunk_size
                     last_chunk = (end - 1) // metadata.chunk_size
-                    result = bytearray()
                     for chunk_index in range(first_chunk, last_chunk + 1):
                         plaintext_length = min(
                             metadata.chunk_size,
@@ -190,27 +234,97 @@ class ChunkedEncryptedAudioStore:
                             result.extend(plaintext[slice_start:slice_end])
                         finally:
                             wipe(plaintext)
-                    value = bytes(result)
-                    if start == 0 and end == metadata.plaintext_size:
-                        if hashlib.sha256(value).hexdigest() != metadata.sha256:
-                            raise EncryptedAudioIntegrityError("encrypted audio digest mismatch")
-                    return value
                 finally:
                     wipe(data_key)
+
+            if start == 0 and end == metadata.plaintext_size:
+                if hashlib.sha256(result).hexdigest() != metadata.sha256:
+                    raise EncryptedAudioIntegrityError("encrypted audio digest mismatch")
+            self._assert_key_still_authoritative(metadata)
+            return bytes(result)
         except DestroyedAudioKeyError:
+            wipe(result)
             raise
         except EncryptedAudioIntegrityError:
+            wipe(result)
             raise
         except (InvalidTag, OSError, ValueError):
+            wipe(result)
             raise EncryptedAudioIntegrityError("encrypted audio authentication failed") from None
+        finally:
+            wipe(key_encryption_key)
 
     def delete(self, metadata: EncryptedAudio) -> None:
-        path = self._validated_path(metadata, require_exists=False)
-        self._repository.destroy_encrypted_audio_key(metadata.analysis_id)
-        wrapped_key = bytearray(metadata.wrapped_data_key)
-        wipe(wrapped_key)
-        metadata.wrapped_data_key = b""
-        path.unlink(missing_ok=True)
+        with self._lock_for(metadata.analysis_id):
+            authoritative = self._authoritative_metadata(metadata.analysis_id)
+            path = self._validated_path(authoritative, require_exists=False)
+            self._repository.destroy_encrypted_audio_key(metadata.analysis_id)
+            wrapped_key = bytearray(metadata.wrapped_data_key)
+            wipe(wrapped_key)
+            metadata.wrapped_data_key = b""
+            path.unlink(missing_ok=True)
+
+    def _authoritative_metadata(self, analysis_id: uuid.UUID) -> EncryptedAudio:
+        metadata = self._repository.get_encrypted_audio(analysis_id)
+        if metadata is None or not metadata.wrapped_data_key:
+            raise DestroyedAudioKeyError("encrypted audio key has been destroyed")
+        return metadata
+
+    def _assert_key_still_authoritative(self, metadata: EncryptedAudio) -> None:
+        current = self._repository.get_encrypted_audio(metadata.analysis_id)
+        if current is None or current.wrapped_data_key != metadata.wrapped_data_key:
+            raise DestroyedAudioKeyError("encrypted audio key has been destroyed")
+
+    def _load_key_encryption_key(self) -> bytearray:
+        try:
+            encoded = self._key_store.get()
+        except SecretStoreError:
+            raise KeyEncryptionKeyError("audio key encryption key is unavailable") from None
+        if encoded is None:
+            raise KeyEncryptionKeyError("audio key encryption key is unavailable")
+        try:
+            decoded = base64.b64decode(encoded, altchars=b"-_", validate=True)
+        except (ValueError, binascii.Error, UnicodeEncodeError):
+            raise KeyEncryptionKeyError("audio key encryption key is invalid") from None
+        if len(decoded) != 32:
+            raise KeyEncryptionKeyError("audio key encryption key is invalid")
+        # Python strings and immutable bytes cannot be reliably zeroized. Keeping the
+        # decoded key in a bytearray limits the lifetime of the mutable working copy.
+        return bytearray(decoded)
+
+    def _read_plaintext_chunk(self, source: BinaryIO) -> bytearray:
+        chunk = bytearray()
+        while len(chunk) < self._chunk_size:
+            raw = source.read(self._chunk_size - len(chunk))
+            if not raw:
+                break
+            if len(raw) > self._chunk_size - len(chunk):
+                wipe(chunk)
+                raise ValueError("source returned an oversized chunk")
+            chunk.extend(raw)
+        return chunk
+
+    def _remove_orphan_files(self, analysis_id: uuid.UUID, target: Path) -> None:
+        target.unlink(missing_ok=True)
+        for temporary in self._root.glob(f".{analysis_id.hex}.*.tmp"):
+            self._unlink_without_masking(temporary)
+
+    @staticmethod
+    def _unlink_without_masking(path: Path) -> None:
+        with suppress(OSError):
+            path.unlink(missing_ok=True)
+
+    def _fsync_root(self) -> None:
+        if os.name != "posix":
+            return
+        descriptor = os.open(self._root, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+
+    def _lock_for(self, analysis_id: uuid.UUID) -> RLock:
+        return self._locks[analysis_id.int % len(self._locks)]
 
     def _path_for(self, analysis_id: uuid.UUID) -> Path:
         return self._root / f"{analysis_id.hex}.meaf"
@@ -228,8 +342,10 @@ class ChunkedEncryptedAudioStore:
 
     @staticmethod
     def _validate_metadata(metadata: EncryptedAudio) -> None:
-        expected_chunks = math.ceil(metadata.plaintext_size / metadata.chunk_size)
-        if expected_chunks != metadata.chunk_count or metadata.chunk_count <= 0:
+        if metadata.chunk_size <= 0 or metadata.plaintext_size <= 0 or metadata.chunk_count <= 0:
+            raise EncryptedAudioIntegrityError("encrypted audio metadata is inconsistent")
+        expected_chunks = (metadata.plaintext_size + metadata.chunk_size - 1) // metadata.chunk_size
+        if expected_chunks != metadata.chunk_count:
             raise EncryptedAudioIntegrityError("encrypted audio metadata is inconsistent")
 
 
@@ -238,4 +354,5 @@ __all__ = [
     "ChunkedEncryptedAudioStore",
     "DestroyedAudioKeyError",
     "EncryptedAudioIntegrityError",
+    "KeyEncryptionKeyError",
 ]

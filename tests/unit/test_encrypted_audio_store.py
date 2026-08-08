@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 import uuid
+from dataclasses import replace
 from io import BytesIO
 from pathlib import Path
 
@@ -12,7 +14,30 @@ from museecho.infrastructure.audio_store import (
     ChunkedEncryptedAudioStore,
     DestroyedAudioKeyError,
     EncryptedAudioIntegrityError,
+    KeyEncryptionKeyError,
 )
+
+
+class MemorySecretStore:
+    source = "test-memory"
+
+    def __init__(self, value: str | None) -> None:
+        self.value = value
+
+    @classmethod
+    def for_key(cls, key: bytes) -> MemorySecretStore:
+        return cls(base64.urlsafe_b64encode(key).decode("ascii"))
+
+    def get(self) -> str | None:
+        return self.value
+
+    def set(self, value: str) -> None:
+        self.value = value
+
+    def clear(self) -> bool:
+        existed = self.value is not None
+        self.value = None
+        return existed
 
 
 class MemoryAudioRepository:
@@ -21,7 +46,11 @@ class MemoryAudioRepository:
         self.key_destroyed = False
 
     def save_encrypted_audio(self, audio: EncryptedAudio) -> None:
-        self.audio[audio.analysis_id] = audio
+        self.audio[audio.analysis_id] = replace(audio)
+
+    def get_encrypted_audio(self, analysis_id: uuid.UUID) -> EncryptedAudio | None:
+        audio = self.audio.get(analysis_id)
+        return None if audio is None else replace(audio)
 
     def destroy_encrypted_audio_key(self, analysis_id: uuid.UUID) -> None:
         self.key_destroyed = True
@@ -33,7 +62,7 @@ def _store(tmp_path: Path, repository: MemoryAudioRepository | None = None):
     return (
         ChunkedEncryptedAudioStore(
             tmp_path / "ciphertext",
-            kek=b"k" * 32,
+            key_store=MemorySecretStore.for_key(b"k" * 32),
             repository=repository,
             chunk_size=64,
         ),
@@ -63,6 +92,28 @@ def test_cross_chunk_and_empty_ranges_match_python_slice(tmp_path: Path):
     assert store.read_range(metadata, 50, 150) == plaintext[50:150]
     assert store.read_range(metadata, 64, 128) == plaintext[64:128]
     assert store.read_range(metadata, 20, 20) == b""
+
+
+def test_write_aggregates_legal_short_reads(tmp_path: Path):
+    class ShortReadStream:
+        def __init__(self, value: bytes) -> None:
+            self._value = value
+            self._offset = 0
+
+        def read(self, size: int = -1) -> bytes:
+            if self._offset >= len(self._value):
+                return b""
+            length = min(10, size, len(self._value) - self._offset)
+            result = self._value[self._offset : self._offset + length]
+            self._offset += length
+            return result
+
+    store, _ = _store(tmp_path)
+    plaintext = bytes(range(200))
+
+    metadata = store.write(uuid.uuid4(), ShortReadStream(plaintext), "audio/wav")
+
+    assert store.read_range(metadata, 0, len(plaintext)) == plaintext
 
 
 @pytest.mark.parametrize("start,end", [(-1, 1), (2, 1), (0, 257)])
@@ -113,11 +164,12 @@ def test_truncated_ciphertext_is_rejected_before_decryption(tmp_path: Path):
 
 
 def test_tampered_wrapped_key_is_rejected(tmp_path: Path):
-    store, _ = _store(tmp_path)
+    store, repository = _store(tmp_path)
     metadata = store.write(uuid.uuid4(), BytesIO(b"audio" * 40), "audio/wav")
-    wrapped = bytearray(metadata.wrapped_data_key)
+    persisted = repository.audio[metadata.analysis_id]
+    wrapped = bytearray(persisted.wrapped_data_key)
     wrapped[-1] ^= 1
-    metadata.wrapped_data_key = bytes(wrapped)
+    persisted.wrapped_data_key = bytes(wrapped)
 
     with pytest.raises(EncryptedAudioIntegrityError):
         store.read_range(metadata, 0, 1)
@@ -166,6 +218,7 @@ def test_ciphertext_delete_failure_still_leaves_key_destroyed(
 ):
     store, repository = _store(tmp_path)
     metadata = store.write(uuid.uuid4(), BytesIO(b"audio" * 40), "audio/wav")
+    stale_metadata = replace(metadata)
     path = Path(metadata.cipher_path)
 
     def fail_unlink(target: Path, *args, **kwargs):
@@ -178,6 +231,8 @@ def test_ciphertext_delete_failure_still_leaves_key_destroyed(
     assert repository.key_destroyed
     assert metadata.wrapped_data_key == b""
     assert path.exists()
+    with pytest.raises(DestroyedAudioKeyError):
+        store.read_range(stale_metadata, 0, stale_metadata.plaintext_size)
 
 
 def test_write_failure_does_not_leave_ciphertext(tmp_path: Path):
@@ -198,6 +253,36 @@ def test_empty_audio_is_rejected_without_leaving_ciphertext(tmp_path: Path):
 
     with pytest.raises(ValueError, match="empty"):
         store.write(uuid.uuid4(), BytesIO(b""), "audio/wav")
+
+    assert repository.audio == {}
+    assert list((tmp_path / "ciphertext").glob("*")) == []
+
+
+def test_retry_recovers_orphan_final_file_when_repository_has_no_metadata(tmp_path: Path):
+    store, _ = _store(tmp_path)
+    analysis_id = uuid.uuid4()
+    root = tmp_path / "ciphertext"
+    orphan = root / f"{analysis_id.hex}.meaf"
+    orphan.write_bytes(b"partial-crash-file")
+    plaintext = b"replacement-audio"
+
+    metadata = store.write(analysis_id, BytesIO(plaintext), "audio/wav")
+
+    assert store.read_range(metadata, 0, len(plaintext)) == plaintext
+
+
+@pytest.mark.parametrize("secret", [None, "not-base64!", "c2hvcnQ="])
+def test_missing_or_invalid_key_encryption_secret_is_rejected(tmp_path: Path, secret: str | None):
+    repository = MemoryAudioRepository()
+    store = ChunkedEncryptedAudioStore(
+        tmp_path / "ciphertext",
+        key_store=MemorySecretStore(secret),
+        repository=repository,
+        chunk_size=64,
+    )
+
+    with pytest.raises(KeyEncryptionKeyError, match="key encryption key"):
+        store.write(uuid.uuid4(), BytesIO(b"audio"), "audio/wav")
 
     assert repository.audio == {}
     assert list((tmp_path / "ciphertext").glob("*")) == []
