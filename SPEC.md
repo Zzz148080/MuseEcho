@@ -1,6 +1,6 @@
 # MuseEcho V1 产品与工程规格
 
-状态：书面规格与 PLAN 已获准用于 cold-start；OpenCode cold-start 已审查，等待用户批准修订后的当前提交后正式实现
+状态：最终书面审查已完成；用户已批准修订后的 SPEC/PLAN 并授权生成 `HUMAN_APPROVAL.md`，Tasks 1–2 已作为经修正和复审的实施基线合并
 
 日期：2026-08-08
 
@@ -496,7 +496,7 @@ GitHub Actions 运行 backend tests、frontend tests、integration tests、lint�
 | SQLite 与单机限制 | 无法水平扩展 | V1 明确单机；repository 边界支持未来迁移 |
 | LLM 费用或不可用 | 解释失败 | 可选配置、速率限制、缓存、确定性 fallback |
 | 域名/云账号需要人工授权 | 无法自动部署 | 所有配置先完成；真实外部步骤记录为 blocker |
-| 第二类 Agent 不可用 | 无法完成课程 cold-start | 在实施前检测 Gemini/Claude/Copilot/OpenCode；如无则如实记录 blocker |
+| 后续阶段缺少第二视角审查 | 缺陷发现能力下降 | cold-start 已由 OpenCode 完成；后续关键审查继续使用独立 reviewer，并如实记录可用性 |
 
 ## 21. 已知限制
 
@@ -526,3 +526,10 @@ GitHub Actions 运行 backend tests、frontend tests、integration tests、lint�
 项目必须逐项满足用户总要求中的 V1 Definition of Done，包括：A–D 模块端到端运行、真实上传分析、交互时间轴、确定性理论测试、Evidence Explanation、无 Key fallback、全套测试与构建、Docker runtime、Secret audit、合理 Git/PR 历史、双 CI 配置、全过程文档、三轮 Audit、无已知 Critical bug 和 High security issue，以及没有伪造测试、CI、人工参与或部署证据。
 
 学生最终仍须亲自完成 README 冷启动、真实音乐上传、核心交互、PR/CI/Secret 检查和 `REFLECTION.md` 正文。
+
+## 24. 实施基线与批准状态
+
+- OpenCode cold-start 的原始任务 1–2 产物先被拒绝，随后由 Codex 按测试驱动方式修正，并经过三轮独立复审；完整证据保存在 `COLD_START_REPORT.md`。
+- 修正实现提交 `07d135e` 已通过 39 个 Python 测试、Ruff、mypy、全新 Alembic 迁移与漂移检查，以及 Node 22 容器内的前端测试、类型检查和生产构建。
+- 用户明确要求将该修正分支合并到 `main`；合并提交为 `a2d7af5`。因此 Tasks 1–2 构成正式实施基线，后续从任务 3 开始，不重新伪造其 RED/GREEN 历史。
+- 用户原话“合并到主分支，最后审查修订SPEC和PLAN，批准生成HUMAN_APPROVAL.md”构成本轮最终实施授权；批准文件必须引用本次 SPEC/PLAN 修订提交，并且不代表 Tasks 3–24、CI、腾讯云部署或最终产品验收已经完成。

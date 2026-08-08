@@ -154,7 +154,7 @@ Codex 独立复核确认上述限定命令可复现，但发现以下规约缺�
 6. `uv.lock`、README 缺失；`*.egg-info` 和 `*.tsbuildinfo` 生成物未忽略；手工创建且被忽略的 `data/` 不会出现在干净 clone。
 7. 报告末尾称“没有 branch”，但工作实际发生在预先创建的 `validation/opencode-cold-start` 分支；Files Changed 也漏列生成物。
 
-这次 cold-start 达到了规约验证目的：它证明任务拆分可启动，同时暴露了测试边界和干净环境假设。产品 SPEC 无需改变；PLAN 已增强锁文件、生成物、仓储端口、SQLite 外键、全量级联、领域不变量、UTC 与显式终态转换要求。cold-start 代码不合并，正式实施必须从最新 `main` 重新执行 RED→GREEN→REFACTOR。
+当时的审查结论是：这次 cold-start 达到了规约验证目的，证明任务拆分可启动，同时暴露了测试边界和干净环境假设。产品 SPEC 无需改变；PLAN 增强锁文件、生成物、仓储端口、SQLite 外键、全量级联、领域不变量、UTC 与显式终态转换要求。在代码完成修正、重新验证、独立复审和用户再次决定前，不合并该产物，也不把原始测试结果当作正式实施证据。后续真实修正与合并决定见第 11 节。
 
 ## 9. 书面 SPEC 批准
 
@@ -187,3 +187,13 @@ Codex 独立复核确认上述限定命令可复现，但发现以下规约缺�
 用户随后原话批准“批准运行 OpenCode cold-start 并推送记录”。主 Agent 已创建 `validation/opencode-cold-start` 分支及 `.worktrees/opencode-cold-start` 隔离 worktree，并用 sparse checkout 将可见的既有文件限制为 `SPEC.md`、`PLAN.md`、`.gitignore`。实际启动 `opencode/deepseek-v4-flash-free` 新会话时，外部审批器因连接中断再次拒绝命令；OpenCode 进程没有启动，未产生 Agent 输出、实现或测试证据。由于第三方模型调用会传输规格、计划、生成代码和测试输出并可在隔离区运行命令，需在披露该边界后取得用户再次明确授权。
 
 用户随后配置了 DeepSeek API Key，并在完整披露后原话再次批准“已了解上述数据边界，批准重试 OpenCode cold-start 并推送记录”。只读核验显示 OpenCode 已识别 `DeepSeek api` 1 个凭据，并列出精确模型 `deepseek/deepseek-v4-flash`。首次实际执行没有调用模型：OpenCode CLI 把位于 `--file` 之后的长 prompt 解析成第三个文件，返回 `File not found: <prompt>`。主 Agent 使用 `systematic-debugging` 追踪到 `--file` 数组选项吞并后续位置参数，准备以“message 在前、file 选项在后”的最小解析探针验证；该探针又在进程启动前被相同的外部审批连接中断拒绝。隔离分支仍无改动，尚无任何 cold-start Agent 输出或任务测试。
+
+## 11. Corrected cold-start、最终审查与合并决定
+
+OpenCode 后续真实完成任务 1–2 初版，原始提交 `1a3545d` 被 Codex 审查拒绝。用户明确要求修正现有产物并在确认无问题后再报告。Codex 按测试驱动方式补齐领域不变量、稳定端口、SQLite 外键/WAL/级联、缺失表、原子结果事务、回滚、UTC、有限数与 JSON 边界、锁文件和干净 checkout 文档；修正提交为 `07d135e`。
+
+独立 reviewer 共进行三轮审查。最后一轮确认 Critical、Important、Minor 均为 0；最新证据为 39 个 Python 测试、Ruff、mypy、全新 Alembic upgrade/check、Node 22 容器前端测试/typecheck/build 通过，npm audit 为 0 漏洞。用户随后原话确认：
+
+> 合并到主分支，最后审查修订SPEC和PLAN，批准生成HUMAN_APPROVAL.md
+
+主 Agent 按该决定把验证分支合并到 `main`，合并提交为 `a2d7af5`。最终审查确认产品范围、Evidence First 原则、部署目标和 Tasks 3–24 不需改变；需要修订的是 SPEC/PLAN 的门禁状态、Tasks 1–2 实际提交与“cold-start 不合并”的过时表述。批准文件将在本次最终 SPEC/PLAN 修订提交后生成，并锚定该提交；这不代表未执行的 CI、部署或产品验收已经发生。

@@ -135,3 +135,20 @@ Cookie 丢失后无法恢复结果；不提供分享和长期历史。
 
 **Consequences**
 无需大陆 ICP 备案，但跨境上传质量需三网实测；云账户、域名和付款仍是 human-owned 授权步骤。
+
+## ADR-009：接受 corrected cold-start 作为 Tasks 1–2 实施基线
+
+**Context**
+OpenCode 的原始 cold-start 成功暴露了规约缺口，但其首版代码未通过主 Agent 审查。Codex 随后以测试驱动方式修正全部 Critical/Important 问题，并完成三轮独立复审。
+
+**Options**
+1. 仅保留 cold-start 为证据、从头重做 Tasks 1–2；2. 接受经修正与复审的实现；3. 放弃 cold-start 产物。
+
+**Decision**
+采用选项 2。用户明确要求把 `validation/opencode-cold-start` 合并到 `main`，合并提交为 `a2d7af5`；后续从任务 3 开始。
+
+**Reason**
+修正提交 `07d135e` 已满足 PLAN 对 Tasks 1–2 的增强合同，合并前后均有最新验证，独立复审无剩余 Critical、Important 或 Minor。重新实现只会伪造或重复已经真实完成的 RED→GREEN 历史。
+
+**Consequences**
+保留原始失败和直接合并（无 PR）的真实记录；Tasks 3–24 必须恢复独立分支、PR、TDD、规格审查和代码质量审查，不得把 Tasks 1–2 的证据外推为完整产品完成。

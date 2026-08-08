@@ -1,6 +1,6 @@
 # MuseEcho Blockers
 
-当前存在一个已确认的外部审批通道 Blocker（`CS-001`）。它不阻塞仓库内的文档、编码和本地测试，但会阻止 Codex 代为执行需要提升到用户会话的命令。
+当前没有阻塞本地继续实施的已确认 Blocker。历史审批通道问题 `CS-001` 已在本轮通过多次真实提权命令成功执行而关闭。
 
 以下是尚未到达执行时点的外部 gate，不在本阶段虚假标记为 Blocker：
 
@@ -17,14 +17,14 @@
 
 ## CS-001：Codex 外部命令审批通道连接中断
 
-- **状态**：OPEN；OpenCode cold-start 与本次环境复核均已由用户在可见终端完成，但同一故障仍可能阻止 Codex 今后代为执行其他需要外部权限的命令。
+- **状态**：RESOLVED（2026-08-08）；本轮 Docker 验证、Git 合并/提交和 GitHub 推送均通过正常审批通道成功执行。
 - **问题**：Codex 在执行已获用户明确批准、且不读取密钥正文的外部命令前，自动审批服务反复连接中断；命令本身没有开始执行。
 - **精确错误**：`Automatic approval review failed: stream disconnected before completion: error sending request for url (https://chatgpt.com/backend-api/codex/responses)`。
 - **相关命令**：`opencode.cmd run --help`；隔离 worktree 中的 `opencode.cmd run ... --model deepseek/deepseek-v4-flash ...`；位置参数前置的最小 parser probe。所有记录均不含 API Key。
 - **已尝试方案**：1）用户首次明确批准后读取 run 参数；2）披露第三方传输/命令边界并再次获批后启动真实 cold-start；3）发现 `--file` 参数解析问题后用最小、无模型调用的 parser probe 验证修正。三次都被相同审批连接中断拒绝；另一次真实命令到达 OpenCode 参数解析，但未调用模型。
 - **新增复核失败（2026-08-08 05:54 +08:00）**：用户逐字批准“只读环境权限复核（Docker、WSL、GitHub Actions、机器资源），不读取密钥正文，不修改任何设置”后，复核命令仍在执行前被同一审批错误拒绝。没有读取密钥、没有修改设置。
-- **推荐恢复**：等待审批服务恢复后重试；在此之前，用户可在自己的 PowerShell 中手动运行明确列出的只读命令并交回输出。不得通过其他命令间接绕过审批。
-- **仍可继续**：仓库内编码、测试、文档审阅和隔离 worktree 工作；不得在 cold-start 报告未完成审查、书面规格/计划未按报告修订并获得最终批准前创建 `HUMAN_APPROVAL.md` 或开始正式实现。
+- **恢复证据**：本轮没有绕过审批；需要用户会话权限的命令经正常批准后成功执行。若将来同一错误再次出现，应作为新事件重新记录，而不是沿用已关闭状态。
+- **门禁结果**：corrected cold-start 已完成审查并合并，用户已明确授权最终修订和生成 `HUMAN_APPROVAL.md`。
 
 ## 用户会话与外部准备状态
 

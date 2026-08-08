@@ -11,24 +11,22 @@
 ## 0. 当前门禁与真实性约束
 
 - `SPEC.md` 已由用户在 2026-08-08 以原话“好，批准书面SPEC，进行下一步”批准。
-- 本 `PLAN.md` 已由用户在 2026-08-08 以原话“批准 PLAN”书面批准；该批准只授权进入 cold-start，不等于最终正式实施授权。
-- `HUMAN_APPROVAL.md` 当前不存在；在下列门禁全部完成前不得创建，更不得开始正式实现：
+- 本 `PLAN.md` 已由用户在 2026-08-08 以原话“批准 PLAN”批准进入 cold-start；在 corrected cold-start 完成后，用户又以原话“合并到主分支，最后审查修订SPEC和PLAN，批准生成HUMAN_APPROVAL.md”批准最终修订和正式实施。
+- `HUMAN_APPROVAL.md` 仅在下列门禁完成后生成，并引用本次最终 SPEC/PLAN 修订提交：
   1. 用户批准当前 `PLAN.md`（已完成）；
   2. 使用与 Codex 不同类型的全新 Agent，仅凭已批准的 SPEC、PLAN 和必要文件冷启动尝试任务 1–2（已完成）；
   3. 在 `SPEC_PROCESS.md`、`AGENT_LOG.md` 中如实记录结果、误解和修订（已完成）；
-  4. 用户针对修订后的 SPEC/PLAN 当前提交哈希明确确认正式实施，届时才创建 `HUMAN_APPROVAL.md`。
+  4. 用户明确确认合并、最终审查修订并授权生成 `HUMAN_APPROVAL.md`（已完成；批准文件在本次修订提交后生成并锚定该提交）。
 - 不伪造测试、CI、PR、审查、人工参与、部署或公网可用性证据。
 - `ai4coding-agentos-lab/` 与 `docs/input/` 是未跟踪的课程/旧项目资料，不纳入 MuseEcho 提交。
 
 ### 0.1 Cold-start 审查结论
 
-- OpenCode 使用 `njusehub/deepseek-v4-flash` 在隔离分支 `validation/opencode-cold-start` 尝试了任务 1–2，并生成 `COLD_START_REPORT.md`；该分支仅作为规约验证证据，不合并其实现。
-- 报告中的 13 个后端测试、1 个前端测试、mypy、限定范围 Ruff 和前端构建已由 Codex 复现通过；但 PLAN 规定的 `ruff check .` 真实返回 11 个迁移文件错误。
-- 任务 1 暴露出正式实施必须补齐 `uv.lock`、README、生成物忽略规则，并保证干净 checkout 无需手工创建 `data/` 即可迁移和启动。
-- 任务 2 暴露出正式实施必须真实实现 `SqliteAnalysisRepository`；测试必须经仓储端口往返，不能只直接操作 ORM。
-- SQLite 每个连接必须显式启用并验证 `PRAGMA foreign_keys=ON`。审查探针证明当前 cold-start 代码为 `0`，删除父任务后 `ChordEvent` 仍存在，因此“级联删除通过”的报告只覆盖了单个 ORM relationship，不能作为隐私删除证据。
-- 所有秒级区间、置信度、来源类型、UTC 时间、阶段与进度不变量必须在领域边界拒绝非法值；失败、删除、过期必须有明确合法转换，而不是被通用顺序索引偶然阻止。
-- 正式实施仍从最新 `main` 按任务 1 的 RED 测试开始，不复制未审查 cold-start 产物或把其测试结果冒充正式任务证据。
+- OpenCode 使用 `njusehub/deepseek-v4-flash` 在隔离分支 `validation/opencode-cold-start` 尝试任务 1–2，并生成 `COLD_START_REPORT.md`。原始提交 `1a3545d` 因全量 lint、仓储端口、SQLite 外键、领域不变量、UTC 和交付卫生缺陷被拒绝。
+- Codex 按 RED→GREEN 修正上述问题，并补齐 `access_grants`、`encrypted_audio`、原子 `AnalysisResult` 事务、回滚、WAL、状态一致性、有限数/JSON/时长边界、工具锁定和 README；修正提交为 `07d135e`。
+- 三轮独立复审最终确认 Critical、Important、Minor 均为 0；合并前与合并后的主分支验证均为 39 个 Python 测试通过，Ruff、mypy、全新 Alembic upgrade/check 通过，Node 22 容器内前端测试、类型检查与构建通过，npm audit 为 0 漏洞。
+- 用户明确选择把 corrected cold-start 合并到 `main`；合并提交为 `a2d7af5`。这是真实、经审查的 Tasks 1–2 实施，不再要求从头重演；后续实现从任务 3 开始，并继续遵守分支、PR、TDD 和两阶段审查协议。
+- 原始失败、修正过程和命令证据继续保留，不把被拒绝的 13-test 结果冒充最终证据，也不声称尚未发生的 CI、部署或产品验收已经完成。
 
 ## 1. 全局工程合同
 
@@ -139,7 +137,7 @@ def test_health_reports_ready(client):
 
 **最终命令：** `uv run pytest -q && uv run ruff check . && uv run mypy src && npm --prefix frontend test -- --run && npm --prefix frontend run build`
 
-**并行：** 否，所有后续任务依赖它。**对应验收标准：** AC-F 工程可构建与测试基线。**分支：** `feat/01-foundation`。**计划提交：** `build: bootstrap MuseEcho application`。**实际提交：** 待执行。
+**并行：** 否，所有后续任务依赖它。**对应验收标准：** AC-F 工程可构建与测试基线。**分支：** `validation/opencode-cold-start`。**计划提交：** `build: bootstrap MuseEcho application`。**实际提交：** `07d135e`（随 `a2d7af5` 合并，已完成）。
 
 ### 任务 2：领域模型、状态机与 SQLite 迁移
 
@@ -163,9 +161,9 @@ def test_job_cannot_skip_from_queued_to_chords(job):
 
 **重构：** 用领域枚举与值对象消除字符串散落，事务边界留在仓储。
 
-**最终命令：** `uv run pytest tests/unit/test_job_state.py tests/integration/test_repository.py -q && uv run alembic upgrade head && uv run ruff check src tests`
+**最终命令：** `uv run pytest tests/unit/test_job_state.py tests/unit/test_domain_models.py tests/integration/test_repository.py -q && uv run alembic upgrade head && uv run alembic check && uv run ruff check . && uv run mypy src`
 
-**并行：** 否。**依赖：** T1。**对应验收标准：** AC-A 真实阶段、AC-E 级联删除与 AC-F 可维护持久化。**分支：** `feat/02-domain-storage`。**计划提交：** `feat: add analysis domain and sqlite persistence`。**实际提交：** 待执行。
+**并行：** 否。**依赖：** T1。**对应验收标准：** AC-A 真实阶段、AC-E 级联删除与 AC-F 可维护持久化。**分支：** `validation/opencode-cold-start`。**计划提交：** `feat: add analysis domain and sqlite persistence`。**实际提交：** `07d135e`（随 `a2d7af5` 合并，已完成）。
 
 ### 任务 3：能力令牌、Cookie 与请求边界防护
 
@@ -781,9 +779,16 @@ def test_delivery_status_matches_evidence(report):
 - [x] 关键接口、时间单位、置信度/unknown、证据白名单、数据源标记和删除顺序无占位符。
 - [x] 真实外部条件（第二类 Agent、GitHub/GitLab CI、腾讯云账号/域名/SSH、公网实测、人工验收）保持为未来门禁，不声称已发生。
 - [x] 用户审阅并批准本计划。
-- [ ] 第二类全新 Agent 完成真实 cold-start，结果已回写且必要修订再次获批。
-- [ ] `HUMAN_APPROVAL.md` 由真实用户批准触发并引用当时 SPEC/PLAN 提交哈希。
+- [x] 第二类全新 Agent 完成真实 cold-start，结果已回写，修正实现通过独立复审并由用户批准合并。
+- [x] 用户已明确触发 `HUMAN_APPROVAL.md`；该文件作为本次 SPEC/PLAN 修订提交的直接后续提交生成并引用其哈希。
 
 ## 5. 实施记录
 
-本节只在真实执行后追加：任务号、分支、PR、RED 摘要、GREEN 摘要、两阶段审查结论、合并提交与遗留问题。当前为空，不预填证据。
+### Tasks 1–2：工程骨架与领域/SQLite 基线
+
+- **分支：** `validation/opencode-cold-start`。
+- **RED/审查：** 原始提交 `1a3545d` 的全量 Ruff、仓储/外键/级联、领域不变量、UTC 与干净 checkout 探针失败，未被接受。
+- **GREEN：** 修正提交 `07d135e`；39 个 Python 测试、Ruff、mypy、fresh Alembic upgrade/check、Node 22 前端测试/typecheck/build 和 npm audit 通过。
+- **审查：** 三轮独立复审后 Critical/Important/Minor 均为 0。
+- **合并：** 用户明确选择本地合并；`a2d7af5` 合入 `main`。本次 cold-start 特例没有 PR，已如实记录；任务 3 起恢复独立分支和 PR 协议。
+- **遗留：** Tasks 3–24 未开始；外部 CI、腾讯云部署和最终学生验收仍是未来证据。

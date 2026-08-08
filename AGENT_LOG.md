@@ -78,3 +78,12 @@
 - **领域探针**：非法区间、`confidence=1.5` 可构造；AnalysisJob 无 progress；queued→failed 被拒；UTC datetime 经 SQLite 往返后 `tzinfo=None`。
 - **交付卫生**：缺少 `uv.lock` 和 README；`src/museecho.egg-info`、`frontend/tsconfig.tsbuildinfo` 未被忽略；被忽略的 `data/` 依赖手工创建。
 - **结论**：cold-start 有效但任务 1–2 不接受为正式实现。SPEC 功能范围不变；PLAN 已按发现增强。等待用户针对修订提交哈希批准正式实施。
+
+## 2026-08-08 — CORRECTED COLD-START / FINAL SPEC-PLAN REVIEW
+
+- **修正范围**：在隔离分支修正被拒绝的 OpenCode Tasks 1–2 产物；未实施 Tasks 3–24。
+- **提交与审查**：原始证据 `1a3545d`；修正 `07d135e`；三轮独立复审最终为 Critical 0、Important 0、Minor 0。
+- **验证**：合并前及合并后的 `main` 均为 39 个 Python 测试通过，Ruff、格式、mypy 通过；fresh Alembic upgrade/check 通过；Node 22 容器前端测试、typecheck、build 通过，npm audit 0 漏洞。
+- **用户决定**：用户原话“合并到主分支，最后审查修订SPEC和PLAN，批准生成HUMAN_APPROVAL.md”。
+- **合并**：`validation/opencode-cold-start` 通过 `a2d7af5` 合入 `main`；用户未跟踪的课程资料目录未纳入提交。
+- **最终审查**：SPEC 产品范围不变；PLAN 更新门禁、Tasks 1–2 实际提交和后续从 Task 3 开始的基线。未声称 CI、腾讯云部署或最终产品验收已完成。
