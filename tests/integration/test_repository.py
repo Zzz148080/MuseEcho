@@ -409,3 +409,32 @@ def test_database_cascade_removes_every_child_table(tmp_path):
     with factory() as session:
         counts = [session.scalar(select(func.count()).select_from(model)) for model in models]
     assert counts == [0] * len(models)
+
+
+def test_repository_lists_only_active_jobs_in_creation_order(tmp_path):
+    _, _, repository = _database(tmp_path)
+    base = datetime.now(timezone.utc)
+
+    def job_at(offset: int) -> AnalysisJob:
+        created_at = base + timedelta(seconds=offset)
+        return AnalysisJob(
+            created_at=created_at,
+            updated_at=created_at,
+            expires_at=created_at + timedelta(hours=24),
+        )
+
+    queued = job_at(0)
+    validating = job_at(1)
+    failed = job_at(2)
+    complete = job_at(3)
+    for job in (queued, validating, failed, complete):
+        repository.add(job)
+    validating.advance_to(AnalysisStage.VALIDATING)
+    repository.update(validating)
+    failed.fail("decode_failed")
+    repository.update(failed)
+    for stage in list(AnalysisStage)[1:9]:
+        complete.advance_to(stage)
+    repository.update(complete)
+
+    assert [job.id for job in repository.list_active()] == [queued.id, validating.id]
