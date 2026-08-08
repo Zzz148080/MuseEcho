@@ -190,7 +190,7 @@ def test_authorize_compares_hash_not_raw_token(repo, access_service):
 
 **最终命令：** `uv run pytest tests/unit/test_access_service.py tests/api/test_access_control.py -q`
 
-**并行：** 是，可与 T4/T5 并行。**依赖：** T2。**对应验收标准：** AC-E 未授权访问不可区分且修改请求受保护。**分支：** `feat/03-capability-access`。**计划提交：** `feat: secure analysis capability access`。**实际提交：** 待执行。
+**并行：** 是，可与 T4/T5 并行。**依赖：** T2。**对应验收标准：** AC-E 未授权访问不可区分且修改请求受保护。**分支：** `feat/03-capability-access`。**计划提交：** `feat: secure analysis capability access`。**实际提交：** `4cc4c88`、`36a0729`、`66b0ed0`（实现与审查修复，已完成）。
 
 ### 任务 4：本地 Secret CLI 与提供方配置
 
