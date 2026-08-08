@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -96,8 +97,22 @@ class DecodedAudio:
     def __post_init__(self) -> None:
         if not self.pcm:
             raise ValueError("pcm cannot be empty")
-        if self.sample_rate <= 0 or self.channels <= 0:
-            raise ValueError("sample_rate and channels must be positive")
+        if self.sample_rate <= 0 or self.channels != 1:
+            raise ValueError("decoded audio must be positive-rate mono PCM")
+        if len(self.pcm) % 4 != 0:
+            raise ValueError("decoded PCM must contain complete float32 samples")
+        if sys.byteorder != "little":
+            raise ValueError("decoded PCM requires a little-endian host")
+        if not all(isfinite(sample) for sample in self.samples):
+            raise ValueError("decoded PCM samples must be finite")
+
+    @property
+    def samples(self) -> memoryview[float]:
+        return memoryview(self.pcm).cast("f")
+
+    @property
+    def duration_seconds(self) -> float:
+        return len(self.pcm) / (4 * self.sample_rate)
 
 
 @dataclass
