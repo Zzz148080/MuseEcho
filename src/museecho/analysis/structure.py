@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import string
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -103,56 +104,76 @@ def _select_multiscale_boundaries(
     aggregate_frames = max(1, round(0.25 * features.sample_rate / HOP_LENGTH))
     aggregated = _aggregate_chroma(features.chroma, aggregate_frames)
     bin_seconds = aggregate_frames * HOP_LENGTH / features.sample_rate
+    general_times, general_strengths = _general_novelty_boundaries(
+        aggregated,
+        bin_seconds,
+        features.duration_seconds,
+    )
     recurrent_aba = _prefix_suffix_recurrence_boundaries(
         aggregated,
         bin_seconds,
         features.duration_seconds,
     )
     if recurrent_aba is not None:
-        return recurrent_aba
-    maximum_scale = min(16.0, features.duration_seconds / 3.0)
+        recurrent_times, recurrent_strengths = recurrent_aba
+        first, second = recurrent_times
+        middle_duration = second - first
+        internal: list[tuple[float, float]] = []
+        if middle_duration > first + _MINIMUM_SEGMENT_SECONDS:
+            internal = [
+                (timestamp, strength)
+                for timestamp, strength in zip(general_times, general_strengths)
+                if timestamp - first >= _MINIMUM_SEGMENT_SECONDS
+                and second - timestamp >= _MINIMUM_SEGMENT_SECONDS
+            ]
+        combined = [
+            (first, recurrent_strengths[0]),
+            *internal,
+            (second, recurrent_strengths[1]),
+        ]
+        return _enforce_minimum_segments(combined, features.duration_seconds)
+    if _has_fast_periodic_changes(aggregated, bin_seconds):
+        return [], []
+    return _enforce_minimum_segments(
+        list(zip(general_times, general_strengths)),
+        features.duration_seconds,
+    )
+
+
+def _general_novelty_boundaries(
+    chroma: np.ndarray,
+    bin_seconds: float,
+    duration_seconds: float,
+) -> tuple[list[float], list[float]]:
+    maximum_scale = min(16.0, duration_seconds / 3.0)
     scales: list[float] = []
     scale = 0.5
     while scale <= maximum_scale + 1e-9:
         scales.append(scale)
         scale *= 2
-    best_single: tuple[list[float], list[float]] | None = None
     for scale_seconds in reversed(scales):
         window_bins = max(2, round(scale_seconds / bin_seconds))
-        novelty = _window_profile_novelty(aggregated, window_bins)
+        novelty = _window_profile_novelty(chroma, window_bins)
         maximum = float(np.max(novelty, initial=0.0))
         if maximum < 0.08:
             continue
         minimum_bins = max(
-            round(_MINIMUM_SEGMENT_SECONDS / bin_seconds),
+            math.ceil(_MINIMUM_SEGMENT_SECONDS / bin_seconds),
             round(0.75 * scale_seconds / bin_seconds),
         )
-        peaks, properties = find_peaks(
+        peaks, _properties = find_peaks(
             novelty,
             height=max(0.08, 0.45 * maximum),
             prominence=max(0.04, 0.2 * maximum),
             distance=minimum_bins,
         )
-        accepted = [
-            int(peak)
-            for peak in peaks
-            if peak >= minimum_bins and aggregated.shape[1] - peak >= minimum_bins
-        ]
+        accepted = [int(peak) for peak in peaks if 0 < peak < chroma.shape[1]]
         if not accepted:
             continue
         strengths = [float(np.clip(novelty[peak] / maximum, 0.0, 1.0)) for peak in accepted]
-        if len(accepted) == 1 and best_single is None:
-            timestamp = float(
-                np.clip(
-                    accepted[0] * bin_seconds,
-                    _MINIMUM_SEGMENT_SECONDS,
-                    features.duration_seconds - _MINIMUM_SEGMENT_SECONDS,
-                )
-            )
-            best_single = ([timestamp], strengths)
-    if _has_multiple_fine_changes(aggregated, bin_seconds):
-        return [], []
-    return best_single or ([], [])
+        timestamps = [float(peak * bin_seconds) for peak in accepted]
+        return timestamps, strengths
+    return [], []
 
 
 def _prefix_suffix_recurrence_boundaries(
@@ -160,7 +181,7 @@ def _prefix_suffix_recurrence_boundaries(
     bin_seconds: float,
     duration_seconds: float,
 ) -> tuple[list[float], list[float]] | None:
-    minimum_bins = max(2, round(_MINIMUM_SEGMENT_SECONDS / bin_seconds))
+    minimum_bins = max(2, math.ceil(_MINIMUM_SEGMENT_SECONDS / bin_seconds))
     maximum_bins = (chroma.shape[1] - minimum_bins) // 2
     for section_bins in range(maximum_bins, minimum_bins - 1, -1):
         prefix = chroma[:, :section_bins]
@@ -192,7 +213,7 @@ def _prefix_suffix_recurrence_boundaries(
     return None
 
 
-def _has_multiple_fine_changes(chroma: np.ndarray, bin_seconds: float) -> bool:
+def _has_fast_periodic_changes(chroma: np.ndarray, bin_seconds: float) -> bool:
     window_bins = max(2, round(0.5 / bin_seconds))
     novelty = _window_profile_novelty(chroma, window_bins)
     maximum = float(np.max(novelty, initial=0.0))
@@ -202,9 +223,41 @@ def _has_multiple_fine_changes(chroma: np.ndarray, bin_seconds: float) -> bool:
         novelty,
         height=max(0.08, 0.45 * maximum),
         prominence=max(0.04, 0.2 * maximum),
-        distance=max(1, round(_MINIMUM_SEGMENT_SECONDS / bin_seconds)),
+        distance=1,
     )
-    return bool(peaks.size > 1)
+    if peaks.size < 4:
+        return False
+    intervals = np.diff(peaks).astype(np.float64) * bin_seconds
+    mean_interval = float(np.mean(intervals))
+    if mean_interval <= 1e-12:
+        return False
+    regularity = float(np.std(intervals) / mean_interval)
+    return float(np.median(intervals)) < 1.5 and regularity < 0.35
+
+
+def _enforce_minimum_segments(
+    candidates: list[tuple[float, float]],
+    duration_seconds: float,
+) -> tuple[list[float], list[float]]:
+    accepted_times: list[float] = []
+    accepted_strengths: list[float] = []
+    previous = 0.0
+    for timestamp, strength in sorted(candidates):
+        timestamp = float(
+            np.clip(
+                timestamp,
+                _MINIMUM_SEGMENT_SECONDS,
+                duration_seconds - _MINIMUM_SEGMENT_SECONDS,
+            )
+        )
+        if timestamp - previous < _MINIMUM_SEGMENT_SECONDS - 1e-9:
+            continue
+        if duration_seconds - timestamp < _MINIMUM_SEGMENT_SECONDS - 1e-9:
+            continue
+        accepted_times.append(timestamp)
+        accepted_strengths.append(strength)
+        previous = timestamp
+    return accepted_times, accepted_strengths
 
 
 def _aggregate_chroma(chroma: np.ndarray, aggregate_frames: int) -> np.ndarray:

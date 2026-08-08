@@ -159,6 +159,54 @@ def test_one_second_final_section_respects_minimum_duration(first_seconds: float
     assert segments[-1].end_seconds - segments[-1].start_seconds >= 1.0
 
 
+@pytest.mark.parametrize("section_seconds", [2.0, 4.0, 8.0])
+def test_static_abc_sections_keep_all_novelty_boundaries(section_seconds: float):
+    frequencies = (
+        (261.6256, 329.6276, 391.9954),
+        (184.9972, 233.0819, 277.1826),
+        (146.8324, 184.9972, 220.0000),
+    )
+    samples = [sample for chord in frequencies for sample in _tones(chord, section_seconds)]
+
+    segments = segment_structure(samples, SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == ["A", "B", "C"]
+    assert segments[0].end_seconds == pytest.approx(section_seconds, abs=0.3)
+    assert segments[1].end_seconds == pytest.approx(2 * section_seconds, abs=0.3)
+
+
+@pytest.mark.parametrize(
+    ("sequence", "expected"),
+    [
+        ("ABAB", ["A", "B", "A", "B"]),
+        ("ABCA", ["A", "B", "C", "A"]),
+        ("ABCBA", ["A", "B", "C", "B", "A"]),
+    ],
+)
+def test_multiple_novelty_boundaries_preserve_recurrent_labels(sequence, expected):
+    frequencies = {
+        "A": (261.6256, 329.6276, 391.9954),
+        "B": (184.9972, 233.0819, 277.1826),
+        "C": (146.8324, 184.9972, 220.0000),
+    }
+    samples = [sample for label in sequence for sample in _tones(frequencies[label], 2.0)]
+
+    segments = segment_structure(samples, SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == expected
+    assert all(segment.end_seconds - segment.start_seconds >= 1.0 for segment in segments)
+
+
+def test_recurrent_one_second_sections_never_fall_below_minimum_duration():
+    section_a = _tones((261.6256, 329.6276, 391.9954), 1.0)
+    section_b = _tones((184.9972, 233.0819, 277.1826), 2.0)
+
+    segments = segment_structure(section_a + section_b + section_a, SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == ["A", "B", "A"]
+    assert all(segment.end_seconds - segment.start_seconds >= 1.0 for segment in segments)
+
+
 def test_segments_cover_audio_without_gaps_or_overrun():
     segments = segment_structure(_aba(), SAMPLE_RATE)
 
