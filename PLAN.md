@@ -300,7 +300,7 @@ def test_decode_normalizes_to_target_rate(sine_wav):
 
 **最终命令：** `uv run pytest tests/integration/test_decode.py -q`
 
-**并行：** 是，可与 T3–T5 并行。**依赖：** T1。**对应验收标准：** AC-A 真实可解码性校验与无版权合成基准。**分支：** `feat/07-audio-decoding`。**计划提交：** `feat: decode audio and generate test fixtures`。**实际提交：** 待执行。
+**并行：** 是，可与 T3–T5 并行。**依赖：** T1。**对应验收标准：** AC-A 真实可解码性校验与无版权合成基准。**分支：** `feat/07-audio-decoding`。**计划提交：** `feat: decode audio and generate test fixtures`。**实际提交：** `7daa96d`、`823d8cb`、`1a692f7`（解码与夹具、资源边界、输入与进程树隔离，已完成）。
 
 ### 任务 8：波形、节奏和能量事实
 

@@ -127,3 +127,14 @@
 - **验证**：Task 5 定向测试 `21 passed`；后端全量 `102 passed, 1 skipped`；Ruff format/check、mypy、`uv lock --check` 通过。前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 与 npm audit 通过；宿主 Node 24 仍对项目 Node 22 约束发出 `EBADENGINE` 警告，既有 cold-start 已在 Node 22 容器验证该基线。
 - **Git**：实现 `ad2f0b7`；生命周期与 SecretStore 加固 `db9898d`；跨实例擦除串行化 `ffa0fe4`。按用户既定流程，在最终验证后自动合并并推送 `main`，同时保留任务分支。
 - **额度策略**：未并行派发实现 Agent，只复用一个聚焦 reviewer；未出现平台额度耗尽提示，当前工具仍不提供额度读数或重置入口。
+
+## 2026-08-08 — TASK 7 / AUDIO DECODING AND FIXTURES
+
+- **执行顺序**：Task 6 明确依赖 Task 7，因此先保留空的 `feat/06-upload-queue` 分支与工作树，改从当时最新 `main` 创建 `feat/07-audio-decoding`；Task 7 合并后再把 Task 6 快进到最新基线。
+- **真实解码**：通过 FFprobe 先验元数据、FFmpeg 后续解码，把 WAV/MP3 规范化为目标采样率的单声道 little-endian float32 PCM；真实 FFmpeg 9.0 WAV/MP3 集成测试通过，工具缺失会明确失败而不是跳过。
+- **输入与诊断边界**：输入解析前强制 `format_whitelist=wav,mp3` 与 `protocol_whitelist=file,pipe`，阻断 HLS/concat 等嵌套协议访问；拒绝符号链接、损坏文件、超长音频和异常 PCM。stdout/stderr 均硬限长，完整输入路径先脱敏再截断，避免长路径泄漏。
+- **资源与进程边界**：解码结果上限 64 MiB，并按 `bytearray` 与最终 `bytes` 同时存活核算 128 MiB PCM 峰值；超预算在启动 FFprobe 前拒绝。POSIX 使用独立 session/process group，Windows 使用 Job Object 并保留 `taskkill /T` 回退；超时和输出超限均终止进程树、有界等待直接进程与 reader，后代持有输出管道的真实回归测试及时返回。
+- **领域契约与夹具**：`DecodedAudio` 要求完整、非空、单声道、正采样率、little-endian 且所有样本均为有限值，拒绝 NaN/Inf。程序生成正弦、节拍器、大/小三和弦、和弦进行、分段能量、静音、极短与损坏 WAV，并用固定 SHA256 验证可复现性；MP3 在测试时由真实 FFmpeg 编码，不提交受版权保护音频。
+- **TDD 与审查**：从模块不存在的 RED 开始；三轮聚焦复审依次发现并闭环非有限 PCM、无界输出、缺失真实工具覆盖、路径脱敏顺序、端序、夹具文档编码、嵌套协议访问、PCM 峰值与后代进程清理问题。最终 Critical 0、Important 0、Minor 0，结论 `READY`。
+- **验证**：Task 7 定向 `17 passed, 1 skipped`；后端全量 `119 passed, 2 skipped`；两个 skip 均因当前 Windows 会话无符号链接创建权限，生产代码仍主动拒绝符号链接。`ruff format --check src tests`、`ruff check .`、mypy 与 `uv lock --check` 通过；仓库级 `ruff format --check .` 仅报告已批准 `PLAN.md` 历史代码片段的排版差异，不属于运行时代码。
+- **Git**：实现与合成夹具 `7daa96d`；输出、PCM、非有限值和诊断边界加固 `823d8cb`；输入协议、峰值预算与进程树隔离 `1a692f7`。按用户既定流程，最终验证后自动合并并推送 `main`，同时保留任务分支。
