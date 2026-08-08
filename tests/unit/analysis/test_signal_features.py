@@ -25,6 +25,24 @@ def _metronome_samples(*, bpm: float = 120.0, duration_seconds: float = 8.0) -> 
     return samples
 
 
+def _subdivided_metronome_samples(*, duration_seconds: float = 8.0) -> list[float]:
+    beat_length = round(0.5 * SAMPLE_RATE)
+    subdivision_length = beat_length // 2
+    click_length = round(0.02 * SAMPLE_RATE)
+    samples: list[float] = []
+    for index in range(round(duration_seconds * SAMPLE_RATE)):
+        within_subdivision = index % subdivision_length
+        if within_subdivision >= click_length:
+            samples.append(0.0)
+            continue
+        subdivision_index = index // subdivision_length
+        amplitude = 0.8 if subdivision_index % 2 == 0 else 0.16
+        envelope = 1.0 - within_subdivision / click_length
+        click = math.sin(2.0 * math.pi * 1_500.0 * index / SAMPLE_RATE)
+        samples.append(amplitude * envelope * click)
+    return samples
+
+
 def test_metronome_estimates_120_bpm_with_monotonic_beats():
     samples = _metronome_samples()
 
@@ -37,6 +55,14 @@ def test_metronome_estimates_120_bpm_with_monotonic_beats():
     assert list(result.beat_positions_seconds) == sorted(result.beat_positions_seconds)
     assert all(0.0 <= value <= result.duration_seconds for value in result.beat_positions_seconds)
     assert result.rhythm_algorithm
+
+
+def test_weak_eighth_note_subdivisions_do_not_become_high_confidence_240_bpm():
+    result = extract_signal_features(_subdivided_metronome_samples(), SAMPLE_RATE)
+
+    assert result.bpm is None
+    assert result.bpm_confidence is None
+    assert result.beat_positions_seconds == ()
 
 
 @pytest.mark.parametrize("bpm", [180.0, 220.0])
@@ -83,6 +109,15 @@ def test_segmented_energy_detects_rise_and_fall_near_boundaries():
     assert result.energy.algorithm
 
 
+@pytest.mark.parametrize("bpm", [60.0, 120.0, 180.0, 220.0])
+def test_stable_metronome_beats_are_not_macro_energy_changes(bpm: float):
+    result = extract_signal_features(
+        _metronome_samples(bpm=bpm, duration_seconds=12.0), SAMPLE_RATE
+    )
+
+    assert result.energy_changes == ()
+
+
 def test_incomplete_tail_frame_does_not_create_a_false_energy_change():
     sample_count = 10 * 512 + 1
     samples = [0.5 * math.sin(2.0 * math.pi * index / 512.0) for index in range(sample_count)]
@@ -109,6 +144,7 @@ def test_energy_change_confidence_varies_with_margin_above_threshold():
         change_zscore=3.5,
         minimum_change=0.08,
         silence_rms=1e-4,
+        change_window_seconds=0.1,
     )
 
     assert len(changes) == 1
@@ -174,7 +210,17 @@ def test_invalid_signal_inputs_are_rejected(samples, sample_rate, message):
         {"energy_change_zscore": 0.0},
         {"minimum_energy_change": -0.1},
         {"minimum_energy_change": 0.0},
+        {"energy_change_window_seconds": 0.01},
+        {"energy_change_window_seconds": 10.0},
         {"minimum_rhythm_seconds": 0.0},
+        {"maximum_beat_accent_imbalance": -0.1},
+        {"maximum_beat_accent_imbalance": 1.1},
+        {"maximum_rhythm_sample_rate": 1},
+        {"maximum_rhythm_sample_rate": 10_000},
+        {"rhythm_n_fft": 513},
+        {"rhythm_band_count": 256},
+        {"rhythm_chunk_seconds": 1.0},
+        {"maximum_rhythm_sample_rate": 1_000, "minimum_rhythm_seconds": 0.25},
     ],
 )
 def test_signal_feature_config_rejects_invalid_values(kwargs):

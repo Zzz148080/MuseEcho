@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.ndimage import median_filter
 
 
 @dataclass(frozen=True)
@@ -21,7 +22,7 @@ class EnergyChange:
     direction: str
     magnitude: float
     confidence: float
-    algorithm: str = "robust-rms-delta-v1"
+    algorithm: str = "robust-smoothed-rms-delta-v2"
 
 
 def extract_energy(
@@ -33,6 +34,7 @@ def extract_energy(
     change_zscore: float,
     minimum_change: float,
     silence_rms: float,
+    change_window_seconds: float = 0.5,
 ) -> tuple[EnergySeries, tuple[EnergyChange, ...]]:
     rms_values = _frame_rms(samples, frame_length=frame_length, hop_length=hop_length)
     peak_rms = float(np.max(rms_values))
@@ -51,6 +53,7 @@ def extract_energy(
         hop_length=hop_length,
         change_zscore=change_zscore,
         minimum_change=minimum_change,
+        change_window_seconds=change_window_seconds,
     )
     return series, changes
 
@@ -84,20 +87,34 @@ def _find_energy_changes(
     hop_length: int,
     change_zscore: float,
     minimum_change: float,
+    change_window_seconds: float,
 ) -> tuple[EnergyChange, ...]:
     if normalized.size < 2 or float(np.max(normalized)) == 0.0:
         return ()
-    deltas = np.diff(normalized)
+    requested_window = max(3, round(change_window_seconds * sample_rate / hop_length))
+    if requested_window % 2 == 0:
+        requested_window += 1
+    maximum_window = normalized.size if normalized.size % 2 == 1 else normalized.size - 1
+    window_frames = max(1, min(requested_window, maximum_window))
+    smoothed = (
+        median_filter(normalized, size=window_frames, mode="nearest")
+        if window_frames >= 3
+        else normalized
+    )
+    comparison_lag = max(1, window_frames // 2)
+    deltas = smoothed[comparison_lag:] - smoothed[:-comparison_lag]
     median = float(np.median(deltas))
     deviations = np.abs(deltas - median)
     robust_sigma = 1.4826 * float(np.median(deviations))
     threshold = max(minimum_change, change_zscore * robust_sigma)
     candidates = [
-        index for index, delta in enumerate(deltas) if abs(float(delta) - median) >= threshold
+        index
+        for index, delta in enumerate(deltas)
+        if index >= comparison_lag and abs(float(delta)) >= threshold
     ]
     if not candidates:
         return ()
-    refractory_frames = max(1, math.ceil(frame_length / hop_length))
+    refractory_frames = max(window_frames, math.ceil(frame_length / hop_length))
     groups: list[list[int]] = []
     for candidate in candidates:
         if not groups or candidate - groups[-1][-1] > refractory_frames:
@@ -108,7 +125,7 @@ def _find_energy_changes(
     for group in groups:
         strongest = max(group, key=lambda index: abs(float(deltas[index]) - median))
         delta = float(deltas[strongest])
-        magnitude = abs(delta - median)
+        magnitude = abs(delta)
         confidence_margin = max(1e-12, 1.0 - threshold)
         confidence = 0.7 + 0.3 * min(
             1.0,
@@ -116,8 +133,10 @@ def _find_energy_changes(
         )
         changes.append(
             EnergyChange(
-                timestamp_seconds=float((strongest + 1) * hop_length / sample_rate),
-                direction="rise" if delta > median else "fall",
+                timestamp_seconds=float(
+                    (strongest + comparison_lag / 2.0) * hop_length / sample_rate
+                ),
+                direction="rise" if delta > 0.0 else "fall",
                 magnitude=float(magnitude),
                 confidence=float(confidence),
             )

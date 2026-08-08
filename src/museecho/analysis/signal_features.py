@@ -19,10 +19,12 @@ class SignalFeatureConfig:
     hop_length: int = 512
     energy_change_zscore: float = 3.5
     minimum_energy_change: float = 0.08
+    energy_change_window_seconds: float = 0.5
     minimum_rhythm_seconds: float = 2.0
     minimum_signal_rms: float = 1e-4
     minimum_rhythm_confidence: float = 0.55
     minimum_onset_periodicity: float = 0.2
+    maximum_beat_accent_imbalance: float = 0.25
     maximum_rhythm_sample_rate: int = 3_000
     rhythm_n_fft: int = 512
     rhythm_band_count: int = 32
@@ -40,16 +42,31 @@ class SignalFeatureConfig:
         _require_positive_finite(self.minimum_energy_change, "minimum_energy_change")
         if self.minimum_energy_change > 1.0:
             raise ValueError("minimum_energy_change cannot exceed 1")
+        _require_positive_finite(self.energy_change_window_seconds, "energy_change_window_seconds")
+        if not 0.1 <= self.energy_change_window_seconds <= 5.0:
+            raise ValueError("energy_change_window_seconds must be between 0.1 and 5")
         _require_positive_finite(self.minimum_rhythm_seconds, "minimum_rhythm_seconds")
         _require_nonnegative_finite(self.minimum_signal_rms, "minimum_signal_rms")
         if not 0.0 <= self.minimum_rhythm_confidence <= 1.0:
             raise ValueError("minimum_rhythm_confidence must be between 0 and 1")
         if not 0.0 <= self.minimum_onset_periodicity <= 1.0:
             raise ValueError("minimum_onset_periodicity must be between 0 and 1")
+        if not 0.0 <= self.maximum_beat_accent_imbalance <= 1.0:
+            raise ValueError("maximum_beat_accent_imbalance must be between 0 and 1")
         _require_positive_int(self.maximum_rhythm_sample_rate, "maximum_rhythm_sample_rate")
+        if not 1_000 <= self.maximum_rhythm_sample_rate <= 8_000:
+            raise ValueError("maximum_rhythm_sample_rate must be between 1000 and 8000")
         _require_positive_int(self.rhythm_n_fft, "rhythm_n_fft")
+        if not 128 <= self.rhythm_n_fft <= 2_048 or self.rhythm_n_fft.bit_count() != 1:
+            raise ValueError("rhythm_n_fft must be a power of two between 128 and 2048")
         _require_positive_int(self.rhythm_band_count, "rhythm_band_count")
+        if not 8 <= self.rhythm_band_count <= 128:
+            raise ValueError("rhythm_band_count must be between 8 and 128")
         _require_positive_finite(self.rhythm_chunk_seconds, "rhythm_chunk_seconds")
+        if not 5.0 <= self.rhythm_chunk_seconds <= 60.0:
+            raise ValueError("rhythm_chunk_seconds must be between 5 and 60")
+        if self.rhythm_n_fft > (self.maximum_rhythm_sample_rate * self.minimum_rhythm_seconds):
+            raise ValueError("rhythm_n_fft cannot exceed the minimum rhythm input length")
 
 
 @dataclass(frozen=True)
@@ -116,6 +133,7 @@ def extract_signal_features(
         change_zscore=selected.energy_change_zscore,
         minimum_change=selected.minimum_energy_change,
         silence_rms=selected.minimum_signal_rms,
+        change_window_seconds=selected.energy_change_window_seconds,
     )
     rhythm = estimate_rhythm(
         array,
@@ -125,6 +143,7 @@ def extract_signal_features(
         minimum_signal_rms=selected.minimum_signal_rms,
         minimum_confidence=selected.minimum_rhythm_confidence,
         minimum_onset_periodicity=selected.minimum_onset_periodicity,
+        maximum_beat_accent_imbalance=selected.maximum_beat_accent_imbalance,
         maximum_sample_rate=selected.maximum_rhythm_sample_rate,
         n_fft=selected.rhythm_n_fft,
         band_count=selected.rhythm_band_count,

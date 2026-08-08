@@ -30,6 +30,7 @@ def estimate_rhythm(
     minimum_signal_rms: float,
     minimum_confidence: float,
     minimum_onset_periodicity: float,
+    maximum_beat_accent_imbalance: float,
     maximum_sample_rate: int,
     n_fft: int,
     band_count: int,
@@ -71,6 +72,8 @@ def estimate_rhythm(
         chunk_seconds=chunk_seconds,
     )
     if frames.size < 3:
+        return _unknown_rhythm()
+    if _beat_accent_imbalance(onset_envelope, frames) > maximum_beat_accent_imbalance:
         return _unknown_rhythm()
     times = np.asarray(
         librosa.frames_to_time(
@@ -247,6 +250,20 @@ def _rhythm_confidence(
             0.4 * periodicity_quality + 0.3 * regularity + 0.2 * salience + 0.1 * coverage,
         )
     )
+
+
+def _beat_accent_imbalance(
+    onset_envelope: NDArray[np.floating], beat_frames: NDArray[np.int64]
+) -> float:
+    valid_frames = beat_frames[(beat_frames >= 0) & (beat_frames < onset_envelope.size)]
+    strengths = np.asarray(onset_envelope[valid_frames], dtype=np.float64)
+    strengths = strengths[strengths > 1e-12]
+    if strengths.size < 6:
+        return 0.0
+    even_accent = float(np.median(strengths[::2]))
+    odd_accent = float(np.median(strengths[1::2]))
+    reference = max(even_accent, odd_accent, 1e-12)
+    return abs(even_accent - odd_accent) / reference
 
 
 def _unknown_rhythm() -> RhythmEstimate:
