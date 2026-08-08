@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from museecho.analysis.decode import AudioDurationLimitError, AudioProbe
-from museecho.api.analyses import create_analyses_router
+from museecho.api.analyses import install_analyses_api
 from museecho.application.uploads import (
     FFmpegAudioValidator,
     UploadSubmissionService,
@@ -80,7 +80,11 @@ class RecordingQueue:
 
 
 def _client(
-    tmp_path: Path, validator: Any, *, max_bytes: int = 30 * 1024 * 1024
+    tmp_path: Path,
+    validator: Any,
+    *,
+    max_bytes: int = 30 * 1024 * 1024,
+    max_body_bytes: int | None = None,
 ) -> tuple[TestClient, MemoryRepository, RecordingStore, RecordingQueue]:
     repository = MemoryRepository()
     store = RecordingStore()
@@ -96,7 +100,10 @@ def _client(
         access_ttl=timedelta(hours=24),
     )
     app = FastAPI()
-    app.include_router(create_analyses_router(service))
+    if max_body_bytes is None:
+        install_analyses_api(app, service)
+    else:
+        install_analyses_api(app, service, max_body_bytes=max_body_bytes)
     return TestClient(app, base_url="https://museecho.test"), repository, store, queue
 
 
@@ -218,7 +225,10 @@ def test_repeated_uploads_are_isolated_jobs(tmp_path: Path):
     assert queue.submitted == [first_id, second_id]
 
 
-@pytest.mark.parametrize("filename", ["", ".wav", "track.WAV.exe"])
+@pytest.mark.parametrize(
+    "filename",
+    ["", ".wav", "track.WAV.exe", "folder/track.wav", r"folder\track.wav"],
+)
 def test_rejects_ambiguous_filenames(tmp_path: Path, filename: str):
     client, _, store, queue = _client(tmp_path, _valid_probe)
     response = client.post(
@@ -286,3 +296,184 @@ def test_ffmpeg_validator_requires_probe_and_successful_decode(tmp_path: Path, m
 
     assert result == probe
     assert calls == ["probe", "decode"]
+
+
+def test_request_body_limit_runs_before_multipart_parsing(tmp_path: Path):
+    validated = False
+
+    def validator(path: Path) -> AudioProbe:
+        nonlocal validated
+        validated = True
+        return _valid_probe(path)
+
+    client, repository, store, queue = _client(
+        tmp_path,
+        validator,
+        max_bytes=1024 * 1024,
+        max_body_bytes=512,
+    )
+    response = client.post(
+        "/api/analyses",
+        files={"file": ("large.wav", b"x" * 4096, "audio/wav")},
+    )
+
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "upload_too_large"
+    assert not validated
+    assert repository.jobs == {}
+    assert store.writes == []
+    assert queue.submitted == []
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_chunked_request_without_content_length_is_still_capped(tmp_path: Path):
+    validated = False
+
+    def validator(path: Path) -> AudioProbe:
+        nonlocal validated
+        validated = True
+        return _valid_probe(path)
+
+    client, repository, store, queue = _client(
+        tmp_path,
+        validator,
+        max_bytes=1024 * 1024,
+        max_body_bytes=256,
+    )
+    boundary = "museecho-boundary"
+    body = (
+        (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="file"; filename="large.wav"\r\n'
+            "Content-Type: audio/wav\r\n\r\n"
+        ).encode()
+        + b"x" * 4096
+        + f"\r\n--{boundary}--\r\n".encode()
+    )
+
+    def chunks():
+        for offset in range(0, len(body), 64):
+            yield body[offset : offset + 64]
+
+    response = client.post(
+        "/api/analyses",
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        content=chunks(),
+    )
+
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "upload_too_large"
+    assert not validated
+    assert repository.jobs == {}
+    assert store.writes == []
+    assert queue.submitted == []
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_validation_is_serialized_across_service_instances(tmp_path: Path, monkeypatch):
+    import threading
+
+    from museecho.application import uploads
+    from museecho.domain.models import DecodedAudio
+
+    first_path = tmp_path / "first.wav"
+    second_path = tmp_path / "second.wav"
+    first_path.write_bytes(b"first")
+    second_path.write_bytes(b"second")
+    first_started = threading.Event()
+    second_started = threading.Event()
+    release_first = threading.Event()
+    failures: list[BaseException] = []
+    probe = AudioProbe("wav", 1.0, 22_050, 1)
+
+    def fake_probe(path: Path, **_: Any) -> AudioProbe:
+        if path == first_path:
+            first_started.set()
+            assert release_first.wait(timeout=2)
+        else:
+            second_started.set()
+        return probe
+
+    monkeypatch.setattr(uploads, "probe_audio", fake_probe)
+    monkeypatch.setattr(
+        uploads,
+        "decode_audio",
+        lambda *_args, **_kwargs: DecodedAudio(b"\x00\x00\x00\x00", 22_050, 1),
+    )
+
+    def validate(validator: FFmpegAudioValidator, path: Path) -> None:
+        try:
+            validator(path)
+        except BaseException as exc:
+            failures.append(exc)
+
+    first = threading.Thread(target=validate, args=(FFmpegAudioValidator(), first_path))
+    second = threading.Thread(target=validate, args=(FFmpegAudioValidator(), second_path))
+    first.start()
+    assert first_started.wait(timeout=2)
+    second.start()
+    assert not second_started.wait(timeout=0.1)
+    release_first.set()
+    first.join(timeout=2)
+    second.join(timeout=2)
+
+    assert not first.is_alive()
+    assert not second.is_alive()
+    assert second_started.is_set()
+    assert failures == []
+
+
+def test_startup_removes_abandoned_plaintext_but_preserves_unrelated_files(tmp_path: Path):
+    temp_root = tmp_path / "uploads"
+    stale = temp_root / "upload-abandoned"
+    stale.mkdir(parents=True)
+    (stale / "plaintext.wav").write_bytes(b"private audio")
+    unrelated = temp_root / "keep.txt"
+    unrelated.write_text("keep", encoding="utf-8")
+
+    UploadSubmissionService(
+        repository=MemoryRepository(),
+        audio_store=RecordingStore(),
+        access_service=RecordingAccessService(),
+        queue=RecordingQueue(),
+        temp_root=temp_root,
+        validator=_valid_probe,
+    )
+
+    assert not stale.exists()
+    assert unrelated.read_text(encoding="utf-8") == "keep"
+
+
+def test_resource_limits_can_be_lowered_but_not_raised(tmp_path: Path):
+    from museecho.application.uploads import (
+        DEFAULT_MAX_DURATION_SECONDS,
+        DEFAULT_MAX_UPLOAD_BYTES,
+    )
+
+    with pytest.raises(ValueError, match="supported limit"):
+        FFmpegAudioValidator(max_duration_seconds=DEFAULT_MAX_DURATION_SECONDS + 0.1)
+
+    with pytest.raises(ValueError, match="supported limit"):
+        UploadSubmissionService(
+            repository=MemoryRepository(),
+            audio_store=RecordingStore(),
+            access_service=RecordingAccessService(),
+            queue=RecordingQueue(),
+            temp_root=tmp_path,
+            validator=_valid_probe,
+            max_bytes=DEFAULT_MAX_UPLOAD_BYTES + 1,
+        )
+
+    from museecho.api.analyses import (
+        DEFAULT_MAX_UPLOAD_REQUEST_BYTES,
+        UploadBodyLimitMiddleware,
+    )
+
+    async def passthrough(_scope, _receive, _send):
+        return None
+
+    with pytest.raises(ValueError, match="supported limit"):
+        UploadBodyLimitMiddleware(
+            passthrough,
+            max_body_bytes=DEFAULT_MAX_UPLOAD_REQUEST_BYTES + 1,
+        )

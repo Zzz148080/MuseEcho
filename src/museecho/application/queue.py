@@ -6,6 +6,7 @@ import threading
 import time
 import uuid
 from collections.abc import Callable, Sequence
+from datetime import datetime, timedelta, timezone
 from typing import Protocol
 
 from museecho.domain.status import AnalysisJob, AnalysisStage, InvalidStageTransition
@@ -38,10 +39,12 @@ class SingleWorkerQueue:
         repository: QueueRepository,
         handler: Callable[[uuid.UUID], None],
         *,
+        clock: Callable[[], datetime] | None = None,
         thread_name: str = "museecho-analysis-worker",
     ) -> None:
         self._repository = repository
         self._handler = handler
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._thread_name = thread_name
         self._items: queue.Queue[uuid.UUID | object] = queue.Queue()
         self._condition = threading.Condition()
@@ -57,6 +60,8 @@ class SingleWorkerQueue:
             self._accepting = True
             if recover:
                 for job in self._repository.list_active():
+                    if self._expire_if_needed(job):
+                        continue
                     job.record_retry()
                     self._repository.update(job)
                     self._enqueue_locked(job.id)
@@ -75,7 +80,7 @@ class SingleWorkerQueue:
             job = self._repository.get(analysis_id)
             if job is None:
                 raise KeyError(str(analysis_id))
-            if job.status.is_terminal:
+            if self._expire_if_needed(job):
                 return
             self._enqueue_locked(analysis_id)
 
@@ -125,6 +130,12 @@ class SingleWorkerQueue:
                 analysis_id = item
                 if not isinstance(analysis_id, uuid.UUID):
                     continue
+                job = self._repository.get(analysis_id)
+                if job is None or self._expire_if_needed(job):
+                    with self._condition:
+                        self._pending.discard(analysis_id)
+                        self._condition.notify_all()
+                    continue
                 with self._condition:
                     self._active = True
                     self._condition.notify_all()
@@ -153,6 +164,21 @@ class SingleWorkerQueue:
         except InvalidStageTransition:
             return
         self._repository.update(job)
+
+    def _expire_if_needed(self, job: AnalysisJob) -> bool:
+        if job.status.is_terminal:
+            return True
+        expires_at = job.expires_at
+        if expires_at is None:
+            return False
+        now = self._clock()
+        if now.tzinfo is None or now.utcoffset() != timedelta(0):
+            raise ValueError("clock must return an aware UTC datetime")
+        if expires_at > now:
+            return False
+        job.expire()
+        self._repository.update(job)
+        return True
 
 
 class StagePipeline:

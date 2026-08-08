@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import math
 import os
+import shutil
+import threading
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from functools import wraps
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import BinaryIO, Protocol
+from typing import BinaryIO, ParamSpec, Protocol, TypeVar
 
 from museecho.analysis.decode import AudioProbe, decode_audio, probe_audio
 from museecho.domain.models import EncryptedAudioMetadata, IssuedAccess
@@ -19,6 +22,22 @@ DEFAULT_MAX_DURATION_SECONDS = 600.0
 COPY_CHUNK_BYTES = 64 * 1024
 _ALLOWED_EXTENSIONS = {".wav": "wav", ".mp3": "mp3"}
 _CANONICAL_MEDIA_TYPES = {"wav": "audio/wav", "mp3": "audio/mpeg"}
+
+_VALIDATION_GATE = threading.Lock()
+_TEMP_ROOT_INIT_LOCK = threading.Lock()
+_PREPARED_TEMP_ROOTS: set[Path] = set()
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+
+def _serialized_validation(function: Callable[_P, _R]) -> Callable[_P, _R]:
+    @wraps(function)
+    def locked(*args: _P.args, **kwargs: _P.kwargs) -> _R:
+        with _VALIDATION_GATE:
+            return function(*args, **kwargs)
+
+    return locked
 
 
 class UploadError(ValueError):
@@ -69,12 +88,17 @@ class FFmpegAudioValidator:
         ffprobe_executable: str = "ffprobe",
         ffmpeg_executable: str = "ffmpeg",
     ) -> None:
-        if not math.isfinite(max_duration_seconds) or max_duration_seconds <= 0:
-            raise ValueError("max_duration_seconds must be positive and finite")
+        if (
+            not math.isfinite(max_duration_seconds)
+            or max_duration_seconds <= 0
+            or max_duration_seconds > DEFAULT_MAX_DURATION_SECONDS
+        ):
+            raise ValueError("max_duration_seconds must be within the supported limit")
         self._max_duration_seconds = max_duration_seconds
         self._ffprobe_executable = ffprobe_executable
         self._ffmpeg_executable = ffmpeg_executable
 
+    @_serialized_validation
     def __call__(self, path: Path) -> AudioProbe:
         probe = probe_audio(
             path,
@@ -104,15 +128,15 @@ class UploadSubmissionService:
         access_ttl: timedelta = timedelta(hours=24),
         clock: Callable[[], datetime] | None = None,
     ) -> None:
-        if max_bytes <= 0:
-            raise ValueError("max_bytes must be positive")
+        if max_bytes <= 0 or max_bytes > DEFAULT_MAX_UPLOAD_BYTES:
+            raise ValueError("max_bytes must be within the supported limit")
         if access_ttl <= timedelta(0):
             raise ValueError("access_ttl must be positive")
         self._repository = repository
         self._audio_store = audio_store
         self._access_service = access_service
         self._queue = queue
-        self._temp_root = temp_root
+        self._temp_root = _prepare_temp_root(temp_root)
         self._validator = validator or FFmpegAudioValidator()
         self._max_bytes = max_bytes
         self._access_ttl = access_ttl
@@ -122,7 +146,6 @@ class UploadSubmissionService:
         self, source: BinaryIO, *, filename: str, media_type: str | None
     ) -> SubmittedAnalysis:
         expected_format = _expected_format(filename)
-        self._temp_root.mkdir(parents=True, exist_ok=True)
         with TemporaryDirectory(prefix="upload-", dir=self._temp_root) as directory:
             isolated_path = Path(directory) / uuid.uuid4().hex
             _copy_bounded(source, isolated_path, self._max_bytes)
@@ -170,8 +193,64 @@ class UploadSubmissionService:
             raise
 
 
+def _prepare_temp_root(root: Path) -> Path:
+    with _TEMP_ROOT_INIT_LOCK:
+        try:
+            if _is_link(root):
+                raise UploadError("temporary upload root cannot be a link")
+            root.mkdir(parents=True, exist_ok=True)
+            resolved = root.resolve(strict=True)
+            if not resolved.is_dir() or _is_link(root):
+                raise UploadError("temporary upload root is invalid")
+            if resolved not in _PREPARED_TEMP_ROOTS:
+                _remove_abandoned_uploads(resolved)
+                if os.name == "posix":
+                    resolved.chmod(0o700)
+                _PREPARED_TEMP_ROOTS.add(resolved)
+            return resolved
+        except UploadError:
+            raise
+        except OSError:
+            raise UploadError("temporary upload root could not be prepared") from None
+
+
+def _remove_abandoned_uploads(root: Path) -> None:
+    for entry in root.iterdir():
+        if not entry.name.startswith("upload-"):
+            continue
+        try:
+            if entry.is_symlink():
+                entry.unlink()
+            elif _is_junction(entry):
+                os.rmdir(entry)
+            elif entry.is_dir():
+                shutil.rmtree(entry)
+            else:
+                entry.unlink()
+        except FileNotFoundError:
+            continue
+        except OSError:
+            raise UploadError("abandoned plaintext upload could not be removed") from None
+
+
+def _is_junction(path: Path) -> bool:
+    checker = getattr(path, "is_junction", None)
+    return bool(checker is not None and checker())
+
+
+def _is_link(path: Path) -> bool:
+    return path.is_symlink() or _is_junction(path)
+
+
 def _expected_format(filename: str) -> str:
-    if not filename or "\x00" in filename or len(filename) > 255 or Path(filename).name != filename:
+    if (
+        not filename
+        or "\x00" in filename
+        or len(filename) > 255
+        or "/" in filename
+        or "\\" in filename
+        or Path(filename).name != filename
+    ):
         raise UnsupportedAudioError("only unambiguous WAV and MP3 filenames are supported")
     path = Path(filename)
     if not path.stem or path.stem == ".":

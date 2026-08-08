@@ -188,3 +188,89 @@ def test_stage_pipeline_advances_only_after_real_work_finishes():
     finally:
         release_validation.set()
         thread.join(timeout=2)
+
+    assert not thread.is_alive()
+    current = repository.get(job.id)
+    assert current is not None
+    assert current.status is AnalysisStage.VALIDATING
+
+
+def test_stage_pipeline_resumes_after_last_completed_stage():
+    job = AnalysisJob()
+    job.advance_to(AnalysisStage.VALIDATING)
+    repository = MemoryQueueRepository([job])
+    observed: list[AnalysisStage] = []
+    pipeline = StagePipeline(
+        repository,
+        lambda _analysis_id, stage: observed.append(stage),
+        stages=(AnalysisStage.VALIDATING, AnalysisStage.DECODING),
+    )
+
+    pipeline(job.id)
+
+    assert observed == [AnalysisStage.DECODING]
+    current = repository.get(job.id)
+    assert current is not None
+    assert current.status is AnalysisStage.DECODING
+
+
+def test_expired_job_is_not_recovered_or_counted_as_retry():
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+    job = AnalysisJob(
+        created_at=now - timedelta(days=2),
+        updated_at=now - timedelta(days=2),
+        expires_at=now - timedelta(days=1),
+    )
+    repository = MemoryQueueRepository([job])
+    observed: list[uuid.UUID] = []
+    queue = SingleWorkerQueue(repository, observed.append, clock=lambda: now)
+
+    queue.start()
+    try:
+        assert queue.wait_for_idle(timeout=2)
+    finally:
+        queue.stop()
+
+    current = repository.get(job.id)
+    assert current is not None
+    assert current.status is AnalysisStage.EXPIRED
+    assert current.retry_count == 0
+    assert observed == []
+
+
+def test_job_that_expires_while_queued_is_not_executed():
+    from datetime import datetime, timedelta, timezone
+
+    current_time = [datetime.now(timezone.utc)]
+    expires_at = current_time[0] + timedelta(minutes=1)
+    first = AnalysisJob(expires_at=expires_at)
+    second = AnalysisJob(expires_at=expires_at)
+    repository = MemoryQueueRepository([first, second])
+    first_started = threading.Event()
+    release_first = threading.Event()
+    observed: list[uuid.UUID] = []
+
+    def handler(analysis_id: uuid.UUID) -> None:
+        observed.append(analysis_id)
+        if analysis_id == first.id:
+            first_started.set()
+            assert release_first.wait(timeout=2)
+
+    queue = SingleWorkerQueue(repository, handler, clock=lambda: current_time[0])
+    queue.start(recover=False)
+    try:
+        queue.submit(first.id)
+        queue.submit(second.id)
+        assert first_started.wait(timeout=2)
+        current_time[0] = expires_at + timedelta(seconds=1)
+        release_first.set()
+        assert queue.wait_for_idle(timeout=2)
+    finally:
+        queue.stop()
+
+    expired = repository.get(second.id)
+    assert expired is not None
+    assert expired.status is AnalysisStage.EXPIRED
+    assert observed == [first.id]
