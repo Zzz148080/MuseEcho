@@ -521,6 +521,14 @@ class SqliteAnalysisRepository:
                 model.sha256,
             )
 
+    def destroy_encrypted_audio_key(self, analysis_id: uuid.UUID) -> None:
+        with session_scope(self._session_factory) as session:
+            session.execute(
+                delete(EncryptedAudioModel).where(
+                    EncryptedAudioModel.analysis_id == str(analysis_id)
+                )
+            )
+
     def add_explanation(self, explanation: Explanation) -> None:
         with session_scope(self._session_factory) as session:
             track = session.get(TrackAnalysisModel, str(explanation.analysis_id))
