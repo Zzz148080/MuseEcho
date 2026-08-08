@@ -87,3 +87,9 @@
 - **用户决定**：用户原话“合并到主分支，最后审查修订SPEC和PLAN，批准生成HUMAN_APPROVAL.md”。
 - **合并**：`validation/opencode-cold-start` 通过 `a2d7af5` 合入 `main`；用户未跟踪的课程资料目录未纳入提交。
 - **最终审查**：SPEC 产品范围不变；PLAN 更新门禁、Tasks 1–2 实际提交和后续从 Task 3 开始的基线。未声称 CI、腾讯云部署或最终产品验收已完成。
+
+## 2026-08-08 — HUMAN APPROVAL CREATED
+
+- **批准锚点**：最终 SPEC/PLAN 修订提交 `e1ecaae359db129b779f1ddcc83665bca8cdfe1c`；`HUMAN_APPROVAL.md` 同时记录 SPEC/PLAN 的 Git blob 和 SHA-256。
+- **真实性**：批准文件逐字引用用户“合并到主分支，最后审查修订SPEC和PLAN，批准生成HUMAN_APPROVAL.md”的指示；不伪造签名或扩大授权。
+- **实施状态**：正式门禁已放行；Tasks 1–2 已完成，后续从 Task 3 开始。Tasks 3–24、CI、部署、公网验证和最终验收仍未完成。

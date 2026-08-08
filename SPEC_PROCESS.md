@@ -197,3 +197,9 @@ OpenCode 后续真实完成任务 1–2 初版，原始提交 `1a3545d` 被 Code
 > 合并到主分支，最后审查修订SPEC和PLAN，批准生成HUMAN_APPROVAL.md
 
 主 Agent 按该决定把验证分支合并到 `main`，合并提交为 `a2d7af5`。最终审查确认产品范围、Evidence First 原则、部署目标和 Tasks 3–24 不需改变；需要修订的是 SPEC/PLAN 的门禁状态、Tasks 1–2 实际提交与“cold-start 不合并”的过时表述。批准文件将在本次最终 SPEC/PLAN 修订提交后生成，并锚定该提交；这不代表未执行的 CI、部署或产品验收已经发生。
+
+## 12. HUMAN_APPROVAL 门禁放行
+
+最终 SPEC/PLAN 与过程记录以提交 `e1ecaae359db129b779f1ddcc83665bca8cdfe1c` 固定。主 Agent 随后根据用户本轮明确的“批准生成HUMAN_APPROVAL.md”指示创建 `HUMAN_APPROVAL.md`；文件记录用户原话，并引用该提交以及 SPEC/PLAN 的 Git blob 与 SHA-256。
+
+该批准授权以合并后的 Tasks 1–2 为基线，从 Task 3 开始正式实施。它没有把未发生的 Tasks 3–24、CI、腾讯云部署、公网测试、最终 Audit 或学生验收标记为完成，也没有扩大到读取或提交密钥正文。
