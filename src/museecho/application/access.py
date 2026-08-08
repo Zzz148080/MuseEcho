@@ -14,7 +14,7 @@ from museecho.domain.models import AccessGrant, IssuedAccess
 
 
 class AccessGrantRepository(Protocol):
-    def save_access_grant(self, grant: AccessGrant) -> None: ...
+    def replace_access_grant(self, grant: AccessGrant) -> None: ...
 
     def get_access_grants(self, analysis_id: uuid.UUID) -> list[AccessGrant]: ...
 
@@ -45,27 +45,43 @@ class AccessService:
             expires_at=expires_at,
             revoked_at=None,
         )
-        self._repository.save_access_grant(grant)
+        self._repository.replace_access_grant(grant)
         return IssuedAccess(raw_token=raw_token, grant=grant)
 
     def authorize(self, analysis_id: uuid.UUID, raw_token: str) -> bool:
         grants = self._repository.get_access_grants(analysis_id)
         now = self._clock()
-        matched = False
-        verified_well_formed_hash = False
-        for grant in grants:
-            if grant.revoked_at is not None or grant.expires_at <= now:
-                continue
-            try:
-                matched = self._hasher.verify(grant.token_hash, raw_token) or matched
-                verified_well_formed_hash = True
-            except InvalidHashError:
-                continue
-            except VerificationError:
-                verified_well_formed_hash = True
-        if not verified_well_formed_hash:
-            try:
-                self._hasher.verify(self._dummy_hash, raw_token)
-            except VerificationError:
-                pass
-        return matched
+        active_grants = [
+            grant for grant in grants if grant.revoked_at is None and grant.expires_at > now
+        ]
+        current_grant = max(
+            active_grants,
+            key=lambda grant: (grant.created_at, grant.token_hash),
+            default=None,
+        )
+        token_hash = self._dummy_hash
+        if current_grant is not None and self._is_supported_hash(current_grant.token_hash):
+            token_hash = current_grant.token_hash
+
+        try:
+            return self._hasher.verify(token_hash, raw_token)
+        except InvalidHashError:
+            if token_hash != self._dummy_hash:
+                self._verify_dummy(raw_token)
+        except VerificationError:
+            pass
+        except UnicodeError:
+            self._verify_dummy(raw_token)
+        return False
+
+    @staticmethod
+    def _is_supported_hash(token_hash: str) -> bool:
+        return (
+            token_hash.isascii() and token_hash.startswith("$argon2id$") and len(token_hash) <= 512
+        )
+
+    def _verify_dummy(self, raw_token: str) -> None:
+        try:
+            self._hasher.verify(self._dummy_hash, raw_token)
+        except (InvalidHashError, VerificationError, UnicodeError):
+            pass

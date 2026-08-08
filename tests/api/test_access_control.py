@@ -23,6 +23,9 @@ class MemoryAccessRepository:
     def save_access_grant(self, grant: AccessGrant) -> None:
         self.grants.setdefault(grant.analysis_id, []).append(grant)
 
+    def replace_access_grant(self, grant: AccessGrant) -> None:
+        self.grants[grant.analysis_id] = [grant]
+
     def get_access_grants(self, analysis_id: uuid.UUID) -> list[AccessGrant]:
         return list(self.grants.get(analysis_id, ()))
 
@@ -64,7 +67,7 @@ def test_capability_cookies_are_secure_strict_and_analysis_scoped():
     )
     response = Response()
 
-    csrf_token = set_capability_cookies(response, issued)
+    csrf_token = set_capability_cookies(response, issued, now=now)
 
     cookies = response.headers.getlist("set-cookie")
     access_cookie = next(value for value in cookies if value.startswith(f"{ACCESS_COOKIE_NAME}="))
@@ -81,6 +84,25 @@ def test_capability_cookies_are_secure_strict_and_analysis_scoped():
     assert "SameSite=strict" in csrf_cookie
     assert csrf_token in csrf_cookie
     assert issued.raw_token not in csrf_cookie
+
+
+def test_capability_cookie_max_age_uses_remaining_grant_lifetime():
+    created_at = datetime(2026, 8, 8, tzinfo=timezone.utc)
+    issued = IssuedAccess(
+        raw_token="raw-capability",
+        grant=AccessGrant(
+            analysis_id=uuid.uuid4(),
+            token_hash="$argon2id$stored-only",
+            created_at=created_at,
+            expires_at=created_at + timedelta(hours=1),
+            revoked_at=None,
+        ),
+    )
+    response = Response()
+
+    set_capability_cookies(response, issued, now=created_at + timedelta(minutes=30))
+
+    assert all("Max-Age=1800" in value for value in response.headers.getlist("set-cookie"))
 
 
 def test_matching_capability_cookie_can_read_analysis():
@@ -213,3 +235,26 @@ def test_missing_wrong_and_cross_analysis_capabilities_share_not_found_response(
     assert (wrong.status_code, wrong.json()) == (404, expected)
     assert (cross.status_code, cross.json()) == (404, expected)
     assert (expired.status_code, expired.json()) == (404, expected)
+
+
+def test_corrupt_stored_hash_returns_not_found_instead_of_server_error():
+    now = datetime(2026, 8, 8, tzinfo=timezone.utc)
+    analysis_id = uuid.uuid4()
+    repository = MemoryAccessRepository()
+    repository.save_access_grant(
+        AccessGrant(
+            analysis_id=analysis_id,
+            token_hash="é-corrupt",
+            created_at=now,
+            expires_at=now + timedelta(hours=1),
+            revoked_at=None,
+        )
+    )
+    service = AccessService(repository, clock=lambda: now)
+    client = TestClient(_read_app(service), base_url="https://museecho.test")
+    client.cookies.set(ACCESS_COOKIE_NAME, "candidate", path=f"/api/analyses/{analysis_id}")
+
+    response = client.get(f"/api/analyses/{analysis_id}")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Not Found"}

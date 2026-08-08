@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import secrets
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Response
 
@@ -12,10 +13,18 @@ CSRF_HEADER_NAME = "X-CSRF-Token"
 MAX_CAPABILITY_AGE_SECONDS = 24 * 60 * 60
 
 
-def set_capability_cookies(response: Response, issued: IssuedAccess) -> str:
+def set_capability_cookies(
+    response: Response,
+    issued: IssuedAccess,
+    *,
+    now: datetime | None = None,
+) -> str:
     grant = issued.grant
+    current_time = now or datetime.now(timezone.utc)
+    if current_time.tzinfo is None or current_time.utcoffset() != timedelta(0):
+        raise ValueError("now must be an aware UTC datetime")
     max_age = min(
-        int((grant.expires_at - grant.created_at).total_seconds()),
+        max(0, int((grant.expires_at - current_time).total_seconds())),
         MAX_CAPABILITY_AGE_SECONDS,
     )
     path = f"/api/analyses/{grant.analysis_id}"

@@ -17,6 +17,9 @@ class MemoryAccessRepository:
     def save_access_grant(self, grant: AccessGrant) -> None:
         self.grants.setdefault(grant.analysis_id, []).append(grant)
 
+    def replace_access_grant(self, grant: AccessGrant) -> None:
+        self.grants[grant.analysis_id] = [grant]
+
     def get_access_grants(self, analysis_id: uuid.UUID) -> list[AccessGrant]:
         return list(self.grants.get(analysis_id, ()))
 
@@ -46,6 +49,20 @@ def test_authorize_returns_false_for_wrong_token():
     assert not service.authorize(analysis_id, "wrong-token")
 
 
+def test_issue_replaces_previous_capability_for_same_analysis():
+    now = datetime(2026, 8, 8, tzinfo=timezone.utc)
+    analysis_id = uuid.uuid4()
+    repository = MemoryAccessRepository()
+    service = AccessService(repository, clock=lambda: now)
+
+    previous = service.issue(analysis_id, now + timedelta(hours=1))
+    current = service.issue(analysis_id, now + timedelta(hours=1))
+
+    assert len(repository.get_access_grants(analysis_id)) == 1
+    assert not service.authorize(analysis_id, previous.raw_token)
+    assert service.authorize(analysis_id, current.raw_token)
+
+
 def test_authorize_verifies_dummy_hash_when_analysis_has_no_active_grant(monkeypatch):
     class RecordingHasher:
         def __init__(self) -> None:
@@ -64,6 +81,36 @@ def test_authorize_verifies_dummy_hash_when_analysis_has_no_active_grant(monkeyp
 
     assert not service.authorize(uuid.uuid4(), "candidate")
     assert hasher.calls == [(service._dummy_hash, "candidate")]
+
+
+def test_authorize_performs_one_hash_verification_with_multiple_legacy_grants():
+    class RecordingHasher:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, str]] = []
+
+        def verify(self, token_hash: str, raw_token: str) -> bool:
+            self.calls.append((token_hash, raw_token))
+            return False
+
+    now = datetime(2026, 8, 8, tzinfo=timezone.utc)
+    analysis_id = uuid.uuid4()
+    repository = MemoryAccessRepository()
+    for offset in range(3):
+        repository.save_access_grant(
+            AccessGrant(
+                analysis_id=analysis_id,
+                token_hash=f"$argon2id$legacy-{offset}",
+                created_at=now + timedelta(seconds=offset),
+                expires_at=now + timedelta(hours=1),
+                revoked_at=None,
+            )
+        )
+    service = AccessService(repository, clock=lambda: now)
+    hasher = RecordingHasher()
+    service._hasher = hasher
+
+    assert not service.authorize(analysis_id, "candidate")
+    assert hasher.calls == [("$argon2id$legacy-2", "candidate")]
 
 
 def test_authorize_returns_false_after_grant_expires():
@@ -105,6 +152,24 @@ def test_authorize_treats_malformed_stored_hash_as_denied():
         AccessGrant(
             analysis_id=analysis_id,
             token_hash="malformed",
+            created_at=now,
+            expires_at=now + timedelta(hours=1),
+            revoked_at=None,
+        )
+    )
+    service = AccessService(repository, clock=lambda: now)
+
+    assert not service.authorize(analysis_id, "candidate")
+
+
+def test_authorize_treats_non_ascii_stored_hash_as_denied():
+    now = datetime(2026, 8, 8, tzinfo=timezone.utc)
+    analysis_id = uuid.uuid4()
+    repository = MemoryAccessRepository()
+    repository.save_access_grant(
+        AccessGrant(
+            analysis_id=analysis_id,
+            token_hash="é-corrupt",
             created_at=now,
             expires_at=now + timedelta(hours=1),
             revoked_at=None,
