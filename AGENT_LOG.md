@@ -149,3 +149,13 @@
 - **验证**：Task 6 相关上传、队列与仓储定向 `46 passed`；后端全量 `150 passed, 2 skipped`；Ruff format/check、mypy 与 `uv lock --check` 通过。两个 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件，生产代码主动拒绝链接输入。
 - **Git**：核心实现 `8217cb4`；资源与恢复边界 `c1da09e`；请求响应、临时目录所有权和 worker 异常隔离 `76a642c`；仓储故障重排 `622ebe4`。按用户既定流程，最终验证后自动合并并推送 `main`，同时保留任务分支。
 - **额度策略**：未新建并行实现 Agent，仅复用既有聚焦 reviewer；未出现平台额度耗尽提示，当前工具仍不提供额度读数或重置入口。
+
+## 2026-08-08 — TASK 8 / 波形、节奏与能量事实
+
+- **事实契约**：新增版本化的 `SignalFeatureConfig` 与严格 JSON 原生输出；波形以固定数量桶保存 min/max，节奏公开 BPM、置信度和单调合法的 beat positions，能量同时公开原始归一化 RMS 序列与宏观变化事件。静音、弱信号、非周期噪声、弱细分歧义和证据不足路径统一返回 unknown，不伪造音乐事实。
+- **节奏证据**：使用 librosa onset/beat，但在固定 BPM 搜索、onset 周期性、拍点规则性、显著性、覆盖率和交替重音一致性共同支持时才输出。弱八分音符细分不会被高置信误报为 240 BPM；120/180/220 BPM 合成节拍器均在验收容差内。
+- **能量证据**：保留细粒度 RMS 点供 UI 时间轴使用；变化事件改用 0.5 秒稳健中值包络和跨窗口比较，避免把每个拍点当成结构变化。60/120/180/220 BPM 稳定节拍均为 0 个宏观事件，同时 0.15 秒、0.25 秒及 1 秒处持续幅度跃升仍能定位；不完整尾帧不会制造伪事件，事件置信度随阈值裕量变化。
+- **资源与输入边界**：节奏输入降采样到有界采样率，onset 和 beat 以带上下文的 30 秒块处理；FFT、频带数、块时长和采样率均有上下限及交叉约束，实际降采样后若样本数小于 `n_fft` 会在进入 librosa 前返回 unknown。600 秒噪声实测约 0.87 秒完成、额外峰值 16.11 MiB、无节奏和能量伪事件。
+- **TDD 与独立复审**：从模块缺失 RED 开始；四轮聚焦复审依次关闭白噪声误报、快节奏半拍、尾帧、置信度常量、长音频内存、弱细分翻倍、拍点级能量事件、资源参数、早期持续能量盲区和低采样率 FFT 警告。最终独立复审为 Critical 0、Important 0、Minor 0，结论 `READY`。
+- **验证**：Task 8 定向 `43 passed`；后端全量 `193 passed, 2 skipped`；`ruff format --check src tests`、`ruff check src tests`、mypy 与 `uv lock --check` 通过。前端 Vitest 1 项、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件，生产代码主动拒绝链接输入。
+- **Git**：核心实现 `f941d53`；置信度与资源加固 `3de45a1`；弱细分/宏观趋势修复 `d0af694`；早期能量与实际 FFT 输入保护 `80bda00`。按既定流程保留 `feat/08-signal-features`，最终验证后自动合并并推送 `main`。
