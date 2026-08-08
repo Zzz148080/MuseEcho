@@ -138,3 +138,14 @@
 - **TDD 与审查**：从模块不存在的 RED 开始；三轮聚焦复审依次发现并闭环非有限 PCM、无界输出、缺失真实工具覆盖、路径脱敏顺序、端序、夹具文档编码、嵌套协议访问、PCM 峰值与后代进程清理问题。最终 Critical 0、Important 0、Minor 0，结论 `READY`。
 - **验证**：Task 7 定向 `17 passed, 1 skipped`；后端全量 `119 passed, 2 skipped`；两个 skip 均因当前 Windows 会话无符号链接创建权限，生产代码仍主动拒绝符号链接。`ruff format --check src tests`、`ruff check .`、mypy 与 `uv lock --check` 通过；仓库级 `ruff format --check .` 仅报告已批准 `PLAN.md` 历史代码片段的排版差异，不属于运行时代码。
 - **Git**：实现与合成夹具 `7daa96d`；输出、PCM、非有限值和诊断边界加固 `823d8cb`；输入协议、峰值预算与进程树隔离 `1a692f7`。按用户既定流程，最终验证后自动合并并推送 `main`，同时保留任务分支。
+
+## 2026-08-08 — TASK 6 / UPLOAD VALIDATION AND SINGLE-WORKER QUEUE
+
+- **上传边界**：POST `/api/analyses` 在 multipart 解析前执行请求体硬上限；同时校验 `Content-Length` 与实际 ASGI 分块字节数，超限只返回一次统一 413。业务层再以精确流式计数限制 30 MiB，拒绝路径分隔符、伪扩展名、损坏音频、不支持格式和超过 10 分钟的音频。
+- **真实校验与明文隔离**：上传先进入每请求独立临时目录，使用 FFprobe 确认容器与时长，再用 FFmpeg 完整受控解码；验证全局串行，避免并发上传绕过单工作队列同时启动多个 FFmpeg。只有验证成功后才写入 Task 5 的加密存储。临时目录采用严格随机名称并写入精确 owner marker；启动清理仅删除名称与 marker 同时匹配的真实目录，不删除普通文件、链接、junction 或未标记目录。
+- **任务与访问能力**：成功上传创建不可猜 UUID、24 小时访问能力 Cookie 与 `QUEUED` 任务，返回 202；数据库、加密存储、访问能力或入队任一步失败时执行有界回滚，不保留无权访问的半成品。
+- **串行队列与恢复**：`SingleWorkerQueue` 保证单进程 FIFO、pending 去重和最多一个 active；启动恢复非终态任务并记录 retry，过期任务不会执行。真实阶段回调成功后才推进 checkpoint，重启从最后持久化阶段继续，不伪造完成。仓储瞬时失败时释放当前 active、保留 pending，并以可由 stop 打断的 50ms 延迟重排到 FIFO 尾部；不会杀死 worker、静默丢任务或忙循环。
+- **TDD 与审查**：从上传路由 404 RED 开始，三轮聚焦复审依次闭环 multipart 临时盘前置上限、验证并发、过期恢复、临时根链接/硬上限、ASGI 双响应、临时目录所有权和仓储异常静默丢任务。最终独立复核为 Critical 0、Important 0、Minor 0，结论 `READY`。
+- **验证**：Task 6 相关上传、队列与仓储定向 `46 passed`；后端全量 `150 passed, 2 skipped`；Ruff format/check、mypy 与 `uv lock --check` 通过。两个 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件，生产代码主动拒绝链接输入。
+- **Git**：核心实现 `8217cb4`；资源与恢复边界 `c1da09e`；请求响应、临时目录所有权和 worker 异常隔离 `76a642c`；仓储故障重排 `622ebe4`。按用户既定流程，最终验证后自动合并并推送 `main`，同时保留任务分支。
+- **额度策略**：未新建并行实现 Agent，仅复用既有聚焦 reviewer；未出现平台额度耗尽提示，当前工具仍不提供额度读数或重置入口。
