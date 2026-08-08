@@ -327,7 +327,7 @@ def test_metronome_estimates_120_bpm(metronome_120_pcm):
 
 **最终命令：** `uv run pytest tests/unit/analysis/test_signal_features.py -q`
 
-**并行：** 是。**依赖：** T7。**对应验收标准：** AC-A 真实分析、AC-B Music DNA 与 AC-C 同步波形/能量证据。**分支：** `feat/08-signal-features`。**计划提交：** `feat: extract waveform rhythm and energy evidence`。**实际提交：** 待执行。
+**并行：** 是。**依赖：** T7。**对应验收标准：** AC-A 真实分析、AC-B Music DNA 与 AC-C 同步波形/能量证据。**分支：** `feat/08-signal-features`。**计划提交：** `feat: extract waveform rhythm and energy evidence`。**实际提交：** `f941d53`（波形、节奏与能量事实）、`3de45a1`（置信度与长音频资源边界）、`d0af694`（弱细分与宏观能量趋势分离）、`80bda00`（早期能量边界与实际 FFT 输入保护），已完成。
 
 ### 任务 9：调性与调式估计
 
