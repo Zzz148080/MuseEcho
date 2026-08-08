@@ -39,6 +39,19 @@ def _progression(*, sample_rate: int = SAMPLE_RATE) -> list[float]:
     return [sample for chord in chords for sample in _tones(chord, 1.0, sample_rate=sample_rate)]
 
 
+def _weighted_tones(tones: tuple[tuple[float, float], ...], duration_seconds: float) -> list[float]:
+    count = round(duration_seconds * SAMPLE_RATE)
+    scale = 0.7 / sum(amplitude for _frequency, amplitude in tones)
+    return [
+        scale
+        * sum(
+            amplitude * math.sin(2.0 * math.pi * frequency * index / SAMPLE_RATE)
+            for frequency, amplitude in tones
+        )
+        for index in range(count)
+    ]
+
+
 def test_c_g_am_f_progression_has_timed_chords():
     events = estimate_chords(_progression(), SAMPLE_RATE)
 
@@ -101,8 +114,9 @@ def test_brief_chord_change_does_not_create_a_subminimum_known_event():
     assert all(event.confidence is None or event.confidence >= 0.7 for event in events)
 
 
-def test_supported_sample_rate_is_normalized_before_analysis():
-    events = estimate_chords(_progression(sample_rate=44_100), 44_100)
+@pytest.mark.parametrize("sample_rate", [8_000, 44_100, 96_000, 192_000])
+def test_supported_sample_rate_is_normalized_before_analysis(sample_rate: int):
+    events = estimate_chords(_progression(sample_rate=sample_rate), sample_rate)
 
     assert [event.symbol for event in events] == ["C", "G", "Am", "F"]
     assert events[-1].end_seconds == pytest.approx(4.0)
@@ -121,6 +135,31 @@ def test_key_hint_does_not_force_an_out_of_key_chord():
     assert [event.symbol for event in events] == ["F#"]
 
 
+def test_key_hint_cannot_flip_an_ambiguous_acoustic_winner():
+    ambiguous_f = _weighted_tones(
+        (
+            (174.6141, 1.0),
+            (207.6523, 1.0),
+            (220.0000, 0.85),
+            (261.6256, 1.0),
+        ),
+        2.0,
+    )
+
+    without_hint = estimate_chords(ambiguous_f, SAMPLE_RATE)
+    with_hint = estimate_chords(
+        ambiguous_f,
+        SAMPLE_RATE,
+        key_tonic="C",
+        key_mode="major",
+    )
+
+    assert [event.symbol for event in with_hint] == [event.symbol for event in without_hint]
+    assert [event.confidence for event in with_hint] == pytest.approx(
+        [event.confidence for event in without_hint]
+    )
+
+
 def test_key_hint_does_not_turn_chromatic_ambiguity_into_a_chord():
     frequencies = tuple(261.6256 * 2 ** (semitone / 12.0) for semitone in range(12))
 
@@ -130,6 +169,19 @@ def test_key_hint_does_not_turn_chromatic_ambiguity_into_a_chord():
         key_tonic="C",
         key_mode="major",
     )
+
+    assert [event.symbol for event in events] == [None]
+
+
+@pytest.mark.parametrize(
+    "frequencies",
+    [
+        (261.6256, 329.6276, 391.9954, 493.8833),
+        (261.6256, 311.1270, 391.9954, 466.1638),
+    ],
+)
+def test_seventh_chords_are_unknown_when_only_triads_are_supported(frequencies):
+    events = estimate_chords(_tones(frequencies, 2.0), SAMPLE_RATE)
 
     assert [event.symbol for event in events] == [None]
 
@@ -146,6 +198,19 @@ def test_invalid_key_hints_are_rejected(key_tonic, key_mode):
             key_tonic=key_tonic,
             key_mode=key_mode,
         )
+
+
+@pytest.mark.parametrize("silence_first", [True, False])
+def test_short_silence_at_audio_edge_is_not_absorbed_into_a_chord(silence_first: bool):
+    silence = [0.0] * round(0.34 * SAMPLE_RATE)
+    c_major = _tones((261.6256, 329.6276, 391.9954), 1.0)
+    samples = silence + c_major if silence_first else c_major + silence
+
+    events = estimate_chords(samples, SAMPLE_RATE)
+
+    assert len(events) == 2
+    assert events[0 if silence_first else 1].symbol is None
+    assert events[1 if silence_first else 0].symbol == "C"
 
 
 def test_output_is_strict_json_and_versioned():

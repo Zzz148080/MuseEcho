@@ -41,6 +41,64 @@ def test_aba_sections_have_recurrent_labels_and_boundaries():
     assert segments[-1].end_seconds == pytest.approx(6.0)
 
 
+def test_recurrent_multichord_sections_are_grouped_as_aba():
+    c_major = _tones((261.6256, 329.6276, 391.9954), 1.0)
+    g_major = _tones((195.9977, 246.9417, 293.6648), 1.0)
+    f_sharp_major = _tones((184.9972, 233.0819, 277.1826), 1.0)
+    c_sharp_major = _tones((138.5913, 174.6141, 207.6523), 1.0)
+    section_a = c_major + g_major
+    section_b = f_sharp_major + c_sharp_major
+
+    segments = segment_structure(section_a + section_b + section_a, SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == ["A", "B", "A"]
+    assert segments[0].end_seconds == pytest.approx(2.0, abs=0.25)
+    assert segments[1].end_seconds == pytest.approx(4.0, abs=0.25)
+
+
+def test_four_chord_sections_use_nonlocal_recurrence_for_aba_boundaries():
+    c = _tones((261.6256, 329.6276, 391.9954), 1.0)
+    g = _tones((195.9977, 246.9417, 293.6648), 1.0)
+    am = _tones((220.0000, 261.6256, 329.6276), 1.0)
+    f = _tones((174.6141, 220.0000, 261.6256), 1.0)
+    dm = _tones((146.8324, 174.6141, 220.0000), 1.0)
+    section_a = c + g + am + f
+    section_b = f + c + dm + g
+
+    segments = segment_structure(section_a + section_b + section_a, SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == ["A", "B", "A"]
+    assert segments[0].end_seconds == pytest.approx(4.0, abs=0.3)
+    assert segments[1].end_seconds == pytest.approx(8.0, abs=0.3)
+
+
+def test_energy_only_change_does_not_create_a_structure_boundary():
+    frequencies = (261.6256, 329.6276, 391.9954)
+    quiet = np.asarray(_tones(frequencies, 2.0), dtype=np.float32) * 0.2
+    loud = np.asarray(_tones(frequencies, 2.0), dtype=np.float32)
+
+    segments = segment_structure(np.concatenate((quiet, loud)), SAMPLE_RATE)
+
+    assert [segment.label for segment in segments] == [None]
+    assert segments[0].end_seconds == pytest.approx(4.0)
+
+
+@pytest.mark.parametrize(
+    "frequencies",
+    [
+        (261.6256,),
+        (261.6256, 329.6276, 391.9954),
+        (261.6256, 391.9954),
+    ],
+)
+def test_signal_without_structural_change_is_unknown(frequencies):
+    segments = segment_structure(_tones(frequencies, 6.0), SAMPLE_RATE)
+
+    assert len(segments) == 1
+    assert segments[0].label is None
+    assert segments[0].confidence is None
+
+
 def test_segments_cover_audio_without_gaps_or_overrun():
     segments = segment_structure(_aba(), SAMPLE_RATE)
 

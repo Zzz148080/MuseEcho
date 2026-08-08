@@ -66,6 +66,16 @@ def _chord_templates() -> np.ndarray:
     return np.stack(templates)
 
 
+def _chord_pitch_masks() -> np.ndarray:
+    masks: list[np.ndarray] = []
+    for quality_third in (4, 3):
+        for root in range(12):
+            mask = np.zeros(12, dtype=np.float64)
+            mask[[root, (root + quality_third) % 12, (root + 7) % 12]] = 1.0
+            masks.append(mask)
+    return np.stack(masks)
+
+
 def _decode_chord_states(
     features: HarmonicFeatures,
     key_prior: np.ndarray,
@@ -75,6 +85,7 @@ def _decode_chord_states(
     normalized = np.divide(chroma, norms, out=np.zeros_like(chroma), where=norms > 1e-12)
     template_scores = _chord_templates() @ normalized
     order = np.argsort(template_scores, axis=0)
+    best_states = order[-1, :]
     best_scores = np.take_along_axis(template_scores, order[-1:, :], axis=0)[0]
     second_scores = np.take_along_axis(template_scores, order[-2:-1, :], axis=0)[0]
     margins = best_scores - second_scores
@@ -86,15 +97,28 @@ def _decode_chord_states(
         out=np.zeros(chroma.shape[1], dtype=np.float64),
         where=chroma_sums > 1e-12,
     )
+    l1_chroma = np.divide(
+        chroma,
+        chroma_sums,
+        out=np.zeros_like(chroma),
+        where=chroma_sums > 1e-12,
+    )
+    all_template_coverage = _chord_pitch_masks() @ l1_chroma
+    template_coverage = np.take_along_axis(
+        all_template_coverage,
+        best_states[np.newaxis, :],
+        axis=0,
+    )[0]
     signal_evidence = np.clip(
         (features.rms - MINIMUM_SIGNAL_RMS) / (1e-3 - MINIMUM_SIGNAL_RMS),
         0.0,
         1.0,
     )
     frame_confidences = np.clip(
-        0.5 * best_scores
-        + 0.25 * np.clip(margins / 0.12, 0.0, 1.0)
-        + 0.15 * concentration
+        0.45 * best_scores
+        + 0.2 * np.clip(margins / 0.12, 0.0, 1.0)
+        + 0.2 * template_coverage
+        + 0.05 * concentration
         + 0.1 * signal_evidence,
         0.0,
         1.0,
@@ -103,16 +127,19 @@ def _decode_chord_states(
         (best_scores >= 0.78)
         & (margins >= 0.035)
         & (concentration >= 0.55)
+        & (template_coverage >= 0.68)
         & (features.rms > MINIMUM_SIGNAL_RMS)
         & (frame_confidences >= 0.7)
     )
     emissions = np.clip(template_scores, 0.0, 1.0) * 0.55
     emissions += frame_confidences[np.newaxis, :] * 0.45
-    emissions += key_prior[:, np.newaxis]
+    emissions[best_states, np.arange(chroma.shape[1])] += key_prior[best_states]
     emissions[:, ~known] *= 0.35
     unknown_emission = np.where(known, 0.2, 1.0)[np.newaxis, :]
     all_emissions = np.concatenate((emissions, unknown_emission), axis=0)
-    return _viterbi(all_emissions), frame_confidences
+    states = _viterbi(all_emissions)
+    selected_confidences = np.where(states == best_states, frame_confidences, 0.0)
+    return states, selected_confidences
 
 
 def _key_prior(key_tonic: str | None, key_mode: str | None) -> np.ndarray:
@@ -174,12 +201,11 @@ def _discard_short_runs(
                 state = int(result[start])
                 left = int(result[start - 1]) if start > 0 else _UNKNOWN_STATE
                 right = int(result[index]) if index < result.size else _UNKNOWN_STATE
-                if left == right and left != _UNKNOWN_STATE:
+                has_both_neighbors = start > 0 and index < result.size
+                if has_both_neighbors and left == right and left != _UNKNOWN_STATE:
                     replacement = left
-                elif state == _UNKNOWN_STATE and left != _UNKNOWN_STATE:
-                    replacement = left
-                elif state == _UNKNOWN_STATE and right != _UNKNOWN_STATE:
-                    replacement = right
+                elif has_both_neighbors and state == _UNKNOWN_STATE:
+                    replacement = left if left != _UNKNOWN_STATE else right
                 else:
                     replacement = _UNKNOWN_STATE
                 result[start:index] = replacement
