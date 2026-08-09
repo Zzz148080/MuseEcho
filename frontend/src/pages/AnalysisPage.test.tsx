@@ -1,12 +1,17 @@
 // @ts-expect-error Vitest runs in Node; the browser bundle intentionally omits Node types.
 import { readFileSync } from 'node:fs'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, expect, it } from 'vitest'
+import { vi } from 'vitest'
 import { Button } from '../components/Button'
 import { ConfidenceBadge } from '../components/ConfidenceBadge'
 import { ErrorNotice } from '../components/ErrorNotice'
 import { Panel } from '../components/Panel'
 import { AnalysisPage } from './AnalysisPage'
+
+const analysisId = '00000000-0000-4000-8000-000000000001'
 
 describe('AnalysisPage', () => {
   it('provides a single labelled analysis workspace', () => {
@@ -24,6 +29,74 @@ describe('AnalysisPage', () => {
     expect(screen.getByRole('region', { name: '分析流程' })).toBeVisible()
     expect(screen.getByText(/尚未选择音频/)).toBeVisible()
     expect(screen.queryByText(/C major|情绪|乐器/i)).not.toBeInTheDocument()
+  })
+
+  it('stores only the analysis id in the URL and switches to real status', async () => {
+    const user = userEvent.setup()
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    })
+    const upload = vi.fn().mockResolvedValue({
+      analysis_id: analysisId,
+      stage: 'queued',
+      progress: 0,
+    })
+    const loadStatus = vi.fn().mockResolvedValue({
+      analysis_id: analysisId,
+      status: 'queued',
+      stage: 'queued',
+      progress: 0,
+      error_code: null,
+      expires_at: '2026-08-10T00:00:00+00:00',
+      pipeline_version: 'museecho-analysis-v1',
+      source_kind: 'real',
+    })
+    window.history.replaceState(null, '', '/')
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AnalysisPage loadStatus={loadStatus} upload={upload} />
+      </QueryClientProvider>,
+    )
+
+    await user.upload(
+      screen.getByLabelText(/音频文件/),
+      new File(['RIFF'], 'track.wav', { type: 'audio/wav' }),
+    )
+    await user.click(screen.getByRole('checkbox', { name: /有权分析/ }))
+    await user.click(screen.getByRole('checkbox', { name: /加密保留最长 24 小时/ }))
+    await user.click(screen.getByRole('button', { name: /开始分析/ }))
+
+    expect(await screen.findByText('等待分析')).toBeVisible()
+    expect(new URL(window.location.href).searchParams.get('analysis')).toBe(analysisId)
+    expect(window.location.href).not.toContain('token')
+    expect(loadStatus).toHaveBeenCalledWith(analysisId)
+    window.history.replaceState(null, '', '/')
+  })
+
+  it('restores status from a valid URL id after refresh', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    })
+    const loadStatus = vi.fn().mockResolvedValue({
+      analysis_id: analysisId,
+      status: 'complete',
+      stage: 'complete',
+      progress: 1,
+      error_code: null,
+      expires_at: '2026-08-10T00:00:00+00:00',
+      pipeline_version: 'museecho-analysis-v1',
+      source_kind: 'real',
+    })
+    window.history.replaceState(null, '', `/?analysis=${analysisId}`)
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AnalysisPage loadStatus={loadStatus} />
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByText('分析完成')).toBeVisible()
+    expect(loadStatus).toHaveBeenCalledWith(analysisId)
+    window.history.replaceState(null, '', '/')
   })
 })
 
