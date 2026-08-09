@@ -207,3 +207,14 @@
 - **TDD 与复核**：首个 RED 为 explanation service 模块不存在；后续以失败测试闭环 provider 白名单观察、未知引用、请求/响应/超时边界、单次重试、HTTP 禁重定向、provider 篡改隔离和教学型 fallback。聚焦复核未发现剩余 Critical、Important 或 Minor 缺陷。
 - **验证**：Task 13 定向 `31 passed`；后端互补分片合计 `490 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件。Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
 - **Git**：核心实现 `a59db06`；provider 隔离与 fallback 教学说明 `20ecd8a`。按既定流程保留 `feat/13-evidence-explanations`，最终验证后自动合并并推送 `main`。
+
+## 2026-08-09 — TASK 14 / 分析编排、完整 API 与生命周期清理
+
+- **真实闭环**：新增 `AnalysisCoordinator`，从独立加密音频逐阶段执行 decode、signal、tonality、structure、chords、deterministic theory 与 Evidence，真实 checkpoint 在阶段成功后持久化；终态重复调度幂等返回，阶段 observer 只接收任务 ID、阶段与单调时钟耗时，不记录文件名、音频或问题正文。
+- **明文隔离**：解密输入仅写入权限受限的专用临时目录；目录使用严格随机名称和精确 owner marker。coordinator 启动只清理名称与 marker 同时匹配的崩溃遗留明文，保留普通文件、链接、junction 和未标记目录。
+- **完整 API**：实现授权 status/result、受控 audio、Evidence explanation 与 CSRF/Origin 保护的 delete。结果从 SQLite 聚合并再次执行领域校验；畸形结果返回稳定错误码。Range 支持完整、闭区间、开区间和 suffix 读取，合法范围返回 206/Content-Range，畸形、多范围、超长数字或不可满足范围统一 416。
+- **解释边界**：Explanation API 手动归一化请求校验，问题、片段、额外字段和非有限值失败均返回稳定 `invalid_explanation_request`；只选择 Task 12 合格 Evidence，持久化 SHA256 问题摘要而非原问题。每分析每分钟限制 10 次，第 11 次返回 429 与 Retry-After；未完成结果返回 409。
+- **删除与清理**：SQLite 在同一事务内撤销全部访问授权并置空 wrapped DEK，之后删除密文、音频元数据与级联业务行。文件系统失败时保持不可访问且密钥已销毁，同时保留密文路径供下轮重试；单项失败不会饿死后续到期项，observer 只记录任务 ID 与稳定错误码。授权后恰逢清理的读取竞态统一降为 404。
+- **TDD 与复核**：从 coordinator/result/audio/explanation/delete/cleanup 不存在的 RED 开始；故障注入闭环密钥销毁后 unlink 失败、原子删除准备、孤儿明文、超长 Range、畸形结果、速率限制、终态重调度和授权后清理竞态。本地聚焦审查最终 Critical 0、Important 0、Minor 0，结论 `READY`。
+- **验证**：Task 14 定向 `16 passed`；PLAN 指定 `tests/api tests/integration` 为 `100 passed, 1 skipped`；最终后端互补分片合计 `506 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的既有平台条件。Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
+- **Git**：核心实现与审查加固 `0b5342e`。按既定流程保留 `feat/14-analysis-api`，最终验证后自动合并并推送 `main`。
