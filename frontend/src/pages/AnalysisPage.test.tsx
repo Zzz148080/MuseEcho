@@ -102,6 +102,46 @@ describe('AnalysisPage', () => {
     expect(loadResult).toHaveBeenCalledWith(analysisId)
     window.history.replaceState(null, '', '/')
   })
+
+  it('clears the analysis workspace and URL after confirmed deletion', async () => {
+    const user = userEvent.setup()
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    })
+    const loadStatus = vi.fn().mockResolvedValue({
+      analysis_id: analysisId,
+      status: 'complete',
+      stage: 'complete',
+      progress: 1,
+      error_code: null,
+      expires_at: '2026-08-10T00:00:00+00:00',
+      pipeline_version: 'museecho-analysis-v1',
+      source_kind: 'real',
+    })
+    const removeAnalysis = vi.fn().mockResolvedValue(undefined)
+    window.history.replaceState(null, '', `/?analysis=${analysisId}`)
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AnalysisPage
+          loadResult={vi.fn().mockResolvedValue(fixtureResult)}
+          loadStatus={loadStatus}
+          removeAnalysis={removeAnalysis}
+        />
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByRole('heading', { name: '片段问答' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: '数据生命周期' })).toBeVisible()
+    await user.click(screen.getByRole('checkbox', { name: /了解删除不可恢复/ }))
+    await user.click(screen.getByRole('button', { name: '永久删除分析' }))
+
+    expect(await screen.findByRole('heading', { name: '分析已永久删除' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Music DNA' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '播放器' })).not.toBeInTheDocument()
+    expect(new URL(window.location.href).searchParams.has('analysis')).toBe(false)
+    expect(removeAnalysis).toHaveBeenCalledWith(analysisId)
+    window.history.replaceState(null, '', '/')
+  })
 })
 
 describe('accessible foundation components', () => {
@@ -152,6 +192,17 @@ describe('accessible foundation components', () => {
 
     expect(globalCss).toMatch(/:focus-visible/)
     expect(globalCss).toMatch(/prefers-reduced-motion:\s*reduce/)
+  })
+
+  it('stacks explanation and privacy controls below tablet width', () => {
+    const globalCss = readFileSync('src/styles/global.css', 'utf8')
+
+    expect(globalCss).toMatch(
+      /\.analysis-support\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.15fr\)\s+minmax\(0,\s*0\.85fr\)/s,
+    )
+    expect(globalCss).toMatch(
+      /@media\s*\(max-width:\s*899px\)[\s\S]*\.analysis-support\s*{[^}]*grid-template-columns:\s*1fr/s,
+    )
   })
 
   it('keeps text and action colors at WCAG AA contrast', () => {

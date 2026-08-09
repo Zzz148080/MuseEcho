@@ -276,6 +276,14 @@ def test_delete_revokes_access_and_removes_ciphertext_and_rows(tmp_path: Path):
     )
 
     assert deleted.status_code == 204
+    deleted_cookies = deleted.headers.get_list("set-cookie")
+    assert any(
+        value.startswith("museecho_access=")
+        and "Max-Age=0" in value
+        and f"Path=/api/analyses/{job.id}" in value
+        for value in deleted_cookies
+    )
+    assert not any(value.startswith("museecho_csrf=") for value in deleted_cookies)
     assert repository.get(job.id) is None
     assert repository.get_encrypted_audio(job.id) is None
     assert not cipher_path.exists()

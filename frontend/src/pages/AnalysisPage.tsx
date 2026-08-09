@@ -5,26 +5,34 @@ import { Button } from '../components/Button'
 import { Panel } from '../components/Panel'
 import { AnalysisProgress } from '../features/jobs/AnalysisProgress'
 import type { StatusLoader } from '../features/jobs/useAnalysisStatus'
+import type { ExplanationTransport } from '../features/explanations/QuestionPanel'
+import type { DeleteTransport } from '../features/privacy/RetentionPanel'
 import type { ResultLoader } from '../features/workspace/useAnalysisResult'
 import { UploadForm } from '../features/upload/UploadForm'
 
 export interface AnalysisPageProps {
+  ask?: ExplanationTransport
   loadResult?: ResultLoader
   loadStatus?: StatusLoader
+  removeAnalysis?: DeleteTransport
   upload?: UploadTransport
 }
 
 export function AnalysisPage({
+  ask,
   loadResult,
   loadStatus,
+  removeAnalysis,
   upload,
 }: AnalysisPageProps = {}) {
   const [analysisId, setAnalysisId] = useState(readAnalysisId)
+  const [deleted, setDeleted] = useState(false)
 
   const acceptUpload = (accepted: UploadAccepted) => {
     const nextUrl = new URL(window.location.href)
     nextUrl.searchParams.set('analysis', accepted.analysis_id)
     window.history.replaceState(null, '', nextUrl)
+    setDeleted(false)
     setAnalysisId(accepted.analysis_id)
   }
 
@@ -32,7 +40,16 @@ export function AnalysisPage({
     const nextUrl = new URL(window.location.href)
     nextUrl.searchParams.delete('analysis')
     window.history.replaceState(null, '', nextUrl)
+    setDeleted(false)
     setAnalysisId(null)
+  }
+
+  const finishDeletion = () => {
+    const nextUrl = new URL(window.location.href)
+    nextUrl.searchParams.delete('analysis')
+    window.history.replaceState(null, '', nextUrl)
+    setAnalysisId(null)
+    setDeleted(true)
   }
 
   return (
@@ -63,19 +80,28 @@ export function AnalysisPage({
 
         <Panel
           className={`workflow-panel${analysisId ? ' workflow-panel--active' : ''}`}
-          eyebrow={analysisId ? '实时状态' : '等待音频'}
+          eyebrow={analysisId ? '实时状态' : deleted ? '数据已清除' : '等待音频'}
           title="分析流程"
         >
           {analysisId ? (
             <div className="active-analysis">
               <AnalysisProgress
                 analysisId={analysisId}
+                ask={ask}
                 loadResult={loadResult}
                 loadStatus={loadStatus}
+                onDeleted={finishDeletion}
+                removeAnalysis={removeAnalysis}
               />
               <Button onClick={startAnother} variant="secondary">
                 分析其他音频
               </Button>
+            </div>
+          ) : deleted ? (
+            <div className="deleted-analysis" role="status">
+              <h2>分析已永久删除</h2>
+              <p>加密音频、数据密钥、分析结果、解释与访问权已从服务端清除，无法恢复。</p>
+              <Button onClick={startAnother}>分析新的音频</Button>
             </div>
           ) : (
             <div className="empty-workflow">

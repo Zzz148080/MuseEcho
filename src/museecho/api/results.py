@@ -4,10 +4,11 @@ import uuid
 from collections.abc import Collection
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import JSONResponse
 
 from museecho.api.dependencies import require_analysis_access, require_analysis_mutation
+from museecho.api.security import clear_analysis_access_cookie
 from museecho.application.lifecycle import AnalysisLifecycleService, ResultNotReadyError
 from museecho.domain.models import AnalysisResult
 from museecho.domain.ports import AccessService
@@ -75,9 +76,11 @@ def create_results_router(
     @router.delete("/{analysis_id}", status_code=status.HTTP_204_NO_CONTENT)
     def delete_analysis(
         analysis_id: uuid.UUID,
+        response: Response,
         _authorized: uuid.UUID = Depends(authorize_mutation),
     ) -> None:
         service.delete(analysis_id)
+        clear_analysis_access_cookie(response, analysis_id)
 
     return router
 

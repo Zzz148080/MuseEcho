@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Response
@@ -44,9 +45,19 @@ def set_capability_cookies(
         csrf_token,
         max_age=max_age,
         expires=grant.expires_at,
-        path=path,
+        path="/",
         secure=True,
         httponly=False,
         samesite="strict",
     )
     return csrf_token
+
+
+def clear_analysis_access_cookie(response: Response, analysis_id: uuid.UUID) -> None:
+    response.delete_cookie(
+        ACCESS_COOKIE_NAME,
+        path=f"/api/analyses/{analysis_id}",
+        secure=True,
+        httponly=True,
+        samesite="strict",
+    )

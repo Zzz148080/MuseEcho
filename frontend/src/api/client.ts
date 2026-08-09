@@ -8,6 +8,8 @@ import {
   type ChordTheoryResult,
   type EnergyChangeSummary,
   type EvidenceResult,
+  type ExplanationRequest,
+  type ExplanationResponse,
   type SectionResult,
   type SourceKind,
   type TimeSeriesResult,
@@ -145,6 +147,60 @@ export async function getAnalysisResult(
   }
 }
 
+export async function createExplanation(
+  analysisId: string,
+  request: ExplanationRequest,
+): Promise<ExplanationResponse> {
+  if (!isAnalysisId(analysisId) || !isValidExplanationRequest(request)) {
+    throw new ApiError(0, 'invalid_explanation_request')
+  }
+  const csrf = readCsrfToken()
+  let response: Response
+  try {
+    response = await fetch(`/api/analyses/${analysisId}/explanations`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrf,
+      },
+      body: JSON.stringify({ ...request, question: request.question.trim() }),
+    })
+  } catch {
+    throw new ApiError(0, 'network_error')
+  }
+  const body: unknown = await response.json().catch(() => null)
+  if (!response.ok) throw errorFromResponse(response.status, body)
+  try {
+    return parseExplanationResponse(body)
+  } catch {
+    throw new ApiError(response.status, 'invalid_server_response')
+  }
+}
+
+export async function deleteAnalysis(analysisId: string): Promise<void> {
+  if (!isAnalysisId(analysisId)) throw new ApiError(0, 'invalid_analysis_id')
+  const csrf = readCsrfToken()
+  let response: Response
+  try {
+    response = await fetch(`/api/analyses/${analysisId}`, {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', 'X-CSRF-Token': csrf },
+    })
+  } catch {
+    throw new ApiError(0, 'network_error')
+  }
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null)
+    throw errorFromResponse(response.status, body)
+  }
+  if (response.status !== 204) {
+    throw new ApiError(response.status, 'invalid_server_response')
+  }
+}
+
 function errorFromResponse(status: number, body: unknown): ApiError {
   const error = (isRecord(body) ? (body as ApiErrorBody).error : undefined)
   const code =
@@ -223,6 +279,31 @@ function parseAnalysisResult(value: unknown): AnalysisResult {
     chords,
     time_series: timeSeries,
     evidence,
+  }
+}
+
+function parseExplanationResponse(value: unknown): ExplanationResponse {
+  const explanation = record(value)
+  if (
+    Object.keys(explanation).some(
+      (key) => !['mode', 'text', 'evidence_ids'].includes(key),
+    )
+  ) {
+    throw new TypeError('unexpected explanation field')
+  }
+  const mode = enumValue(explanation.mode, ['fallback', 'llm'] as const)
+  const evidenceIds = stringArray(explanation.evidence_ids, maximumResultItems)
+  if (
+    (mode === 'llm' && evidenceIds.length === 0) ||
+    evidenceIds.some((item) => !isAnalysisId(item)) ||
+    new Set(evidenceIds).size !== evidenceIds.length
+  ) {
+    throw new TypeError('invalid explanation evidence ids')
+  }
+  return {
+    mode,
+    text: boundedString(explanation.text, 4_000),
+    evidence_ids: evidenceIds,
   }
 }
 
@@ -482,6 +563,13 @@ function nullableBoundedString(value: unknown, maximum: number): string | null {
   return value
 }
 
+function boundedString(value: unknown, maximum: number): string {
+  if (typeof value !== 'string' || !value.trim() || value.length > maximum) {
+    throw new TypeError('string outside contract')
+  }
+  return value
+}
+
 function analysisIdValue(value: unknown): string {
   return pattern(value, analysisIdPattern)
 }
@@ -608,6 +696,39 @@ function isValidVersion(value: unknown): value is string | null {
 
 function isSourceKind(value: unknown): value is SourceKind {
   return typeof value === 'string' && sourceKinds.has(value)
+}
+
+function isValidExplanationRequest(value: ExplanationRequest): boolean {
+  return (
+    typeof value.question === 'string' &&
+    value.question.trim().length > 0 &&
+    value.question.length <= 500 &&
+    Number.isFinite(value.start_seconds) &&
+    Number.isFinite(value.end_seconds) &&
+    value.start_seconds >= 0 &&
+    value.end_seconds > value.start_seconds &&
+    value.end_seconds - value.start_seconds <= 120
+  )
+}
+
+function readCsrfToken(): string {
+  const prefix = 'museecho_csrf='
+  const encoded = document.cookie
+    .split(';')
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(prefix))
+    ?.slice(prefix.length)
+  if (!encoded) throw new ApiError(0, 'csrf_unavailable')
+  let token: string
+  try {
+    token = decodeURIComponent(encoded)
+  } catch {
+    throw new ApiError(0, 'csrf_unavailable')
+  }
+  if (!/^[A-Za-z0-9_-]{1,200}$/.test(token)) {
+    throw new ApiError(0, 'csrf_unavailable')
+  }
+  return token
 }
 
 export { analysisIdPattern }

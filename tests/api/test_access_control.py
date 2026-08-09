@@ -52,7 +52,7 @@ def _mutation_app(service: AccessService) -> FastAPI:
     return app
 
 
-def test_capability_cookies_are_secure_strict_and_analysis_scoped():
+def test_capability_cookies_are_secure_strict_and_browser_usable():
     now = datetime(2026, 8, 8, tzinfo=timezone.utc)
     analysis_id = uuid.uuid4()
     issued = IssuedAccess(
@@ -78,7 +78,8 @@ def test_capability_cookies_are_secure_strict_and_analysis_scoped():
     assert "Secure" in access_cookie
     assert "SameSite=strict" in access_cookie
     assert "Max-Age=3600" in access_cookie
-    assert expected_path in csrf_cookie
+    assert "Path=/;" in csrf_cookie
+    assert expected_path not in csrf_cookie
     assert "HttpOnly" not in csrf_cookie
     assert "Secure" in csrf_cookie
     assert "SameSite=strict" in csrf_cookie
