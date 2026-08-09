@@ -520,7 +520,7 @@ it('provides a single labelled analysis workspace', () => {
 
 **最终命令：** `npm --prefix frontend test -- --run && npm --prefix frontend run typecheck && npm --prefix frontend run build`
 
-**并行：** 是。**依赖：** T1。**对应验收标准：** AC-F Open Design 契约、响应式与可访问性基础。**分支：** `feat/15-design-system`。**计划提交：** `feat: establish Warm Editorial interface`。**实际提交：** 待执行。
+**并行：** 是。**依赖：** T1。**对应验收标准：** AC-F Open Design 契约、响应式与可访问性基础。**分支：** `feat/15-design-system`。**计划提交：** `feat: establish Warm Editorial interface`。**实际提交：** `b035b05`（Warm Editorial tokens、响应式单画布、可访问基础组件、真实空状态与 pytest 隔离收集配置），已完成。
 
 ### 任务 16：上传、隐私同意与真实进度界面
 
