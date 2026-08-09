@@ -197,3 +197,13 @@
 - **TDD 与复核**：首个 RED 为 `museecho.application.evidence` 不存在；后续以失败测试闭环低置信乐理传播、高置信 unknown、字段伪装、畸形值、预算边界、可变结果重验和 kind/algorithm 运行时篡改。聚焦复核未发现剩余 Critical、Important 或 Minor 缺陷。
 - **验证**：Task 12 定向 `37 passed`，领域/仓储/Evidence 相关回归 `62 passed`；后端互补分片合计 `459 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件。Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
 - **Git**：核心实现 `c14d87e`；信任边界复验修复 `2e8da87`。按既定流程保留 `feat/12-evidence-policy`，最终验证后自动合并并推送 `main`。
+
+## 2026-08-09 — TASK 13 / EVIDENCE-FIRST 解释与确定性回退
+
+- **服务边界**：`ExplanationService` 在调用 provider 前重新应用 Task 12 的 kind、值形状、阈值与时间资格；无合格 Evidence 或无 provider 时不访问网络。provider 只接收 Evidence 深拷贝，不能修改 fallback 使用的原事实；返回 Draft 必须是 `llm` 模式、非空有界文本，且只能引用实际选择中的 UUID。
+- **HTTP 适配器**：新增 OpenAI-compatible `/chat/completions` 客户端，Key 每次从 Task 4 `SecretStore` 按需读取，只放 Authorization header；请求使用结构化 Evidence JSON、固定系统约束、零温度与 JSON response format。客户端禁重定向、流式限制响应大小，分别限制请求/响应，执行连接/总超时预算和最多一次受控重试。
+- **失败回退**：缺 Key、无证据、超时/传输失败、408/429/5xx 重试耗尽、非成功状态、超大响应、非 JSON、额外字段、空/重复/未知 Evidence ID 或异常 Draft 全部返回确定性 fallback。fallback 使用中文事实类型、公开值、置信度与算法来源，并明确证据不能证明唯一因果关系。
+- **数据与依赖**：问题仅在调用栈中使用，本任务不持久化原问题或写日志；Key 不进入正文、repr 或异常。项目已锁定的 `httpx2` 从 dev extra 移到运行时依赖，锁文件仅调整 MuseEcho 的依赖归属，未升级包版本。
+- **TDD 与复核**：首个 RED 为 explanation service 模块不存在；后续以失败测试闭环 provider 白名单观察、未知引用、请求/响应/超时边界、单次重试、HTTP 禁重定向、provider 篡改隔离和教学型 fallback。聚焦复核未发现剩余 Critical、Important 或 Minor 缺陷。
+- **验证**：Task 13 定向 `31 passed`；后端互补分片合计 `490 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件。Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
+- **Git**：核心实现 `a59db06`；provider 隔离与 fallback 教学说明 `20ecd8a`。按既定流程保留 `feat/13-evidence-explanations`，最终验证后自动合并并推送 `main`。
