@@ -53,6 +53,8 @@ class AudioMetadataRepository(Protocol):
 
     def destroy_encrypted_audio_key(self, analysis_id: uuid.UUID) -> None: ...
 
+    def delete_encrypted_audio_metadata(self, analysis_id: uuid.UUID) -> None: ...
+
 
 class ChunkedEncryptedAudioStore:
     def __init__(
@@ -253,13 +255,17 @@ class ChunkedEncryptedAudioStore:
 
     def delete(self, metadata: EncryptedAudio) -> None:
         with self._lock_for(metadata.analysis_id):
-            authoritative = self._authoritative_metadata(metadata.analysis_id)
+            authoritative = self._repository.get_encrypted_audio(metadata.analysis_id)
+            if authoritative is None:
+                authoritative = metadata
             path = self._validated_path(authoritative, require_exists=False)
-            self._repository.destroy_encrypted_audio_key(metadata.analysis_id)
+            if authoritative.wrapped_data_key:
+                self._repository.destroy_encrypted_audio_key(metadata.analysis_id)
             wrapped_key = bytearray(metadata.wrapped_data_key)
             wipe(wrapped_key)
             metadata.wrapped_data_key = b""
             path.unlink(missing_ok=True)
+            self._repository.delete_encrypted_audio_metadata(metadata.analysis_id)
 
     def _authoritative_metadata(self, analysis_id: uuid.UUID) -> EncryptedAudio:
         metadata = self._repository.get_encrypted_audio(analysis_id)

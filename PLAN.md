@@ -493,7 +493,7 @@ def test_pipeline_persists_real_result_for_uploaded_fixture(client, valid_fixtur
 
 **最终命令：** `uv run pytest tests/api tests/integration -q`
 
-**并行：** 否。**依赖：** T3/T5/T6/T8–T13。**对应验收标准：** AC-A 至 AC-E 的后端纵向闭环。**分支：** `feat/14-analysis-api`。**计划提交：** `feat: complete analysis lifecycle API`。**实际提交：** 待执行。
+**并行：** 否。**依赖：** T3/T5/T6/T8–T13。**对应验收标准：** AC-A 至 AC-E 的后端纵向闭环。**分支：** `feat/14-analysis-api`。**计划提交：** `feat: complete analysis lifecycle API`。**实际提交：** `0b5342e`（真实分析编排、完整生命周期 API、Range 播放、原子加密擦除与幂等到期清理），已完成。
 
 ### 任务 15：Open Design 前端基础与可访问组件
 

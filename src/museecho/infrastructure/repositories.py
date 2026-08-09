@@ -257,6 +257,18 @@ class SqliteAnalysisRepository:
             ).all()
             return [_job_from_model(model) for model in models]
 
+    def list_expired(self, now: datetime) -> list[AnalysisJob]:
+        with session_scope(self._session_factory) as session:
+            models = session.scalars(
+                select(AnalysisJobModel)
+                .where(
+                    AnalysisJobModel.expires_at.is_not(None),
+                    AnalysisJobModel.expires_at <= now,
+                )
+                .order_by(AnalysisJobModel.expires_at, AnalysisJobModel.id)
+            ).all()
+            return [_job_from_model(model) for model in models]
+
     def save_result(self, result: AnalysisResult) -> None:
         with session_scope(self._session_factory) as session:
             result.validate()
@@ -431,6 +443,24 @@ class SqliteAnalysisRepository:
                 for model in models
             ]
 
+    def get_all_timeseries(self, analysis_id: uuid.UUID) -> list[TimeSeries]:
+        with session_scope(self._session_factory) as session:
+            models = session.scalars(
+                select(TimeSeriesModel)
+                .where(TimeSeriesModel.analysis_id == str(analysis_id))
+                .order_by(TimeSeriesModel.kind, TimeSeriesModel.id)
+            ).all()
+            return [
+                TimeSeries(
+                    uuid.UUID(model.analysis_id),
+                    model.kind,
+                    model.resolution_seconds,
+                    _load_json(model.points_json),
+                    model.algorithm,
+                )
+                for model in models
+            ]
+
     def get_evidence(self, analysis_id: uuid.UUID) -> list[Evidence]:
         with session_scope(self._session_factory) as session:
             models = session.scalars(
@@ -500,6 +530,20 @@ class SqliteAnalysisRepository:
                 for model in models
             ]
 
+    def prepare_deletion(self, analysis_id: uuid.UUID, revoked_at: datetime) -> None:
+        with session_scope(self._session_factory) as session:
+            grants = session.scalars(
+                select(AccessGrantModel).where(
+                    AccessGrantModel.analysis_id == str(analysis_id),
+                    AccessGrantModel.revoked_at.is_(None),
+                )
+            ).all()
+            for grant in grants:
+                grant.revoked_at = revoked_at
+            audio = session.get(EncryptedAudioModel, str(analysis_id))
+            if audio is not None:
+                audio.wrapped_data_key = b""
+
     def save_encrypted_audio(self, audio: EncryptedAudio) -> None:
         with session_scope(self._session_factory) as session:
             session.add(
@@ -532,6 +576,12 @@ class SqliteAnalysisRepository:
             )
 
     def destroy_encrypted_audio_key(self, analysis_id: uuid.UUID) -> None:
+        with session_scope(self._session_factory) as session:
+            model = session.get(EncryptedAudioModel, str(analysis_id))
+            if model is not None:
+                model.wrapped_data_key = b""
+
+    def delete_encrypted_audio_metadata(self, analysis_id: uuid.UUID) -> None:
         with session_scope(self._session_factory) as session:
             session.execute(
                 delete(EncryptedAudioModel).where(

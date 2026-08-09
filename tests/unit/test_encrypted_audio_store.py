@@ -55,6 +55,11 @@ class MemoryAudioRepository:
 
     def destroy_encrypted_audio_key(self, analysis_id: uuid.UUID) -> None:
         self.key_destroyed = True
+        audio = self.audio.get(analysis_id)
+        if audio is not None:
+            audio.wrapped_data_key = b""
+
+    def delete_encrypted_audio_metadata(self, analysis_id: uuid.UUID) -> None:
         self.audio.pop(analysis_id, None)
 
 
