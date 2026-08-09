@@ -78,3 +78,10 @@
 - 当前没有遗留的 MuseEcho Docker build 客户端。
 - Docker Desktop 仍在运行，但没有继续执行项目工作。
 - `tmp/docker-debug/` 与 `tmp/npm-cache/` 都被 `.gitignore` 忽略，不会提交。
+
+## 2026-08-10 完成记录
+
+- **提交：** `70dde35`（`build: package and verify production distribution`）。未推送、未合并，且没有声称 GitHub Actions 或 GitLab CI 已运行。
+- **最终容器证据：** `scripts/container-smoke.ps1` 在本机已有 Windows PowerShell 中完成，显式记录 exit code `0`。它重新构建 app/gateway，验证 HTTPS health、真实 WAV 上传与分析、重启后的持久状态、持久卷中无明文 WAV/MP3，以及镜像历史无测试 KEK。烟测资源已由脚本清理。
+- **安全证据：** fresh tracked-file Secret scan 通过（165 个文件）；两个最终镜像均为 `10001:10001`。使用现有 Trivy 0.70.0 缓存数据库和 `--ignore-unfixed --severity HIGH,CRITICAL` 重新扫描，app 和 gateway 均为 0 个 HIGH/CRITICAL 发现。
+- **主机验证边界：** 主机 PATH 没有 `ffmpeg`/`ffprobe`，而 app 镜像中两者均位于 `/usr/bin`。因此本机 Python 全量结果为 `508 passed, 2 skipped, 8 failed`；八项均为真实音频工具缺失导致，未修改测试或下载工具规避。Ruff format/check、mypy、66 个前端测试、前端/E2E TypeScript、production build 和两次 npm audit 均通过。`uv` 和 `pwsh` 也不在受限主机 PATH，故完整 `verify.ps1 -SkipInstall` 只能在第一步准确报告缺少 uv；CI 将安装锁定 uv 和 FFmpeg。

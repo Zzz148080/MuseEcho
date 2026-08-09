@@ -666,7 +666,7 @@ Invoke-RestMethod http://localhost/api/health | Should -BeLike '*ready*'
 
 **最终命令：** `pwsh -File scripts/secret-scan.ps1; if ($LASTEXITCODE) { exit $LASTEXITCODE }; pwsh -File scripts/container-smoke.ps1`
 
-**并行：** 否。**依赖：** T19。**对应验收标准：** AC-E Secret audit 与 AC-F Docker、双 CI、README、许可证。**分支：** `build/20-distribution-ci`。**计划提交：** `build: package and verify production distribution`。**实际提交：** 待执行。
+**并行：** 否。**依赖：** T19。**对应验收标准：** AC-E Secret audit 与 AC-F Docker、双 CI、README、许可证。**分支：** `build/20-distribution-ci`。**计划提交：** `build: package and verify production distribution`。**实际提交：** `70dde35`（生产容器、运行时装配、双 CI、Secret/依赖审计与交付文档；远端 CI 尚未运行）。
 
 ### 任务 21：腾讯云交付手册与真实部署
 

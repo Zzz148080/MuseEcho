@@ -270,3 +270,11 @@
 - **TDD 与复核**：首轮依次暴露选区未滚入视口、回退标签选择器歧义、favicon 404、Windows 子进程回收、WinAPI 64 位句柄、SQLite 连接池清理和亲和性未恢复；均先以失败测试/复现固定后修复。本地聚焦审查另关闭默认系统 Chrome 不可重复和 E2E TypeScript 未门禁两项，最终 Critical 0、Important 0、Minor 0，结论 `READY`。受当前会话约束未派生子代理。
 - **验证**：后端全量 `507 passed, 2 skipped`（新增 300 秒性能门）；前端全量 `66 passed`；真实浏览器 `4 passed`。Ruff format/check、mypy（44 source files）、前端与 E2E 两套 TypeScript、Vite production build、`uv lock --check`、diff-check，以及前端/根 npm audit（均 0 vulnerabilities）通过。两项 skip 仍为当前 Windows 会话无法创建符号链接的既有平台条件。
 - **Git**：核心实现 `9ad408c`。按后续统一分支规则使用并保留 `feat/19-system-verification`；最终验证后自动推送功能分支、合并并推送 `main`。
+
+## 2026-08-10 — TASK 20 / 生产容器、双 CI 与依赖/Secret 审计
+
+- **发行物与运行时：** 交付非 root 多阶段 app/gateway 镜像、Caddy 同源 HTTPS 网关、只读 Secret 准备卷、加密数据持久卷、只读根文件系统、健康检查和生产运行时装配；前端 Docker clean build 直接锁定 `@types/node`，不依赖根目录 hoisting。
+- **质量门禁：** GitHub Actions 与 GitLab CI 均覆盖锁定依赖、lint、类型检查、后端/前端测试、build、HTTPS E2E、Secret scan、Docker build 与 HIGH/CRITICAL Trivy 门禁；GitLab 后端 job 固定为 `unit-test`。README 和 THIRD_PARTY_NOTICES 完成发行、凭据、安全、限制与许可证说明。
+- **TDD/安全 RED→GREEN：** 容器 smoke 的初始 RED 是所需发行文件尚不存在；网关安全 RED 为 Trivy 发现 10 个 HIGH，随后通过升级运行时库、重建 Caddy 和移除 capability 修复。GREEN 的最终 smoke 为 exit 0，包含真实 WAV 分析、重启持久化、无明文持久化及无镜像历史 Secret；重新扫描 app/gateway 均为 0 个 HIGH/CRITICAL。
+- **验证：** fresh Secret scan 检查 165 个 tracked 文件通过；app/gateway `Config.User` 都为 `10001:10001`；PowerShell 语法和两份 CI YAML 解析通过。Ruff format/check、mypy、前端 66 个测试、两套 TypeScript、production build 和根/前端 npm audit（均 0 vulnerabilities）通过。主机全量 Python 为 `508 passed, 2 skipped, 8 failed`：仅因受限 PATH 缺少 ffmpeg/ffprobe；镜像内两项工具存在，容器 smoke 已覆盖真实分析。未下载工具、未修改测试、未声称远端 CI 已运行。
+- **Git：** `70dde35`（`build: package and verify production distribution`）。分支保留给控制器后续审查和集成。
