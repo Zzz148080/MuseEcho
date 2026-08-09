@@ -1,4 +1,3 @@
-// @ts-expect-error Vitest runs in Node; the browser bundle intentionally omits Node types.
 import { readFileSync } from 'node:fs'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

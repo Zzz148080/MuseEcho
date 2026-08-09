@@ -636,9 +636,9 @@ test('upload to delete completes without console errors', async ({page}) => {
 
 **重构：** 共享 E2E 操作封装但不隐藏断言；证据文件只保存命令、版本、摘要和非敏感日志。
 
-**最终命令：** `uv run pytest -q && npm --prefix frontend test -- --run && npm --prefix frontend exec playwright test && uv run python scripts/benchmark.py --duration 300 --json docs/evidence/performance.json`
+**最终命令：** `uv run pytest -q && npm --prefix frontend test -- --run && npm run typecheck && npm run e2e && uv run python scripts/benchmark.py --duration 300 --json docs/evidence/performance.json`
 
-**并行：** 否。**依赖：** T14/T16–T18。**对应验收标准：** AC-A 至 AC-F 的真实浏览器、安全与性能证据。**分支：** `test/19-system-verification`。**计划提交：** `test: verify MuseEcho end to end`。**实际提交：** 待执行。
+**并行：** 否。**依赖：** T14/T16–T18。**对应验收标准：** AC-A 至 AC-F 的真实浏览器、安全与性能证据。**分支：** `feat/19-system-verification`（按后续统一 `feat/*` 分支规则执行）。**计划提交：** `test: verify MuseEcho end to end`。**实际提交：** `9ad408c`（真实 HTTPS E2E、安全/响应式矩阵、独立 TypeScript 门禁、300 秒完整性能基准与非敏感证据），已完成。
 
 ### 任务 20：生产容器、双 CI 与依赖/Secret 审计
 

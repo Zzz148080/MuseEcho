@@ -1,0 +1,50 @@
+{
+  "schema_version": "museecho-performance-v1",
+  "passed": true,
+  "thresholds": {
+    "max_wall_seconds": 90.0,
+    "max_peak_rss_bytes": 4294967296,
+    "max_cpu_affinity_count": 2
+  },
+  "workload": {
+    "duration_seconds": 300.0,
+    "sample_rate": 22050,
+    "channels": 1,
+    "format": "pcm_s16le_wav",
+    "pattern": "streamed_c_g_am_f_progression"
+  },
+  "environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.13",
+    "logical_cpu_count": 16,
+    "cpu_affinity": [
+      0,
+      1
+    ],
+    "cpu_affinity_count": 2,
+    "memory_limit_mode": "observed_process_peak"
+  },
+  "measurements": {
+    "wall_seconds": 11.201268,
+    "cpu_seconds": 12.34375,
+    "upload_validation_and_encryption_seconds": 1.276977,
+    "queued_analysis_seconds": 9.924291,
+    "peak_rss_bytes": 323964928,
+    "stage_seconds": {
+      "validating": 0.007596,
+      "decoding": 1.963359,
+      "rhythm": 5.380368,
+      "tonality": 0.733584,
+      "structure": 0.653748,
+      "chords": 1.102518,
+      "evidence": 0.031149
+    }
+  },
+  "result": {
+    "persisted": true,
+    "duration_seconds": 300.0,
+    "sections": 1,
+    "chords": 240,
+    "evidence": 484
+  }
+}
