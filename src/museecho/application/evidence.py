@@ -101,6 +101,7 @@ def build_evidence(
     *,
     policy: EvidencePolicy | None = None,
 ) -> tuple[Evidence, ...]:
+    result.validate()
     selected = policy or EvidencePolicy()
     items: list[Evidence] = []
     track = result.track
@@ -280,7 +281,9 @@ def select_for_segment(
         (
             item
             for item in evidence
-            if item.kind in _LLM_KIND_ALLOWLIST
+            if isinstance(item.kind, str)
+            and item.kind in _LLM_KIND_ALLOWLIST
+            and _valid_algorithm(item.algorithm)
             and item.eligible_for_llm
             and item.value_json is not None
             and item.confidence >= _minimum_confidence(selected_policy, item.kind)
@@ -379,6 +382,15 @@ def _track_evidence(
 def _known_text(value: str) -> bool:
     normalized = value.strip().casefold()
     return bool(normalized) and normalized != "unknown"
+
+
+def _valid_algorithm(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and 1 <= len(value) <= 128
+        and value.isascii()
+        and all(character.isalnum() or character in "-_." for character in value)
+    )
 
 
 def _is_unknown(value: object) -> bool:
