@@ -437,7 +437,7 @@ def test_low_confidence_chord_is_never_llm_eligible():
 
 **最终命令：** `uv run pytest tests/unit/test_evidence_policy.py -q`
 
-**并行：** 否。**依赖：** T8–T11。**对应验收标准：** AC-D LLM 只接收时间窗内合格 Evidence。**分支：** `feat/12-evidence-policy`。**计划提交：** `feat: enforce evidence eligibility policy`。**实际提交：** 待执行。
+**并行：** 否。**依赖：** T8–T11。**对应验收标准：** AC-D LLM 只接收时间窗内合格 Evidence。**分支：** `feat/12-evidence-policy`。**计划提交：** `feat: enforce evidence eligibility policy`。**实际提交：** `c14d87e`（版本化策略、Evidence 构建与安全选择）、`2e8da87`（可变结果与持久化证据信任边界复验），已完成。
 
 ### 任务 13：Evidence-first LLM 适配器与确定性回退
 

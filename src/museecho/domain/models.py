@@ -214,6 +214,12 @@ class Evidence:
         if self.value_json is not None:
             _validate_json(self.value_json, "value_json")
 
+    @property
+    def public_value(self) -> object:
+        if self.value_json is None:
+            return "unknown"
+        return self.value_json.get("public_value", self.value_json)
+
 
 @dataclass
 class Explanation:

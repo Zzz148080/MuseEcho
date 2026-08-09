@@ -188,3 +188,12 @@
 - **TDD 与复核**：首个 RED 为 `museecho.theory` 模块不存在；公共包接口和小调属和弦等音候选也分别以失败测试固定后修复。聚焦复核未发现剩余 Critical、Important 或 Minor 缺陷。
 - **验证**：Task 11 定向 `79 passed`；后端互补分片合计 `422 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件。Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
 - **Git**：核心实现 `273b39b`；等音上下文与公共接口修复 `46b1cd6`。按既定流程保留 `feat/11-theory-engine`，最终验证后自动合并并推送 `main`。
+
+## 2026-08-09 — TASK 12 / EVIDENCE 资格与时间窗策略
+
+- **事实策略**：新增不可变、版本化 `EvidencePolicy`，分别门控 rhythm、energy、tonality、section、chord 与继承和弦置信度的 deterministic_theory；低置信、unknown、空值、格式伪造或字段越界统一保留为不可用于 LLM 的 `unknown`，不泄漏原事实。
+- **白名单与值校验**：builder 只读取批准的分析字段，不读取 `emotion`、`genre`、`instrument`；selector 除 kind 白名单外重新检查当前策略阈值、公开字段形状、音名/大小三和弦、结构标签、拍号、能量范围及 Task 11 乐理 DTO 枚举，不能只信任持久化的 `eligible_for_llm` 标志。
+- **引用与选择**：Evidence ID 基于分析/source 身份或能量内容生成，不随策略版本或无关 time-series 插入变化；重复能量事实去重。片段选择严格使用左闭右开时间交集，拒绝跨分析混合，并按稳定顺序同时执行条数与规范 JSON 字符预算。
+- **TDD 与复核**：首个 RED 为 `museecho.application.evidence` 不存在；后续以失败测试闭环低置信乐理传播、高置信 unknown、字段伪装、畸形值、预算边界、可变结果重验和 kind/algorithm 运行时篡改。聚焦复核未发现剩余 Critical、Important 或 Minor 缺陷。
+- **验证**：Task 12 定向 `37 passed`，领域/仓储/Evidence 相关回归 `62 passed`；后端互补分片合计 `459 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件。Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
+- **Git**：核心实现 `c14d87e`；信任边界复验修复 `2e8da87`。按既定流程保留 `feat/12-evidence-policy`，最终验证后自动合并并推送 `main`。
