@@ -179,3 +179,12 @@
 - **TDD 与独立复审**：从模块缺失 RED 开始，七轮聚焦复审依次闭环 key hint 强制、扩展和弦误报、静音吸收、局部伪结构、非等长 ABA、最短段、一般多段、音级依赖和循环变奏等反例。最终独立复审为 Critical 0、Important 0、Minor 0，结论 `READY`。
 - **验证**：Task 10 联合分析定向 `161 passed`；全量后端按分析与其余测试分片合计 `343 passed, 2 skipped`，两项 skip 仍为 Windows 当前会话无符号链接创建权限。Ruff、mypy、`git diff --check` 通过；最终前端基线与锁文件检查在合并前执行。
 - **Git**：核心实现 `30d63c1`，六轮审查加固 `8e6af06`、`8ca8f35`、`31b5388`、`8ac4027`、`1099cd3`、`bae61b1`，最终稳定段与循环修复 `cd5bcb9`、`53f8add`。按既定流程保留 `feat/10-structure-chords`，最终验证后自动合并并推送 `main`。
+
+## 2026-08-09 — TASK 11 / 确定性乐理引擎
+
+- **事实边界**：新增不依赖 Web、存储或 LLM 的纯函数 `explain_chord` 与不可变 `ChordTheory`；只解释受支持的大小三和弦。未知、扩展和弦或无效输入不返回组成音、级数或功能，调外和弦不伪造唯一功能。
+- **规则与拼写**：分离音名、和弦解析和调式功能表；保留显式升降号拼写并规范 Unicode 升降记号。大小调级数和候选功能均来自静态规则；小调升导音属和弦明确标注非自然小调音阶及限制。
+- **不确定性**：等音输入保留原和弦组成音，同时返回当前调式期望拼写的候选与固定限制码；缺少合法调性上下文时仅保留和弦内部事实，不推断罗马数字或功能。输出为版本化严格 JSON 原生数据，不包含生成式文本。
+- **TDD 与复核**：首个 RED 为 `museecho.theory` 模块不存在；公共包接口和小调属和弦等音候选也分别以失败测试固定后修复。聚焦复核未发现剩余 Critical、Important 或 Minor 缺陷。
+- **验证**：Task 11 定向 `79 passed`；后端互补分片合计 `422 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件。Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
+- **Git**：核心实现 `273b39b`；等音上下文与公共接口修复 `46b1cd6`。按既定流程保留 `feat/11-theory-engine`，最终验证后自动合并并推送 `main`。

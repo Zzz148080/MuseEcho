@@ -409,7 +409,7 @@ def test_g_major_in_c_major_is_dominant():
 
 **最终命令：** `uv run pytest tests/unit/theory/test_chords.py -q`
 
-**并行：** 否。**依赖：** T9/T10。**对应验收标准：** AC-D 无 LLM 仍可复现的乐理事实。**分支：** `feat/11-theory-engine`。**计划提交：** `feat: explain chords with deterministic theory`。**实际提交：** 待执行。
+**并行：** 否。**依赖：** T9/T10。**对应验收标准：** AC-D 无 LLM 仍可复现的乐理事实。**分支：** `feat/11-theory-engine`。**计划提交：** `feat: explain chords with deterministic theory`。**实际提交：** `273b39b`（确定性乐理引擎与参数矩阵）、`46b1cd6`（公共接口与小调属和弦等音上下文），已完成。
 
 ### 任务 12：Evidence 构建、置信度门槛与时间窗选择
 
