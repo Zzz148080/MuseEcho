@@ -1004,6 +1004,7 @@ dependencies = [
     { name = "click" },
     { name = "cryptography" },
     { name = "fastapi" },
+    { name = "httpx2" },
     { name = "keyring" },
     { name = "librosa" },
     { name = "numpy" },
@@ -1016,7 +1017,6 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
-    { name = "httpx2" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "ruff" },
@@ -1029,7 +1029,7 @@ requires-dist = [
     { name = "click", specifier = ">=8.3.0,<9" },
     { name = "cryptography", specifier = ">=46.0.0,<51" },
     { name = "fastapi", specifier = ">=0.141.0" },
-    { name = "httpx2", marker = "extra == 'dev'", specifier = ">=2.7.0,<3" },
+    { name = "httpx2", specifier = ">=2.7.0,<3" },
     { name = "keyring", specifier = ">=25.7.0,<26" },
     { name = "librosa", specifier = ">=0.11.0,<1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=2.3.0" },
