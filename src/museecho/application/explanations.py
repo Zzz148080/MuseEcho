@@ -1,11 +1,21 @@
 from __future__ import annotations
 
 import copy
+import json
 import uuid
 
 from museecho.application.evidence import select_for_segment
 from museecho.domain.models import Evidence, ExplanationDraft
 from museecho.domain.ports import ExplanationProvider
+
+_KIND_LABELS = {
+    "rhythm": "节奏",
+    "energy": "能量",
+    "tonality": "调性",
+    "section": "结构段落",
+    "chord": "和弦",
+    "deterministic_theory": "确定性乐理",
+}
 
 
 class ExplanationService:
@@ -48,8 +58,24 @@ def _fallback(evidence: tuple[Evidence, ...]) -> ExplanationDraft:
     if not evidence:
         text = "当前片段没有达到置信度门槛的音乐证据，因此无法给出事实性解释。"
     else:
-        facts = "；".join(f"{item.kind}: {item.public_value}" for item in evidence)
-        text = f"确定性回退解释：可确认的分析证据为 {facts}。这些证据不表示唯一因果关系。"
+        parts: list[str] = []
+        fact_characters = 0
+        for item in evidence:
+            value = json.dumps(item.public_value, ensure_ascii=False, sort_keys=True)
+            part = (
+                f"{_KIND_LABELS[item.kind]} {value}"
+                f"（置信度 {item.confidence:.2f}，来源 {item.algorithm}）"
+            )
+            if fact_characters + len(part) > 3_400:
+                break
+            parts.append(part)
+            fact_characters += len(part)
+        facts = "；".join(parts)
+        text = (
+            f"确定性回退解释：当前可确认的分析证据为 {facts}。"
+            "这些标签描述该时间窗中的可观察模式，可帮助学习和声与结构，"
+            "但不表示唯一因果关系。"
+        )
     return ExplanationDraft(mode="fallback", text=text, evidence_ids=evidence_ids)
 
 

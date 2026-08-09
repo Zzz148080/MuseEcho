@@ -30,6 +30,10 @@ def test_missing_key_uses_deterministic_fallback():
 
     assert answer.mode == "fallback"
     assert answer.evidence_ids == tuple(item.id for item in evidence)
+    assert "和弦" in answer.text
+    assert "置信度 0.90" in answer.text
+    assert "chroma-v1" in answer.text
+    assert "不表示唯一因果关系" in answer.text
 
 
 class StubProvider:
