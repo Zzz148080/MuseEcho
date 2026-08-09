@@ -260,3 +260,13 @@
 - **浏览器验收**：真实 production build 配合本地合成 API/12 秒 Range 音频完成桌面 1440px、平板 768px 与手机 390px 检查，均无横向溢出；真实交互验证引用将播放器与播放头定位到 8 秒、选区变为 8–12 秒；确认删除后 URL 清空、Music DNA/播放器消失且浏览器 warning/error 为 0。临时 mock、构建产物和测试 venv 均位于忽略目录，未提交。
 - **验证**：前端全量 `66 passed`，TypeScript typecheck、Vite production build 与 `npm audit --audit-level=high`（0 vulnerabilities）通过；后端全量 `506 passed, 2 skipped`，Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过。两项 skip 仍为当前 Windows 会话无法创建符号链接的既有平台条件。
 - **Git**：核心实现 `b1c55ec`。按既定流程保留 `feat/18-explanation-privacy-ui`，最终验证后自动合并并推送 `main`。
+
+## 2026-08-09 — TASK 19 / 端到端、安全、可访问性与性能验证
+
+- **真实系统 E2E**：新增 Playwright 1.61.1 根测试包与独立 TypeScript 门禁；测试专用服务使用临时自签名 HTTPS、SQLite、加密音频仓库、单工作队列和真实 MIR 协调器。4 秒流式生成的无版权 C–G–Am–F WAV 完成上传→分析→Music DNA→Range 音频→拖选→和弦→确定性 fallback 问答→永久删除，捕获 console、page、失败请求及 5xx，最终均为 0。Windows 服务由 Playwright global setup 直接持有，并通过随机关停信号优雅停止队列与 Uvicorn，不泄漏后台进程。
+- **响应式与可访问性**：真实完成态在 1440×900、768×1024、390×844 三档视口均无横向溢出；桌面问答/保留面板双栏，平板和手机顺序堆叠。键盘原生范围控件能建立选区，时间轴、和弦按钮和删除控件均通过可访问名称操作。
+- **安全边界**：真实能力 Cookie 下验证 32 字节 Range 返回 `206` 与正确 `Content-Range`；无能力凭证时 status/result/audio 与随机不存在 UUID 的 404 载荷不可区分；缺失/错误 CSRF 的解释请求统一 404 且资源保持可读；32 MiB multipart 在解析/分析前返回 413。审计日志只记录 method/path/status，实测不含问题正文、文件名、Cookie 名称或值。
+- **五分钟性能证据**：`scripts/benchmark.py` 流式生成 300 秒、22.05 kHz 单声道代表样本，走真实上传校验、加密持久化、队列、全部 DSP/MIR 阶段与结果持久化。Windows 进程亲和性强制为 2 核并在 `finally` 恢复；实测墙钟 `11.201268s`、峰值 RSS `323964928` 字节、240 个和弦事件和 484 条 Evidence，低于 90 秒/4 GiB 门槛。Docker 守护进程本会话不可用，故诚实标记内存为进程峰值观测而非容器硬上限，硬限额留待 Task 20。
+- **TDD 与复核**：首轮依次暴露选区未滚入视口、回退标签选择器歧义、favicon 404、Windows 子进程回收、WinAPI 64 位句柄、SQLite 连接池清理和亲和性未恢复；均先以失败测试/复现固定后修复。本地聚焦审查另关闭默认系统 Chrome 不可重复和 E2E TypeScript 未门禁两项，最终 Critical 0、Important 0、Minor 0，结论 `READY`。受当前会话约束未派生子代理。
+- **验证**：后端全量 `507 passed, 2 skipped`（新增 300 秒性能门）；前端全量 `66 passed`；真实浏览器 `4 passed`。Ruff format/check、mypy（44 source files）、前端与 E2E 两套 TypeScript、Vite production build、`uv lock --check`、diff-check，以及前端/根 npm audit（均 0 vulnerabilities）通过。两项 skip 仍为当前 Windows 会话无法创建符号链接的既有平台条件。
+- **Git**：核心实现 `9ad408c`。按后续统一分支规则使用并保留 `feat/19-system-verification`；最终验证后自动推送功能分支、合并并推送 `main`。
