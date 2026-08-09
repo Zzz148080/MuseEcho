@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.13
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.0
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - name: Install system and locked Python dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
+          python -m pip install uv==0.11.29
+          uv sync --frozen --extra dev
+      - name: Install locked Node dependencies
+        run: |
+          npm ci
+          npm --prefix frontend ci
+      - name: Static quality gates
+        run: |
+          uv lock --check
+          uv run ruff format --check src tests
+          uv run ruff check .
+          uv run mypy src
+          npm run typecheck
+          npm --prefix frontend run typecheck
+      - name: Unit and integration tests
+        run: |
+          uv run pytest -q --basetemp tmp/pytest-ci
+          npm --prefix frontend test
+          npm --prefix frontend run build
+      - name: Dependency and secret audit
+        shell: pwsh
+        run: |
+          npm audit --audit-level=high
+          npm --prefix frontend audit --audit-level=high
+          ./scripts/secret-scan.ps1
+
+  e2e:
+    needs: quality
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.13
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.0
+      - name: Install application and browser
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
+          python -m pip install uv==0.11.29
+          uv sync --frozen --extra dev
+          npm ci
+          npm --prefix frontend ci
+          npx playwright install --with-deps chromium
+      - name: Real HTTPS browser flow
+        run: uv run npm run e2e
+
+  distribution:
+    needs: quality
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and build both non-root images
+        run: |
+          mkdir -p /tmp/museecho-ci-secrets
+          python3 -c "import base64,pathlib; pathlib.Path('/tmp/museecho-ci-secrets/audio-kek').write_text(base64.b64encode(b'c'*32).decode())"
+          chmod 400 /tmp/museecho-ci-secrets/audio-kek
+          export MUSEECHO_SECRETS_DIR=/tmp/museecho-ci-secrets
+          docker compose config --quiet
+          docker build --target app --tag museecho-app:ci .
+          docker build --target gateway --tag museecho-gateway:ci .
+          test "$(docker image inspect --format '{{.Config.User}}' museecho-app:ci)" = "10001:10001"
+          test "$(docker image inspect --format '{{.Config.User}}' museecho-gateway:ci)" = "10001:10001"
+      - name: Reject high and critical image vulnerabilities
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.70.0 image --exit-code 1 --ignore-unfixed \
+            --severity HIGH,CRITICAL museecho-app:ci
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.70.0 image --exit-code 1 --ignore-unfixed \
+            --severity HIGH,CRITICAL museecho-gateway:ci

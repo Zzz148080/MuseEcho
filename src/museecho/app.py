@@ -1,6 +1,7 @@
 from collections.abc import Collection, Mapping
 
 from fastapi import FastAPI
+from starlette.types import Lifespan
 
 from museecho.api.analyses import install_analyses_api
 from museecho.api.audio import create_audio_router
@@ -21,8 +22,9 @@ def create_app(
     audio_store: EncryptedAudioStore | None = None,
     explanation_service: ExplanationService | None = None,
     trusted_origins: Collection[str] = (),
+    lifespan: Lifespan[FastAPI] | None = None,
 ) -> FastAPI:
-    app = FastAPI(title="MuseEcho")
+    app = FastAPI(title="MuseEcho", lifespan=lifespan)
     if upload_service is not None:
         install_analyses_api(app, upload_service)
     if repository is not None and access_service is not None:
