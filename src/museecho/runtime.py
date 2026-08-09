@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import logging
 import math
 import os
 import threading
@@ -28,6 +29,7 @@ from museecho.infrastructure.repositories import SqliteAnalysisRepository, init_
 from museecho.infrastructure.secrets import FileSecretStore
 
 DEFAULT_CLEANUP_INTERVAL_SECONDS = 60.0
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -118,6 +120,7 @@ class RuntimeResources:
     queue: SingleWorkerQueue
     cleanup: ExpiryCleanup
     cleanup_stop: threading.Event
+    cleanup_failed: threading.Event
     cleanup_thread: threading.Thread | None = None
 
 
@@ -170,7 +173,13 @@ def create_runtime_app(
     explanation_service = ExplanationService(provider)
     deletion_service = AnalysisDeletionService(repository, audio_store)
     cleanup = ExpiryCleanup(repository, deletion_service)
-    resources = RuntimeResources(repository, queue, cleanup, threading.Event())
+    resources = RuntimeResources(
+        repository,
+        queue,
+        cleanup,
+        threading.Event(),
+        threading.Event(),
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -188,13 +197,21 @@ def create_runtime_app(
             yield
         finally:
             resources.cleanup_stop.set()
+            cleanup_stopped = True
             if resources.cleanup_thread is not None:
                 resources.cleanup_thread.join(timeout=5.0)
-            if not queue.stop(timeout=5.0):
-                raise RuntimeError("analysis worker did not stop cleanly")
+                cleanup_stopped = not resources.cleanup_thread.is_alive()
+            queue_stopped = queue.stop(timeout=5.0)
             bind = session_factory.kw.get("bind")
             if bind is not None:
                 bind.dispose()
+            shutdown_failures = []
+            if not cleanup_stopped:
+                shutdown_failures.append("expiry cleanup thread did not stop cleanly")
+            if not queue_stopped:
+                shutdown_failures.append("analysis worker did not stop cleanly")
+            if shutdown_failures:
+                raise RuntimeError("; ".join(shutdown_failures))
 
     app = create_app(
         upload_service=upload_service,
@@ -204,6 +221,7 @@ def create_runtime_app(
         explanation_service=explanation_service,
         trusted_origins=selected.trusted_origins,
         lifespan=lifespan,
+        readiness_check=lambda: not resources.cleanup_failed.is_set(),
     )
     app.state.museecho_runtime = resources
     return app
@@ -219,8 +237,13 @@ def _run_cleanup(resources: RuntimeResources, interval_seconds: float) -> None:
     while not resources.cleanup_stop.wait(interval_seconds):
         try:
             resources.cleanup.run_once()
+            if resources.cleanup_failed.is_set():
+                resources.cleanup_failed.clear()
+                LOGGER.info("expiry cleanup recovered")
         except Exception:
-            continue
+            if not resources.cleanup_failed.is_set():
+                LOGGER.error("expiry cleanup failed; readiness degraded")
+                resources.cleanup_failed.set()
 
 
 def _validate_audio_kek(secret_store: FileSecretStore) -> None:

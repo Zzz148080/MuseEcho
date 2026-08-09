@@ -84,12 +84,18 @@ try {
         $env:MUSEECHO_E2E_PYTHON = $venvPython
         Invoke-Checked 'HTTPS browser E2E' { & $npmCommand run e2e }
     }
+    Invoke-Checked 'Dependency license policy' {
+        Invoke-Uv run python scripts/license_audit.py
+    }
     Invoke-Checked 'Root dependency audit' { & $npmCommand audit --audit-level=high }
     Invoke-Checked 'Frontend dependency audit' {
         & $npmCommand --prefix frontend audit --audit-level=high
     }
     Invoke-Checked 'Secret audit' {
         & $powershellCommand -NoProfile -ExecutionPolicy Bypass -File scripts/secret-scan.ps1
+    }
+    Invoke-Checked 'Secret audit synthetic coverage' {
+        & $powershellCommand -NoProfile -ExecutionPolicy Bypass -File scripts/test-secret-scan.ps1
     }
 } finally {
     Pop-Location

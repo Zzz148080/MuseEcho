@@ -1,51 +1,12 @@
 name: museecho
 
-services:
-  secret-init:
-    image: alpine:3.23.3
-    restart: "no"
-    entrypoint: [/bin/sh, -ec]
-    command:
-      - |
-        test -f /source/audio-kek
-        rm -f /prepared/audio-kek /prepared/provider-key
-        cp /source/audio-kek /prepared/audio-kek
-        chown 10001:10001 /prepared/audio-kek
-        chmod 0400 /prepared/audio-kek
-        if test -f /source/provider-key; then
-          cp /source/provider-key /prepared/provider-key
-          chown 10001:10001 /prepared/provider-key
-          chmod 0400 /prepared/provider-key
-        fi
-    volumes:
-      - type: bind
-        source: ${MUSEECHO_SECRETS_DIR:?set MUSEECHO_SECRETS_DIR to an absolute directory outside the repository}
-        target: /source
-        read_only: true
-      - museecho_secrets:/prepared
-    read_only: true
-    tmpfs:
-      - /tmp:size=8m,mode=1777
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - CHOWN
-      - DAC_OVERRIDE
-      - FOWNER
-
-  app:
+x-app-common: &app-common
     image: museecho-app:local
     build:
       context: .
       target: app
       args:
         DEBIAN_MIRROR: ${MUSEECHO_DEBIAN_MIRROR:-https://deb.debian.org/debian}
-    restart: unless-stopped
-    depends_on:
-      secret-init:
-        condition: service_completed_successfully
     environment:
       MUSEECHO_DATA_ROOT: /data
       MUSEECHO_AUDIO_KEK_FILE: /run/secrets/audio-kek
@@ -53,9 +14,6 @@ services:
       MUSEECHO_PROVIDER_BASE_URL: ${MUSEECHO_PROVIDER_BASE_URL:-}
       MUSEECHO_PROVIDER_MODEL: ${MUSEECHO_PROVIDER_MODEL:-}
       MUSEECHO_PROVIDER_SECRET_FILE: ${MUSEECHO_PROVIDER_SECRET_FILE:-}
-    volumes:
-      - museecho_data:/data
-      - museecho_secrets:/run/secrets:ro
     read_only: true
     tmpfs:
       - /tmp:size=256m,mode=1777
@@ -70,7 +28,20 @@ services:
       start_period: 20s
       retries: 6
 
+services:
+  app:
+    <<: *app-common
+    profiles: [production]
+    restart: unless-stopped
+    volumes:
+      - museecho_data:/data
+      - type: bind
+        source: ${MUSEECHO_SECRETS_DIR:-/etc/museecho/secrets}
+        target: /run/secrets
+        read_only: true
+
   gateway:
+    profiles: [production]
     image: museecho-gateway:local
     build:
       context: .
@@ -98,6 +69,35 @@ services:
       start_period: 10s
       retries: 6
 
+  app-dev:
+    <<: *app-common
+    profiles: [development]
+    restart: "no"
+    command:
+      - uvicorn
+      - museecho.runtime:app
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+      - --reload-dir
+      - /app/src
+      - --no-access-log
+    ports:
+      - "127.0.0.1:${MUSEECHO_DEV_API_PORT:-8000}:8000"
+    volumes:
+      - museecho_dev_data:/data
+      - type: bind
+        source: ./src
+        target: /app/src
+        read_only: true
+      - type: bind
+        source: ${MUSEECHO_SECRETS_DIR:-/etc/museecho/secrets}
+        target: /run/secrets
+        read_only: true
+
 volumes:
   museecho_data:
-  museecho_secrets:
+  museecho_dev_data:

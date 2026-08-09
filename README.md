@@ -120,21 +120,34 @@ npm.cmd run e2e
 ## Docker
 
 在仓库外创建 Secret 目录，至少包含 `audio-kek`；可选模型凭据命名为 `provider-key`。
-Compose 的一次性引导容器只读读取该目录，将文件以 UID 10001、模式 `0400` 放入专用卷；
-应用和网关均以 UID 10001 非 root 运行，根文件系统只读，应用只读挂载 Secret。
+Linux 生产默认路径是 `/etc/museecho/secrets`；Windows 或自定义布局必须用绝对路径设置
+`MUSEECHO_SECRETS_DIR`。Compose 把这个外部目录直接只读挂载到 `/run/secrets`，不会复制到
+Docker 卷。应用和网关均以 UID 10001 非 root 运行，根文件系统只读。
 
 ```powershell
 $env:MUSEECHO_SECRETS_DIR = 'D:\MuseEchoSecrets'
-docker compose config --quiet
-docker compose build --pull
-docker compose up -d --wait
-Invoke-RestMethod http://localhost:8080/api/health
+docker compose --profile production config --quiet
+docker compose --profile production build --pull
+docker compose --profile production up -d --wait
+# 仅限本机内部 CA smoke；公网不得跳过证书校验。
+curl.exe --fail --silent --show-error --insecure https://localhost:8443/api/health
 ```
 
 浏览器使用 `https://localhost:8443`。本地发行物采用 Caddy 内部 CA，第一次访问会显示本地
-证书警告；公网部署必须改用受信任域名证书。数据保存在 `museecho_data` 卷，普通重启不会
-丢失；`docker compose down --volumes` 会删除数据库、密文音频和准备后的 Secret，请只在
-明确需要销毁实例时使用。
+证书警告；上述 `--insecure` 只用于本机健康探针。需要严格验证时，应从 Caddy 数据目录导出
+本地根 CA、导入 Windows“受信任的根证书颁发机构”，再用不带 `--insecure` 的
+`curl.exe`。公网部署必须使用受信任域名证书。数据保存在 `museecho_data` 卷，普通重启不会
+丢失；`docker compose --profile production down --volumes` 会删除数据库和密文音频，但
+不会删除外部 Secret 目录。
+
+开发 profile 只启动绑定到回环地址的后端、只读挂载当前 `src/` 并启用 reload；前端仍按
+“本地运行”章节用 Vite 启动。它使用独立的 `museecho_dev_data` 卷，不能当作生产部署：
+
+```powershell
+$env:MUSEECHO_SECRETS_DIR = 'D:\MuseEchoSecrets'
+docker compose --profile development up --build app-dev
+Invoke-RestMethod http://127.0.0.1:8000/api/health
+```
 
 完整容器 smoke 会构建镜像、上传真实 WAV、等待分析、重启验证持久性并检查持久卷无明文
 音频：
@@ -154,8 +167,9 @@ MUSEECHO_PROVIDER_SECRET_FILE=/run/secrets/provider-key
 ```
 
 容器外本地运行时，Secret 路径必须是仓库外的绝对只读文件。不得把 API Key 写入 `.env`、
-Compose、命令行、截图、日志、Git 历史或前端变量。`scripts/secret-scan.ps1` 扫描高置信
-凭据模式和禁止路径，但不能代替平台侧密钥轮换与使用日志审计。
+Compose、命令行、截图、日志、Git 历史或前端变量。`scripts/secret-scan.ps1` 扫描 tracked
+与未忽略的 untracked 文件、高置信凭据模式、凭据赋值中的高熵值和禁止路径，读取失败会
+关闭门禁；但它不能代替平台侧密钥轮换与使用日志审计。
 
 ## 安全边界
 
@@ -165,15 +179,19 @@ Compose、命令行、截图、日志、Git 历史或前端变量。`scripts/sec
   CSRF token。
 - 上传体、解码时间、时长、响应大小、LLM 超时和引用集合均有硬限制。
 - Caddy 是唯一公开入口；FastAPI 不应直接暴露公网。
-- 镜像 CI 使用 Trivy 拒绝有修复版本的 HIGH/CRITICAL 漏洞。发现漏洞后应更新基础镜像或
-  依赖锁，再重跑完整门禁。
+- 镜像 CI 使用 Trivy 拒绝任何 HIGH/CRITICAL 漏洞，不忽略尚无修复版本的条目。发现漏洞后
+  应更新基础镜像或依赖锁并重跑完整门禁，不得用 blanket ignore 绕过。
 
 ## 分发与 CI
 
 `Dockerfile` 的 `app` 与 `gateway` target 组成发行物。GitHub Actions 与 GitLab CI 都执行
-Python/TypeScript 静态检查、后端/前端测试、构建、真实 HTTPS E2E、Secret 审计、Docker
-构建和镜像漏洞门；GitLab 的后端测试 job 固定名为 `unit-test`。本地配置通过不代表远端
-CI 已运行，只有对应提交的真实流水线结果才能作为远端证据。
+Python/TypeScript 静态检查、后端/前端测试、构建、真实 HTTPS E2E、确定性许可证策略、
+Secret 审计、Docker 构建和镜像漏洞门；GitLab 的后端测试 job 固定名为 `unit-test`。
+`uv run python scripts/license_audit.py` 会要求 `uv.lock` 中每个名称/版本与人工复核策略精确
+一致，并拒绝 npm lock 中缺失或未批准的许可证。`scripts/container-pytest.ps1` 可用现有 app
+镜像的 FFmpeg 运行完整 Python 套件：仓库和现有 pytest 模块只读挂载、网络关闭，不向生产
+镜像加入测试工具。本地配置通过不代表远端 CI 已运行，只有对应提交的真实流水线结果才能
+作为远端证据。
 
 ## 部署
 
@@ -186,6 +204,8 @@ CI 已运行，只有对应提交的真实流水线结果才能作为远端证�
 - V1 仅接受 WAV/MP3，最长 10 分钟；仅输出大小三和弦，其他和声保守为 `unknown`。
 - 结构标签是可解释的相似段落标识，不等同于曲式学人工定论。
 - 分析队列是单进程单工作线程，不是多租户横向扩展系统。
+- 当前本地 Trivy 0.70.0 缓存对 app 镜像报告 181 个无修复版本的 HIGH/CRITICAL 条目；无
+  suppression 的 CI 会诚实失败，Task 20 在获得可更新运行时前保持未完成。
 - 内部 CA 只适合本地 smoke；公网证书和腾讯云运行证据在 Task 21 完成。
 - LLM 可用性、计费和第三方数据处理由用户选择的平台负责；MuseEcho 不把原始音频发送给
   LLM。

@@ -278,3 +278,10 @@
 - **TDD/安全 RED→GREEN：** 容器 smoke 的初始 RED 是所需发行文件尚不存在；网关安全 RED 为 Trivy 发现 10 个 HIGH，随后通过升级运行时库、重建 Caddy 和移除 capability 修复。GREEN 的最终 smoke 为 exit 0，包含真实 WAV 分析、重启持久化、无明文持久化及无镜像历史 Secret；重新扫描 app/gateway 均为 0 个 HIGH/CRITICAL。
 - **验证：** fresh Secret scan 检查 165 个 tracked 文件通过；app/gateway `Config.User` 都为 `10001:10001`；PowerShell 语法和两份 CI YAML 解析通过。Ruff format/check、mypy、前端 66 个测试、两套 TypeScript、production build 和根/前端 npm audit（均 0 vulnerabilities）通过。主机全量 Python 为 `508 passed, 2 skipped, 8 failed`：仅因受限 PATH 缺少 ffmpeg/ffprobe；镜像内两项工具存在，容器 smoke 已覆盖真实分析。未下载工具、未修改测试、未声称远端 CI 已运行。
 - **Git：** `70dde35`（`build: package and verify production distribution`）。分支保留给控制器后续审查和集成。
+
+## 2026-08-10 — TASK 20 / 审查修复轮 2（未完成）
+
+- **边界与真实性：** 移除 GitHub/GitLab 所有 Trivy 未修复项豁免参数，不再把 suppression 后的零结果写成镜像安全通过。现有缓存对重建 app 镜像仍报 169 HIGH、12 CRITICAL，181 项均无 `FixedVersion`；gateway 为零，因此 Task 20 明确保持 blocked/incomplete，未声称远端 CI 运行。
+- **Secret 与 profiles：** 删除持久 Secret 准备卷，生产/开发都从仓库外目录直接只读挂载 `/run/secrets`；Linux 默认 `/etc/museecho/secrets`。Compose `production` 只含 app/gateway，`development` 只含回环 app-dev 与独立数据卷。Windows smoke fixture 移到 OS task-temp，失败/成功均严格 down、删卷、清临时文件并暴露清理失败。
+- **审计与运行时：** 新增 `scripts/license-policy.json` 与纯标准库 audit，精确覆盖 79 个 Python 锁项和两个 npm lock 的许可证；Secret scan 覆盖 tracked/non-ignored untracked、主流 provider 格式及仅凭据赋值上下文的熵检测，并对 missing/unreadable fail closed。后台 expiry cleanup 首次失败发安全日志并把 health 降为 503，恢复后回到 ready；异常正文不入日志。
+- **验证：** 无网络、只读 repo/测试依赖挂载的现有 app 镜像全量 pytest 为 `524 passed` 且无 warning；production container smoke exit 0；focused `26 passed, 2 skipped`；前端 `66 passed`、Ruff format/check、mypy 45 files、前端/E2E typecheck、build、两次 npm audit、license audit、synthetic/real Secret scan、CI/Compose YAML 与 profile/mount 断言通过。没有下载任何新工具/依赖，也未把 pytest 加入生产镜像。

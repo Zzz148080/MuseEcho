@@ -9,7 +9,7 @@
 | 组件 | 许可证（上游元数据） |
 |---|---|
 | FastAPI、Pydantic、SQLAlchemy、argon2-cffi、keyring | MIT |
-| Click、httpx2、Uvicorn | BSD-3-Clause |
+| Click、httpx、Uvicorn | BSD-3-Clause |
 | cryptography | Apache-2.0 OR BSD-3-Clause |
 | librosa | ISC |
 | NumPy | BSD-3-Clause 及其二进制包所列第三方许可 |
@@ -45,6 +45,9 @@ FFmpeg 的实际许可证取决于编译选项。分发前应在最终 `app` 镜
 ## 审计与更新要求
 
 1. `npm audit --audit-level=high` 必须对根目录和 `frontend/` 均为零高危失败。
-2. CI 使用固定 Trivy 版本扫描两个最终镜像，并对存在修复版本的 HIGH/CRITICAL 漏洞失败。
-3. 每次修改任一依赖锁或基础镜像版本，都要重新核对本通知、上游 LICENSE 和镜像内通知。
-4. MuseEcho 自身尚未声明开源许可证；本文件不授予 MuseEcho 源码的使用或再分发权利。
+2. `python scripts/license_audit.py` 必须确认 `uv.lock` 名称/版本与
+   `scripts/license-policy.json` 精确一致，并拒绝 npm lock 中缺失或未批准的许可证。
+3. CI 使用固定 Trivy 版本扫描两个最终镜像，对任何 HIGH/CRITICAL 漏洞失败且不使用
+   未修复项豁免参数。
+4. 每次修改任一依赖锁或基础镜像版本，都要重新核对本通知、上游 LICENSE 和镜像内通知。
+5. MuseEcho 自身尚未声明开源许可证；本文件不授予 MuseEcho 源码的使用或再分发权利。

@@ -54,8 +54,10 @@ jobs:
       - name: Dependency and secret audit
         shell: pwsh
         run: |
+          uv run python scripts/license_audit.py
           npm audit --audit-level=high
           npm --prefix frontend audit --audit-level=high
+          ./scripts/test-secret-scan.ps1
           ./scripts/secret-scan.ps1
 
   e2e:
@@ -92,7 +94,7 @@ jobs:
           python3 -c "import base64,pathlib; pathlib.Path('/tmp/museecho-ci-secrets/audio-kek').write_text(base64.b64encode(b'c'*32).decode())"
           chmod 400 /tmp/museecho-ci-secrets/audio-kek
           export MUSEECHO_SECRETS_DIR=/tmp/museecho-ci-secrets
-          docker compose config --quiet
+          docker compose --profile production config --quiet
           docker build --target app --tag museecho-app:ci .
           docker build --target gateway --tag museecho-gateway:ci .
           test "$(docker image inspect --format '{{.Config.User}}' museecho-app:ci)" = "10001:10001"
@@ -100,8 +102,8 @@ jobs:
       - name: Reject high and critical image vulnerabilities
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy:0.70.0 image --exit-code 1 --ignore-unfixed \
+            aquasec/trivy:0.70.0 image --exit-code 1 \
             --severity HIGH,CRITICAL museecho-app:ci
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy:0.70.0 image --exit-code 1 --ignore-unfixed \
+            aquasec/trivy:0.70.0 image --exit-code 1 \
             --severity HIGH,CRITICAL museecho-gateway:ci

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import base64
+import logging
 import os
 import stat
+import threading
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -11,7 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from museecho.domain.status import AnalysisJob
-from museecho.runtime import RuntimeSettings, create_runtime_app
+from museecho.runtime import RuntimeResources, RuntimeSettings, _run_cleanup, create_runtime_app
 
 
 def _write_read_only_secret(path: Path, value: str) -> Path:
@@ -115,3 +117,84 @@ def test_runtime_starts_upload_api_without_provider_and_deletes_expired_jobs(tmp
         for thread in __import__("threading").enumerate()
     )
     assert os.access(settings.audio_kek_file, os.R_OK)
+
+
+def test_runtime_health_degrades_on_cleanup_failure_and_recovers_safely(
+    tmp_path: Path,
+):
+    environ, repository_root = _base_environment(tmp_path)
+    environ["MUSEECHO_CLEANUP_INTERVAL_SECONDS"] = "0.02"
+    settings = RuntimeSettings.from_environment(environ, repository_root=repository_root)
+    app = create_runtime_app(settings=settings)
+    runtime = app.state.museecho_runtime
+
+    class FailingCleanup:
+        def run_once(self) -> int:
+            raise RuntimeError("credential-shaped-sensitive-detail")
+
+    class RecoveredCleanup:
+        def run_once(self) -> int:
+            return 0
+
+    with TestClient(app, base_url="https://museecho.test") as client:
+        runtime.cleanup = FailingCleanup()
+        deadline = time.monotonic() + 2.0
+        response = client.get("/api/health")
+        while response.status_code == 200 and time.monotonic() < deadline:
+            time.sleep(0.02)
+            response = client.get("/api/health")
+
+        assert response.status_code == 503
+        assert response.json() == {"status": "degraded"}
+
+        runtime.cleanup = RecoveredCleanup()
+        deadline = time.monotonic() + 2.0
+        while response.status_code != 200 and time.monotonic() < deadline:
+            time.sleep(0.02)
+            response = client.get("/api/health")
+
+        assert response.status_code == 200
+        assert response.json() == {"status": "ready"}
+
+
+def test_cleanup_thread_logs_failure_and_recovery_without_exception_detail(
+    caplog: pytest.LogCaptureFixture,
+):
+    class StopAfterOneIteration:
+        def __init__(self):
+            self.calls = 0
+
+        def wait(self, _interval_seconds: float) -> bool:
+            self.calls += 1
+            return self.calls > 1
+
+    class FailingCleanup:
+        def run_once(self) -> int:
+            raise RuntimeError("credential-shaped-sensitive-detail")
+
+    class RecoveredCleanup:
+        def run_once(self) -> int:
+            return 0
+
+    resources = RuntimeResources(
+        repository=None,  # type: ignore[arg-type]
+        queue=None,  # type: ignore[arg-type]
+        cleanup=FailingCleanup(),  # type: ignore[arg-type]
+        cleanup_stop=StopAfterOneIteration(),  # type: ignore[arg-type]
+        cleanup_failed=threading.Event(),
+    )
+    logger = logging.getLogger("museecho.runtime")
+    logger_was_disabled = logger.disabled
+    logger.disabled = False
+    try:
+        with caplog.at_level(logging.INFO, logger="museecho.runtime"):
+            _run_cleanup(resources, 0.01)
+            resources.cleanup = RecoveredCleanup()  # type: ignore[assignment]
+            resources.cleanup_stop = StopAfterOneIteration()  # type: ignore[assignment]
+            _run_cleanup(resources, 0.01)
+    finally:
+        logger.disabled = logger_was_disabled
+
+    assert "expiry cleanup failed; readiness degraded" in caplog.text
+    assert "expiry cleanup recovered" in caplog.text
+    assert "credential-shaped-sensitive-detail" not in caplog.text

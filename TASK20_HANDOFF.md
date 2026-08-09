@@ -58,7 +58,7 @@
 - 真正最慢的是 Debian FFmpeg 依赖下载；日志显示 CDN 多次 502。已加有限重试，不应通过跳过 FFmpeg、改用不受控镜像源或放宽 smoke 来规避。
 - 当前命令执行器常在 Docker 子进程结束后才返回全部文本。需要诊断长构建时，可将 stdout/stderr 重定向到已忽略的 `tmp/docker-debug/` 并轮询日志。
 - 在受限会话直接访问 `C:\Users\P\.docker` 会被拒绝，真实 Docker 命令需要既有的受控提升权限。
-- 即使只执行 `docker compose build app`，Compose 也会解析 `secret-init` 的卷，因此需要临时设置一个仓库外绝对 `MUSEECHO_SECRETS_DIR`；build 本身不会读取该密钥目录。
+- Compose 现在把仓库外 `MUSEECHO_SECRETS_DIR`（Linux 默认 `/etc/museecho/secrets`）直接只读挂载，不再使用 `secret-init` 或持久 Secret 卷；Windows smoke 必须显式设置任务临时绝对路径。
 - 宿主 Node 是 24，而项目/CI 固定 Node 22.23；宿主 npm 的 `EBADENGINE` 警告不是 Node 22 构建失败，但最终结论以 Docker/CI Node 22 为准。
 
 ## 恢复顺序
@@ -67,7 +67,7 @@
 2. 使用当前 Dockerfile 重建 `museecho-app:local`，给 Debian 下载至少 30 分钟有界时间并保留纯文本日志；验证 `Acquire::Retries=5` 是否闭环 502。
 3. 检查 app 与 gateway 镜像 `Config.User` 都为 `10001:10001`。
 4. 运行 `scripts/container-smoke.ps1`；此时应复用已构建镜像，验证 HTTPS、真实任务、重启持久化和密文边界。
-5. 对两个镜像运行 Trivy `HIGH,CRITICAL` 且 `--ignore-unfixed` 的硬门禁；若失败，按具体 CVE 处理，不做 blanket ignore。
+5. 对两个镜像运行不豁免未修复项的 Trivy `HIGH,CRITICAL` 硬门禁；当前 app 的 181 项会如实失败，获得可更新运行时前不得标记 READY。
 6. 重跑完整 `scripts/verify.ps1 -SkipInstall`，包括后端、前端、E2E、审计与 Secret 扫描。
 7. 重新暂存所有 Task 20 文件，执行 `git diff --check`、本地聚焦审查并修复到 READY。
 8. 更新 `PLAN.md` 实际提交与 `AGENT_LOG.md`，推送功能分支、合并并复验 `main`、推送 `main`，保留分支和 worktree。
@@ -83,5 +83,11 @@
 
 - **提交：** `70dde35`（`build: package and verify production distribution`）。未推送、未合并，且没有声称 GitHub Actions 或 GitLab CI 已运行。
 - **最终容器证据：** `scripts/container-smoke.ps1` 在本机已有 Windows PowerShell 中完成，显式记录 exit code `0`。它重新构建 app/gateway，验证 HTTPS health、真实 WAV 上传与分析、重启后的持久状态、持久卷中无明文 WAV/MP3，以及镜像历史无测试 KEK。烟测资源已由脚本清理。
-- **安全证据：** fresh tracked-file Secret scan 通过（165 个文件）；两个最终镜像均为 `10001:10001`。使用现有 Trivy 0.70.0 缓存数据库和 `--ignore-unfixed --severity HIGH,CRITICAL` 重新扫描，app 和 gateway 均为 0 个 HIGH/CRITICAL 发现。
+- **已被审查取代的安全证据：** 当时的 Trivy 结果豁免了未修复项，不能证明镜像为零 HIGH/CRITICAL。审查修复轮 2 已移除该参数；当前真实结果见下节。
 - **主机验证边界：** 主机 PATH 没有 `ffmpeg`/`ffprobe`，而 app 镜像中两者均位于 `/usr/bin`。因此本机 Python 全量结果为 `508 passed, 2 skipped, 8 failed`；八项均为真实音频工具缺失导致，未修改测试或下载工具规避。Ruff format/check、mypy、66 个前端测试、前端/E2E TypeScript、production build 和两次 npm audit 均通过。`uv` 和 `pwsh` 也不在受限主机 PATH，故完整 `verify.ps1 -SkipInstall` 只能在第一步准确报告缺少 uv；CI 将安装锁定 uv 和 FFmpeg。
+
+## 2026-08-10 审查修复轮 2
+
+- **独立修复：** 两套 CI 均移除未修复项豁免；Secret 改为仓库外目录直接只读挂载，smoke 使用 OS task-temp 并严格清理；Compose 明确分为 `production`/`development` profiles；新增精确锁版本许可证策略、synthetic Secret scan、cleanup degraded health/安全日志和无网络完整容器 pytest 入口。
+- **当前通过证据：** 容器完整 Python `524 passed`、容器 smoke exit 0、前端 `66 passed`、Ruff/mypy、两套 TypeScript、build、npm audits、许可证审计、真实/合成 Secret scan 和 profile/mount 断言均通过。没有下载新工具/依赖，没有把 pytest 放入生产镜像，没有远端 CI 结果声明。
+- **唯一上游 blocker：** 现有 Trivy 0.70.0 缓存对重建 app 镜像报告 169 HIGH + 12 CRITICAL，181 项 `FixedVersion` 全为空；gateway 为 0。CI 现在会诚实失败。更新基础运行时/依赖需要当前任务禁止的下载权限，Task 20 保持未完成。

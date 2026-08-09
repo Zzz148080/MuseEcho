@@ -1,12 +1,19 @@
 [CmdletBinding()]
-param(
-    [switch]$KeepRunning
-)
+param()
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $requiredFiles = @('Dockerfile', 'compose.yaml', 'Caddyfile')
-$smokeRoot = Join-Path $repositoryRoot 'tmp\container-smoke'
+$taskTempParent = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+$smokeRoot = [System.IO.Path]::GetFullPath(
+    (Join-Path $taskTempParent "museecho-container-smoke-$PID-$([System.IO.Path]::GetRandomFileName())")
+)
+if (-not $smokeRoot.StartsWith($taskTempParent, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw 'invalid smoke task-temp path'
+}
+if ($smokeRoot.StartsWith($repositoryRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw 'smoke fixtures must be outside the repository'
+}
 $secretRoot = Join-Path $smokeRoot 'secrets'
 $audioPath = Join-Path $smokeRoot 'fixture.wav'
 $cookiePath = Join-Path $smokeRoot 'cookies.txt'
@@ -29,9 +36,9 @@ function Get-FreeTcpPort {
 
 function Invoke-DockerCompose {
     param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
-    & docker compose @Arguments
+    & docker compose --profile production @Arguments
     if ($LASTEXITCODE -ne 0) {
-        throw "docker compose $($Arguments -join ' ') failed"
+        throw "docker compose --profile production $($Arguments -join ' ') failed"
     }
 }
 
@@ -71,7 +78,7 @@ foreach ($relativePath in $requiredFiles) {
     }
 }
 
-New-Item -ItemType Directory -Force -Path $secretRoot | Out-Null
+New-Item -ItemType Directory -Path $secretRoot | Out-Null
 $keyBytes = New-Object byte[] 32
 [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($keyBytes)
 $audioKeyPath = Join-Path $secretRoot 'audio-kek'
@@ -133,7 +140,7 @@ try {
     $persisted = Get-Content -Raw -LiteralPath $statusResponsePath | ConvertFrom-Json
     if ($persisted.stage -ne 'complete') { throw 'analysis did not persist across restart' }
 
-    & docker compose exec --no-TTY app python -c `
+    & docker compose --profile production exec --no-TTY app python -c `
         "import pathlib,sys; files=(p for p in pathlib.Path('/data').rglob('*') if p.is_file()); bad=[str(p) for p in files if p.suffix.lower() in {'.wav','.mp3'} or p.open('rb').read(12).startswith((b'RIFF',b'ID3'))]; print(*bad,sep='\n'); sys.exit(bool(bad))"
     if ($LASTEXITCODE -ne 0) { throw 'plaintext audio remained in the persistent volume' }
 
@@ -144,11 +151,30 @@ try {
         throw 'audio key appeared in container image history'
     }
 } finally {
-    if (-not $KeepRunning) {
-        $savedErrorPreference = $ErrorActionPreference
-        $ErrorActionPreference = 'SilentlyContinue'
-        & docker compose down --volumes --remove-orphans 2>$null | Out-Null
+    $cleanupFailures = New-Object System.Collections.Generic.List[string]
+    $savedErrorPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & docker compose --profile production down --volumes --remove-orphans 2>&1 | Out-Null
+        $composeDownExit = $LASTEXITCODE
+    } finally {
         $ErrorActionPreference = $savedErrorPreference
     }
+    if ($composeDownExit -ne 0) {
+        $cleanupFailures.Add("docker compose down failed with exit code $composeDownExit")
+    }
     Pop-Location
+    if (Test-Path -LiteralPath $smokeRoot) {
+        try {
+            Get-ChildItem -LiteralPath $smokeRoot -Recurse -Force | ForEach-Object {
+                if ($_.IsReadOnly) { $_.IsReadOnly = $false }
+            }
+            [System.IO.Directory]::Delete($smokeRoot, $true)
+        } catch {
+            $cleanupFailures.Add("task-temp cleanup failed: $($_.Exception.Message)")
+        }
+    }
+    if ($cleanupFailures.Count -gt 0) {
+        throw ($cleanupFailures -join '; ')
+    }
 }

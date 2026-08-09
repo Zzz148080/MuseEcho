@@ -28,6 +28,7 @@ lint:
     - uv run ruff format --check src tests
     - uv run ruff check .
     - uv run mypy src
+    - uv run python scripts/license_audit.py
 
 unit-test:
   extends: .python-job
@@ -74,7 +75,7 @@ container-build:
     - head -c 32 /dev/urandom | base64 > /tmp/museecho-ci-secrets/audio-kek
     - chmod 400 /tmp/museecho-ci-secrets/audio-kek
     - export MUSEECHO_SECRETS_DIR=/tmp/museecho-ci-secrets
-    - docker compose config --quiet
+    - docker compose --profile production config --quiet
     - docker build --target app --tag museecho-app:ci .
     - docker build --target gateway --tag museecho-gateway:ci .
     - test "$(docker image inspect --format '{{.Config.User}}' museecho-app:ci)" = "10001:10001"
@@ -93,6 +94,7 @@ secret-scan:
   before_script:
     - apk add --no-cache git
   script:
+    - pwsh -NoProfile -File scripts/test-secret-scan.ps1
     - pwsh -NoProfile -File scripts/secret-scan.ps1
 
 image-scan:
@@ -104,5 +106,5 @@ image-scan:
     - job: container-build
       artifacts: true
   script:
-    - trivy image --input museecho-app.tar --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL
-    - trivy image --input museecho-gateway.tar --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL
+    - trivy image --input museecho-app.tar --exit-code 1 --severity HIGH,CRITICAL
+    - trivy image --input museecho-gateway.tar --exit-code 1 --severity HIGH,CRITICAL

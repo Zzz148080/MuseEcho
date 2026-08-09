@@ -1,6 +1,7 @@
-from collections.abc import Collection, Mapping
+from collections.abc import Callable, Collection
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from starlette.types import Lifespan
 
 from museecho.api.analyses import install_analyses_api
@@ -23,6 +24,7 @@ def create_app(
     explanation_service: ExplanationService | None = None,
     trusted_origins: Collection[str] = (),
     lifespan: Lifespan[FastAPI] | None = None,
+    readiness_check: Callable[[], bool] | None = None,
 ) -> FastAPI:
     app = FastAPI(title="MuseEcho", lifespan=lifespan)
     if upload_service is not None:
@@ -46,7 +48,9 @@ def create_app(
             )
 
     @app.get("/api/health")
-    def health() -> Mapping[str, str]:
-        return {"status": "ready"}
+    def health() -> JSONResponse:
+        if readiness_check is not None and not readiness_check():
+            return JSONResponse(status_code=503, content={"status": "degraded"})
+        return JSONResponse(content={"status": "ready"})
 
     return app
