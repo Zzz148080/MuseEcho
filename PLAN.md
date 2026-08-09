@@ -464,7 +464,7 @@ def test_missing_key_uses_deterministic_fallback(evidence):
 
 **最终命令：** `uv run pytest tests/unit/test_explanation_service.py tests/integration/test_llm_adapter.py -q`
 
-**并行：** 否。**依赖：** T4/T12。**对应验收标准：** AC-D 引证、模式标记和所有失败路径回退。**分支：** `feat/13-evidence-explanations`。**计划提交：** `feat: explain evidence with safe fallback`。**实际提交：** 待执行。
+**并行：** 否。**依赖：** T4/T12。**对应验收标准：** AC-D 引证、模式标记和所有失败路径回退。**分支：** `feat/13-evidence-explanations`。**计划提交：** `feat: explain evidence with safe fallback`。**实际提交：** `a59db06`（安全解释服务、OpenAI-compatible 适配器与失败回退）、`20ecd8a`（provider 隔离与教学型 fallback），已完成。
 
 ### 任务 14：分析编排、完整 API、Range 播放与到期清理
 
