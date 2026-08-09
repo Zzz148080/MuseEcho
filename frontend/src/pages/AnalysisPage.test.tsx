@@ -10,6 +10,7 @@ import { ConfidenceBadge } from '../components/ConfidenceBadge'
 import { ErrorNotice } from '../components/ErrorNotice'
 import { Panel } from '../components/Panel'
 import { AnalysisPage } from './AnalysisPage'
+import { fixtureResult } from '../test/analysisFixture'
 
 const analysisId = '00000000-0000-4000-8000-000000000001'
 
@@ -87,15 +88,18 @@ describe('AnalysisPage', () => {
       pipeline_version: 'museecho-analysis-v1',
       source_kind: 'real',
     })
+    const loadResult = vi.fn().mockResolvedValue(fixtureResult)
     window.history.replaceState(null, '', `/?analysis=${analysisId}`)
     render(
       <QueryClientProvider client={queryClient}>
-        <AnalysisPage loadStatus={loadStatus} />
+        <AnalysisPage loadResult={loadResult} loadStatus={loadStatus} />
       </QueryClientProvider>,
     )
 
     expect(await screen.findByText('分析完成')).toBeVisible()
     expect(loadStatus).toHaveBeenCalledWith(analysisId)
+    expect(await screen.findByRole('heading', { name: 'Music DNA' })).toBeVisible()
+    expect(loadResult).toHaveBeenCalledWith(analysisId)
     window.history.replaceState(null, '', '/')
   })
 })
