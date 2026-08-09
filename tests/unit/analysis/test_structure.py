@@ -297,9 +297,7 @@ def test_unique_stable_middle_sections_are_independent_of_pitch_class_and_octave
     final_middle_root: int,
 ):
     roots = [60, 54, 50, 52, final_middle_root, 60]
-    samples = [
-        sample for root in roots for sample in _major_chord_from_midi(root, 2.0)
-    ]
+    samples = [sample for root in roots for sample in _major_chord_from_midi(root, 2.0)]
 
     segments = segment_structure(samples, SAMPLE_RATE)
 
