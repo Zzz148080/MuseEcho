@@ -218,3 +218,13 @@
 - **TDD 与复核**：从 coordinator/result/audio/explanation/delete/cleanup 不存在的 RED 开始；故障注入闭环密钥销毁后 unlink 失败、原子删除准备、孤儿明文、超长 Range、畸形结果、速率限制、终态重调度和授权后清理竞态。本地聚焦审查最终 Critical 0、Important 0、Minor 0，结论 `READY`。
 - **验证**：Task 14 定向 `16 passed`；PLAN 指定 `tests/api tests/integration` 为 `100 passed, 1 skipped`；最终后端互补分片合计 `506 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的既有平台条件。Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
 - **Git**：核心实现与审查加固 `0b5342e`。按既定流程保留 `feat/14-analysis-api`，最终验证后自动合并并推送 `main`。
+
+## 2026-08-09 — TASK 15 / WARM EDITORIAL 前端基础与可访问组件
+
+- **设计系统**：以已批准的 `DESIGN.md` 与 Open Design `Warm Editorial` 为品牌契约，集中定义暖纸画布、近黑文字、陶土主强调、森林绿分析、琥珀乐理、危险红、字体、间距、圆角、焦点与运动 tokens；组件样式不新增无语义颜色，不使用玻璃拟态、霓虹渐变或通用 AI dashboard 布局。
+- **单画布基础**：`AnalysisPage` 提供唯一命名的音乐解析工作区，桌面以 12 栏语义关系并排、平板收敛、手机单列；空状态只说明“尚未选择音频”和后续真实流程，不填充歌曲、情绪、乐器、和弦或其他虚构分析事实。
+- **可访问组件**：新增安全默认 `type="button"` 的三类 Button、稳定唯一标题关联的 Panel、同时使用文字与线型差异的 ConfidenceBadge，以及包含故障与下一步操作并通过 `role="alert"` 宣告的 ErrorNotice。所有控件共享可见 `:focus-visible`，并在 `prefers-reduced-motion` 下禁用非必要动画。
+- **自动与视觉验收**：组件测试覆盖命名 landmark、真实空状态、置信度文本编码、错误宣告、Panel 唯一 ID、focus/reduced-motion CSS 契约和直接读取 tokens 计算的 WCAG AA 对比度。浏览器实测 1440px 桌面与 390px 手机均无横向溢出；手机左右 gutter 16px 且为单列；关键对比度为 4.65–16.12:1，浏览器无 warning/error。
+- **测试基础修复**：全量验证发现 `tests/unit/analysis/test_chords.py` 与 `tests/unit/theory/test_chords.py` 在 pytest 默认模式下同名冲突；以已复现 RED 固定为 `--import-mode=importlib`，恢复文档规定的单命令全量收集。当前受限会话同时将 `TEMP/TMP` 指向 worktree 内专用目录，避免系统 Temp 权限影响测试，不改变产品行为。
+- **验证与复核**：前端 `10 passed`，TypeScript typecheck、Vite production build 与 `npm audit --audit-level=high`（0 vulnerabilities）通过；后端全量 `506 passed, 2 skipped`，Ruff format/check、mypy、`uv lock --check` 通过。两项 skip 仍为当前 Windows 会话无法创建符号链接的既有平台条件。聚焦审查修复非语义纸纹色与误导性 Ready 状态后，Critical 0、Important 0、Minor 0，结论 `READY`。
+- **Git**：核心实现 `b035b05`。按既定流程保留 `feat/15-design-system`，最终验证后自动合并并推送 `main`。
