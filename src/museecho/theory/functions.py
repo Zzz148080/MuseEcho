@@ -109,6 +109,16 @@ def explain_chord(
         )
     degree = scale_intervals.index(relative_root)
     if mode == "minor" and degree == 4 and chord.quality == "major":
+        expected_root = spell_scale_degree(key, degree, scale_intervals[degree])
+        if chord.root.name != expected_root:
+            dominant_limitations: tuple[str, ...] = (
+                "raised-leading-tone",
+                "enharmonic-key-spelling",
+            )
+            dominant_candidates: tuple[str, ...] = (expected_root,)
+        else:
+            dominant_limitations = ("raised-leading-tone",)
+            dominant_candidates = ()
         return ChordTheory(
             chord.pitch_classes,
             chord.intervals,
@@ -116,7 +126,8 @@ def explain_chord(
             "V",
             ("dominant",),
             False,
-            ("raised-leading-tone",),
+            dominant_limitations,
+            dominant_candidates,
             symbol=chord.symbol,
             tonic=key.name,
             mode=mode,

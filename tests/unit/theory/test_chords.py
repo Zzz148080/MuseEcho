@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from museecho.theory.functions import explain_chord
+from museecho.theory import ChordTheory, explain_chord
 
 MAJOR_TONICS = [
     ("C", ("C", "E", "G")),
@@ -83,6 +83,7 @@ DIATONIC_CONTEXTS = [
 def test_g_major_in_c_major_is_dominant():
     theory = explain_chord("G", tonic="C", mode="major")
 
+    assert isinstance(theory, ChordTheory)
     assert theory.pitch_classes == ("G", "B", "D")
     assert theory.roman_numeral == "V"
     assert "dominant" in theory.functions
@@ -172,6 +173,19 @@ def test_enharmonic_root_keeps_input_spelling_and_reports_key_candidate():
     assert theory.is_diatonic is True
     assert theory.enharmonic_candidates == ("Db",)
     assert "enharmonic-key-spelling" in theory.limitations
+
+
+def test_minor_dominant_reports_enharmonic_key_spelling_candidate():
+    theory = explain_chord("Ab", tonic="C#", mode="minor")
+
+    assert theory.roman_numeral == "V"
+    assert theory.functions == ("dominant",)
+    assert theory.is_diatonic is False
+    assert theory.enharmonic_candidates == ("G#",)
+    assert theory.limitations == (
+        "raised-leading-tone",
+        "enharmonic-key-spelling",
+    )
 
 
 def test_theory_payload_is_self_contained_strict_json_and_versioned():
