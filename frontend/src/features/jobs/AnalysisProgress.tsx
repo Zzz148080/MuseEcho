@@ -2,6 +2,8 @@ import { ApiError } from '../../api/client'
 import type { AnalysisStage, AnalysisStatus } from '../../api/types'
 import { Button } from '../../components/Button'
 import { ErrorNotice } from '../../components/ErrorNotice'
+import { AnalysisWorkspace } from '../workspace/AnalysisWorkspace'
+import type { ResultLoader } from '../workspace/useAnalysisResult'
 import {
   statusPollInterval,
   useAnalysisStatus,
@@ -31,11 +33,13 @@ const sourceKindLabels = {
 
 export interface AnalysisProgressProps {
   analysisId: string
+  loadResult?: ResultLoader
   loadStatus?: StatusLoader
 }
 
 export function AnalysisProgress({
   analysisId,
+  loadResult,
   loadStatus,
 }: AnalysisProgressProps) {
   const query = useAnalysisStatus(analysisId, loadStatus)
@@ -60,8 +64,10 @@ export function AnalysisProgress({
   const status = query.data
   const percentage = Math.round(status.progress * 100)
   return (
-    <div className="analysis-progress" aria-live="polite">
-      <div className="analysis-progress__heading">
+    <div
+      className={`analysis-progress${status.stage === 'complete' ? ' analysis-progress--complete' : ''}`}
+    >
+      <div className="analysis-progress__heading" aria-live="polite">
         <div>
           <p className="eyebrow">后端真实阶段</p>
           <h2>{stageLabels[status.stage]}</h2>
@@ -95,6 +101,9 @@ export function AnalysisProgress({
           <dd>{sourceKindLabels[status.source_kind]}</dd>
         </div>
       </dl>
+      {status.stage === 'complete' ? (
+        <AnalysisWorkspace analysisId={analysisId} loadResult={loadResult} />
+      ) : null}
     </div>
   )
 }

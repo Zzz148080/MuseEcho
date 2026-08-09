@@ -238,3 +238,13 @@
 - **TDD 与复核**：从上传组件缺失 RED 开始，后续以失败测试闭环上传 100%/后端验证分离、响应 ID 绑定、终态/错误停止轮询、稳定错误码边界、可安全重试与网络歧义防重。桌面 1440px 与手机 390px 实测无横向溢出，焦点可见，错误态无浏览器 warning/error。最终聚焦审查为 Critical 0、Important 0、Minor 0，结论 `READY`。
 - **验证**：前端 `31 passed`，TypeScript typecheck、Vite production build 与 `npm audit --audit-level=high`（0 vulnerabilities）通过；后端全量 `506 passed, 2 skipped`，Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过。两项 skip 仍为当前 Windows 会话无符号链接创建权限的既有平台条件。
 - **Git**：核心实现 `93ba4f6`。按既定流程保留 `feat/16-upload-progress-ui`，最终验证后自动合并并推送 `main`。
+
+## 2026-08-09 — TASK 17 / 播放器、MUSIC DNA 与同步结构地图
+
+- **统一时间状态**：新增单一 `useTimeline` 控制器，集中管理播放器引用、当前秒数和规范化拖选区间；原生音频通过授权 Range URL 播放，播放事件、点击和弦、键盘步进、指针拖选、双端范围控件与播放头都复用同一秒级坐标，不在渲染层复制时间状态。
+- **真实可视化**：Music DNA 只展示当前已持久化的时长、过门 BPM/调性/拍点、真实能量均值及可靠和弦/段落计数，并明确 `source_kind`。结构地图把波形、段落、和弦、能量、重要事件、播放头与选区放入完全对齐的数据列；Canvas/SVG 轨道同时提供可访问的文本事件列表。
+- **Evidence First**：统一置信度门将低于 0.6、非有限或缺失事实显示为 `unknown`/证据不足；前端和弦详情只读取持久化的确定性乐理 JSON，不推导音名、级数或功能。结果客户端严格校验身份、来源、版本、有限数值、时长边界、单调拍点、波形、时间序列和安全 JSON；额外 TDD 反例证明已知和弦的不完整三音理论会被拒绝。
+- **交互与布局**：完成态压缩状态区域后展示播放器、DNA、结构地图和详情；桌面、768px 平板和 390px 手机均无横向溢出。平板实测事件层、选择层和覆盖层的左右边界与 569.92px 宽度完全一致，浏览器 warning/error 为 0；移动端保持单列且播放器优先可达。
+- **TDD 与复核**：首个 RED 为 `Timeline` 组件不存在；随后以失败测试固定共享 seek、指针/键盘选区、低置信降级、结果身份与区间边界、畸形序列、手动重试及不完整 theory 拒绝。受当前会话禁止未经用户要求派生子代理的约束，采用独立本地 diff、契约和对抗测试复核；最终 Critical 0、Important 0、Minor 0，结论 `READY`。
+- **验证**：前端全量 `51 passed`，TypeScript typecheck、Vite production build 与 `npm audit --audit-level=high`（0 vulnerabilities）通过；后端全量 `506 passed, 2 skipped`，Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过。两项 skip 仍为当前 Windows 会话无符号链接创建权限的既有平台条件。
+- **Git**：核心实现 `13a6346`。按既定流程保留 `feat/17-music-workspace`，最终验证后自动合并并推送 `main`。

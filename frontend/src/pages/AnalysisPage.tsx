@@ -5,14 +5,20 @@ import { Button } from '../components/Button'
 import { Panel } from '../components/Panel'
 import { AnalysisProgress } from '../features/jobs/AnalysisProgress'
 import type { StatusLoader } from '../features/jobs/useAnalysisStatus'
+import type { ResultLoader } from '../features/workspace/useAnalysisResult'
 import { UploadForm } from '../features/upload/UploadForm'
 
 export interface AnalysisPageProps {
+  loadResult?: ResultLoader
   loadStatus?: StatusLoader
   upload?: UploadTransport
 }
 
-export function AnalysisPage({ loadStatus, upload }: AnalysisPageProps = {}) {
+export function AnalysisPage({
+  loadResult,
+  loadStatus,
+  upload,
+}: AnalysisPageProps = {}) {
   const [analysisId, setAnalysisId] = useState(readAnalysisId)
 
   const acceptUpload = (accepted: UploadAccepted) => {
@@ -38,9 +44,12 @@ export function AnalysisPage({ loadStatus, upload }: AnalysisPageProps = {}) {
 
       <main
         aria-label="MuseEcho 音乐解析工作区"
-        className="analysis-workspace"
+        className={`analysis-workspace${analysisId ? ' analysis-workspace--active' : ''}`}
       >
-        <section aria-labelledby="workspace-title" className="workspace-intro">
+        <section
+          aria-labelledby="workspace-title"
+          className={`workspace-intro${analysisId ? ' workspace-intro--compact' : ''}`}
+        >
           <div>
             <p className="eyebrow">聆听证据，而非猜测</p>
             <h1 className="display-title" id="workspace-title">
@@ -53,13 +62,17 @@ export function AnalysisPage({ loadStatus, upload }: AnalysisPageProps = {}) {
         </section>
 
         <Panel
-          className="workflow-panel"
+          className={`workflow-panel${analysisId ? ' workflow-panel--active' : ''}`}
           eyebrow={analysisId ? '实时状态' : '等待音频'}
           title="分析流程"
         >
           {analysisId ? (
             <div className="active-analysis">
-              <AnalysisProgress analysisId={analysisId} loadStatus={loadStatus} />
+              <AnalysisProgress
+                analysisId={analysisId}
+                loadResult={loadResult}
+                loadStatus={loadStatus}
+              />
               <Button onClick={startAnother} variant="secondary">
                 分析其他音频
               </Button>

@@ -577,7 +577,7 @@ it('seeking a chord moves the shared playhead to its start', async () => {
 
 **最终命令：** `npm --prefix frontend test -- --run src/features/player src/features/dna src/features/timeline src/features/chords && npm --prefix frontend run build`
 
-**并行：** 否。**依赖：** T14/T15。**对应验收标准：** AC-B、AC-C 与 AC-D 和弦详情。**分支：** `feat/17-music-workspace`。**计划提交：** `feat: visualize synchronized music evidence`。**实际提交：** 待执行。
+**并行：** 否。**依赖：** T14/T15。**对应验收标准：** AC-B、AC-C 与 AC-D 和弦详情。**分支：** `feat/17-music-workspace`。**计划提交：** `feat: visualize synchronized music evidence`。**实际提交：** `13a6346`（播放器、真实 Music DNA、同步结构地图、和弦详情与严格结果解析），已完成。
 
 ### 任务 18：片段问答、保留期限和主动删除体验
 

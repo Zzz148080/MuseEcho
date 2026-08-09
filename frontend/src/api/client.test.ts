@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, getAnalysisStatus, uploadAnalysis } from './client'
+import {
+  ApiError,
+  getAnalysisResult,
+  getAnalysisStatus,
+  uploadAnalysis,
+} from './client'
 import type { AnalysisStatus, UploadAccepted } from './types'
+import { fixtureResult } from '../test/analysisFixture'
 
 const analysisId = '00000000-0000-4000-8000-000000000001'
 const accepted: UploadAccepted = {
@@ -24,6 +30,92 @@ afterEach(() => {
 })
 
 describe('API client', () => {
+  it('loads an analysis result with its capability cookie', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(fixtureResult),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getAnalysisResult(analysisId)).resolves.toEqual(fixtureResult)
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/analyses/${analysisId}`,
+      expect.objectContaining({ credentials: 'same-origin' }),
+    )
+  })
+
+  it('rejects result identity or timeline intervals outside the track', async () => {
+    const invalid = structuredClone(fixtureResult)
+    invalid.chords[1].end_seconds = 13
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(invalid),
+      }),
+    )
+
+    await expect(getAnalysisResult(analysisId)).rejects.toMatchObject({
+      code: 'invalid_server_response',
+    })
+
+    const wrongIdentity = {
+      ...fixtureResult,
+      analysis_id: '00000000-0000-4000-8000-000000000002',
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(wrongIdentity),
+      }),
+    )
+    await expect(getAnalysisResult(analysisId)).rejects.toMatchObject({
+      code: 'invalid_server_response',
+    })
+  })
+
+  it('rejects malformed or non-finite visualization series', async () => {
+    const malformed = structuredClone(fixtureResult)
+    if (!malformed.track.summary) throw new Error('fixture summary missing')
+    malformed.track.summary.waveform.maximums.pop()
+    malformed.time_series[0].points[1] = Number.NaN
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(malformed),
+      }),
+    )
+
+    await expect(getAnalysisResult(analysisId)).rejects.toMatchObject({
+      code: 'invalid_server_response',
+    })
+  })
+
+  it('rejects incomplete deterministic theory for a known chord', async () => {
+    const malformed = structuredClone(fixtureResult)
+    const theory = malformed.chords[1].theory
+    if (!theory) throw new Error('fixture theory missing')
+    theory.pitch_classes = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(malformed),
+      }),
+    )
+
+    await expect(getAnalysisResult(analysisId)).rejects.toMatchObject({
+      code: 'invalid_server_response',
+    })
+  })
+
   it('sends the capability cookie and validates status responses', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
