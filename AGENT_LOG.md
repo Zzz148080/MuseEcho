@@ -228,3 +228,13 @@
 - **测试基础修复**：全量验证发现 `tests/unit/analysis/test_chords.py` 与 `tests/unit/theory/test_chords.py` 在 pytest 默认模式下同名冲突；以已复现 RED 固定为 `--import-mode=importlib`，恢复文档规定的单命令全量收集。当前受限会话同时将 `TEMP/TMP` 指向 worktree 内专用目录，避免系统 Temp 权限影响测试，不改变产品行为。
 - **验证与复核**：前端 `10 passed`，TypeScript typecheck、Vite production build 与 `npm audit --audit-level=high`（0 vulnerabilities）通过；后端全量 `506 passed, 2 skipped`，Ruff format/check、mypy、`uv lock --check` 通过。两项 skip 仍为当前 Windows 会话无法创建符号链接的既有平台条件。聚焦审查修复非语义纸纹色与误导性 Ready 状态后，Critical 0、Important 0、Minor 0，结论 `READY`。
 - **Git**：核心实现 `b035b05`。按既定流程保留 `feat/15-design-system`，最终验证后自动合并并推送 `main`。
+
+## 2026-08-09 — TASK 16 / 上传、隐私同意与真实进度
+
+- **上传与同意边界**：新增 WAV/MP3 与 30 MiB 客户端预检，但界面明确以后端验证为准；合法使用和最长 24 小时加密保留两项同意未同时确认时不可上传。上传使用 multipart 与 Cookie 访问能力，前端只把不可猜分析 ID 写入 URL，不存储或显示令牌。
+- **诚实进度**：XHR 只展示传输层实际上传字节，100% 后单独标识“等待后端验证”；TanStack Query 按 1.5 秒读取真实 status，展示后端阶段、百分比、保留期限与数据来源。界面明示服务端未提供可靠剩余时间，不使用定时器伪造 ETA；complete/failed/deleted/expired 及读取错误都停止自动轮询。
+- **恢复策略**：服务端错误文本不进入 UI，只将有界稳定错误码映射为可访问友好文本。损坏/不支持/超限音频不可盲目重试；网络错误因服务器是否收到请求不确定而禁止自动重复上传；仅音频工具不可用或验证超时等已知临时故障提供明确“重试上传”。
+- **刷新恢复与安全解析**：页面仅接受合法 UUID，状态响应必须匹配请求 ID、stage/status、进度、错误码、保留时间、pipeline version 和 source kind 形状；刷新时依靠 URL ID + HttpOnly Cookie 恢复，不伪造或信任未验证结果。
+- **TDD 与复核**：从上传组件缺失 RED 开始，后续以失败测试闭环上传 100%/后端验证分离、响应 ID 绑定、终态/错误停止轮询、稳定错误码边界、可安全重试与网络歧义防重。桌面 1440px 与手机 390px 实测无横向溢出，焦点可见，错误态无浏览器 warning/error。最终聚焦审查为 Critical 0、Important 0、Minor 0，结论 `READY`。
+- **验证**：前端 `31 passed`，TypeScript typecheck、Vite production build 与 `npm audit --audit-level=high`（0 vulnerabilities）通过；后端全量 `506 passed, 2 skipped`，Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过。两项 skip 仍为当前 Windows 会话无符号链接创建权限的既有平台条件。
+- **Git**：核心实现 `93ba4f6`。按既定流程保留 `feat/16-upload-progress-ui`，最终验证后自动合并并推送 `main`。

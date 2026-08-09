@@ -548,7 +548,7 @@ it('does not upload until legal-use and retention consent is checked', async () 
 
 **最终命令：** `npm --prefix frontend test -- --run src/features/upload src/features/jobs && npm --prefix frontend run typecheck`
 
-**并行：** 是，可基于 OpenAPI mock。**依赖：** T15，集成验收依赖 T14。**对应验收标准：** AC-A 上传/真实阶段与 AC-E 隐私告知。**分支：** `feat/16-upload-progress-ui`。**计划提交：** `feat: add honest upload and progress flow`。**实际提交：** 待执行。
+**并行：** 是，可基于 OpenAPI mock。**依赖：** T15，集成验收依赖 T14。**对应验收标准：** AC-A 上传/真实阶段与 AC-E 隐私告知。**分支：** `feat/16-upload-progress-ui`。**计划提交：** `feat: add honest upload and progress flow`。**实际提交：** `93ba4f6`（真实上传进度、隐私同意、状态轮询与保守错误恢复），已完成。
 
 ### 任务 17：播放器、Music DNA 与同步结构地图
 
