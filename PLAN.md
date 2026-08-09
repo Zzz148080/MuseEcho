@@ -381,7 +381,7 @@ def test_c_g_am_f_progression_has_timed_chords(c_g_am_f_pcm):
 
 **最终命令：** `uv run pytest tests/unit/analysis/test_structure.py tests/unit/analysis/test_chords.py -q`
 
-**并行：** 是。**依赖：** T7。**对应验收标准：** AC-B 结构/和声摘要与 AC-C 同时间轴事件。**分支：** `feat/10-structure-chords`。**计划提交：** `feat: detect structure and chord events`。**实际提交：** 待执行。
+**并行：** 是。**依赖：** T7。**对应验收标准：** AC-B 结构/和声摘要与 AC-C 同时间轴事件。**分支：** `feat/10-structure-chords`。**计划提交：** `feat: detect structure and chord events`。**实际提交：** `30d63c1`（结构/和弦核心实现）、`8e6af06`（最小和弦证据）、`8ca8f35`（和声与结构断言门控）、`31b5388`（平滑事件与复现校验）、`8ac4027`（多段结构边界）、`1099cd3`（一般结构复现）、`bae61b1`（稳定段与循环区分）、`cd5bcb9`（稳定段与循环变奏）、`53f8add`（按段落复现判定循环），已完成。
 
 ### 任务 11：确定性乐理引擎
 
