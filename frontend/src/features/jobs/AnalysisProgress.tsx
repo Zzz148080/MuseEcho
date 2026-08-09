@@ -4,6 +4,8 @@ import { Button } from '../../components/Button'
 import { ErrorNotice } from '../../components/ErrorNotice'
 import { AnalysisWorkspace } from '../workspace/AnalysisWorkspace'
 import type { ResultLoader } from '../workspace/useAnalysisResult'
+import type { ExplanationTransport } from '../explanations/QuestionPanel'
+import type { DeleteTransport } from '../privacy/RetentionPanel'
 import {
   statusPollInterval,
   useAnalysisStatus,
@@ -33,14 +35,20 @@ const sourceKindLabels = {
 
 export interface AnalysisProgressProps {
   analysisId: string
+  ask?: ExplanationTransport
   loadResult?: ResultLoader
   loadStatus?: StatusLoader
+  onDeleted?: () => void
+  removeAnalysis?: DeleteTransport
 }
 
 export function AnalysisProgress({
   analysisId,
+  ask,
   loadResult,
   loadStatus,
+  onDeleted,
+  removeAnalysis,
 }: AnalysisProgressProps) {
   const query = useAnalysisStatus(analysisId, loadStatus)
 
@@ -102,7 +110,14 @@ export function AnalysisProgress({
         </div>
       </dl>
       {status.stage === 'complete' ? (
-        <AnalysisWorkspace analysisId={analysisId} loadResult={loadResult} />
+        <AnalysisWorkspace
+          analysisId={analysisId}
+          ask={ask}
+          expiresAt={status.expires_at}
+          loadResult={loadResult}
+          onDeleted={onDeleted}
+          removeAnalysis={removeAnalysis}
+        />
       ) : null}
     </div>
   )

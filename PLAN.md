@@ -608,7 +608,7 @@ it('renders fallback mode and cited evidence', async () => {
 
 **最终命令：** `npm --prefix frontend test -- --run src/features/explanations src/features/privacy && npm --prefix frontend run typecheck`
 
-**并行：** 否。**依赖：** T14/T17。**对应验收标准：** AC-D Evidence Explanation 与 AC-E 到期/主动删除。**分支：** `feat/18-explanation-privacy-ui`。**计划提交：** `feat: add evidence questions and privacy controls`。**实际提交：** 待执行。
+**并行：** 否。**依赖：** T14/T17。**对应验收标准：** AC-D Evidence Explanation 与 AC-E 到期/主动删除。**分支：** `feat/18-explanation-privacy-ui`。**计划提交：** `feat: add evidence questions and privacy controls`。**实际提交：** `b1c55ec`（Evidence 问答、引用定位、服务端保留期限、CSRF 主动删除与本地不可恢复状态），已完成。
 
 ### 任务 19：端到端、安全、可访问性与性能验证
 

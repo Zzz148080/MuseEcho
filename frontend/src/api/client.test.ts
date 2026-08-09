@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   ApiError,
+  createExplanation,
+  deleteAnalysis,
   getAnalysisResult,
   getAnalysisStatus,
   uploadAnalysis,
@@ -27,9 +29,69 @@ const serverStatus: AnalysisStatus = {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  document.cookie = 'museecho_csrf=; Max-Age=0; Path=/'
 })
 
 describe('API client', () => {
+  it('double-submits the readable CSRF cookie for explanation and deletion', async () => {
+    document.cookie = 'museecho_csrf=csrf-test-token; Path=/'
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          mode: 'fallback',
+          text: '只使用引用证据。',
+          evidence_ids: ['00000000-0000-4000-8000-000000000031'],
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, status: 204 })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      createExplanation(analysisId, {
+        question: '为什么这里有张力？',
+        start_seconds: 8,
+        end_seconds: 12,
+      }),
+    ).resolves.toMatchObject({ mode: 'fallback' })
+    await expect(deleteAnalysis(analysisId)).resolves.toBeUndefined()
+
+    for (const [, request] of fetchMock.mock.calls) {
+      expect(request).toEqual(
+        expect.objectContaining({
+          credentials: 'same-origin',
+          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-test-token' }),
+        }),
+      )
+    }
+  })
+
+  it('rejects an LLM explanation without cited Evidence', async () => {
+    document.cookie = 'museecho_csrf=csrf-test-token; Path=/'
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          mode: 'llm',
+          text: '没有引用的生成式回答。',
+          evidence_ids: [],
+        }),
+      }),
+    )
+
+    await expect(
+      createExplanation(analysisId, {
+        question: '为什么？',
+        start_seconds: 0,
+        end_seconds: 1,
+      }),
+    ).rejects.toMatchObject({ code: 'invalid_server_response' })
+  })
+
   it('loads an analysis result with its capability cookie', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

@@ -248,3 +248,15 @@
 - **TDD 与复核**：首个 RED 为 `Timeline` 组件不存在；随后以失败测试固定共享 seek、指针/键盘选区、低置信降级、结果身份与区间边界、畸形序列、手动重试及不完整 theory 拒绝。受当前会话禁止未经用户要求派生子代理的约束，采用独立本地 diff、契约和对抗测试复核；最终 Critical 0、Important 0、Minor 0，结论 `READY`。
 - **验证**：前端全量 `51 passed`，TypeScript typecheck、Vite production build 与 `npm audit --audit-level=high`（0 vulnerabilities）通过；后端全量 `506 passed, 2 skipped`，Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过。两项 skip 仍为当前 Windows 会话无符号链接创建权限的既有平台条件。
 - **Git**：核心实现 `13a6346`。按既定流程保留 `feat/17-music-workspace`，最终验证后自动合并并推送 `main`。
+
+## 2026-08-09 — TASK 18 / EVIDENCE 问答、保留期限与主动删除
+
+- **问答与 Evidence First**：新增片段问题前置校验，要求选区有限、非空且不超过 120 秒，问题非空且不超过 500 字符；答案明确区分 `llm` 与确定性 `fallback`。客户端除严格解析响应外，还会确认所有 LLM 引用都属于当前结果、已通过 `eligible_for_llm` 门控并与所问片段重叠；校验失败时不显示任何生成式音乐事实。无合格引用的 fallback 明确保持 `unknown`。
+- **共享时间轴**：Evidence 引用只映射到当前持久化结果中的合格 UUID；点击引用同时更新播放器、播放头和选区，并平滑滚回同一结构时间轴。集成测试固定 8–12 秒引用会把共享状态同步为对应区间，不创建第二套时间状态。
+- **保留与删除**：倒计时只读取 status 的服务端 `expires_at`，无效或已到期时禁用删除，最后一分钟显示“剩余不足 1 分钟”。主动删除必须明确勾选确认，不自动重试；成功后取消并移除 status/result 查询、清空 URL 分析 ID 和全部结果 UI，只保留不可恢复说明。
+- **CSRF 与 Cookie 边界**：修复原 CSRF Cookie 路径过窄导致首页 JavaScript 无法执行双提交的问题，将其设为可读的根路径、仍保持 `Secure` 与 `SameSite=Strict`；访问能力 Cookie 继续 `HttpOnly` 且按分析路径隔离。删除只清除目标分析的访问 Cookie，不误删多个分析共享的 CSRF 值；Origin、CSRF 与能力校验仍由后端统一执行。
+- **可恢复性与可访问性**：网络、限流、未完成、无权和 CSRF 失效均映射为稳定友好文本且只允许用户手动重试；解释结果使用 status live region 播报。桌面问答/隐私双栏，899px 以下单列，所有布局复用既有 Warm Editorial tokens。
+- **TDD 与复核**：失败测试依次固定根路径 CSRF、删除访问 Cookie、双提交请求、无引用 LLM 拒绝、片段边界、显式重试、不可用 Evidence 隔离、证据回跳、服务端到期、删除后状态清理、响应式布局、跨分析 CSRF 保留和异步结果播报。受当前会话禁止未经用户要求派生子代理的约束，采用独立本地差异、安全契约和浏览器对抗复核；最终 Critical 0、Important 0、Minor 0，结论 `READY`。
+- **浏览器验收**：真实 production build 配合本地合成 API/12 秒 Range 音频完成桌面 1440px、平板 768px 与手机 390px 检查，均无横向溢出；真实交互验证引用将播放器与播放头定位到 8 秒、选区变为 8–12 秒；确认删除后 URL 清空、Music DNA/播放器消失且浏览器 warning/error 为 0。临时 mock、构建产物和测试 venv 均位于忽略目录，未提交。
+- **验证**：前端全量 `66 passed`，TypeScript typecheck、Vite production build 与 `npm audit --audit-level=high`（0 vulnerabilities）通过；后端全量 `506 passed, 2 skipped`，Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过。两项 skip 仍为当前 Windows 会话无法创建符号链接的既有平台条件。
+- **Git**：核心实现 `b1c55ec`。按既定流程保留 `feat/18-explanation-privacy-ui`，最终验证后自动合并并推送 `main`。

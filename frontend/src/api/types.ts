@@ -140,3 +140,15 @@ export interface AnalysisResult {
   time_series: TimeSeriesResult[]
   evidence: EvidenceResult[]
 }
+
+export interface ExplanationRequest {
+  question: string
+  start_seconds: number
+  end_seconds: number
+}
+
+export interface ExplanationResponse {
+  mode: 'fallback' | 'llm'
+  text: string
+  evidence_ids: string[]
+}
