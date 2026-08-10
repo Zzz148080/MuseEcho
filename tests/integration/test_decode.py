@@ -5,6 +5,7 @@ import json
 import math
 import shutil
 import struct
+import subprocess
 import sys
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -24,6 +25,7 @@ from museecho.analysis.decode import (
     decode_audio,
     probe_audio,
 )
+from museecho.application.uploads import _validate_audio_signature
 from tests.fixtures.audio_factory import (
     encode_mp3,
     write_chord_progression_wav,
@@ -76,12 +78,80 @@ def test_real_mp3_decodes_to_controlled_mono_pcm(tmp_path: Path):
         ffmpeg_executable=_find_tool("ffmpeg"),
     )
 
+    _validate_audio_signature(mp3_path)
     decoded = _decode(mp3_path, target_sample_rate=16_000)
 
     assert decoded.sample_rate == 16_000
     assert decoded.channels == 1
     assert decoded.duration_seconds == pytest.approx(1.25, abs=0.05)
     assert max(abs(value) for value in decoded.samples) > 0.1
+
+
+@pytest.mark.parametrize(
+    "codec_name",
+    (
+        "pcm_u8",
+        "pcm_s16le",
+        "pcm_s24le",
+        "pcm_s32le",
+        "pcm_f32le",
+        "pcm_f64le",
+    ),
+)
+def test_real_uncompressed_pcm_wav_widths_remain_supported(tmp_path: Path, codec_name: str):
+    source = write_sine_wav(tmp_path / "source.wav", duration_seconds=0.1)
+    encoded = tmp_path / f"{codec_name}.wav"
+    completed = subprocess.run(
+        [
+            _find_tool("ffmpeg"),
+            "-v",
+            "error",
+            "-nostdin",
+            "-i",
+            str(source),
+            "-codec:a",
+            codec_name,
+            "-y",
+            str(encoded),
+        ],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        check=False,
+        timeout=30,
+    )
+    assert completed.returncode == 0, completed.stderr.decode(errors="replace")
+
+    _validate_audio_signature(encoded)
+    decoded = _decode(encoded)
+
+    assert decoded.duration_seconds == pytest.approx(0.1, abs=0.03)
+
+
+def test_real_ima_adpcm_wav_is_rejected_by_decoder_allowlist(tmp_path: Path):
+    source = write_sine_wav(tmp_path / "source.wav", duration_seconds=0.1)
+    encoded = tmp_path / "compressed.wav"
+    completed = subprocess.run(
+        [
+            _find_tool("ffmpeg"),
+            "-v",
+            "error",
+            "-nostdin",
+            "-i",
+            str(source),
+            "-codec:a",
+            "adpcm_ima_wav",
+            "-y",
+            str(encoded),
+        ],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        check=False,
+        timeout=30,
+    )
+    assert completed.returncode == 0, completed.stderr.decode(errors="replace")
+
+    with pytest.raises(InvalidAudioError, match="valid WAV or MP3"):
+        probe_audio(encoded, ffprobe_executable=_find_tool("ffprobe"))
 
 
 def test_corrupt_audio_is_rejected_without_exposing_input_path(tmp_path: Path):
@@ -224,11 +294,18 @@ def test_decode_uses_bounded_mono_float_pipeline(tmp_path: Path):
     probe_arguments = runner.calls[0][0]
     assert probe_arguments[probe_arguments.index("-protocol_whitelist") + 1] == "file,pipe"
     assert probe_arguments[probe_arguments.index("-format_whitelist") + 1] == "wav,mp3"
+    assert probe_arguments[probe_arguments.index("-codec_whitelist") + 1] == (
+        "pcm_u8,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,mp3float,mp3"
+    )
     assert probe_arguments.index("-protocol_whitelist") < len(probe_arguments) - 1
     assert decode_arguments[decode_arguments.index("-protocol_whitelist") + 1] == "file,pipe"
     assert decode_arguments[decode_arguments.index("-format_whitelist") + 1] == "wav,mp3"
+    assert decode_arguments[decode_arguments.index("-codec_whitelist") + 1] == (
+        "pcm_u8,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,mp3float,mp3"
+    )
     assert decode_arguments.index("-protocol_whitelist") < decode_arguments.index("-i")
     assert decode_arguments.index("-format_whitelist") < decode_arguments.index("-i")
+    assert decode_arguments.index("-codec_whitelist") < decode_arguments.index("-i")
     assert stdout_limit == 32_000
     assert stderr_limit == 64 * 1024
 

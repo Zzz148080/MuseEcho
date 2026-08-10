@@ -4,6 +4,7 @@ import math
 import os
 import re
 import shutil
+import struct
 import threading
 import uuid
 from collections.abc import Callable
@@ -14,7 +15,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import BinaryIO, ParamSpec, Protocol, TypeVar
 
-from museecho.analysis.decode import AudioProbe, decode_audio, probe_audio
+from museecho.analysis.decode import AudioProbe, InvalidAudioError, decode_audio, probe_audio
 from museecho.domain.models import EncryptedAudioMetadata, IssuedAccess
 from museecho.domain.status import AnalysisJob
 
@@ -105,6 +106,7 @@ class FFmpegAudioValidator:
 
     @_serialized_validation
     def __call__(self, path: Path) -> AudioProbe:
+        _validate_audio_signature(path)
         probe = probe_audio(
             path,
             max_duration_seconds=self._max_duration_seconds,
@@ -117,6 +119,126 @@ class FFmpegAudioValidator:
             ffmpeg_executable=self._ffmpeg_executable,
         )
         return probe
+
+
+def _validate_audio_signature(path: Path) -> None:
+    try:
+        with path.open("rb") as source:
+            header = source.read(12)
+            if len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WAVE":
+                _validate_wave_format(source, header)
+                return
+            if header[:3] == b"ID3":
+                if len(header) < 10 or header[3] not in (2, 3, 4) or header[4] == 0xFF:
+                    raise InvalidAudioError("audio file signature is invalid")
+                allowed_flags = {2: 0xC0, 3: 0xE0, 4: 0xF0}[header[3]]
+                if header[5] & ~allowed_flags or any(value & 0x80 for value in header[6:10]):
+                    raise InvalidAudioError("audio file signature is invalid")
+                tag_size = 0
+                for value in header[6:10]:
+                    tag_size = (tag_size << 7) | value
+                frame_offset = 10 + tag_size
+                if header[3] == 4 and header[5] & 0x10:
+                    frame_offset += 10
+                source.seek(frame_offset)
+                frame_header = source.read(4)
+            else:
+                frame_header = header[:4]
+    except InvalidAudioError:
+        raise
+    except OSError:
+        raise InvalidAudioError("audio file signature could not be read") from None
+    if not _is_mp3_frame_header(frame_header):
+        raise InvalidAudioError("audio file signature is invalid")
+
+
+def _validate_wave_format(source: BinaryIO, header: bytes) -> None:
+    source.seek(0, os.SEEK_END)
+    file_size = source.tell()
+    riff_end = struct.unpack_from("<I", header, 4)[0] + 8
+    if riff_end != file_size or riff_end < 44:
+        raise InvalidAudioError("audio file signature is invalid")
+
+    found_format = False
+    found_data = False
+    source.seek(12)
+    while source.tell() < riff_end:
+        chunk_header = source.read(8)
+        if len(chunk_header) != 8:
+            raise InvalidAudioError("audio file signature is invalid")
+        chunk_name = chunk_header[:4]
+        chunk_size = struct.unpack_from("<I", chunk_header, 4)[0]
+        chunk_start = source.tell()
+        chunk_end = chunk_start + chunk_size
+        padded_end = chunk_end + (chunk_size & 1)
+        if padded_end > riff_end:
+            raise InvalidAudioError("audio file signature is invalid")
+        if chunk_name == b"fmt ":
+            if found_format or found_data or chunk_size < 16 or chunk_size > 64:
+                raise InvalidAudioError("audio file signature is invalid")
+            format_data = source.read(chunk_size)
+            if len(format_data) != chunk_size:
+                raise InvalidAudioError("audio file signature is invalid")
+            _validate_pcm_wave_format(format_data)
+            found_format = True
+        elif chunk_name == b"data":
+            if not found_format or found_data:
+                raise InvalidAudioError("audio file signature is invalid")
+            found_data = True
+        source.seek(padded_end)
+    if not found_format or not found_data:
+        raise InvalidAudioError("audio file signature is invalid")
+
+
+def _validate_pcm_wave_format(format_data: bytes) -> None:
+    format_tag, channels, sample_rate, byte_rate, block_align, bits_per_sample = struct.unpack_from(
+        "<HHIIHH", format_data
+    )
+    if format_tag == 0xFFFE:
+        if len(format_data) != 40 or struct.unpack_from("<H", format_data, 16)[0] != 22:
+            raise InvalidAudioError("audio file signature is invalid")
+        valid_bits = struct.unpack_from("<H", format_data, 18)[0]
+        subformat = format_data[24:40]
+        pcm_guid_tail = b"\x00\x00\x10\x00\x80\x00\x00\xaa\x00\x38\x9b\x71"
+        if subformat[4:] != pcm_guid_tail:
+            raise InvalidAudioError("audio file signature is invalid")
+        format_tag = struct.unpack_from("<I", subformat)[0]
+        if valid_bits != bits_per_sample:
+            raise InvalidAudioError("audio file signature is invalid")
+    elif len(format_data) not in (16, 18) or (
+        len(format_data) == 18 and struct.unpack_from("<H", format_data, 16)[0] != 0
+    ):
+        raise InvalidAudioError("audio file signature is invalid")
+
+    allowed_widths = {0x0001: {8, 16, 24, 32}, 0x0003: {32, 64}}
+    bytes_per_sample = (bits_per_sample + 7) // 8
+    expected_block_align = channels * bytes_per_sample
+    if (
+        format_tag not in allowed_widths
+        or bits_per_sample not in allowed_widths[format_tag]
+        or not 1 <= channels <= 32
+        or not 1 <= sample_rate <= 384_000
+        or block_align != expected_block_align
+        or byte_rate != sample_rate * expected_block_align
+    ):
+        raise InvalidAudioError("audio file signature is invalid")
+
+
+def _is_mp3_frame_header(value: bytes) -> bool:
+    if len(value) != 4 or value[0] != 0xFF or value[1] & 0xE0 != 0xE0:
+        return False
+    version = (value[1] >> 3) & 0x03
+    layer = (value[1] >> 1) & 0x03
+    bitrate = (value[2] >> 4) & 0x0F
+    sample_rate = (value[2] >> 2) & 0x03
+    emphasis = value[3] & 0x03
+    return (
+        version != 0x01
+        and layer == 0x01
+        and bitrate not in (0x00, 0x0F)
+        and sample_rate != 0x03
+        and emphasis != 0x02
+    )
 
 
 class UploadSubmissionService:

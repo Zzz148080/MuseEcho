@@ -106,11 +106,55 @@ jobs:
       - name: Production Compose contract
         shell: pwsh
         run: ./scripts/test-container-contract.ps1
-      - name: Reject high and critical image vulnerabilities
+      - name: Capture unsuppressed full-image vulnerability JSON
         run: |
+          mkdir -p tmp/image-security
+          chmod 0777 tmp/image-security
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy:0.70.0 image --exit-code 1 \
+            -v "$PWD:/workspace" aquasec/trivy:0.70.0 image \
+            --scanners vuln --format json \
+            --output /workspace/tmp/image-security/app.raw.json \
             --severity HIGH,CRITICAL museecho-app:ci
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy:0.70.0 image --exit-code 1 \
+            -v "$PWD:/workspace" aquasec/trivy:0.70.0 image \
+            --scanners vuln --format json \
+            --output /workspace/tmp/image-security/gateway.raw.json \
             --severity HIGH,CRITICAL museecho-gateway:ci
+      - name: Record exact app package ownership and runtime probes
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges -i \
+            --entrypoint /app/.venv/bin/python museecho-app:ci \
+            - --generate-package-files - \
+            < scripts/image_vulnerability_audit.py \
+            > tmp/image-security/app.package-files.json
+      - name: Audit exact app findings and emit OpenVEX
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --workdir /workspace \
+            --mount "type=bind,source=$PWD,target=/workspace,readonly" \
+            --mount "type=bind,source=$PWD/tmp/image-security,target=/evidence" \
+            --entrypoint /app/.venv/bin/python museecho-app:ci \
+            /workspace/scripts/image_vulnerability_audit.py \
+            --scan /evidence/app.raw.json \
+            --package-files /evidence/app.package-files.json \
+            --policy /workspace/scripts/image-vulnerability-policy.json \
+            --vex-output /evidence/app.openvex.json \
+            --inventory-output /evidence/app.inventory.json
+      - name: Enforce audited app VEX and unsuppressed gateway gate
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/workspace:ro" aquasec/trivy:0.70.0 image \
+            --scanners vuln --exit-code 1 --severity HIGH,CRITICAL \
+            --vex /workspace/tmp/image-security/app.openvex.json museecho-app:ci
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.70.0 image --scanners vuln --exit-code 1 \
+            --severity HIGH,CRITICAL museecho-gateway:ci
+      - name: Retain image vulnerability evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-vulnerability-evidence
+          path: tmp/image-security/
+          if-no-files-found: warn
+          retention-days: 14

@@ -178,9 +178,16 @@ Compose、命令行、截图、日志、Git 历史或前端变量。`scripts/sec
 - 访问 token 只存 Argon2id 哈希，cookie 为 Secure/HttpOnly/SameSite；写操作还需同源与
   CSRF token。
 - 上传体、解码时间、时长、响应大小、LLM 超时和引用集合均有硬限制。
+- 上传解码只接受 MP3，或 RIFF/WAVE 中的无压缩 PCM：无符号 8 位、little-endian 有符号
+  16/24/32 位、IEEE float 32/64 位（含匹配的 WAVE_FORMAT_EXTENSIBLE 子格式）。压缩或
+  歧义 RIFF codec 会在启动媒体工具前失败关闭；`ffprobe` 与 `ffmpeg` 均在输入前应用完全
+  相同的 `wav,mp3` format、`file,pipe` protocol 和上述 PCM/MP3 decoder allowlist。
 - Caddy 是唯一公开入口；FastAPI 不应直接暴露公网。
-- 镜像 CI 使用 Trivy 拒绝任何 HIGH/CRITICAL 漏洞，不忽略尚无修复版本的条目。发现漏洞后
-  应更新基础镜像或依赖锁并重跑完整门禁，不得用 blanket ignore 绕过。
+- 镜像 CI 先保存不带 suppression 的完整 Trivy JSON，再核对每个 finding tuple、PURL、
+  package/version/status/severity、完整 dpkg 文件清单、镜像内运行时探针，以及全部 `src/`、
+  Docker/Compose、配置和依赖锁文件哈希；随后只应用逐 CVE、逐产品且有代码/测试/权威来源
+  支撑的 OpenVEX。任何新增、缺失或变化条目都会关闭门禁，失败时仍保留原始审计证据；不
+  使用 `--ignore-unfixed`、status/package 过滤或 blanket ignore。
 
 ## 分发与 CI
 
@@ -205,8 +212,10 @@ SHA-256 inventory，以及固定容器、构建工具、Go replacement 和 OS �
 - V1 仅接受 WAV/MP3，最长 10 分钟；仅输出大小三和弦，其他和声保守为 `unknown`。
 - 结构标签是可解释的相似段落标识，不等同于曲式学人工定论。
 - 分析队列是单进程单工作线程，不是多租户横向扩展系统。
-- 当前本地 Trivy 0.70.0 缓存对 app 镜像报告 181 个无修复版本的 HIGH/CRITICAL 条目；无
-  suppression 的 CI 会诚实失败，Task 20 在获得可更新运行时前保持未完成。
+- 当前锁定的 Debian/FFmpeg 运行时在原始 Trivy 0.70.0 扫描中仍有 181 个无修复版本的
+  HIGH/CRITICAL package 条目。发布门禁不会隐藏这份原始 inventory；它仅在精确 package
+  文件与执行边界均未漂移时应用 67 条逐 CVE `not_affected` 结论。获得可用上游修复后仍应
+  优先升级运行时并删除不再需要的 VEX statement。
 - 内部 CA 只适合本地 smoke；公网证书和腾讯云运行证据在 Task 21 完成。
 - LLM 可用性、计费和第三方数据处理由用户选择的平台负责；MuseEcho 不把原始音频发送给
   LLM。
