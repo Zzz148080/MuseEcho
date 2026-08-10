@@ -36,7 +36,7 @@ services:
     volumes:
       - museecho_data:/data
       - type: bind
-        source: ${MUSEECHO_SECRETS_DIR:-/etc/museecho/secrets}
+        source: /etc/museecho/secrets
         target: /run/secrets
         read_only: true
 

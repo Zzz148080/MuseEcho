@@ -11,7 +11,7 @@ $repositoryRoot = [System.IO.Path]::GetFullPath($RepositoryRoot)
 $findings = New-Object System.Collections.Generic.List[string]
 $patterns = @(
     @{ Name = 'private-key'; Regex = '-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----' },
-    @{ Name = 'github-token'; Regex = '\bgh[pousr]_[A-Za-z0-9]{30,}\b' },
+    @{ Name = 'github-token'; Regex = '\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})\b' },
     @{ Name = 'openai-key'; Regex = '\bsk-(?:proj-)?[A-Za-z0-9_-]{24,}\b' },
     @{ Name = 'aws-access-key'; Regex = '\b(?:AKIA|ASIA)[0-9A-Z]{16}\b' },
     @{ Name = 'google-api-key'; Regex = '\bAIza[0-9A-Za-z_-]{35}\b' },
@@ -52,12 +52,19 @@ function Test-HighEntropyCredential {
     ) {
         return $false
     }
+    $entropy = Get-ShannonEntropy -Value $Value
+    if ($Value -cmatch '^[0-9a-f]{32,}$') {
+        return $entropy -ge 3.5
+    }
+    if ($Value -cmatch '^[a-z0-9]{32,}$') {
+        return $entropy -ge 4.0
+    }
     $classes = 0
     if ($Value -cmatch '[a-z]') { $classes++ }
     if ($Value -cmatch '[A-Z]') { $classes++ }
     if ($Value -match '[0-9]') { $classes++ }
     if ($Value -match '[+/_=-]') { $classes++ }
-    return $classes -ge 3 -and (Get-ShannonEntropy -Value $Value) -ge 4.0
+    return $classes -ge 3 -and $entropy -ge 4.0
 }
 
 function Test-FileContent {

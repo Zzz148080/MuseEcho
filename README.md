@@ -120,12 +120,11 @@ npm.cmd run e2e
 ## Docker
 
 在仓库外创建 Secret 目录，至少包含 `audio-kek`；可选模型凭据命名为 `provider-key`。
-Linux 生产默认路径是 `/etc/museecho/secrets`；Windows 或自定义布局必须用绝对路径设置
-`MUSEECHO_SECRETS_DIR`。Compose 把这个外部目录直接只读挂载到 `/run/secrets`，不会复制到
-Docker 卷。应用和网关均以 UID 10001 非 root 运行，根文件系统只读。
+生产 Compose 合约把宿主机固定路径 `/etc/museecho/secrets` 直接只读挂载到
+`/run/secrets`，不接受环境变量改成仓库相对路径，也不会复制到 Docker 卷。应用和网关均以
+UID 10001 非 root 运行，根文件系统只读。
 
 ```powershell
-$env:MUSEECHO_SECRETS_DIR = 'D:\MuseEchoSecrets'
 docker compose --profile production config --quiet
 docker compose --profile production build --pull
 docker compose --profile production up -d --wait
@@ -149,8 +148,9 @@ docker compose --profile development up --build app-dev
 Invoke-RestMethod http://127.0.0.1:8000/api/health
 ```
 
-完整容器 smoke 会构建镜像、上传真实 WAV、等待分析、重启验证持久性并检查持久卷无明文
-音频：
+完整容器 smoke 会在 OS task-temp 中创建 Secret 和 Compose override（仅覆盖 smoke 的固定
+Secret bind）、构建镜像、上传真实 WAV、等待分析、重启验证持久性并检查持久卷无明文音频；
+成功或失败都会校验容器、卷与精确临时目录的清理：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\container-smoke.ps1
@@ -187,8 +187,9 @@ Compose、命令行、截图、日志、Git 历史或前端变量。`scripts/sec
 `Dockerfile` 的 `app` 与 `gateway` target 组成发行物。GitHub Actions 与 GitLab CI 都执行
 Python/TypeScript 静态检查、后端/前端测试、构建、真实 HTTPS E2E、确定性许可证策略、
 Secret 审计、Docker 构建和镜像漏洞门；GitLab 的后端测试 job 固定名为 `unit-test`。
-`uv run python scripts/license_audit.py` 会要求 `uv.lock` 中每个名称/版本与人工复核策略精确
-一致，并拒绝 npm lock 中缺失或未批准的许可证。`scripts/container-pytest.ps1` 可用现有 app
+`uv run python scripts/license_audit.py` 会要求 `uv.lock` 名称/版本、两个 npm lock 的完整
+SHA-256 inventory，以及固定容器、构建工具、Go replacement 和 OS 包清单与人工复核策略
+精确一致，并拒绝显式审批集合外的许可证。`scripts/container-pytest.ps1` 可用现有 app
 镜像的 FFmpeg 运行完整 Python 套件：仓库和现有 pytest 模块只读挂载、网络关闭，不向生产
 镜像加入测试工具。本地配置通过不代表远端 CI 已运行，只有对应提交的真实流水线结果才能
 作为远端证据。

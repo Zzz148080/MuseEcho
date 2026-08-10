@@ -97,6 +97,9 @@ try {
     Invoke-Checked 'Secret audit synthetic coverage' {
         & $powershellCommand -NoProfile -ExecutionPolicy Bypass -File scripts/test-secret-scan.ps1
     }
+    Invoke-Checked 'Container test-runner cleanup coverage' {
+        & $powershellCommand -NoProfile -ExecutionPolicy Bypass -File scripts/test-container-pytest.ps1
+    }
 } finally {
     Pop-Location
     if ($null -eq $existingPythonPath) {

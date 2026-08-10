@@ -285,3 +285,11 @@
 - **Secret 与 profiles：** 删除持久 Secret 准备卷，生产/开发都从仓库外目录直接只读挂载 `/run/secrets`；Linux 默认 `/etc/museecho/secrets`。Compose `production` 只含 app/gateway，`development` 只含回环 app-dev 与独立数据卷。Windows smoke fixture 移到 OS task-temp，失败/成功均严格 down、删卷、清临时文件并暴露清理失败。
 - **审计与运行时：** 新增 `scripts/license-policy.json` 与纯标准库 audit，精确覆盖 79 个 Python 锁项和两个 npm lock 的许可证；Secret scan 覆盖 tracked/non-ignored untracked、主流 provider 格式及仅凭据赋值上下文的熵检测，并对 missing/unreadable fail closed。后台 expiry cleanup 首次失败发安全日志并把 health 降为 503，恢复后回到 ready；异常正文不入日志。
 - **验证：** 无网络、只读 repo/测试依赖挂载的现有 app 镜像全量 pytest 为 `524 passed` 且无 warning；production container smoke exit 0；focused `26 passed, 2 skipped`；前端 `66 passed`、Ruff format/check、mypy 45 files、前端/E2E typecheck、build、两次 npm audit、license audit、synthetic/real Secret scan、CI/Compose YAML 与 profile/mount 断言通过。没有下载任何新工具/依赖，也未把 pytest 加入生产镜像。
+
+## 2026-08-10 — TASK 20 / 审查修复轮 3（未完成）
+
+- **审查核验与 pushback：** 初审把 `httpx2` 判为拼写错误不成立；`pyproject.toml`、`uv.lock` 与许可证策略都锁定真实包名 `httpx2`，因此通知已恢复该名称。其余复审发现均在当前实现中复现并修复。
+- **生产合约与清理：** production app 的 Secret source 固定为宿主 `/etc/museecho/secrets`，环境变量不能改成仓库相对路径；smoke 只通过 OS task-temp override 注入合成 Secret，且最外层 `try/finally` 包含 fixture 创建。容器 pytest 现在把 `docker rm --force` 非零退出计为验证失败，并严格删除精确依赖临时目录。
+- **确定性审计：** 许可证门禁新增显式许可集合、两个 npm lock 的完整 SHA-256 inventory，以及所有固定容器镜像、Caddy/xcaddy、Go replacements、Debian/Alpine 包与 FFmpeg 的精确清单；两套 CI 的 native audit 命令按独立失败边界执行。Secret scan 新增 `github_pat_`，并只在显式 credential 赋值上下文检查高熵 lowercase/hex；合成覆盖安全 hash、provider token、lowercase/hex、锁定不可读文件和 tracked missing 文件。
+- **RED→GREEN 与总门禁：** production mount 测试先暴露相对 source，smoke setup probe 先暴露参数/生命周期缺口；许可证新增测试由 3 个预期失败变为 `6 passed`；Secret 合成依次暴露 `github_pat_` 与 hex 漏检后全绿；pytest cleanup probe 先证明 rm 失败被吞掉，修复后通过。最终 production smoke exit 0（57.2s），无网络容器 pytest `527 passed`，前端 `66 passed`、build/typecheck、Ruff/mypy、npm audits、真实/合成审计与 YAML/PowerShell 解析通过。一个前端删除测试的固定到期时间在本日变为过去，聚焦 RED 定位后仅把其“未到期”测试前提改成 2099，未改产品行为。
+- **仍阻塞：** fresh offline Trivy 对 app 仍为 169 HIGH + 12 CRITICAL，181 项 `FixedVersion` 全为空（hard gate exit 1）；gateway 为 0（exit 0）。未下载工具/依赖，未运行或声称远端 CI，Task 20 保持 blocked/incomplete。

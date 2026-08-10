@@ -1,14 +1,16 @@
 [CmdletBinding()]
-param()
+param(
+    [string]$TaskTempParent = [System.IO.Path]::GetTempPath()
+)
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $requiredFiles = @('Dockerfile', 'compose.yaml', 'Caddyfile')
-$taskTempParent = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+$taskTempParentPath = [System.IO.Path]::GetFullPath($TaskTempParent)
 $smokeRoot = [System.IO.Path]::GetFullPath(
-    (Join-Path $taskTempParent "museecho-container-smoke-$PID-$([System.IO.Path]::GetRandomFileName())")
+    (Join-Path $taskTempParentPath "museecho-container-smoke-$PID-$([System.IO.Path]::GetRandomFileName())")
 )
-if (-not $smokeRoot.StartsWith($taskTempParent, [System.StringComparison]::OrdinalIgnoreCase)) {
+if (-not $smokeRoot.StartsWith($taskTempParentPath, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw 'invalid smoke task-temp path'
 }
 if ($smokeRoot.StartsWith($repositoryRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -20,6 +22,8 @@ $cookiePath = Join-Path $smokeRoot 'cookies.txt'
 $createResponsePath = Join-Path $smokeRoot 'create.json'
 $statusResponsePath = Join-Path $smokeRoot 'status.json'
 $healthResponsePath = Join-Path $smokeRoot 'health.json'
+$composeOverridePath = Join-Path $smokeRoot 'compose.smoke.yaml'
+$composeFiles = @('--file', (Join-Path $repositoryRoot 'compose.yaml'), '--file', $composeOverridePath)
 
 function Get-FreeTcpPort {
     $listener = New-Object System.Net.Sockets.TcpListener(
@@ -36,9 +40,9 @@ function Get-FreeTcpPort {
 
 function Invoke-DockerCompose {
     param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
-    & docker compose --profile production @Arguments
+    & docker compose @composeFiles --profile production @Arguments
     if ($LASTEXITCODE -ne 0) {
-        throw "docker compose --profile production $($Arguments -join ' ') failed"
+        throw "docker compose smoke override $($Arguments -join ' ') failed"
     }
 }
 
@@ -71,38 +75,44 @@ function Write-SmokeWave {
     }
 }
 
-foreach ($relativePath in $requiredFiles) {
-    $candidate = Join-Path $repositoryRoot $relativePath
-    if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
-        throw "Required distribution file is missing: $relativePath"
-    }
-}
-
-New-Item -ItemType Directory -Path $secretRoot | Out-Null
-$keyBytes = New-Object byte[] 32
-[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($keyBytes)
-$audioKeyPath = Join-Path $secretRoot 'audio-kek'
-if (Test-Path -LiteralPath $audioKeyPath) {
-    Set-ItemProperty -LiteralPath $audioKeyPath -Name IsReadOnly -Value $false
-}
-[System.IO.File]::WriteAllText(
-    $audioKeyPath,
-    [Convert]::ToBase64String($keyBytes),
-    [System.Text.Encoding]::ASCII
-)
-Set-ItemProperty -LiteralPath $audioKeyPath -Name IsReadOnly -Value $true
-Write-SmokeWave -Path $audioPath
-$env:MUSEECHO_SECRETS_DIR = (Resolve-Path -LiteralPath $secretRoot).Path
-$env:COMPOSE_PROJECT_NAME = "museecho-smoke-$PID"
-$env:MUSEECHO_HTTP_PORT = [string](Get-FreeTcpPort)
-do {
-    $env:MUSEECHO_HTTPS_PORT = [string](Get-FreeTcpPort)
-} while ($env:MUSEECHO_HTTPS_PORT -eq $env:MUSEECHO_HTTP_PORT)
-$env:MUSEECHO_TRUSTED_ORIGINS = "https://localhost:$($env:MUSEECHO_HTTPS_PORT)"
-$httpsBaseUrl = "https://localhost:$($env:MUSEECHO_HTTPS_PORT)"
-
-Push-Location $repositoryRoot
+$locationPushed = $false
+$composeCleanupRequired = $false
 try {
+    New-Item -ItemType Directory -Path $secretRoot | Out-Null
+    foreach ($relativePath in $requiredFiles) {
+        $candidate = Join-Path $repositoryRoot $relativePath
+        if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            throw "Required distribution file is missing: $relativePath"
+        }
+    }
+
+    $keyBytes = New-Object byte[] 32
+    [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($keyBytes)
+    $audioKeyPath = Join-Path $secretRoot 'audio-kek'
+    [System.IO.File]::WriteAllText(
+        $audioKeyPath,
+        [Convert]::ToBase64String($keyBytes),
+        [System.Text.Encoding]::ASCII
+    )
+    Set-ItemProperty -LiteralPath $audioKeyPath -Name IsReadOnly -Value $true
+    Write-SmokeWave -Path $audioPath
+    $escapedSecretRoot = $secretRoot.Replace("'", "''")
+    [System.IO.File]::WriteAllText(
+        $composeOverridePath,
+        "services:`n  app:`n    volumes:`n      - type: bind`n        source: '$escapedSecretRoot'`n        target: /run/secrets`n        read_only: true`n",
+        [System.Text.UTF8Encoding]::new($false)
+    )
+    $env:COMPOSE_PROJECT_NAME = "museecho-smoke-$PID"
+    $env:MUSEECHO_HTTP_PORT = [string](Get-FreeTcpPort)
+    do {
+        $env:MUSEECHO_HTTPS_PORT = [string](Get-FreeTcpPort)
+    } while ($env:MUSEECHO_HTTPS_PORT -eq $env:MUSEECHO_HTTP_PORT)
+    $env:MUSEECHO_TRUSTED_ORIGINS = "https://localhost:$($env:MUSEECHO_HTTPS_PORT)"
+    $httpsBaseUrl = "https://localhost:$($env:MUSEECHO_HTTPS_PORT)"
+
+    Push-Location $repositoryRoot
+    $locationPushed = $true
+    $composeCleanupRequired = $true
     Invoke-DockerCompose config --quiet
     Invoke-DockerCompose build
     Invoke-DockerCompose up --detach --wait
@@ -140,7 +150,7 @@ try {
     $persisted = Get-Content -Raw -LiteralPath $statusResponsePath | ConvertFrom-Json
     if ($persisted.stage -ne 'complete') { throw 'analysis did not persist across restart' }
 
-    & docker compose --profile production exec --no-TTY app python -c `
+    & docker compose @composeFiles --profile production exec --no-TTY app python -c `
         "import pathlib,sys; files=(p for p in pathlib.Path('/data').rglob('*') if p.is_file()); bad=[str(p) for p in files if p.suffix.lower() in {'.wav','.mp3'} or p.open('rb').read(12).startswith((b'RIFF',b'ID3'))]; print(*bad,sep='\n'); sys.exit(bool(bad))"
     if ($LASTEXITCODE -ne 0) { throw 'plaintext audio remained in the persistent volume' }
 
@@ -152,18 +162,23 @@ try {
     }
 } finally {
     $cleanupFailures = New-Object System.Collections.Generic.List[string]
-    $savedErrorPreference = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    try {
-        & docker compose --profile production down --volumes --remove-orphans 2>&1 | Out-Null
-        $composeDownExit = $LASTEXITCODE
-    } finally {
-        $ErrorActionPreference = $savedErrorPreference
+    if ($composeCleanupRequired) {
+        $savedErrorPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            & docker compose @composeFiles --profile production down `
+                --volumes --remove-orphans 2>&1 | Out-Null
+            $composeDownExit = $LASTEXITCODE
+        } finally {
+            $ErrorActionPreference = $savedErrorPreference
+        }
+        if ($composeDownExit -ne 0) {
+            $cleanupFailures.Add("docker compose down failed with exit code $composeDownExit")
+        }
     }
-    if ($composeDownExit -ne 0) {
-        $cleanupFailures.Add("docker compose down failed with exit code $composeDownExit")
+    if ($locationPushed) {
+        Pop-Location
     }
-    Pop-Location
     if (Test-Path -LiteralPath $smokeRoot) {
         try {
             Get-ChildItem -LiteralPath $smokeRoot -Recurse -Force | ForEach-Object {

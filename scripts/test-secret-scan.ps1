@@ -68,6 +68,68 @@ try {
     }
     [System.IO.File]::Delete((Join-Path $fixtureRoot 'untracked-leak.txt'))
 
+    $fineGrainedToken = 'github_pat_' + 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4P5q6R7s8T9u0V1w2X3y4Z5'
+    $fineGrainedPath = Join-Path $fixtureRoot 'fine-grained-token.txt'
+    [System.IO.File]::WriteAllText(
+        $fineGrainedPath,
+        $fineGrainedToken,
+        [System.Text.Encoding]::UTF8
+    )
+    $fineGrainedOutput = Invoke-Scanner -ExpectedExit 1
+    if ($fineGrainedOutput -notmatch 'github-token') {
+        throw "Secret scan did not identify the fine-grained GitHub token`n$fineGrainedOutput"
+    }
+    [System.IO.File]::Delete($fineGrainedPath)
+
+    $hexCredentialPath = Join-Path $fixtureRoot 'hex-credential.txt'
+    $hexValue = '0f4a9c7e2b6d1a8f3c5e9b0d7a4f2c8e' +
+        '6b1d9a5f3e7c0b4d8a2f6c1e9b5d3a7f'
+    [System.IO.File]::WriteAllText(
+        $hexCredentialPath,
+        "password = `"$hexValue`"",
+        [System.Text.Encoding]::UTF8
+    )
+    $hexOutput = Invoke-Scanner -ExpectedExit 1
+    if ($hexOutput -notmatch 'high-entropy credential') {
+        throw "Secret scan did not identify the explicit hex credential`n$hexOutput"
+    }
+    [System.IO.File]::Delete($hexCredentialPath)
+
+    $lowercaseCredentialPath = Join-Path $fixtureRoot 'lowercase-credential.txt'
+    $lowercaseValue = 'qwertyuiopasdfghjklzxcvbnm' + 'qazwsxedcrfvtgbyhnujmikolp'
+    [System.IO.File]::WriteAllText(
+        $lowercaseCredentialPath,
+        "access_token = `"$lowercaseValue`"",
+        [System.Text.Encoding]::UTF8
+    )
+    $lowercaseOutput = Invoke-Scanner -ExpectedExit 1
+    if ($lowercaseOutput -notmatch 'high-entropy credential') {
+        throw "Secret scan did not identify the explicit lowercase credential`n$lowercaseOutput"
+    }
+    [System.IO.File]::Delete($lowercaseCredentialPath)
+
+    $unreadablePath = Join-Path $fixtureRoot 'tracked-unreadable.txt'
+    [System.IO.File]::WriteAllText($unreadablePath, 'safe', [System.Text.Encoding]::UTF8)
+    & git -C $fixtureRoot add tracked-unreadable.txt
+    if ($LASTEXITCODE -ne 0) { throw 'synthetic unreadable fixture git add failed' }
+    $lockedStream = [System.IO.File]::Open(
+        $unreadablePath,
+        [System.IO.FileMode]::Open,
+        [System.IO.FileAccess]::ReadWrite,
+        [System.IO.FileShare]::None
+    )
+    try {
+        $unreadableOutput = Invoke-Scanner -ExpectedExit 1
+        if (
+            $unreadableOutput -notmatch 'scan-error' -or
+            $unreadableOutput -notmatch 'tracked-unrea'
+        ) {
+            throw "Secret scan did not fail closed for an unreadable file`n$unreadableOutput"
+        }
+    } finally {
+        $lockedStream.Dispose()
+    }
+
     $missingPath = Join-Path $fixtureRoot 'tracked-then-missing.txt'
     [System.IO.File]::WriteAllText($missingPath, 'safe', [System.Text.Encoding]::UTF8)
     & git -C $fixtureRoot add tracked-then-missing.txt

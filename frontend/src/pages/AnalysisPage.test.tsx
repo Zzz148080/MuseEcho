@@ -113,7 +113,7 @@ describe('AnalysisPage', () => {
       stage: 'complete',
       progress: 1,
       error_code: null,
-      expires_at: '2026-08-10T00:00:00+00:00',
+      expires_at: '2099-08-10T00:00:00+00:00',
       pipeline_version: 'museecho-analysis-v1',
       source_kind: 'real',
     })

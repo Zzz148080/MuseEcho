@@ -666,7 +666,7 @@ Invoke-RestMethod http://localhost/api/health | Should -BeLike '*ready*'
 
 **最终命令：** `pwsh -File scripts/secret-scan.ps1; if ($LASTEXITCODE) { exit $LASTEXITCODE }; pwsh -File scripts/container-smoke.ps1`
 
-**并行：** 否。**依赖：** T19。**对应验收标准：** AC-E Secret audit 与 AC-F Docker、双 CI、README、许可证。**分支：** `build/20-distribution-ci`。**计划提交：** `build: package and verify production distribution`。**实际状态：** `70dde35` 为初始实现；审查修复轮 2 已移除漏洞 suppression、强化 Secret/许可证/清理门禁，但本地缓存对 app 镜像仍有 181 个无修复版本的 HIGH/CRITICAL，故 Task 20 保持未完成且未声称远端 CI 运行。
+**并行：** 否。**依赖：** T19。**对应验收标准：** AC-E Secret audit 与 AC-F Docker、双 CI、README、许可证。**分支：** `build/20-distribution-ci`。**计划提交：** `build: package and verify production distribution`。**实际状态：** `70dde35` 为初始实现；审查修复轮 2/3 已移除漏洞 suppression，固定生产 Secret 路径，补齐精确依赖 inventory、Secret 校准与容器清理门禁，但本地缓存对 app 镜像仍有 181 个无修复版本的 HIGH/CRITICAL，故 Task 20 保持未完成且未声称远端 CI 运行。
 
 ### 任务 21：腾讯云交付手册与真实部署
 

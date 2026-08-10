@@ -71,11 +71,8 @@ container-build:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
   script:
-    - mkdir -p /tmp/museecho-ci-secrets
-    - head -c 32 /dev/urandom | base64 > /tmp/museecho-ci-secrets/audio-kek
-    - chmod 400 /tmp/museecho-ci-secrets/audio-kek
-    - export MUSEECHO_SECRETS_DIR=/tmp/museecho-ci-secrets
-    - docker compose --profile production config --quiet
+    - production_config="$(docker compose --profile production config)"
+    - case "$production_config" in *"source: /etc/museecho/secrets"*) ;; *) echo "production Secret source is not fixed" >&2; exit 1 ;; esac
     - docker build --target app --tag museecho-app:ci .
     - docker build --target gateway --tag museecho-gateway:ci .
     - test "$(docker image inspect --format '{{.Config.User}}' museecho-app:ci)" = "10001:10001"
@@ -96,6 +93,7 @@ secret-scan:
   script:
     - pwsh -NoProfile -File scripts/test-secret-scan.ps1
     - pwsh -NoProfile -File scripts/secret-scan.ps1
+    - pwsh -NoProfile -File scripts/test-container-pytest.ps1
 
 image-scan:
   image:

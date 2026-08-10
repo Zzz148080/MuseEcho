@@ -91,3 +91,11 @@
 - **独立修复：** 两套 CI 均移除未修复项豁免；Secret 改为仓库外目录直接只读挂载，smoke 使用 OS task-temp 并严格清理；Compose 明确分为 `production`/`development` profiles；新增精确锁版本许可证策略、synthetic Secret scan、cleanup degraded health/安全日志和无网络完整容器 pytest 入口。
 - **当前通过证据：** 容器完整 Python `524 passed`、容器 smoke exit 0、前端 `66 passed`、Ruff/mypy、两套 TypeScript、build、npm audits、许可证审计、真实/合成 Secret scan 和 profile/mount 断言均通过。没有下载新工具/依赖，没有把 pytest 放入生产镜像，没有远端 CI 结果声明。
 - **唯一上游 blocker：** 现有 Trivy 0.70.0 缓存对重建 app 镜像报告 169 HIGH + 12 CRITICAL，181 项 `FixedVersion` 全为空；gateway 为 0。CI 现在会诚实失败。更新基础运行时/依赖需要当前任务禁止的下载权限，Task 20 保持未完成。
+
+## 2026-08-10 审查修复轮 3
+
+- production Secret bind 已固定为 `/etc/museecho/secrets`；Windows/local smoke 自动生成并清理 OS task-temp Compose override，不再依赖生产 source 环境变量。fixture 初始化失败的合成 probe 证明临时目录也在 `finally` 覆盖内。
+- license policy 现在精确覆盖 Python 名称/版本、两个 npm lock SHA-256、固定容器、uv/Caddy/xcaddy、Go replacements、Debian/Alpine 包与 FFmpeg，并要求所有声明属于显式许可集合。GitHub PowerShell native audits 被拆为独立 step；GitLab 每个 native audit 保持独立 script item。
+- Secret scan 合成测试覆盖 `github_pat_`、显式 password/token 中的 lowercase/hex 高熵值、安全 SHA/integrity、不可读与缺失文件；container pytest 合成测试证明 `docker rm --force` 失败会使验证失败，同时精确 task-temp 无残留。
+- 初审 `httpx2` typo finding 被技术证据推翻：三个锁定来源都使用 `httpx2`，第三方通知已恢复真实名称。
+- 最终实测：production smoke exit 0（57.2s），容器全量 Python `527 passed`，前端 `66 passed`，Ruff/mypy、两套 TypeScript、build、npm audits、license/Secret/container synthetic gates 全绿。fresh offline Trivy 仍是 app 181（169 HIGH、12 CRITICAL、fixed 0、exit 1），gateway 0（exit 0）；这是当前唯一剩余 blocker，远端 CI 未运行。

@@ -51,14 +51,22 @@ jobs:
           uv run pytest -q --basetemp tmp/pytest-ci
           npm --prefix frontend test
           npm --prefix frontend run build
-      - name: Dependency and secret audit
+      - name: License policy audit
         shell: pwsh
-        run: |
-          uv run python scripts/license_audit.py
-          npm audit --audit-level=high
-          npm --prefix frontend audit --audit-level=high
-          ./scripts/test-secret-scan.ps1
-          ./scripts/secret-scan.ps1
+        run: uv run python scripts/license_audit.py
+      - name: Root dependency vulnerability audit
+        run: npm audit --audit-level=high
+      - name: Frontend dependency vulnerability audit
+        run: npm --prefix frontend audit --audit-level=high
+      - name: Secret scan synthetic coverage
+        shell: pwsh
+        run: ./scripts/test-secret-scan.ps1
+      - name: Repository secret scan
+        shell: pwsh
+        run: ./scripts/secret-scan.ps1
+      - name: Container test-runner cleanup coverage
+        shell: pwsh
+        run: ./scripts/test-container-pytest.ps1
 
   e2e:
     needs: quality
@@ -90,15 +98,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate and build both non-root images
         run: |
-          mkdir -p /tmp/museecho-ci-secrets
-          python3 -c "import base64,pathlib; pathlib.Path('/tmp/museecho-ci-secrets/audio-kek').write_text(base64.b64encode(b'c'*32).decode())"
-          chmod 400 /tmp/museecho-ci-secrets/audio-kek
-          export MUSEECHO_SECRETS_DIR=/tmp/museecho-ci-secrets
           docker compose --profile production config --quiet
           docker build --target app --tag museecho-app:ci .
           docker build --target gateway --tag museecho-gateway:ci .
           test "$(docker image inspect --format '{{.Config.User}}' museecho-app:ci)" = "10001:10001"
           test "$(docker image inspect --format '{{.Config.User}}' museecho-gateway:ci)" = "10001:10001"
+      - name: Production Compose contract
+        shell: pwsh
+        run: ./scripts/test-container-contract.ps1
       - name: Reject high and critical image vulnerabilities
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
