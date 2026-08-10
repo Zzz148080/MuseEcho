@@ -293,3 +293,11 @@
 - **确定性审计：** 许可证门禁新增显式许可集合、两个 npm lock 的完整 SHA-256 inventory，以及所有固定容器镜像、Caddy/xcaddy、Go replacements、Debian/Alpine 包与 FFmpeg 的精确清单；两套 CI 的 native audit 命令按独立失败边界执行。Secret scan 新增 `github_pat_`，并只在显式 credential 赋值上下文检查高熵 lowercase/hex；合成覆盖安全 hash、provider token、lowercase/hex、锁定不可读文件和 tracked missing 文件。
 - **RED→GREEN 与总门禁：** production mount 测试先暴露相对 source，smoke setup probe 先暴露参数/生命周期缺口；许可证新增测试由 3 个预期失败变为 `6 passed`；Secret 合成依次暴露 `github_pat_` 与 hex 漏检后全绿；pytest cleanup probe 先证明 rm 失败被吞掉，修复后通过。最终 production smoke exit 0（57.2s），无网络容器 pytest `527 passed`，前端 `66 passed`、build/typecheck、Ruff/mypy、npm audits、真实/合成审计与 YAML/PowerShell 解析通过。一个前端删除测试的固定到期时间在本日变为过去，聚焦 RED 定位后仅把其“未到期”测试前提改成 2099，未改产品行为。
 - **仍阻塞：** fresh offline Trivy 对 app 仍为 169 HIGH + 12 CRITICAL，181 项 `FixedVersion` 全为空（hard gate exit 1）；gateway 为 0（exit 0）。未下载工具/依赖，未运行或声称远端 CI，Task 20 保持 blocked/incomplete。
+
+## 2026-08-10 — TASK 20 / 安全审查修复轮 4（READY）
+
+- **攻击面收紧：** 上传在启动媒体工具前严格校验 MP3 Layer III 或无压缩 PCM/IEEE-float WAV；两个工具均在 `-i` 前使用相同的 `wav,mp3`、`file,pipe` 和 PCM/MP3 decoder allowlist。真实 IMA-ADPCM、Layer I/II、不一致 RIFF 声明都在工具前失败关闭，原有 8/16/24/32-bit PCM、32/64-bit float 与 MP3 行为保留。
+- **可证明 VEX：** 纯标准库审计精确匹配 181 个 finding tuple、38 个受影响包的完整 dpkg 路径、57 个源码/Docker/配置/锁文件哈希及镜像内 zlib MiniZip 符号 probe；任何新增、缺失、变更或未证明 CVE 都不生成 VEX。GitHub/GitLab 均先保存无 suppression raw JSON，再审计、应用 67 条逐 CVE OpenVEX；GitHub 失败时仍保留证据。
+- **最终产物与门禁：** `--pull=false` 产品 Dockerfile 构建中基础、pip/uv、apt/FFmpeg、venv 层全部 `CACHED`，只执行 `COPY src/`，无下载。app 为 `sha256:ab1afb4db2e601920944c88bc1b73718a97534de42564ce65e9191949bab34a5`，gateway 为 `sha256:c20e61e9558d16045f7aa839f1d29bbf940da7874b85db0a96f5acc3edbb4e63`；完整 raw app 181（169 HIGH/12 CRITICAL、67 CVE、fixed 0）、gateway 0，精确 audit exit 0，app VEX/gateway 门禁均 exit 0 且可见 0。
+- **验证与审查：** 与最终镜像 51/51 源文件 SHA-256 完全一致的锁定运行时完成 `573 passed`；post-review production smoke exit 0；聚焦 `58 passed, 1 skipped`，前端 `66 passed`、真实 Chrome E2E `4 passed`，Ruff/mypy、type/build、license/npm/Secret/container contracts 通过。第一轮审查提出 3 组 Important 后全部 RED→GREEN；第二轮 Critical/Important/Minor 均为 0，结论 `READY`。
+- **Git：** 安全实现提交 `f6ad8679af1f913f412fe5a29c9d6fbe9c8ea921`。未推送、未合并，且没有声称远端 GitHub Actions/GitLab CI 已运行。

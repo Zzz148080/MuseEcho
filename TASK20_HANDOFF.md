@@ -99,3 +99,12 @@
 - Secret scan 合成测试覆盖 `github_pat_`、显式 password/token 中的 lowercase/hex 高熵值、安全 SHA/integrity、不可读与缺失文件；container pytest 合成测试证明 `docker rm --force` 失败会使验证失败，同时精确 task-temp 无残留。
 - 初审 `httpx2` typo finding 被技术证据推翻：三个锁定来源都使用 `httpx2`，第三方通知已恢复真实名称。
 - 最终实测：production smoke exit 0（57.2s），容器全量 Python `527 passed`，前端 `66 passed`，Ruff/mypy、两套 TypeScript、build、npm audits、license/Secret/container synthetic gates 全绿。fresh offline Trivy 仍是 app 181（169 HIGH、12 CRITICAL、fixed 0、exit 1），gateway 0（exit 0）；这是当前唯一剩余 blocker，远端 CI 未运行。
+
+## 2026-08-10 安全审查修复轮 4（最终交接）
+
+- **状态：** Task 20 本地 `READY`。安全实现提交 `f6ad8679af1f913f412fe5a29c9d6fbe9c8ea921`；最终独立审查 Critical/Important/Minor 均为 0。完整证据见 `.superpowers/sdd/PLAN/task-20-security-round-4-report.md`。
+- **最终镜像：** app `sha256:ab1afb4db2e601920944c88bc1b73718a97534de42564ce65e9191949bab34a5`；gateway `sha256:c20e61e9558d16045f7aa839f1d29bbf940da7874b85db0a96f5acc3edbb4e63`；两者均为 `10001:10001`。最终 app 的 51 个源文件哈希与工作树及 `573 passed` 的锁定运行时全部相同。
+- **安全门禁：** fresh unsuppressed app raw 为 181（169 HIGH、12 CRITICAL、67 CVE、fixed 0），gateway raw 为 0；schema-v2 审计精确核对 181 tuple、38 包、298 已安装包、57 运行时/配置/锁文件以及 67 条逐 CVE statement，残留/未证明为 0。app VEX 门禁和 gateway 无 suppression 门禁均 exit 0、可见 0。
+- **验证：** Linux 锁定运行时 `573 passed`，post-review production smoke exit 0（45.3s），聚焦 `58 passed, 1 skipped`，Ruff 80 files、mypy 45 files、前端 66 tests、type/build、Chrome E2E 4 tests、license/npm/Secret/container contracts 全绿。主机 `verify.ps1` 无法选择 uv，且主机无 FFmpeg；未主机安装任何工具，权威 Python 结果来自实际 Linux 运行时。
+- **构建/网络事实：** 最终 `--pull=false` 产品 Dockerfile 构建的基础、uv/pip、apt/FFmpeg、锁定 venv 层全部 `CACHED`，仅复制 source，无包/基础层下载。Trivy 使用已有数据库并设置 offline/skip-update/skip-version-check。
+- **控制器后续：** 该分支尚未推送、未合并，远端 GitHub Actions/GitLab CI 未运行。控制器应先合并 Task 20，再开始 Task 21；不得把本地结果写成远端 CI 证据。
