@@ -743,7 +743,7 @@ def test_engineering_audit_has_no_open_critical_or_high(audit):
 
 **最终命令：** `pwsh -File scripts/verify.ps1; if ($LASTEXITCODE) { exit $LASTEXITCODE }; uv run python scripts/check_engineering_audit.py docs/audits/ENGINEERING_AUDIT.md`
 
-**并行：** 否。**依赖：** T22。**对应验收标准：** AC-E、AC-F 与 DoD 中无 Critical/High、全验证、Secret 和构建要求。**分支：** `audit/23-engineering`。**计划提交：** `audit: close engineering risks`。**实际提交：** 本地实现与验证完成；9 个 finding 为 4 High FIXED、2 Medium FIXED、3 Medium BLOCKED、0 OPEN，主提交 hash 待提交后回填。**实际状态：** Task 23 本地审计完成；锁定 Linux `681 passed`，checker `27 passed`，Task 24、远程 CI、公网/目标机、当前浏览器 E2E 与学生人工验收仍待外部或后续阶段。
+**并行：** 否。**依赖：** T22。**对应验收标准：** AC-E、AC-F 与 DoD 中无 Critical/High、全验证、Secret 和构建要求。**分支：** `audit/23-engineering`。**计划提交：** `audit: close engineering risks`。**实际提交：** `31b2351fcf308b4aeb3ce8b1931afafe3350522d`；9 个 finding 为 4 High FIXED、2 Medium FIXED、3 Medium BLOCKED、0 OPEN。**实际状态：** Task 23 本地审计完成；锁定 Linux `681 passed`，checker `27 passed`，Task 24、远程 CI、公网/目标机、当前浏览器 E2E 与学生人工验收仍待外部或后续阶段。
 
 ### 任务 24：Product Audit、最终验证与交付报告
 

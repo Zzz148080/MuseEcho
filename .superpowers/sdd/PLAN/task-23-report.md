@@ -13,7 +13,7 @@
 
 三个 Medium blocker 分别是当前浏览器/前端完整链、远程 GitHub/GitLab CI、目标云与公网/恢复证据。宿主还缺少 brief 最终 wrapper 所需的 `pwsh` 和 `uv`。这些边界没有被伪装为成功，因此状态不是无条件 `DONE`。
 
-计划主提交为 `audit: close engineering risks`，实际主提交：`PRIMARY_COMMIT_PENDING`。未 push、未执行远程写操作、未代写学生 `REFLECTION.md`。
+计划主提交为 `audit: close engineering risks`，实际主提交：`31b2351fcf308b4aeb3ce8b1931afafe3350522d`。未 push、未执行远程写操作、未代写学生 `REFLECTION.md`。
 
 ## 审计合约
 
