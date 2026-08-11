@@ -435,3 +435,8 @@ Review fix round 1 is
 `22d587beb68170ab4af79a7665d1942881700499` —
 `fix: bind functional audit evidence contracts`. Its hash is backfilled in the
 following documentation-only commit.
+
+Review fix round 2 is
+`86be4968ed3b6abf14c3d058f22409a923e33f1f` —
+`docs: keep functional audit statistics current`. Its hash is backfilled in the
+following documentation-only commit.
