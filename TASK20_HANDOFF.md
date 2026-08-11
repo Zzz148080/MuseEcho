@@ -10,6 +10,13 @@
 - Task 20 尚未完成、尚未审查为 READY、尚未推送、尚未合并 `main`。
 - 主工作树受保护的未跟踪目录 `ai4coding-agentos-lab/` 与 `docs/input/` 未读取、未修改、未提交。
 
+## Task 21 交付身份澄清
+
+Task 20 记录的是不可变 Docker tar/config image identity；它是本地发行证据，
+不是已经发布到 registry 的 OCI digest。Task 21 因此拒绝 mutable tag，要求实际
+部署操作员提供 `name@sha256:<digest>` 引用；不伪造两种身份之间的映射，也不把本交接记录
+当作腾讯云真实部署证据。
+
 ## 已完成的实现
 
 - 新增非 root 多阶段 `Dockerfile`、`compose.yaml`、Caddy HTTPS 同源网关、只读 Secret 准备容器、持久化数据卷和容器健康检查。

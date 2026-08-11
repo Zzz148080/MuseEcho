@@ -129,21 +129,27 @@ Linux 冷启动使用下面的精确所有者和模式。目录由 `root:10001` 
 sudo install -d -o root -g 10001 -m 0750 /etc/museecho/secrets
 
 audio_tmp="$(mktemp)"
-provider_tmp="$(mktemp)"
-trap 'rm -f "$audio_tmp" "$provider_tmp"' EXIT
+trap 'rm -f "$audio_tmp"' EXIT
 umask 077
 openssl rand -base64 32 | tr -d '\n' > "$audio_tmp"
 sudo install -o 10001 -g 10001 -m 0400 "$audio_tmp" /etc/museecho/secrets/audio-kek
 
-# 仅在启用第三方模型时执行以下四行。
+# 默认 KEK-only 启动到此为止；不创建 `provider-key`，也不要设置任何
+# `MUSEECHO_PROVIDER_*` 变量。仅在启用第三方模型时执行以下命令：
+provider_tmp="$(mktemp)"
+trap 'rm -f "$audio_tmp" "$provider_tmp"' EXIT
 IFS= read -r -s -p 'Provider API key: ' provider_key; printf '\n'
 printf '%s' "$provider_key" > "$provider_tmp"
 unset provider_key
 sudo install -o 10001 -g 10001 -m 0400 "$provider_tmp" /etc/museecho/secrets/provider-key
 
-stat -c '%u:%g %a %n' /etc/museecho/secrets \
-  /etc/museecho/secrets/audio-kek /etc/museecho/secrets/provider-key
-# 期望：目录 0:10001 750；两个文件 10001:10001 400。
+# 默认诊断只检查 KEK；provider 模式才检查第二个文件。
+stat -c '%u:%g %a %n' /etc/museecho/secrets /etc/museecho/secrets/audio-kek
+# 期望：目录 0:10001 750；KEK 为 10001:10001 400。
+if [ -f /etc/museecho/secrets/provider-key ]; then
+  stat -c '%u:%g %a %n' /etc/museecho/secrets/provider-key
+  # 期望：provider-key 为 10001:10001 400。
+fi
 ```
 
 `powershell -File scripts/test-linux-secret-contract.ps1` 会在 Linux 容器文件系统中重建这些
