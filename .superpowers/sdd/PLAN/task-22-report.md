@@ -256,6 +256,8 @@ was not modified, described as closed, or used to alter a functional verdict.
 
 ## Commit
 
-The planned primary commit is `audit: verify functional acceptance criteria`.
-Its exact hash will be backfilled in a subsequent documentation-only commit so
-the primary commit remains independently identifiable.
+The primary implementation/evidence commit is
+`abb33e036965f877a860ad5916f4b23ea7ffa417` —
+`audit: verify functional acceptance criteria`. This hash backfill is delivered
+in a subsequent documentation-only commit so the primary commit remains
+independently identifiable.
