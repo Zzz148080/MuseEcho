@@ -27,6 +27,7 @@ PROCESS_EXIT_TIMEOUT_SECONDS = 5.0
 READER_JOIN_TIMEOUT_SECONDS = 5.0
 INPUT_FORMAT_WHITELIST = "wav,mp3"
 INPUT_PROTOCOL_WHITELIST = "file,pipe"
+INPUT_CODEC_WHITELIST = "pcm_u8,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,mp3float,mp3"
 SUPPORTED_FORMATS = frozenset({"wav", "mp3"})
 
 
@@ -304,6 +305,8 @@ def decode_audio(
         INPUT_PROTOCOL_WHITELIST,
         "-format_whitelist",
         INPUT_FORMAT_WHITELIST,
+        "-codec_whitelist",
+        INPUT_CODEC_WHITELIST,
         "-i",
         str(input_path),
         "-map",
@@ -377,6 +380,8 @@ def probe_audio(
         INPUT_PROTOCOL_WHITELIST,
         "-format_whitelist",
         INPUT_FORMAT_WHITELIST,
+        "-codec_whitelist",
+        INPUT_CODEC_WHITELIST,
         "-select_streams",
         "a:0",
         "-show_entries",

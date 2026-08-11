@@ -85,6 +85,10 @@ V1 必须形成以下闭环：
 
 输入：单个 WAV 或 MP3 文件。
 
+格式边界：WAV 只接受无压缩 PCM 或 IEEE-float（包括 `cbSize >= 22`、声明扩展字节有界且
+`0 < valid_bits <= container_bits` 的 WAVEFORMATEXTENSIBLE）；MP3 只接受可由非零 bitrate
+index 计算帧大小的常规 MPEG Layer III。V1 明确不支持 free-format（bitrate index `0000`）MP3。
+
 限制：最多 30 MB、10 分钟。
 
 行为：流式接收、文件签名校验、真实解码校验、随机内部命名、创建异步任务、显示实际阶段状态。
@@ -508,6 +512,8 @@ GitHub Actions 运行 backend tests、frontend tests、integration tests、lint�
 - 香港跨境网络质量不作 SLA 承诺。
 - 单 Machine 和 SQLite 不构成高可用部署。
 - LLM 解释是辅助性自然语言，不替代音乐教师或专业制作分析。
+- MP3 支持仅限可计算帧长度的常规 MPEG Layer III；free-format bitrate index `0000` 在媒体工具
+  启动前拒绝。该限制来自锁定 FFmpeg 5.1.9 对该端到端流的拒绝，不把所有 MP3 子类型声明为支持。
 
 ## 22. V1 明确不做
 

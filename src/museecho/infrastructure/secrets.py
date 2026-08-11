@@ -141,7 +141,11 @@ class FileSecretStore:
             writable_bits = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
             if opened.st_mode & writable_bits:
                 raise ValueError("secret file must be read-only")
-            if os.name == "posix" and opened.st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+            if (
+                os.name == "posix"
+                and opened.st_mode & (stat.S_IRWXG | stat.S_IRWXO)
+                and not _is_path_on_read_only_mount(current_path)
+            ):
                 raise ValueError("secret file permissions must be limited to its owner")
             with os.fdopen(descriptor, encoding="utf-8", closefd=True) as handle:
                 descriptor = None
@@ -171,6 +175,43 @@ class FileSecretStore:
     def _assert_outside_repository(path: Path, repository_root: Path) -> None:
         if path == repository_root or repository_root in path.parents:
             raise ValueError("secret file must be outside the repository")
+
+
+def _is_path_on_read_only_mount(path: Path) -> bool:
+    """Return true only when Linux reports the containing mount as read-only."""
+
+    mount_info = Path("/proc/self/mountinfo")
+    try:
+        lines = mount_info.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError):
+        return False
+    selected_mount: Path | None = None
+    selected_options: set[str] = set()
+    for line in lines:
+        before_separator, separator, after_separator = line.partition(" - ")
+        if not separator:
+            continue
+        fields = before_separator.split()
+        trailing = after_separator.split()
+        if len(fields) < 6 or len(trailing) < 3:
+            continue
+        mount_path = Path(
+            fields[4]
+            .replace("\\040", " ")
+            .replace("\\011", "\t")
+            .replace("\\012", "\n")
+            .replace("\\134", "\\")
+        )
+        try:
+            contains_path = path == mount_path or mount_path in path.parents
+        except (OSError, RuntimeError):
+            continue
+        if contains_path and (
+            selected_mount is None or len(mount_path.parts) > len(selected_mount.parts)
+        ):
+            selected_mount = mount_path
+            selected_options = set(fields[5].split(",")) | set(trailing[2].split(","))
+    return selected_mount is not None and "ro" in selected_options
 
 
 @dataclass(frozen=True)

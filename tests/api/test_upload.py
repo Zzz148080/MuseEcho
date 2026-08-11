@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import struct
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -10,7 +11,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from museecho.analysis.decode import AudioDurationLimitError, AudioProbe
+from museecho.analysis.decode import AudioDurationLimitError, AudioProbe, InvalidAudioError
 from museecho.api.analyses import install_analyses_api
 from museecho.application.uploads import (
     FFmpegAudioValidator,
@@ -110,6 +111,69 @@ def _client(
 def _valid_probe(path: Path) -> AudioProbe:
     assert path.is_file()
     return AudioProbe("wav", 1.0, 22_050, 1)
+
+
+def _wave_from_format_data(format_data: bytes) -> bytes:
+    body = b"fmt " + struct.pack("<I", len(format_data)) + format_data + b"data\0\0\0\0"
+    return b"RIFF" + struct.pack("<I", len(body) + 4) + b"WAVE" + body
+
+
+def _minimal_wave(*, format_tag: int = 1, bits_per_sample: int = 16) -> bytes:
+    channels = 1
+    sample_rate = 8_000
+    bytes_per_sample = (bits_per_sample + 7) // 8
+    block_align = channels * bytes_per_sample
+    byte_rate = sample_rate * block_align
+    format_chunk = struct.pack(
+        "<HHIIHH",
+        format_tag,
+        channels,
+        sample_rate,
+        byte_rate,
+        block_align,
+        bits_per_sample,
+    )
+    return _wave_from_format_data(format_chunk)
+
+
+def _extensible_wave(
+    *,
+    extension_size: int | None = None,
+    valid_bits: int = 16,
+    bits_per_sample: int = 16,
+    subformat_tag: int = 1,
+    extension_padding: bytes = b"",
+) -> bytes:
+    bytes_per_sample = bits_per_sample // 8
+    if extension_size is None:
+        extension_size = 22 + len(extension_padding)
+    format_data = (
+        struct.pack(
+            "<HHIIHHHHI16s",
+            0xFFFE,
+            1,
+            8_000,
+            8_000 * bytes_per_sample,
+            bytes_per_sample,
+            bits_per_sample,
+            extension_size,
+            valid_bits,
+            0,
+            struct.pack("<I", subformat_tag) + b"\x00\x00\x10\x00\x80\x00\x00\xaa\x00\x38\x9b\x71",
+        )
+        + extension_padding
+    )
+    return _wave_from_format_data(format_data)
+
+
+def _free_format_layer_three(*, frame_sizes: tuple[int, ...] = (100, 100, 100)) -> bytes:
+    header = b"\xff\xfb\x00\x64"
+    return b"".join(header + bytes(size - len(header)) for size in frame_sizes)
+
+
+def _mpeg1_layer_three_frames(*, count: int = 2, frame_size: int = 417) -> bytes:
+    header = b"\xff\xfb\x90\x64"
+    return b"".join(header + bytes(frame_size - len(header)) for _ in range(count))
 
 
 def test_rejects_mp3_name_with_non_audio_bytes(tmp_path: Path):
@@ -273,7 +337,7 @@ def test_ffmpeg_validator_requires_probe_and_successful_decode(tmp_path: Path, m
     from museecho.domain.models import DecodedAudio
 
     source = tmp_path / "source.wav"
-    source.write_bytes(b"RIFFdata")
+    source.write_bytes(_minimal_wave())
     calls: list[str] = []
     probe = AudioProbe("wav", 1.0, 22_050, 1)
 
@@ -296,6 +360,224 @@ def test_ffmpeg_validator_requires_probe_and_successful_decode(tmp_path: Path, m
 
     assert result == probe
     assert calls == ["probe", "decode"]
+
+
+@pytest.mark.parametrize("subformat_tag", (0x0001, 0x0003))
+def test_ffmpeg_validator_accepts_extensible_valid_precision_and_extension_padding(
+    tmp_path: Path, monkeypatch, subformat_tag: int
+):
+    from museecho.application import uploads
+    from museecho.domain.models import DecodedAudio
+
+    source = tmp_path / "source.wav"
+    source.write_bytes(
+        _extensible_wave(
+            valid_bits=24,
+            bits_per_sample=32,
+            subformat_tag=subformat_tag,
+            extension_padding=b"\x00\x00",
+        )
+    )
+    calls: list[str] = []
+    probe = AudioProbe("wav", 1.0, 8_000, 1)
+    monkeypatch.setattr(
+        uploads,
+        "probe_audio",
+        lambda *_args, **_kwargs: calls.append("probe") or probe,
+    )
+    monkeypatch.setattr(
+        uploads,
+        "decode_audio",
+        lambda *_args, **_kwargs: (
+            calls.append("decode") or DecodedAudio(b"\x00\x00\x00\x00", 8_000, 1)
+        ),
+    )
+
+    assert FFmpegAudioValidator()(source) == probe
+    assert calls == ["probe", "decode"]
+
+
+def test_ffmpeg_validator_rejects_free_format_layer_three_before_audio_tools(
+    tmp_path: Path, monkeypatch
+):
+    from museecho.application import uploads
+
+    source = tmp_path / "free-format.mp3"
+    source.write_bytes(_free_format_layer_three())
+    calls: list[str] = []
+    monkeypatch.setattr(
+        uploads,
+        "probe_audio",
+        lambda *_args, **_kwargs: calls.append("probe"),
+    )
+    monkeypatch.setattr(
+        uploads,
+        "decode_audio",
+        lambda *_args, **_kwargs: calls.append("decode"),
+    )
+
+    with pytest.raises(InvalidAudioError, match="signature"):
+        FFmpegAudioValidator()(source)
+
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    "payload",
+    (
+        b"RIFF",
+        b"RIFF\x24\x00\x00\x00NOPE",
+        b"ID3\x04\x00\x00\x00\x00\x00\x00",
+        b"ID3\x04\x00\x00\x80\x00\x00\x00payload",
+        b"\xff\xeb\x90\x64not-an-mp3-frame",
+        b"\xff\xfd\x90\x64mpeg-layer-two",
+        b"\xff\xff\x90\x64mpeg-layer-one",
+        b"\xff\xfb\x90\x64single-layer-three-header",
+        b"ID3\x04\x00\x10\x00\x00\x00\x00notfooter!" + _mpeg1_layer_three_frames(),
+    ),
+)
+def test_ffmpeg_validator_rejects_ambiguous_signatures_before_audio_tools(
+    tmp_path: Path, monkeypatch, payload: bytes
+):
+    from museecho.application import uploads
+    from museecho.application.uploads import FFmpegAudioValidator
+    from museecho.domain.models import DecodedAudio
+
+    source = tmp_path / "source.bin"
+    source.write_bytes(payload)
+    calls: list[str] = []
+    probe = AudioProbe("wav", 1.0, 22_050, 1)
+
+    def fake_probe(*_args: Any, **_kwargs: Any) -> AudioProbe:
+        calls.append("probe")
+        return probe
+
+    def fake_decode(*_args: Any, **_kwargs: Any) -> DecodedAudio:
+        calls.append("decode")
+        return DecodedAudio(b"\x00\x00\x00\x00", 22_050, 1)
+
+    monkeypatch.setattr(uploads, "probe_audio", fake_probe)
+    monkeypatch.setattr(uploads, "decode_audio", fake_decode)
+
+    with pytest.raises(InvalidAudioError, match="signature"):
+        FFmpegAudioValidator()(source)
+
+    assert calls == []
+
+
+@pytest.mark.parametrize("valid_bits", (0, 33))
+def test_ffmpeg_validator_rejects_extensible_precision_outside_container_before_tools(
+    tmp_path: Path, monkeypatch, valid_bits: int
+):
+    from museecho.application import uploads
+
+    source = tmp_path / "source.wav"
+    source.write_bytes(_extensible_wave(valid_bits=valid_bits, bits_per_sample=32))
+    calls: list[str] = []
+    monkeypatch.setattr(
+        uploads,
+        "probe_audio",
+        lambda *_args, **_kwargs: calls.append("probe"),
+    )
+    monkeypatch.setattr(
+        uploads,
+        "decode_audio",
+        lambda *_args, **_kwargs: calls.append("decode"),
+    )
+
+    with pytest.raises(InvalidAudioError, match="signature"):
+        FFmpegAudioValidator()(source)
+
+    assert calls == []
+
+
+def test_ffmpeg_validator_rejects_short_extensible_format_before_audio_tools(
+    tmp_path: Path, monkeypatch
+):
+    from museecho.application import uploads
+
+    source = tmp_path / "short-extensible.wav"
+    source.write_bytes(_minimal_wave(format_tag=0xFFFE))
+    calls: list[str] = []
+    monkeypatch.setattr(
+        uploads,
+        "probe_audio",
+        lambda *_args, **_kwargs: calls.append("probe"),
+    )
+    monkeypatch.setattr(
+        uploads,
+        "decode_audio",
+        lambda *_args, **_kwargs: calls.append("decode"),
+    )
+
+    with pytest.raises(InvalidAudioError, match="signature"):
+        FFmpegAudioValidator()(source)
+
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    "payload",
+    (
+        _extensible_wave(extension_size=65_535),
+        _wave_from_format_data(struct.pack("<HHIIHHH2s", 1, 1, 8_000, 16_000, 2, 16, 0, b"xx")),
+    ),
+)
+def test_ffmpeg_validator_rejects_inconsistent_wave_format_lengths_before_audio_tools(
+    tmp_path: Path, monkeypatch, payload: bytes
+):
+    from museecho.application import uploads
+
+    source = tmp_path / "source.wav"
+    source.write_bytes(payload)
+    calls: list[str] = []
+    monkeypatch.setattr(
+        uploads,
+        "probe_audio",
+        lambda *_args, **_kwargs: calls.append("probe"),
+    )
+    monkeypatch.setattr(
+        uploads,
+        "decode_audio",
+        lambda *_args, **_kwargs: calls.append("decode"),
+    )
+
+    with pytest.raises(InvalidAudioError, match="signature"):
+        FFmpegAudioValidator()(source)
+
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    ("format_tag", "bits_per_sample"),
+    ((0x0011, 4), (0x0055, 0), (0x0001, 20), (0x0003, 16)),
+)
+def test_ffmpeg_validator_rejects_compressed_or_ambiguous_wave_before_audio_tools(
+    tmp_path: Path,
+    monkeypatch,
+    format_tag: int,
+    bits_per_sample: int,
+):
+    from museecho.application import uploads
+
+    source = tmp_path / "source.wav"
+    source.write_bytes(_minimal_wave(format_tag=format_tag, bits_per_sample=bits_per_sample))
+    calls: list[str] = []
+    monkeypatch.setattr(
+        uploads,
+        "probe_audio",
+        lambda *_args, **_kwargs: calls.append("probe"),
+    )
+    monkeypatch.setattr(
+        uploads,
+        "decode_audio",
+        lambda *_args, **_kwargs: calls.append("decode"),
+    )
+
+    with pytest.raises(InvalidAudioError, match="signature"):
+        FFmpegAudioValidator()(source)
+
+    assert calls == []
 
 
 def test_request_body_limit_runs_before_multipart_parsing(tmp_path: Path):
@@ -413,8 +695,8 @@ def test_validation_is_serialized_across_service_instances(tmp_path: Path, monke
 
     first_path = tmp_path / "first.wav"
     second_path = tmp_path / "second.wav"
-    first_path.write_bytes(b"first")
-    second_path.write_bytes(b"second")
+    first_path.write_bytes(_minimal_wave())
+    second_path.write_bytes(_minimal_wave())
     first_started = threading.Event()
     second_started = threading.Event()
     release_first = threading.Event()

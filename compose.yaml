@@ -1,0 +1,142 @@
+name: museecho
+
+x-app-common: &app-common
+    image: museecho-app:local
+    build:
+      context: .
+      target: app
+      args:
+        DEBIAN_SNAPSHOT: ${MUSEECHO_DEBIAN_SNAPSHOT:-20260805T000000Z}
+        SOURCE_DATE_EPOCH: ${MUSEECHO_SOURCE_DATE_EPOCH:-1785888000}
+    environment:
+      MUSEECHO_DATA_ROOT: /data
+      MUSEECHO_AUDIO_KEK_FILE: /run/secrets/audio-kek
+      MUSEECHO_TRUSTED_ORIGINS: ${MUSEECHO_TRUSTED_ORIGINS:-https://localhost:8443,https://127.0.0.1:8443}
+      MUSEECHO_PROVIDER_BASE_URL: ${MUSEECHO_PROVIDER_BASE_URL:-}
+      MUSEECHO_PROVIDER_MODEL: ${MUSEECHO_PROVIDER_MODEL:-}
+      MUSEECHO_PROVIDER_SECRET_FILE: ${MUSEECHO_PROVIDER_SECRET_FILE:-}
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2).read()"]
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+      retries: 6
+
+services:
+  app:
+    <<: *app-common
+    profiles: [production]
+    restart: unless-stopped
+    volumes:
+      - museecho_data:/data
+      - type: bind
+        source: /etc/museecho/secrets
+        target: /run/secrets
+        read_only: true
+
+  gateway:
+    profiles: [production]
+    image: museecho-gateway:local
+    build:
+      context: .
+      target: gateway
+      args:
+        SOURCE_DATE_EPOCH: ${MUSEECHO_SOURCE_DATE_EPOCH:-1785888000}
+    restart: unless-stopped
+    environment:
+      HTTPS_EXTERNAL_PORT: ${MUSEECHO_HTTPS_PORT:-8443}
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "${MUSEECHO_HTTP_PORT:-8080}:8080"
+      - "${MUSEECHO_HTTPS_PORT:-8443}:8443"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: [CMD, wget, --no-check-certificate, --quiet, --spider, https://127.0.0.1:8443/api/health]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 6
+
+  app-dev:
+    <<: *app-common
+    profiles: [development]
+    restart: "no"
+    environment:
+      MUSEECHO_DATA_ROOT: /data
+      MUSEECHO_AUDIO_KEK_FILE: /run/secrets/audio-kek
+      MUSEECHO_TRUSTED_ORIGINS: https://localhost:4173,https://127.0.0.1:4173
+      MUSEECHO_PROVIDER_BASE_URL: ${MUSEECHO_PROVIDER_BASE_URL:-}
+      MUSEECHO_PROVIDER_MODEL: ${MUSEECHO_PROVIDER_MODEL:-}
+      MUSEECHO_PROVIDER_SECRET_FILE: ${MUSEECHO_PROVIDER_SECRET_FILE:-}
+    command:
+      - uvicorn
+      - museecho.runtime:app
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+      - --reload-dir
+      - /app/src
+      - --no-access-log
+    volumes:
+      - museecho_dev_data:/data
+      - type: bind
+        source: ./src
+        target: /app/src
+        read_only: true
+      - type: bind
+        source: ${MUSEECHO_SECRETS_DIR:-/etc/museecho/secrets}
+        target: /run/secrets
+        read_only: true
+
+  gateway-dev:
+    profiles: [development]
+    image: museecho-gateway:local
+    build:
+      context: .
+      target: gateway
+      args:
+        SOURCE_DATE_EPOCH: ${MUSEECHO_SOURCE_DATE_EPOCH:-1785888000}
+    restart: "no"
+    environment:
+      HTTPS_EXTERNAL_PORT: "4173"
+      MUSEECHO_API_UPSTREAM: app-dev
+    depends_on:
+      app-dev:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:4173:8443"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: [CMD, wget, --no-check-certificate, --quiet, --spider, https://127.0.0.1:8443/api/health]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 6
+
+volumes:
+  museecho_data:
+  museecho_dev_data:

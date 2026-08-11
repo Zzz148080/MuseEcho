@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from museecho.cli import create_default_secret_store
+from museecho.infrastructure import secrets as secrets_module
 from museecho.infrastructure.secrets import (
     FileSecretStore,
     KeyringSecretStore,
@@ -60,6 +61,22 @@ def test_file_store_reads_external_secret_but_never_writes(tmp_path: Path):
             store.clear()
     finally:
         secret_path.chmod(stat.S_IREAD | stat.S_IWRITE)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX mount permissions only")
+def test_file_store_accepts_owner_readable_secret_on_read_only_mount(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    repository_root = tmp_path / "repository"
+    repository_root.mkdir()
+    secret_path = tmp_path / "mounted-secrets" / "provider-key"
+    secret_path.parent.mkdir()
+    secret_path.write_text("container-secret", encoding="utf-8")
+    secret_path.chmod(0o444)
+    monkeypatch.setattr(secrets_module, "_is_path_on_read_only_mount", lambda _path: True)
+
+    assert FileSecretStore(secret_path, repository_root=repository_root).get() == "container-secret"
 
 
 def test_file_store_rejects_repository_path(tmp_path: Path):

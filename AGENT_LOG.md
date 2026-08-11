@@ -270,3 +270,41 @@
 - **TDD 与复核**：首轮依次暴露选区未滚入视口、回退标签选择器歧义、favicon 404、Windows 子进程回收、WinAPI 64 位句柄、SQLite 连接池清理和亲和性未恢复；均先以失败测试/复现固定后修复。本地聚焦审查另关闭默认系统 Chrome 不可重复和 E2E TypeScript 未门禁两项，最终 Critical 0、Important 0、Minor 0，结论 `READY`。受当前会话约束未派生子代理。
 - **验证**：后端全量 `507 passed, 2 skipped`（新增 300 秒性能门）；前端全量 `66 passed`；真实浏览器 `4 passed`。Ruff format/check、mypy（44 source files）、前端与 E2E 两套 TypeScript、Vite production build、`uv lock --check`、diff-check，以及前端/根 npm audit（均 0 vulnerabilities）通过。两项 skip 仍为当前 Windows 会话无法创建符号链接的既有平台条件。
 - **Git**：核心实现 `9ad408c`。按后续统一分支规则使用并保留 `feat/19-system-verification`；最终验证后自动推送功能分支、合并并推送 `main`。
+
+## 2026-08-10 — TASK 20 / 生产容器、双 CI 与依赖/Secret 审计
+
+- **发行物与运行时：** 交付非 root 多阶段 app/gateway 镜像、Caddy 同源 HTTPS 网关、只读 Secret 准备卷、加密数据持久卷、只读根文件系统、健康检查和生产运行时装配；前端 Docker clean build 直接锁定 `@types/node`，不依赖根目录 hoisting。
+- **质量门禁：** GitHub Actions 与 GitLab CI 均覆盖锁定依赖、lint、类型检查、后端/前端测试、build、HTTPS E2E、Secret scan、Docker build 与 HIGH/CRITICAL Trivy 门禁；GitLab 后端 job 固定为 `unit-test`。README 和 THIRD_PARTY_NOTICES 完成发行、凭据、安全、限制与许可证说明。
+- **TDD/安全 RED→GREEN：** 容器 smoke 的初始 RED 是所需发行文件尚不存在；网关安全 RED 为 Trivy 发现 10 个 HIGH，随后通过升级运行时库、重建 Caddy 和移除 capability 修复。GREEN 的最终 smoke 为 exit 0，包含真实 WAV 分析、重启持久化、无明文持久化及无镜像历史 Secret；重新扫描 app/gateway 均为 0 个 HIGH/CRITICAL。
+- **验证：** fresh Secret scan 检查 165 个 tracked 文件通过；app/gateway `Config.User` 都为 `10001:10001`；PowerShell 语法和两份 CI YAML 解析通过。Ruff format/check、mypy、前端 66 个测试、两套 TypeScript、production build 和根/前端 npm audit（均 0 vulnerabilities）通过。主机全量 Python 为 `508 passed, 2 skipped, 8 failed`：仅因受限 PATH 缺少 ffmpeg/ffprobe；镜像内两项工具存在，容器 smoke 已覆盖真实分析。未下载工具、未修改测试、未声称远端 CI 已运行。
+- **Git：** `70dde35`（`build: package and verify production distribution`）。分支保留给控制器后续审查和集成。
+
+## 2026-08-10 — TASK 20 / 审查修复轮 2（未完成）
+
+- **边界与真实性：** 移除 GitHub/GitLab 所有 Trivy 未修复项豁免参数，不再把 suppression 后的零结果写成镜像安全通过。现有缓存对重建 app 镜像仍报 169 HIGH、12 CRITICAL，181 项均无 `FixedVersion`；gateway 为零，因此 Task 20 明确保持 blocked/incomplete，未声称远端 CI 运行。
+- **Secret 与 profiles：** 删除持久 Secret 准备卷，生产/开发都从仓库外目录直接只读挂载 `/run/secrets`；Linux 默认 `/etc/museecho/secrets`。Compose `production` 只含 app/gateway，`development` 只含回环 app-dev 与独立数据卷。Windows smoke fixture 移到 OS task-temp，失败/成功均严格 down、删卷、清临时文件并暴露清理失败。
+- **审计与运行时：** 新增 `scripts/license-policy.json` 与纯标准库 audit，精确覆盖 79 个 Python 锁项和两个 npm lock 的许可证；Secret scan 覆盖 tracked/non-ignored untracked、主流 provider 格式及仅凭据赋值上下文的熵检测，并对 missing/unreadable fail closed。后台 expiry cleanup 首次失败发安全日志并把 health 降为 503，恢复后回到 ready；异常正文不入日志。
+- **验证：** 无网络、只读 repo/测试依赖挂载的现有 app 镜像全量 pytest 为 `524 passed` 且无 warning；production container smoke exit 0；focused `26 passed, 2 skipped`；前端 `66 passed`、Ruff format/check、mypy 45 files、前端/E2E typecheck、build、两次 npm audit、license audit、synthetic/real Secret scan、CI/Compose YAML 与 profile/mount 断言通过。没有下载任何新工具/依赖，也未把 pytest 加入生产镜像。
+
+## 2026-08-10 — TASK 20 / 审查修复轮 3（未完成）
+
+- **审查核验与 pushback：** 初审把 `httpx2` 判为拼写错误不成立；`pyproject.toml`、`uv.lock` 与许可证策略都锁定真实包名 `httpx2`，因此通知已恢复该名称。其余复审发现均在当前实现中复现并修复。
+- **生产合约与清理：** production app 的 Secret source 固定为宿主 `/etc/museecho/secrets`，环境变量不能改成仓库相对路径；smoke 只通过 OS task-temp override 注入合成 Secret，且最外层 `try/finally` 包含 fixture 创建。容器 pytest 现在把 `docker rm --force` 非零退出计为验证失败，并严格删除精确依赖临时目录。
+- **确定性审计：** 许可证门禁新增显式许可集合、两个 npm lock 的完整 SHA-256 inventory，以及所有固定容器镜像、Caddy/xcaddy、Go replacements、Debian/Alpine 包与 FFmpeg 的精确清单；两套 CI 的 native audit 命令按独立失败边界执行。Secret scan 新增 `github_pat_`，并只在显式 credential 赋值上下文检查高熵 lowercase/hex；合成覆盖安全 hash、provider token、lowercase/hex、锁定不可读文件和 tracked missing 文件。
+- **RED→GREEN 与总门禁：** production mount 测试先暴露相对 source，smoke setup probe 先暴露参数/生命周期缺口；许可证新增测试由 3 个预期失败变为 `6 passed`；Secret 合成依次暴露 `github_pat_` 与 hex 漏检后全绿；pytest cleanup probe 先证明 rm 失败被吞掉，修复后通过。最终 production smoke exit 0（57.2s），无网络容器 pytest `527 passed`，前端 `66 passed`、build/typecheck、Ruff/mypy、npm audits、真实/合成审计与 YAML/PowerShell 解析通过。一个前端删除测试的固定到期时间在本日变为过去，聚焦 RED 定位后仅把其“未到期”测试前提改成 2099，未改产品行为。
+- **仍阻塞：** fresh offline Trivy 对 app 仍为 169 HIGH + 12 CRITICAL，181 项 `FixedVersion` 全为空（hard gate exit 1）；gateway 为 0（exit 0）。未下载工具/依赖，未运行或声称远端 CI，Task 20 保持 blocked/incomplete。
+
+## 2026-08-10 — TASK 20 / 安全审查修复轮 4（READY）
+
+- **攻击面收紧：** 上传在启动媒体工具前严格校验 MP3 Layer III 或无压缩 PCM/IEEE-float WAV；两个工具均在 `-i` 前使用相同的 `wav,mp3`、`file,pipe` 和 PCM/MP3 decoder allowlist。真实 IMA-ADPCM、Layer I/II、不一致 RIFF 声明都在工具前失败关闭，原有 8/16/24/32-bit PCM、32/64-bit float 与 MP3 行为保留。
+- **可证明 VEX：** 纯标准库审计精确匹配 181 个 finding tuple、38 个受影响包的完整 dpkg 路径、57 个源码/Docker/配置/锁文件哈希及镜像内 zlib MiniZip 符号 probe；任何新增、缺失、变更或未证明 CVE 都不生成 VEX。GitHub/GitLab 均先保存无 suppression raw JSON，再审计、应用 67 条逐 CVE OpenVEX；GitHub 失败时仍保留证据。
+- **最终产物与门禁：** `--pull=false` 产品 Dockerfile 构建中基础、pip/uv、apt/FFmpeg、venv 层全部 `CACHED`，只执行 `COPY src/`，无下载。app 为 `sha256:ab1afb4db2e601920944c88bc1b73718a97534de42564ce65e9191949bab34a5`，gateway 为 `sha256:c20e61e9558d16045f7aa839f1d29bbf940da7874b85db0a96f5acc3edbb4e63`；完整 raw app 181（169 HIGH/12 CRITICAL、67 CVE、fixed 0）、gateway 0，精确 audit exit 0，app VEX/gateway 门禁均 exit 0 且可见 0。
+- **验证与审查：** 与最终镜像 51/51 源文件 SHA-256 完全一致的锁定运行时完成 `573 passed`；post-review production smoke exit 0；聚焦 `58 passed, 1 skipped`，前端 `66 passed`、真实 Chrome E2E `4 passed`，Ruff/mypy、type/build、license/npm/Secret/container contracts 通过。第一轮审查提出 3 组 Important 后全部 RED→GREEN；第二轮 Critical/Important/Minor 均为 0，结论 `READY`。
+- **Git：** 安全实现提交 `f6ad8679af1f913f412fe5a29c9d6fbe9c8ea921`。未推送、未合并，且没有声称远端 GitHub Actions/GitLab CI 已运行。
+
+## 2026-08-11 — TASK 20 / 安全审查修复轮 5（进行中）
+
+- **范围收敛：** 保留符合标准且失败关闭的 PCM/IEEE-float WAVEFORMATEXTENSIBLE：`cbSize >= 22`、有界声明扩展、`0 < valid_bits <= container_bits`（包括 32-bit container 的 24 valid bits），以及精确 GUID/速率/通道/block-align/byte-rate 校验和两个媒体工具的相同 allowlist。
+- **MP3 边界：** 仅支持可由非零 bitrate index 计算帧大小的常规 MPEG Layer III。锁定 FFmpeg 5.1.9 拒绝了尝试的 free-format 真实流，所以移除未完成的 free-format 接受/fixture/正向集成实验，新增工具启动前的负向拒绝测试；不声明所有 MP3 子类型受支持。
+- **GitLab 证据顺序：** 同一不可变 app tar 现在要求 raw 无 suppression 扫描 → package/probe inventory → 精确 audit/OpenVEX → VEX gate；raw/audit artifacts 设为 `when: always`，且 contract tests 拒绝顺序、identity 或证据漂移。
+- **验证与状态：** cached-only final Docker build 的 base/uv/apt/FFmpeg/venv 层全为 CACHED，最终锁定 Linux 为 `583 passed`，production smoke、Ruff/mypy、前端 66 tests/type/build 通过；hash 已刷新。仓库 `tmp/trivy-cache/db/trivy.db` 通过显式 read/write mount 供 Trivy 0.70.0 在 `--network none`、offline/no-update 下使用；final app `sha256:5c12e66ae1b5b63f40c32d2e4ddc8a96157abc8f8952d87ff0fd4982b18934ed`、gateway `sha256:ef3c87c9657ca052c02af74271219b36b260a712d0567ed8560410ec37e36317` 的 raw app 为 181（169 HIGH/12 CRITICAL、67 CVE、fixed 0）、gateway 0，精确 audit 为 181 tuple/38 packages/67 statements/residual 0，app VEX 与 gateway raw gate 均 exit 0、可见 0。远端 CI 未运行。

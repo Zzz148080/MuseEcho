@@ -1,0 +1,223 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_DATE_EPOCH: 1785888000
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.13
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.0
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - name: Install system and locked Python dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
+          python -m pip install uv==0.11.29
+          uv sync --frozen --extra dev
+      - name: Install locked Node dependencies
+        run: |
+          npm ci
+          npm --prefix frontend ci
+      - name: Static quality gates
+        run: |
+          uv lock --check
+          uv run ruff format --check src tests
+          uv run ruff check .
+          uv run mypy src
+          npm run typecheck
+          npm --prefix frontend run typecheck
+      - name: Unit and integration tests
+        run: |
+          uv run pytest -q --basetemp tmp/pytest-ci
+          npm --prefix frontend test
+          npm --prefix frontend run build
+      - name: License policy audit
+        shell: pwsh
+        run: uv run python scripts/license_audit.py
+      - name: Root dependency vulnerability audit
+        run: npm audit --audit-level=high
+      - name: Frontend dependency vulnerability audit
+        run: npm --prefix frontend audit --audit-level=high
+      - name: Secret scan synthetic coverage
+        shell: pwsh
+        run: ./scripts/test-secret-scan.ps1
+      - name: Repository secret scan
+        shell: pwsh
+        run: ./scripts/secret-scan.ps1
+      - name: Container test-runner cleanup coverage
+        shell: pwsh
+        run: ./scripts/test-container-pytest.ps1
+
+  e2e:
+    needs: quality
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.13
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.0
+      - name: Install application and browser
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
+          python -m pip install uv==0.11.29
+          uv sync --frozen --extra dev
+          npm ci
+          npm --prefix frontend ci
+          npx playwright install --with-deps chromium
+      - name: Real HTTPS browser flow
+        run: uv run npm run e2e
+
+  distribution:
+    needs: quality
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and build both non-root images
+        run: |
+          docker compose --profile production config --quiet
+          mkdir -p tmp/image-security
+          docker buildx build --pull=false --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" --target app \
+            --output "type=docker,name=museecho-app:ci,dest=tmp/image-security/museecho-app.tar,rewrite-timestamp=true" .
+          docker load --input tmp/image-security/museecho-app.tar
+          docker buildx build --pull=false --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" \
+            --target gateway-builder --tag museecho-gateway-builder:ci --load .
+          docker buildx build --pull=false --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" --target gateway \
+            --output "type=docker,name=museecho-gateway:ci,dest=tmp/image-security/museecho-gateway.tar,rewrite-timestamp=true" .
+          docker load --input tmp/image-security/museecho-gateway.tar
+          test "$(docker image inspect --format '{{.Config.User}}' museecho-app:ci)" = "10001:10001"
+          test "$(docker image inspect --format '{{.Config.User}}' museecho-gateway:ci)" = "10001:10001"
+          python scripts/verify_release_identity.py record \
+            --output tmp/image-security/release-images.json \
+            --tar app=tmp/image-security/museecho-app.tar \
+            --tar gateway=tmp/image-security/museecho-gateway.tar
+      - name: Production Compose contract
+        shell: pwsh
+        run: ./scripts/test-container-contract.ps1
+      - name: Linux Secret ownership and mount contract
+        shell: pwsh
+        run: ./scripts/test-linux-secret-contract.ps1 -AppImage museecho-app:ci
+      - name: Documented HTTPS same-origin development smoke
+        shell: pwsh
+        run: ./scripts/development-smoke.ps1
+      - name: Capture unsuppressed full-image vulnerability JSON
+        run: |
+          mkdir -p tmp/image-security
+          chmod 0777 tmp/image-security
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/workspace" aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e image \
+            --input /workspace/tmp/image-security/museecho-app.tar \
+            --scanners vuln --format json \
+            --output /workspace/tmp/image-security/app.raw.json \
+            --severity HIGH,CRITICAL
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/workspace" aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e image \
+            --input /workspace/tmp/image-security/museecho-gateway.tar \
+            --scanners vuln --format json \
+            --output /workspace/tmp/image-security/gateway.raw.json \
+            --severity HIGH,CRITICAL
+          python scripts/verify_release_identity.py verify \
+            --manifest tmp/image-security/release-images.json \
+            --tar app=tmp/image-security/museecho-app.tar \
+            --tar gateway=tmp/image-security/museecho-gateway.tar \
+            --scan app=tmp/image-security/app.raw.json \
+            --scan gateway=tmp/image-security/gateway.raw.json
+      - name: Record exact app package ownership and runtime probes
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges -i \
+            --entrypoint /app/.venv/bin/python museecho-app:ci \
+            - --generate-package-files - \
+            < scripts/image_vulnerability_audit.py \
+            > tmp/image-security/app.package-files.json
+      - name: Audit exact built-image component licenses
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges -i \
+            --entrypoint /app/.venv/bin/python museecho-app:ci \
+            - generate-app --output - \
+            < scripts/release_license_inventory.py \
+            > tmp/image-security/app.release-components.json
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --entrypoint cat museecho-gateway:ci \
+            /lib/apk/db/installed > tmp/image-security/gateway.apk-installed
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --entrypoint go museecho-gateway-builder:ci \
+            version -m /usr/bin/caddy > tmp/image-security/gateway.go-version-m.txt
+          BUILDER_CADDY_SHA="$(docker run --rm --network none --entrypoint sha256sum museecho-gateway-builder:ci /usr/bin/caddy | cut -d' ' -f1)"
+          CADDY_SHA="$(docker run --rm --network none --entrypoint sha256sum museecho-gateway:ci /usr/bin/caddy | cut -d' ' -f1)"
+          test "$BUILDER_CADDY_SHA" = "$CADDY_SHA"
+          python scripts/release_license_inventory.py assemble \
+            --app tmp/image-security/app.release-components.json \
+            --gateway-apk tmp/image-security/gateway.apk-installed \
+            --gateway-go tmp/image-security/gateway.go-version-m.txt \
+            --caddy-sha256 "$CADDY_SHA" \
+            --release-identity tmp/image-security/release-images.json \
+            --policy scripts/release-license-policy.json \
+            --output tmp/image-security/release-license-inventory.json
+      - name: Audit exact app findings and emit OpenVEX
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --workdir /workspace \
+            --mount "type=bind,source=$PWD,target=/workspace,readonly" \
+            --mount "type=bind,source=$PWD/tmp/image-security,target=/evidence" \
+            --entrypoint /app/.venv/bin/python museecho-app:ci \
+            /workspace/scripts/image_vulnerability_audit.py \
+            --scan /evidence/app.raw.json \
+            --package-files /evidence/app.package-files.json \
+            --policy /workspace/scripts/image-vulnerability-policy.json \
+            --release-identity /evidence/release-images.json \
+            --image-name app \
+            --vex-output /evidence/app.openvex.json \
+            --inventory-output /evidence/app.inventory.json
+      - name: Enforce audited app VEX and unsuppressed gateway gate
+        run: |
+          python scripts/verify_release_identity.py verify \
+            --manifest tmp/image-security/release-images.json \
+            --tar app=tmp/image-security/museecho-app.tar \
+            --tar gateway=tmp/image-security/museecho-gateway.tar \
+            --scan app=tmp/image-security/app.raw.json \
+            --scan gateway=tmp/image-security/gateway.raw.json
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/workspace:ro" aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e image \
+            --scanners vuln --exit-code 1 --severity HIGH,CRITICAL \
+            --input /workspace/tmp/image-security/museecho-app.tar \
+            --vex /workspace/tmp/image-security/app.openvex.json
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/workspace:ro" aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e image \
+            --input /workspace/tmp/image-security/museecho-gateway.tar \
+            --scanners vuln --exit-code 1 --severity HIGH,CRITICAL
+      - name: Retain image vulnerability evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-vulnerability-evidence
+          path: tmp/image-security/
+          if-no-files-found: warn
+          retention-days: 14
