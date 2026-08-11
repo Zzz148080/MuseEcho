@@ -324,3 +324,8 @@ After the user explicitly requested GitHub publication, the authenticated
 Task 22 branches without force-push. Task 23 remains local until this fix round
 passes independent rereview; no cloud deployment or other external system was
 modified.
+
+Round-2 implementation and evidence are committed as
+`a240f64bcd57a34818356805b9a177086668752c` —
+`fix: validate retained engineering evidence`; this hash is backfilled by a
+documentation-only follow-up commit.

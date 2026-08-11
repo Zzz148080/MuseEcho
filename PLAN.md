@@ -743,7 +743,7 @@ def test_engineering_audit_has_no_open_critical_or_high(audit):
 
 **最终命令：** `pwsh -File scripts/verify.ps1; if ($LASTEXITCODE) { exit $LASTEXITCODE }; uv run python scripts/check_engineering_audit.py docs/audits/ENGINEERING_AUDIT.md`
 
-**并行：** 否。**依赖：** T22。**对应验收标准：** AC-E、AC-F 与 DoD 中无 Critical/High、全验证、Secret 和构建要求。**分支：** `audit/23-engineering`。**计划提交：** `audit: close engineering risks`。**实际提交：** `31b2351fcf308b4aeb3ce8b1931afafe3350522d`、`07cf82687df5fa4adba9448c1fbaf1a81871a29e`；复审轮 2 待回填。10 个 finding 为 4 High FIXED、2 Medium FIXED、4 Medium BLOCKED、0 OPEN。**实际状态：** Task 23 严格 completion checker 会读取并复算 retained raw/package/VEX/inventory/tar/release/DB/image 材料；Functional Audit 为 `28 PASS / 12 PARTIAL / 0 FAIL`。Task 24、正式离线 Dockerfile 重建、远程 CI、公网/目标机、当前浏览器 E2E 与学生人工验收仍待外部或后续阶段。
+**并行：** 否。**依赖：** T22。**对应验收标准：** AC-E、AC-F 与 DoD 中无 Critical/High、全验证、Secret 和构建要求。**分支：** `audit/23-engineering`。**计划提交：** `audit: close engineering risks`。**实际提交：** `31b2351fcf308b4aeb3ce8b1931afafe3350522d`、`07cf82687df5fa4adba9448c1fbaf1a81871a29e`、复审轮 2 `a240f64bcd57a34818356805b9a177086668752c`。10 个 finding 为 4 High FIXED、2 Medium FIXED、4 Medium BLOCKED、0 OPEN。**实际状态：** Task 23 严格 completion checker 会读取并复算 retained raw/package/VEX/inventory/tar/release/DB/image 材料；Functional Audit 为 `28 PASS / 12 PARTIAL / 0 FAIL`。Task 24、正式离线 Dockerfile 重建、远程 CI、公网/目标机、当前浏览器 E2E 与学生人工验收仍待外部或后续阶段。
 
 **Task 23 review round 1:** Review fixes harden independent RED/GREEN evidence,
 the complete offline security manifest, trusted no-build runtime identities,

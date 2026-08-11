@@ -357,3 +357,4 @@
 - **RED→GREEN:** 默认 Engineering completion CLI 指向空 evidence/DB 目录时旧实现仍 exit 0；修复后缺任一 retained material、摘要/JSON/scan 结构、计数/tuple、DB 时间、本地镜像、release identity、policy/runtime/VEX/inventory 漂移均失败关闭。完整 checker 文件为 89 passed，实际 retained-material strict CLI exit 0。
 - **审计真值：** 新增 `ENG-010 Medium BLOCKED` 记录正式 current-source Dockerfile 在离线 BuildKit cache 不完整时真实 exit 1，并明确 derivative 不可发布。当前共 10 findings：4 High FIXED、2 Medium FIXED、4 Medium BLOCKED、0 OPEN；Functional Audit 保持 28/12/0。
 - **远端发布：** 用户明确要求发布 Task 20 起的本地分支；已在认证的 `Zzz148080/MuseEcho` 上无强推创建 `feat/20-production-delivery`、`ops/21-tencent-delivery`、`audit/22-functional`。Task 23/24 仅在各自最终复审通过后发布。
+- **复审轮 2 提交：** `a240f64bcd57a34818356805b9a177086668752c`（strict retained-material completion 与 `ENG-010`）；哈希回填为纯文档提交。
