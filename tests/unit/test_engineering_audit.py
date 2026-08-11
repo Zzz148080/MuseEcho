@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -7,12 +9,16 @@ from pathlib import Path
 
 import pytest
 
+import scripts.check_engineering_audit as checker
 from scripts.check_engineering_audit import (
     EXPECTED_DOMAINS,
     AuditValidationError,
     EngineeringAudit,
     load_audit,
     validate_audit,
+)
+from scripts.image_vulnerability_audit import (
+    build_runtime_boundary_manifest as real_runtime_boundary_manifest,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -215,6 +221,66 @@ def test_fixed_finding_requires_real_red_and_green_evidence(tmp_path: Path) -> N
     assert "ENG-001 FIXED requires RED and GREEN evidence" in _validation_error(tmp_path, mutation)
 
 
+@pytest.mark.parametrize(
+    ("finding_id", "red_id", "green_id"),
+    (
+        ("ENG-001", "E002", "E003"),
+        ("ENG-002", "E004", "E005"),
+        ("ENG-003", "E006", "E007"),
+        ("ENG-004", "E008", "E009"),
+        ("ENG-005", "E010", "E011"),
+        ("ENG-009", "E033", "E034"),
+    ),
+)
+def test_each_fixed_finding_rejects_coherent_unrelated_red_green_evidence(
+    tmp_path: Path, finding_id: str, red_id: str, green_id: str
+) -> None:
+    mutation = _audit_text()
+    for evidence_id, exit_code in ((red_id, 23), (green_id, 0)):
+        mutation = _replace_table_cell(
+            mutation,
+            EVIDENCE_HEADING,
+            evidence_id,
+            "Command",
+            f"python -c print-unrelated-{finding_id.lower()}",
+        )
+        mutation = _replace_table_cell(
+            mutation,
+            EVIDENCE_HEADING,
+            evidence_id,
+            "Path",
+            "scripts/check_engineering_audit.py",
+        )
+        mutation = _replace_table_cell(
+            mutation,
+            EVIDENCE_HEADING,
+            evidence_id,
+            "Result",
+            f"unrelated coherent evidence exit={exit_code}",
+        )
+
+    assert (
+        f"{finding_id} evidence {red_id} does not match its fixed evidence contract"
+        in _validation_error(tmp_path, mutation)
+    )
+
+
+@pytest.mark.parametrize(
+    "finding_id",
+    ("ENG-001", "ENG-002", "ENG-003", "ENG-004", "ENG-005", "ENG-009"),
+)
+def test_each_fixed_finding_rejects_unrelated_evidence_coverage(
+    tmp_path: Path, finding_id: str
+) -> None:
+    mutation = _replace_table_cell(
+        _audit_text(), FINDING_HEADING, finding_id, "Evidence IDs", "E001, E012"
+    )
+
+    assert f"{finding_id} evidence coverage does not match its fixed contract" in _validation_error(
+        tmp_path, mutation
+    )
+
+
 def test_accepted_finding_requires_specific_reason_owner_and_review_condition(
     tmp_path: Path,
 ) -> None:
@@ -267,7 +333,7 @@ def test_file_existence_cannot_masquerade_as_verification(tmp_path: Path) -> Non
     )
 
 
-@pytest.mark.parametrize("evidence_id", ("E020", "E022", "E025"))
+@pytest.mark.parametrize("evidence_id", ("E020", "E021", "E022", "E023", "E024", "E025"))
 def test_scan_audit_and_release_verification_cannot_be_rewritten_as_vacuous_success(
     tmp_path: Path, evidence_id: str
 ) -> None:
@@ -277,9 +343,101 @@ def test_scan_audit_and_release_verification_cannot_be_rewritten_as_vacuous_succ
     mutation = _replace_table_cell(
         mutation, EVIDENCE_HEADING, evidence_id, "Result", "exit=0; findings=0"
     )
+    mutation = _replace_table_cell(
+        mutation, EVIDENCE_HEADING, evidence_id, "Path", "scripts/check_engineering_audit.py"
+    )
 
     assert f"{evidence_id} does not match its fixed evidence contract" in _validation_error(
         tmp_path, mutation
+    )
+
+
+def test_security_domain_coverage_cannot_omit_a_gate(tmp_path: Path) -> None:
+    mutation = _replace_table_cell(
+        _audit_text(),
+        DOMAIN_HEADING,
+        "runtime-image-vulnerabilities",
+        "Evidence IDs",
+        "E020, E022, E023, E024, E025",
+    )
+
+    assert "runtime-image-vulnerabilities evidence coverage does not match its fixed contract" in (
+        _validation_error(tmp_path, mutation)
+    )
+
+
+def _set_nested(payload: dict[str, object], path: tuple[str, ...], value: object) -> None:
+    target: object = payload
+    for key in path[:-1]:
+        assert isinstance(target, dict)
+        target = target[key]
+    assert isinstance(target, dict)
+    target[path[-1]] = value
+
+
+@pytest.mark.parametrize(
+    ("field_path", "replacement"),
+    (
+        (("app", "daemon_image_id"), "sha256:" + "1" * 64),
+        (("app", "config_image_id"), "sha256:" + "2" * 64),
+        (("app", "tar_sha256"), "3" * 64),
+        (("app", "raw_sha256"), "4" * 64),
+        (("app", "package_files_sha256"), "5" * 64),
+        (("app", "inventory_sha256"), "6" * 64),
+        (("app", "vex_sha256"), "7" * 64),
+        (("app", "tuple_sha256"), "8" * 64),
+        (("app", "audit_exit"), 7),
+        (("app", "vex_gate_exit"), 7),
+        (("gateway", "daemon_image_id"), "sha256:" + "9" * 64),
+        (("gateway", "config_image_id"), "sha256:" + "a" * 64),
+        (("gateway", "tar_sha256"), "b" * 64),
+        (("gateway", "raw_sha256"), "c" * 64),
+        (("gateway", "gate_exit"), 7),
+        (("trivy", "image_digest"), "sha256:" + "d" * 64),
+        (("trivy", "db_sha256"), "e" * 64),
+        (("trivy", "db_updated_at"), "2026-08-10T00:00:00Z"),
+        (("boundary", "task20_base_daemon_image_id"), "sha256:" + "f" * 64),
+        (("boundary", "policy_sha256"), "0" * 64),
+        (("boundary", "runtime_boundary_sha256"), "1" * 64),
+        (("release_identity_sha256",), "2" * 64),
+        (("release_verify_exit",), 7),
+    ),
+)
+def test_security_manifest_rejects_coherent_audit_only_field_rewrites(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    field_path: tuple[str, ...],
+    replacement: object,
+) -> None:
+    manifest = json.loads(
+        (ROOT / "docs/audits/evidence/task23-security-manifest.json").read_text(encoding="utf-8")
+    )
+    _set_nested(manifest, field_path, replacement)
+    path = tmp_path / "task23-security-manifest.json"
+    encoded = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode()
+    path.write_bytes(encoded)
+    monkeypatch.setattr(checker, "SECURITY_MANIFEST_PATH", str(path))
+    monkeypatch.setattr(checker, "SECURITY_MANIFEST_SHA256", hashlib.sha256(encoded).hexdigest())
+
+    assert "security evidence manifest field contract changed" in _validation_error(
+        tmp_path, _audit_text()
+    )
+
+
+def test_security_manifest_recomputes_current_runtime_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def drifted_runtime_boundary(repository_root: Path) -> dict[str, str]:
+        manifest = real_runtime_boundary_manifest(repository_root)
+        manifest["src/museecho/runtime.py"] = "0" * 64
+        return manifest
+
+    monkeypatch.setattr(
+        checker, "build_runtime_boundary_manifest", drifted_runtime_boundary, raising=False
+    )
+
+    assert "security manifest runtime boundary does not match current source" in _validation_error(
+        tmp_path, _audit_text()
     )
 
 
@@ -309,3 +467,16 @@ def test_checker_cli_accepts_the_committed_engineering_audit() -> None:
 
     assert completed.returncode == 0, completed.stderr
     assert "engineering findings validated" in completed.stdout
+
+
+def test_checker_cli_help_is_runnable_outside_the_repository(tmp_path: Path) -> None:
+    completed = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "check_engineering_audit.py"), "--help"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=30,
+    )
+
+    assert completed.returncode == 0, completed.stderr

@@ -745,6 +745,19 @@ def test_engineering_audit_has_no_open_critical_or_high(audit):
 
 **并行：** 否。**依赖：** T22。**对应验收标准：** AC-E、AC-F 与 DoD 中无 Critical/High、全验证、Secret 和构建要求。**分支：** `audit/23-engineering`。**计划提交：** `audit: close engineering risks`。**实际提交：** `31b2351fcf308b4aeb3ce8b1931afafe3350522d`；9 个 finding 为 4 High FIXED、2 Medium FIXED、3 Medium BLOCKED、0 OPEN。**实际状态：** Task 23 本地审计完成；锁定 Linux `681 passed`，checker `27 passed`，Task 24、远程 CI、公网/目标机、当前浏览器 E2E 与学生人工验收仍待外部或后续阶段。
 
+**Task 23 review round 1:** Review fixes harden independent RED/GREEN evidence,
+the complete offline security manifest, trusted no-build runtime identities,
+safe 500/background-failure observability, waiting-only queue metrics, and
+cleanup-only reporting. Functional truth is now `28 PASS / 12 PARTIAL / 0 FAIL`;
+frontend type/build remains NOT_RUN, and the locked Linux/current security
+chains must be green before the review follow-up is closed.
+
+**Review closure:** The follow-up remained open through the two truthful
+locked-Linux failures. It closed only after the fresh offline security chain,
+trusted no-build smoke, `728 passed` locked Linux run, static/type,
+Secret/license, lifecycle synthetics, and both audit CLIs were green. External,
+browser/frontend-build, remote-CI, and Task 24 work remains open.
+
 ### 任务 24：Product Audit、最终验证与交付报告
 
 **目标：** 以首次使用者身份走完整产品流程，修复严重体验问题，随后运行最新全量验证并如实输出 READY 或 PARTIALLY READY。

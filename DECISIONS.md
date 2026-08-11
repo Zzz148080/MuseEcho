@@ -169,3 +169,25 @@ Task 23 必须允许人工阅读审计，同时拒绝通过删除 finding、降�
 
 **Consequences**
 任何 source、policy、scanner DB、image/tar/config、raw tuple 或 VEX 变化都必须重新运行安全链并更新固定 manifest/checker。Compact manifest 不能替代 retained raw 的取证价值；正式发布仍需在具有完整 locked cache 的环境执行 Dockerfile build 和远程 CI。
+
+## ADR-011: Review evidence is identity-bound and current-only
+
+**Context**
+The first Task 23 audit could be made internally coherent by replacing a
+finding's RED/GREEN commands with unrelated commands. Its no-build path also
+trusted any local SHA identity, and the Functional audit still described a
+Task 22 frontend build as current although it was not run in Task 23.
+
+**Decision**
+Each FIXED finding uses an exact per-finding evidence contract; E020-E025 and
+the complete compact security manifest are fixed and current runtime boundary
+is rebuilt by the real policy builder. No-build requires distinct trusted
+app/gateway daemon and config identities, verifies Compose configuration and
+both running containers after both starts, and uses `--no-build` every time.
+Unrun frontend type/build evidence is `EXTERNAL_NOT_RUN`, yielding the current
+matrix `28 PASS / 12 PARTIAL / 0 FAIL`.
+
+**Consequences**
+Coherent audit-only mutations fail. A source, image, raw, VEX, policy,
+inventory, release, DB, or tool identity change requires fresh offline
+evidence. Historical green output cannot make a current acceptance item pass.

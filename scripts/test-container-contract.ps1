@@ -9,6 +9,9 @@ $fixtureRoot = Join-Path $taskTempParent "museecho-container-contract-test-$PID-
 $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell.exe' }
 $savedPath = $env:PATH
 $savedDockerLog = $env:MUSEECHO_FAKE_DOCKER_LOG
+$savedDockerMode = $env:MUSEECHO_FAKE_DOCKER_MODE
+$savedAppDaemonId = $env:MUSEECHO_EXPECTED_APP_DAEMON_ID
+$savedGatewayDaemonId = $env:MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID
 
 Push-Location $repositoryRoot
 try {
@@ -69,61 +72,168 @@ try {
         )
     }
     $fakeDocker = Join-Path $fakeBin 'docker.cmd'
+    $fakeCurl = Join-Path $fakeBin 'curl.cmd'
+    $appDaemonId = 'sha256:' + ('1' * 64)
+    $appConfigId = 'sha256:' + ('2' * 64)
+    $gatewayDaemonId = 'sha256:' + ('3' * 64)
+    $gatewayConfigId = 'sha256:' + ('4' * 64)
+    $releaseManifest = Join-Path $fixtureRoot 'trusted-release.json'
+    [System.IO.File]::WriteAllText(
+        $releaseManifest,
+        ([ordered]@{
+            schema_version = 1
+            app = [ordered]@{
+                daemon_image_id = $appDaemonId
+                config_image_id = $appConfigId
+            }
+            gateway = [ordered]@{
+                daemon_image_id = $gatewayDaemonId
+                config_image_id = $gatewayConfigId
+            }
+        } | ConvertTo-Json -Depth 3),
+        [Text.UTF8Encoding]::new($false)
+    )
     [System.IO.File]::WriteAllText(
         $fakeDocker,
         @'
 @echo off
 echo %*>>"%MUSEECHO_FAKE_DOCKER_LOG%"
-if "%1"=="image" if "%2"=="inspect" (
-  echo sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+if "%1"=="image" if "%2"=="inspect" echo %*| findstr /c:"museecho-app:local" >nul && (
+  if "%MUSEECHO_FAKE_DOCKER_MODE%"=="wrong-app-tag" echo sha256:5555555555555555555555555555555555555555555555555555555555555555 && exit /b 0
+  echo %MUSEECHO_EXPECTED_APP_DAEMON_ID%
   exit /b 0
 )
-echo %*| findstr /c:" config " >nul
-if not errorlevel 1 exit /b 0
-echo %*| findstr /c:" up " >nul
-if not errorlevel 1 exit /b 23
-echo %*| findstr /c:" down " >nul
-if not errorlevel 1 exit /b 0
+if "%1"=="image" if "%2"=="inspect" echo %*| findstr /c:"museecho-gateway:local" >nul && (
+  echo %MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID%
+  exit /b 0
+)
+if "%1"=="container" if "%2"=="inspect" if "%5"=="app-container" (
+  if "%MUSEECHO_FAKE_DOCKER_MODE%"=="runtime-drift" echo sha256:6666666666666666666666666666666666666666666666666666666666666666 && exit /b 0
+  echo %MUSEECHO_EXPECTED_APP_DAEMON_ID%
+  exit /b 0
+)
+if "%1"=="container" if "%2"=="inspect" if "%5"=="gateway-container" echo %MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID% && exit /b 0
+echo %*| findstr /c:" config --format json" >nul && echo {"services":{"app":{"image":"museecho-app:local"},"gateway":{"image":"museecho-gateway:local"}}} && exit /b 0
+echo %*| findstr /c:" config --quiet" >nul && exit /b 0
+echo %*| findstr /c:" ps --quiet app" >nul && echo app-container && exit /b 0
+echo %*| findstr /c:" ps --quiet gateway" >nul && echo gateway-container && exit /b 0
+echo %*| findstr /c:" up " >nul && exit /b 0
+echo %*| findstr /c:" restart " >nul && exit /b 0
+echo %*| findstr /c:" exec " >nul && exit /b 0
+echo %*| findstr /c:" down " >nul && exit /b 0
+if "%1"=="history" echo safe-history && exit /b 0
 exit /b 99
 '@,
         [Text.UTF8Encoding]::new($false)
     )
+    [System.IO.File]::WriteAllText(
+        $fakeCurl,
+        @'
+@echo off
+set OUT=
+:args
+if "%~1"=="" goto write
+if "%~1"=="--output" set OUT=%~2
+shift
+goto args
+:write
+echo %OUT%| findstr /c:"health.json" >nul && echo {"status":"ready"}>"%OUT%" && exit /b 0
+echo %OUT%| findstr /c:"create.json" >nul && echo {"analysis_id":"00000000-0000-0000-0000-000000000001"}>"%OUT%" && exit /b 0
+echo %OUT%| findstr /c:"status.json" >nul && echo {"stage":"complete"}>"%OUT%" && exit /b 0
+exit /b 0
+'@,
+        [Text.UTF8Encoding]::new($false)
+    )
     $env:MUSEECHO_FAKE_DOCKER_LOG = $dockerLog
+    $env:MUSEECHO_EXPECTED_APP_DAEMON_ID = $appDaemonId
+    $env:MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID = $gatewayDaemonId
     $env:PATH = "$fakeBin$([IO.Path]::PathSeparator)$savedPath"
-    $savedErrorPreference = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    try {
-        $offlineOutput = & $shell -NoProfile -ExecutionPolicy Bypass `
-            -File (Join-Path $offlineScripts 'container-smoke.ps1') `
-            -TaskTempParent $offlineTempParent -NoBuild `
-            -DockerCommand $fakeDocker 2>&1 | Out-String
-        $offlineExit = $LASTEXITCODE
+
+    function Invoke-OfflineNoBuild {
+        param(
+            [string]$Mode = 'success',
+            [string]$Manifest = $releaseManifest,
+            [string]$ExpectedAppDaemon = $appDaemonId,
+            [string]$ExpectedAppConfig = $appConfigId,
+            [string]$ExpectedGatewayDaemon = $gatewayDaemonId,
+            [string]$ExpectedGatewayConfig = $gatewayConfigId
+        )
+        [System.IO.File]::WriteAllText($dockerLog, '', [Text.UTF8Encoding]::new($false))
+        $env:MUSEECHO_FAKE_DOCKER_MODE = $Mode
+        $savedErrorPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            $output = & $shell -NoProfile -ExecutionPolicy Bypass `
+                -File (Join-Path $offlineScripts 'container-smoke.ps1') `
+                -TaskTempParent $offlineTempParent -NoBuild `
+                -DockerCommand $fakeDocker -CurlCommand $fakeCurl `
+                -ReleaseManifest $Manifest `
+                -ExpectedAppDaemonImageId $ExpectedAppDaemon `
+                -ExpectedAppConfigImageId $ExpectedAppConfig `
+                -ExpectedGatewayDaemonImageId $ExpectedGatewayDaemon `
+                -ExpectedGatewayConfigImageId $ExpectedGatewayConfig 2>&1 | Out-String
+            $exitCode = $LASTEXITCODE
+        }
+        finally {
+            $ErrorActionPreference = $savedErrorPreference
+        }
+        return [pscustomobject]@{
+            ExitCode = $exitCode
+            Output = $output
+            DockerLog = if (Test-Path -LiteralPath $dockerLog) {
+                Get-Content -Raw -LiteralPath $dockerLog
+            } else { '' }
+        }
     }
-    finally {
-        $ErrorActionPreference = $savedErrorPreference
+
+    $offline = Invoke-OfflineNoBuild
+    if ($offline.ExitCode -ne 0) {
+        throw "trusted no-build smoke contract failed`n$($offline.Output)`n$($offline.DockerLog)"
     }
-    if ($offlineExit -eq 0) {
-        throw 'no-build smoke probe unexpectedly completed through the forced up failure'
+    if ($offline.DockerLog -match '(?m)^compose .* build(?: |$)') {
+        throw "no-build smoke invoked docker compose build`n$($offline.DockerLog)"
     }
-    $offlineDockerLog = if (Test-Path -LiteralPath $dockerLog) {
-        Get-Content -Raw -LiteralPath $dockerLog
-    } else {
-        ''
+    $upLines = @($offline.DockerLog -split "`r?`n" | Where-Object { $_ -match '^compose .* up ' })
+    if ($upLines.Count -ne 2 -or @($upLines | Where-Object { $_ -notmatch '--no-build' }).Count) {
+        throw "every no-build start must use compose up --no-build`n$($offline.DockerLog)"
     }
-    if ($offlineDockerLog -match '(?m)^compose .* build(?: |$)') {
-        throw "no-build smoke invoked docker compose build`n$offlineDockerLog"
+    if ([regex]::Matches($offline.DockerLog, '(?m)^container inspect ').Count -ne 4) {
+        throw "no-build smoke did not verify both running identities after both starts`n$($offline.DockerLog)"
     }
-    if ($offlineDockerLog -notmatch '(?m)^compose .* up .*--no-build') {
-        throw "no-build smoke did not enforce compose up --no-build`n$offlineDockerLog`n$offlineOutput"
+
+    $wrongTag = Invoke-OfflineNoBuild -Mode 'wrong-app-tag'
+    if ($wrongTag.ExitCode -eq 0 -or $wrongTag.Output -notmatch 'app daemon image identity mismatch') {
+        throw "no-build smoke accepted the wrong app tag identity`n$($wrongTag.Output)"
     }
-    if ([regex]::Matches($offlineDockerLog, '(?m)^image inspect ').Count -ne 2) {
-        throw "no-build smoke did not inspect both existing image identities`n$offlineDockerLog"
+    $swapped = Invoke-OfflineNoBuild `
+        -ExpectedAppDaemon $gatewayDaemonId -ExpectedAppConfig $gatewayConfigId `
+        -ExpectedGatewayDaemon $appDaemonId -ExpectedGatewayConfig $appConfigId
+    if ($swapped.ExitCode -eq 0 -or $swapped.Output -notmatch 'trusted release identity mismatch') {
+        throw "no-build smoke accepted swapped app/gateway identities`n$($swapped.Output)"
+    }
+    $duplicateManifest = Join-Path $fixtureRoot 'duplicate-release.json'
+    [System.IO.File]::WriteAllText(
+        $duplicateManifest,
+        ((Get-Content -Raw -LiteralPath $releaseManifest).Replace($gatewayDaemonId, $appDaemonId)),
+        [Text.UTF8Encoding]::new($false)
+    )
+    $duplicate = Invoke-OfflineNoBuild `
+        -Manifest $duplicateManifest -ExpectedGatewayDaemon $appDaemonId
+    if ($duplicate.ExitCode -eq 0 -or $duplicate.Output -notmatch 'must not share image identities') {
+        throw "no-build smoke accepted duplicate app/gateway identities`n$($duplicate.Output)"
+    }
+    $runtimeDrift = Invoke-OfflineNoBuild -Mode 'runtime-drift'
+    if ($runtimeDrift.ExitCode -eq 0 -or $runtimeDrift.Output -notmatch 'running app image identity mismatch') {
+        throw "no-build smoke accepted runtime image drift`n$($runtimeDrift.Output)"
     }
 
     Write-Host 'Container contract synthetic tests passed.'
 } finally {
     $env:PATH = $savedPath
     $env:MUSEECHO_FAKE_DOCKER_LOG = $savedDockerLog
+    $env:MUSEECHO_FAKE_DOCKER_MODE = $savedDockerMode
+    $env:MUSEECHO_EXPECTED_APP_DAEMON_ID = $savedAppDaemonId
+    $env:MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID = $savedGatewayDaemonId
     $env:MUSEECHO_SECRETS_DIR = $savedSecretsDirectory
     Pop-Location
     if (Test-Path -LiteralPath $fixtureRoot) {

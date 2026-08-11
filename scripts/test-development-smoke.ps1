@@ -12,20 +12,28 @@ $fakeBin = Join-Path $fixtureRoot 'bin'
 $dockerLog = Join-Path $fixtureRoot 'docker.log'
 $runnerPath = Join-Path $fakeScripts 'development-smoke.ps1'
 $fakeDockerPath = Join-Path $fakeBin 'docker.cmd'
+$fakeCurlPath = Join-Path $fakeBin 'curl.cmd'
 $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell.exe' }
 $savedPath = $env:PATH
 $savedLog = $env:MUSEECHO_FAKE_DOCKER_LOG
 $savedMode = $env:MUSEECHO_FAKE_DOCKER_MODE
 
 function Invoke-SmokeProbe {
-    param([Parameter(Mandatory = $true)][string]$Mode)
+    param(
+        [Parameter(Mandatory = $true)][string]$Mode,
+        [switch]$SuccessfulCurl
+    )
     [System.IO.File]::WriteAllText($dockerLog, '', [Text.UTF8Encoding]::new($false))
     $env:MUSEECHO_FAKE_DOCKER_MODE = $Mode
     $savedErrorPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
-        $output = & $shell -NoProfile -ExecutionPolicy Bypass -File $runnerPath `
-            -DockerCommand $fakeDockerPath 2>&1 | Out-String
+        $arguments = @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $runnerPath,
+            '-DockerCommand', $fakeDockerPath
+        )
+        if ($SuccessfulCurl) { $arguments += @('-CurlCommand', $fakeCurlPath) }
+        $output = & $shell @arguments 2>&1 | Out-String
         $exitCode = $LASTEXITCODE
     }
     finally {
@@ -54,6 +62,11 @@ exit /b 0
 '@,
         [Text.UTF8Encoding]::new($false)
     )
+    [System.IO.File]::WriteAllText(
+        $fakeCurlPath,
+        "@echo off`r`necho %*| findstr /c:`"/api/health`" >nul && echo {`"status`":`"ready`"} && exit /b 0`r`necho ^<div id=`"root`"^> && exit /b 0`r`n",
+        [Text.UTF8Encoding]::new($false)
+    )
     $env:MUSEECHO_FAKE_DOCKER_LOG = $dockerLog
     $env:PATH = "$fakeBin$([IO.Path]::PathSeparator)$savedPath"
 
@@ -64,16 +77,31 @@ exit /b 0
     if ($partialUp.DockerLog -notmatch '(?m)^compose .* down ') {
         throw "development smoke did not clean up after partial compose up`n$($partialUp.DockerLog)"
     }
+    if ($partialUp.Output -match 'cleanup failed') {
+        throw "primary-only failure was incorrectly reported as cleanup failure`n$($partialUp.Output)"
+    }
 
-    $downFailure = Invoke-SmokeProbe -Mode 'down-fail'
-    if ($downFailure.ExitCode -eq 0) {
+    $cleanupOnly = Invoke-SmokeProbe -Mode 'down-fail' -SuccessfulCurl
+    if ($cleanupOnly.ExitCode -eq 0) {
+        throw 'development smoke swallowed its cleanup-only failure'
+    }
+    if (
+        $cleanupOnly.Output -notmatch 'development smoke cleanup failed' -or
+        $cleanupOnly.Output -notmatch 'docker compose down failed with exit code 29' -or
+        $cleanupOnly.Output -match 'HTTPS API health probe failed'
+    ) {
+        throw "development smoke did not isolate cleanup-only failure`n$($cleanupOnly.Output)"
+    }
+
+    $combinedFailure = Invoke-SmokeProbe -Mode 'down-fail'
+    if ($combinedFailure.ExitCode -eq 0) {
         throw 'development smoke swallowed its cleanup failure'
     }
     if (
-        $downFailure.Output -notmatch 'development HTTPS API health probe failed' -or
-        $downFailure.Output -notmatch 'docker compose down failed with exit code 29'
+        $combinedFailure.Output -notmatch 'development HTTPS API health probe failed' -or
+        $combinedFailure.Output -notmatch 'docker compose down failed with exit code 29'
     ) {
-        throw "development smoke did not report both primary and cleanup failures`n$($downFailure.Output)"
+        throw "development smoke did not report both primary and cleanup failures`n$($combinedFailure.Output)"
     }
 
     Write-Host 'Development smoke synthetic lifecycle tests passed.'

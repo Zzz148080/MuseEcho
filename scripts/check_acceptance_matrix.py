@@ -163,22 +163,23 @@ EVIDENCE_CONTRACTS = {
         exit_code_raw="0",
     ),
     "E002": EvidenceContract(
-        kind="CURRENT_COMMAND",
+        kind="EXTERNAL_NOT_RUN",
         command=(
-            "npm.cmd --prefix frontend run typecheck; npm.cmd --prefix frontend run build; "
-            "npm.cmd run typecheck"
+            "NOT RUN: Task 23 review has no exact-lock frontend typecheck/build cache; "
+            "dependency download is prohibited"
         ),
         path="frontend",
         coverage_ids=("AC-F-1", "AC-F-4", "DOD-07"),
-        result="frontend-typecheck=0; frontend-build=0; e2e-typecheck=0",
-        exit_code_raw="0",
+        result="NOT_RUN",
+        exit_code_raw="NOT_RUN",
+        supports_pass=False,
     ),
     "E003": EvidenceContract(
         kind="CURRENT_COMMAND",
         command=("powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/secret-scan.ps1"),
         path="scripts/secret-scan.ps1",
         coverage_ids=("AC-E-4", "DOD-09", "DOD-14"),
-        result="secret-scan-files=202",
+        result="secret-scan-files=210",
         exit_code_raw="0",
     ),
     "E004": EvidenceContract(
@@ -199,12 +200,12 @@ EVIDENCE_CONTRACTS = {
         command=(
             r".venv\Scripts\python.exe -m pytest "
             "tests/unit/test_task20_final_delivery_contract.py -q "
-            "--basetemp=tmp/task22-delivery-contract"
+            "--basetemp=tmp/task23-review1-delivery"
         ),
         path="tests/unit/test_task20_final_delivery_contract.py",
         coverage_ids=("AC-F-2", "AC-F-3", "DOD-11", "DOD-12"),
         result=(
-            "pytest-tests=7; github=parsed; gitlab=parsed; gitlab-unit-test=present; "
+            "pytest-tests=8; github=parsed; gitlab=parsed; gitlab-unit-test=present; "
             "readme=verified"
         ),
         exit_code_raw="0",
@@ -225,7 +226,7 @@ EVIDENCE_CONTRACTS = {
         kind="CURRENT_COMMAND",
         command=(
             "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
-            "scripts/container-pytest.ps1 -Image museecho-app:task20-final"
+            "scripts/container-pytest.ps1 -Image museecho-app:task23-review1"
         ),
         path="tests",
         coverage_ids=(
@@ -250,17 +251,26 @@ EVIDENCE_CONTRACTS = {
             "DOD-14",
             "DOD-15",
         ),
-        result="pytest-tests=649",
+        result="pytest-tests=728",
         exit_code_raw="0",
     ),
     "E009": EvidenceContract(
         kind="CURRENT_COMMAND",
         command=(
-            "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/container-smoke.ps1"
+            "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
+            "scripts/container-smoke.ps1 -NoBuild -ReleaseManifest "
+            "docs/audits/evidence/task23-security-manifest.json -ExpectedAppDaemonImageId "
+            "sha256:56995ceef3cbe55fc422ce95587198a225a8c04e20e45d4fb844c6c4c3d56a04 "
+            "-ExpectedAppConfigImageId "
+            "sha256:7884992579acdf4bbd8a01071bf6d86cda499ac7ae4d15b0db4be56f7dd5d62d "
+            "-ExpectedGatewayDaemonImageId "
+            "sha256:2235e208dd7d8568c735ba19f1969644384626296eaff5cabb41acfaed86c547 "
+            "-ExpectedGatewayConfigImageId "
+            "sha256:8cc0429e45fd48c911a92fd8504c1f3c14daccb0fee8a24529d72af51b0b4053"
         ),
         path="scripts/container-smoke.ps1",
         coverage_ids=("AC-E-1", "AC-E-3", "AC-F-1", "AC-F-3", "DOD-07", "DOD-08"),
-        result="smoke=real-wav+restart+ciphertext+image-history+cleanup",
+        result="no-build=trusted-identity+real-wav+restart+ciphertext+image-history+cleanup",
         exit_code_raw="0",
     ),
     "E010": EvidenceContract(
@@ -273,7 +283,7 @@ EVIDENCE_CONTRACTS = {
         ),
         path="scripts/check_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-07"),
-        result="ruff-files=89; mypy-src-files=45; mypy-checker-files=1",
+        result="ruff-files=93; mypy-src-files=46; mypy-checker-files=1",
         exit_code_raw="0",
     ),
     "E011": EvidenceContract(
@@ -314,7 +324,7 @@ EVIDENCE_CONTRACTS = {
         ),
         path="tests/unit/test_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-15"),
-        result="pytest-tests=35; pass=29; partial=11; fail=0",
+        result="pytest-tests=36; pass=28; partial=12; fail=0",
         exit_code_raw="0",
     ),
     "E902": EvidenceContract(
@@ -325,7 +335,10 @@ EVIDENCE_CONTRACTS = {
         ),
         path="docs/audits/ENGINEERING_AUDIT.md",
         coverage_ids=("AC-F-6", "DOD-13"),
-        result="findings=9; fixed-high=4; fixed-medium=2; blocked-medium=3; open=0",
+        result=(
+            "findings=9; fixed-high=4; fixed-medium=2; blocked-medium=3; open=0; "
+            "app-occurrences=181; app-distinct-cves=67; gateway-occurrences=0"
+        ),
         exit_code_raw="0",
     ),
 }

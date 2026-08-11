@@ -12,6 +12,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+if __package__:
+    from scripts.image_vulnerability_audit import build_runtime_boundary_manifest
+else:
+    from image_vulnerability_audit import build_runtime_boundary_manifest
+
 EXPECTED_DOMAINS = (
     "architecture-boundaries",
     "types-static",
@@ -49,44 +54,274 @@ FINDING_CONTRACTS = {
     "ENG-009": ("reproducible-build-ci-release-identity", "High", "FIXED"),
 }
 
-# Security/release evidence is especially easy to turn into a vacuous success.
-# Match the actual command, not merely a prose claim of zero findings.
-FIXED_EVIDENCE_COMMANDS = {
+SECURITY_MANIFEST_PATH = "docs/audits/evidence/task23-security-manifest.json"
+SECURITY_MANIFEST_SHA256 = "5ad3e832ed439d9d7b6486b5a3d98dc43b7bb80e487ea3c7884c8d3659eb795b"
+
+FIXED_FINDING_EVIDENCE_IDS = {
+    "ENG-001": ("E002", "E003"),
+    "ENG-002": ("E004", "E005"),
+    "ENG-003": ("E006", "E007"),
+    "ENG-004": ("E008", "E009", "E019"),
+    "ENG-005": ("E010", "E011"),
+    "ENG-009": ("E033", "E034", "E022"),
+}
+
+SECURITY_DOMAIN_EVIDENCE_IDS = ("E020", "E021", "E022", "E023", "E024", "E025")
+
+_TRIVY_PREFIX = (
+    "docker run --rm --network none "
+    "--tmpfs /root/.cache/trivy:rw,nosuid,nodev,size=512m "
+    "--mount type=bind,source=TASK20_TRIVY_DB,target=/root/.cache/trivy/db,readonly "
+    "--mount type=bind,source=TASK23_EVIDENCE,target=/evidence aquasec/trivy:0.70.0 image "
+)
+
+# This complete independent inventory prevents an audit author from replacing a
+# real RED/GREEN or security gate with another command while keeping exit codes.
+FIXED_EVIDENCE_CONTRACTS = {
+    "E002": (
+        "RED_COMMAND",
+        "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
+        "tests/deploy/test_shell_line_endings.ps1 with invalid syntax in the last "
+        "fresh-checkout file",
+        "tests/deploy/test_shell_line_endings.ps1",
+        "Old multi-file bash -n invocation accepted the invalid final file",
+    ),
+    "E003": (
+        "CURRENT_COMMAND",
+        "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
+        "tests/deploy/test_shell_line_endings.ps1",
+        "tests/deploy/test_shell_line_endings.ps1",
+        "LF checks passed and bash -n independently parsed 8 fresh-checkout files",
+    ),
+    "E004": (
+        "RED_COMMAND",
+        "python scripts/verify_release_identity.py verify --manifest manifest-only.json",
+        "tests/unit/test_release_identity.py",
+        "Manifest-only verify returned success without any comparison class",
+    ),
+    "E005": (
+        "CURRENT_COMMAND",
+        ".venv/Scripts/python.exe -m pytest tests/unit/test_release_identity.py -q",
+        "tests/unit/test_release_identity.py",
+        "10 passed; verify rejects an empty comparison inventory while tar plus scan and "
+        "optional image-id remain valid",
+    ),
+    "E006": (
+        "RED_COMMAND",
+        "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
+        "scripts/test-development-smoke.ps1 against the old smoke",
+        "scripts/test-development-smoke.ps1",
+        "Partial compose startup skipped down and cleanup failure could replace or hide "
+        "the primary failure",
+    ),
+    "E007": (
+        "CURRENT_COMMAND",
+        "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
+        "scripts/test-development-smoke.ps1",
+        "scripts/test-development-smoke.ps1",
+        "Synthetic partial-start, primary-only, cleanup-only, and combined failure "
+        "reporting passed",
+    ),
+    "E008": (
+        "RED_COMMAND",
+        "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
+        "scripts/test-container-contract.ps1 against the old smoke",
+        "scripts/test-container-contract.ps1",
+        "No explicit no-build path, trusted image identity validation, runtime identity "
+        "check, or repeated up --no-build",
+    ),
+    "E009": (
+        "CURRENT_COMMAND",
+        "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
+        "scripts/test-container-contract.ps1",
+        "scripts/test-container-contract.ps1",
+        "Synthetic contract rejected wrong, duplicate, swapped, and runtime-drifted image "
+        "identities and required --no-build on both starts",
+    ),
+    "E010": (
+        "RED_COMMAND",
+        ".venv/Scripts/python.exe -m pytest tests/unit/test_observability.py -q",
+        "tests/unit/test_observability.py",
+        "ModuleNotFoundError: museecho.observability",
+    ),
+    "E011": (
+        "CURRENT_COMMAND",
+        ".venv/Scripts/python.exe -m pytest tests/unit/test_observability.py "
+        "tests/api/test_health.py tests/integration/test_runtime_app.py -q",
+        "tests/unit/test_observability.py",
+        "Safe request and background failure logs, stable 500 responses, metrics, "
+        "liveness/readiness, cleanup degradation and recovery passed",
+    ),
+    "E019": (
+        "CURRENT_COMMAND",
+        "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
+        "scripts/container-smoke.ps1 -NoBuild -ReleaseManifest "
+        "docs/audits/evidence/task23-security-manifest.json "
+        "-ExpectedAppDaemonImageId "
+        "sha256:56995ceef3cbe55fc422ce95587198a225a8c04e20e45d4fb844c6c4c3d56a04 "
+        "-ExpectedAppConfigImageId "
+        "sha256:7884992579acdf4bbd8a01071bf6d86cda499ac7ae4d15b0db4be56f7dd5d62d "
+        "-ExpectedGatewayDaemonImageId "
+        "sha256:2235e208dd7d8568c735ba19f1969644384626296eaff5cabb41acfaed86c547 "
+        "-ExpectedGatewayConfigImageId "
+        "sha256:8cc0429e45fd48c911a92fd8504c1f3c14daccb0fee8a24529d72af51b0b4053",
+        "scripts/container-smoke.ps1",
+        "Trusted app and gateway daemon/config identities, both runtime container "
+        "identities, real WAV, restart, ciphertext, history, and cleanup passed without build",
+    ),
     "E020": (
-        "docker run --rm --network none "
-        "--tmpfs /root/.cache/trivy:rw,nosuid,nodev,size=512m "
-        "--mount type=bind,source=TASK20_TRIVY_DB,target=/root/.cache/trivy/db,readonly "
-        "--mount type=bind,source=TASK23_EVIDENCE,target=/evidence aquasec/trivy:0.70.0 "
-        "image --input /evidence/museecho-app-task23.tar --scanners vuln "
-        "--severity HIGH,CRITICAL --format json "
-        "--output /evidence/app-raw.json --skip-db-update --skip-java-db-update "
-        "--skip-version-check --offline-scan"
+        "CURRENT_COMMAND",
+        _TRIVY_PREFIX + "--input /evidence/museecho-app-task23-review1.tar --scanners vuln "
+        "--severity HIGH,CRITICAL --format json --output /evidence/app-raw-review1.json "
+        "--skip-db-update --skip-java-db-update --skip-version-check --offline-scan",
+        SECURITY_MANIFEST_PATH,
+        "Trivy 0.70.0 and fixed DB found app occurrences=181 distinct-cves=67 "
+        "critical=12 high=169; raw SHA and tuple SHA fixed",
+    ),
+    "E021": (
+        "CURRENT_COMMAND",
+        _TRIVY_PREFIX + "--input /evidence/museecho-gateway-task20.tar --scanners vuln "
+        "--severity HIGH,CRITICAL --format json --output /evidence/gateway-raw-review1.json "
+        "--skip-db-update --skip-java-db-update --skip-version-check --offline-scan",
+        SECURITY_MANIFEST_PATH,
+        "Gateway raw occurrences=0 and distinct-cves=0; exact config and raw SHA fixed",
     ),
     "E022": (
+        "CURRENT_COMMAND",
         "docker run --rm --network none --read-only --cap-drop ALL "
         "--security-opt no-new-privileges --workdir /workspace "
         "--mount type=bind,source=REPOSITORY,target=/workspace,readonly "
         "--mount type=bind,source=TASK23_EVIDENCE,target=/evidence "
-        "--entrypoint /app/.venv/bin/python museecho-app:task23-audit "
+        "--entrypoint /app/.venv/bin/python museecho-app:task23-review1 "
         "/workspace/scripts/image_vulnerability_audit.py "
-        "--scan /evidence/app-raw.json --package-files /evidence/app-package-files.json "
+        "--scan /evidence/app-raw-review1.json "
+        "--package-files /evidence/app-package-files-review1.json "
         "--policy /workspace/scripts/image-vulnerability-policy.json "
-        "--release-identity /evidence/release-images.json --image-name app "
-        "--vex-output /evidence/app-openvex.json "
-        "--inventory-output /evidence/app-inventory.json"
+        "--release-identity /evidence/release-images-review1.json --image-name app "
+        "--vex-output /evidence/app-openvex-review1.json "
+        "--inventory-output /evidence/app-inventory-review1.json",
+        SECURITY_MANIFEST_PATH,
+        "Exact raw tuple, package ownership, current clean runtime boundary, 67 reviewed "
+        "statements, and release identity passed",
+    ),
+    "E023": (
+        "CURRENT_COMMAND",
+        _TRIVY_PREFIX + "--input /evidence/museecho-app-task23-review1.tar --scanners vuln "
+        "--severity HIGH,CRITICAL --exit-code 1 --vex /evidence/app-openvex-review1.json "
+        "--skip-db-update --skip-java-db-update --skip-version-check --offline-scan",
+        SECURITY_MANIFEST_PATH,
+        "App VEX gate residual High/Critical=0",
+    ),
+    "E024": (
+        "CURRENT_COMMAND",
+        _TRIVY_PREFIX + "--input /evidence/museecho-gateway-task20.tar --scanners vuln "
+        "--severity HIGH,CRITICAL --exit-code 1 --skip-db-update --skip-java-db-update "
+        "--skip-version-check --offline-scan",
+        SECURITY_MANIFEST_PATH,
+        "Unsuppressed gateway gate High/Critical=0",
     ),
     "E025": (
+        "CURRENT_COMMAND",
         "python scripts/verify_release_identity.py verify "
-        "--manifest tmp/task23-engineering/release-images.json "
-        "--tar app=tmp/task23-engineering/museecho-app-task23.tar "
+        "--manifest tmp/task23-engineering/release-images-review1.json "
+        "--tar app=tmp/task23-engineering/museecho-app-task23-review1.tar "
         "--tar gateway=tmp/task23-engineering/museecho-gateway-task20.tar "
-        "--scan app=tmp/task23-engineering/app-raw.json "
-        "--scan gateway=tmp/task23-engineering/gateway-raw.json"
+        "--scan app=tmp/task23-engineering/app-raw-review1.json "
+        "--scan gateway=tmp/task23-engineering/gateway-raw-review1.json",
+        SECURITY_MANIFEST_PATH,
+        "App and gateway config IDs, tar SHA256 values, and raw scan ImageIDs agree",
+    ),
+    "E033": (
+        "RED_COMMAND",
+        ".venv/Scripts/python.exe -m pytest "
+        "tests/unit/test_task20_final_delivery_contract.py::"
+        "test_docker_context_excludes_generated_python_package_metadata -q",
+        "tests/unit/test_task20_final_delivery_contract.py",
+        "1 failed because .dockerignore did not exclude gitignored egg-info metadata",
+    ),
+    "E034": (
+        "CURRENT_COMMAND",
+        ".venv/Scripts/python.exe -m pytest "
+        "tests/unit/test_task20_final_delivery_contract.py::"
+        "test_docker_context_excludes_generated_python_package_metadata "
+        "tests/unit/test_image_vulnerability_audit.py::"
+        "test_committed_policy_matches_clean_runtime_boundary_without_generated_metadata "
+        "tests/unit/test_image_vulnerability_audit.py::"
+        "test_audit_rejects_schema_probe_or_complete_runtime_boundary_drift -q",
+        "tests/unit/test_image_vulnerability_audit.py",
+        "Clean Docker context contract passed and 6 policy/runtime drift mutations passed; "
+        "derived image contains no egg-info",
     ),
 }
 
-SECURITY_MANIFEST_PATH = "docs/audits/evidence/task23-security-manifest.json"
-SECURITY_MANIFEST_SHA256 = "ff43291cd7a80ea7fe21982da55e77bf7c41305cc07fca758e095a3f7b678126"
+SECURITY_MANIFEST_CONTRACT = {
+    "app": {
+        "audit_exit": 0,
+        "config_image_id": (
+            "sha256:7884992579acdf4bbd8a01071bf6d86cda499ac7ae4d15b0db4be56f7dd5d62d"
+        ),
+        "critical_occurrences": 12,
+        "daemon_image_id": (
+            "sha256:56995ceef3cbe55fc422ce95587198a225a8c04e20e45d4fb844c6c4c3d56a04"
+        ),
+        "distinct_cves": 67,
+        "high_occurrences": 169,
+        "inventory_sha256": ("a4efb700178df3003575a8ca520189207f3d12b815815dd6e034d8cc3ca12b7d"),
+        "occurrences": 181,
+        "package_files_sha256": (
+            "0568117b227db2891f82aab0022e5b4bc65c1eabfa5e3f5e282aa6bc746ce470"
+        ),
+        "raw_sha256": "0be1e5851afeb8e28ab625e8668b1ca838bb01601ca25104c2668e044ae64595",
+        "tar_sha256": "c50ce705594810b21852ff2358c75d221e6ebc97de3396ff4f3408017792a147",
+        "tuple_sha256": "d4c768da22473cc886ed76eb40ed74c66379a2c267356b8d14925658c7ec9fe9",
+        "vex_gate_exit": 0,
+        "vex_sha256": "76b539cb0b71dbb6339150f322eaf049207d862d66a209fdb97bf64245c7afaa",
+    },
+    "boundary": {
+        "build_kind": "controlled_current_source_derivation_from_task20_final",
+        "formal_dockerfile_build_exit": 1,
+        "formal_dockerfile_build_reason": (
+            "locked pip and apt BuildKit layers unavailable under network none"
+        ),
+        "policy_sha256": "1e42cb86c1d7aed4ea21142654d0ebcfde41b3e7544238ed7c90b4c231502d1c",
+        "runtime_boundary_sha256": (
+            "26828f41334ab92e09d597e708676b29af1e1792b740bb302af5c9075dffd7dc"
+        ),
+        "task20_base_daemon_image_id": (
+            "sha256:96cd900d6c17c360b01665362330aca8ef032b0d4d1f140659a52265ce47f39c"
+        ),
+    },
+    "gateway": {
+        "config_image_id": (
+            "sha256:8cc0429e45fd48c911a92fd8504c1f3c14daccb0fee8a24529d72af51b0b4053"
+        ),
+        "daemon_image_id": (
+            "sha256:2235e208dd7d8568c735ba19f1969644384626296eaff5cabb41acfaed86c547"
+        ),
+        "distinct_cves": 0,
+        "gate_exit": 0,
+        "occurrences": 0,
+        "raw_sha256": "64513e95a8ac9e5b9bcdf9a274a5e3108f08dbb6dbdb2ad97601c8eed7bbfd7d",
+        "tar_sha256": "dd5dba88b52d3765c43ca1570d30307deb7a8c274f873cfd6258c4efa4fc820b",
+    },
+    "observed_at_utc": {
+        "app_audit": "2026-08-11T13:13:30Z",
+        "app_raw": "2026-08-11T13:10:12Z",
+        "app_vex_gate": "2026-08-11T13:14:07Z",
+        "gateway_gate": "2026-08-11T13:16:41Z",
+        "gateway_raw": "2026-08-11T13:12:55Z",
+        "release_verify": "2026-08-11T13:17:16Z",
+    },
+    "release_identity_sha256": ("2f87b61de7d79301b5a6870d4c870383ae04f1ec5aec5bf4086259708a681705"),
+    "release_verify_exit": 0,
+    "schema_version": 1,
+    "trivy": {
+        "db_sha256": "fbd7a1751c20449fc014ce29514c745d16d196d2c67ad6fb88315ac7357d62bf",
+        "db_updated_at": "2026-08-09T12:54:52.355618652Z",
+        "image_digest": ("sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e"),
+        "version": "0.70.0",
+    },
+}
 
 
 class AuditValidationError(ValueError):
@@ -373,10 +608,30 @@ def validate_audit(
         if item.kind == "FILE_EXISTENCE" and item.evidence_id == "E003":
             errors.append("E003 cannot use file existence as executed verification")
 
-    for evidence_id, expected_command in FIXED_EVIDENCE_COMMANDS.items():
+    for evidence_id, expected_contract in FIXED_EVIDENCE_CONTRACTS.items():
         item = evidence_by_id.get(evidence_id)
-        if item is not None and item.command != expected_command:
+        if (
+            item is not None
+            and (
+                item.kind,
+                item.command,
+                item.path,
+                item.result,
+            )
+            != expected_contract
+        ):
             errors.append(f"{evidence_id} does not match its fixed evidence contract")
+            owners = [
+                finding_id
+                for finding_id, fixed_ids in FIXED_FINDING_EVIDENCE_IDS.items()
+                if evidence_id in fixed_ids
+            ]
+            if owners:
+                errors.extend(
+                    f"{finding_id} evidence {evidence_id} does not match its fixed evidence "
+                    "contract"
+                    for finding_id in owners
+                )
 
     _validate_security_manifest(repo_root, errors)
 
@@ -391,6 +646,13 @@ def validate_audit(
                 errors.append(f"{coverage.domain} references missing evidence {evidence_id}")
             elif item.kind != "CURRENT_COMMAND" or item.exit_code != 0:
                 errors.append(f"{coverage.domain} requires successful current command evidence")
+        if (
+            coverage.domain == "runtime-image-vulnerabilities"
+            and coverage.evidence_ids != SECURITY_DOMAIN_EVIDENCE_IDS
+        ):
+            errors.append(
+                "runtime-image-vulnerabilities evidence coverage does not match its fixed contract"
+            )
 
     for finding in audit.findings:
         if finding.severity not in SEVERITIES:
@@ -408,6 +670,11 @@ def validate_audit(
             != contract
         ):
             errors.append(f"{finding.finding_id} does not match its fixed finding contract")
+        fixed_evidence_ids = FIXED_FINDING_EVIDENCE_IDS.get(finding.finding_id)
+        if fixed_evidence_ids is not None and finding.evidence_ids != fixed_evidence_ids:
+            errors.append(
+                f"{finding.finding_id} evidence coverage does not match its fixed contract"
+            )
         if finding.domain not in EXPECTED_DOMAINS:
             errors.append(f"{finding.finding_id} has invalid domain")
         if finding.description in {"", "-"}:
@@ -473,6 +740,8 @@ def _validate_security_manifest(repo_root: Path, errors: list[str]) -> None:
     normalized_contents = contents.replace(b"\r\n", b"\n")
     if hashlib.sha256(normalized_contents).hexdigest() != SECURITY_MANIFEST_SHA256:
         errors.append("security evidence manifest does not match its fixed digest")
+    if manifest != SECURITY_MANIFEST_CONTRACT:
+        errors.append("security evidence manifest field contract changed")
     try:
         app = manifest["app"]
         gateway = manifest["gateway"]
@@ -515,6 +784,20 @@ def _validate_security_manifest(repo_root: Path, errors: list[str]) -> None:
         errors.append("security manifest policy digest does not match current policy")
     if hashlib.sha256(runtime_payload).hexdigest() != boundary.get("runtime_boundary_sha256"):
         errors.append("security manifest runtime boundary does not match current policy")
+    try:
+        current_runtime_boundary = build_runtime_boundary_manifest(repo_root)
+    except (OSError, ValueError) as exc:
+        errors.append(f"current runtime boundary cannot be built: {exc}")
+        return
+    if current_runtime_boundary != policy["runtime_boundary"]:
+        errors.append("security manifest runtime boundary does not match current source")
+    current_runtime_payload = json.dumps(
+        current_runtime_boundary, sort_keys=True, separators=(",", ":")
+    ).encode()
+    if hashlib.sha256(current_runtime_payload).hexdigest() != boundary.get(
+        "runtime_boundary_sha256"
+    ):
+        errors.append("security manifest runtime boundary does not match current source")
 
 
 def main(argv: list[str] | None = None) -> int:

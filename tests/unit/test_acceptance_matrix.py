@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+import scripts.check_acceptance_matrix as check_acceptance_matrix
 from scripts.check_acceptance_matrix import (
     EXPECTED_ITEM_IDS,
     AuditValidationError,
@@ -405,6 +406,30 @@ def test_external_follow_up_and_manual_work_cannot_be_marked_resolved_without_ex
     assert f"{blocker_id} cannot be RESOLVED with NOT_RUN evidence" in _validation_error(
         tmp_path, mutation
     )
+
+
+def test_task23_frontend_build_gap_cannot_remain_current_or_support_pass() -> None:
+    contract = check_acceptance_matrix.EVIDENCE_CONTRACTS["E002"]
+    audit = load_audit(SPEC_PATH, AUDIT_PATH)
+    item = next(item for item in audit.items if item.item_id == "AC-F-4")
+
+    assert contract.kind == "EXTERNAL_NOT_RUN"
+    assert contract.exit_code_raw == "NOT_RUN"
+    assert contract.supports_pass is False
+    assert item.verdict == "PARTIAL"
+    assert item.disposition == "BLOCKER:CURRENT-BROWSER-E2E"
+
+
+def test_task23_current_backend_smoke_static_secret_and_security_contracts_replace_task22() -> None:
+    contracts = check_acceptance_matrix.EVIDENCE_CONTRACTS
+
+    assert "museecho-app:task23-review1" in contracts["E008"].command
+    assert "pytest-tests=649" != contracts["E008"].result
+    assert "-NoBuild -ReleaseManifest" in contracts["E009"].command
+    assert "mypy-src-files=46" in contracts["E010"].result
+    assert contracts["E003"].result == "secret-scan-files=210"
+    assert "app-occurrences=181" in contracts["E902"].result
+    assert "gateway-occurrences=0" in contracts["E902"].result
 
 
 def test_audit_generated_time_and_evidence_time_must_be_real_utc(tmp_path: Path):

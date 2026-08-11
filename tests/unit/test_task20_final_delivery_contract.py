@@ -196,7 +196,7 @@ def test_process_documents_anchor_evidence_and_share_current_audit_status():
     deployment = (ROOT / "DEPLOYMENT_EVIDENCE.md").read_text(encoding="utf-8")
     audit = load_audit(ROOT / "SPEC.md", ROOT / "docs/audits/FUNCTIONAL_AUDIT.md")
     counts = Counter(item.verdict for item in audit.items)
-    assert (counts["PASS"], counts["PARTIAL"], counts["FAIL"]) == (29, 11, 0)
+    assert (counts["PASS"], counts["PARTIAL"], counts["FAIL"]) == (28, 12, 0)
     current_status = f"{counts['PASS']} PASS / {counts['PARTIAL']} PARTIAL / {counts['FAIL']} FAIL"
 
     assert "1047ce242884b6ba83a525524e88dcc44ab76a69" in plan

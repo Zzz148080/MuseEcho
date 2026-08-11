@@ -42,7 +42,7 @@ class SingleWorkerQueue:
         *,
         clock: Callable[[], datetime] | None = None,
         thread_name: str = "museecho-analysis-worker",
-        failure_observer: Callable[[], None] | None = None,
+        failure_observer: Callable[[uuid.UUID, AnalysisStage, str], None] | None = None,
     ) -> None:
         self._repository = repository
         self._handler = handler
@@ -130,7 +130,8 @@ class SingleWorkerQueue:
 
     def metrics(self) -> tuple[int, int]:
         with self._condition:
-            return len(self._pending), int(self._active)
+            active = int(self._active)
+            return max(0, len(self._pending) - active), active
 
     def _run(self) -> None:
         while True:
@@ -186,6 +187,7 @@ class SingleWorkerQueue:
         error_code = candidate if isinstance(candidate, str) else "analysis_failed"
         if _SAFE_ERROR_CODE.fullmatch(error_code) is None:
             error_code = "analysis_failed"
+        failed_stage = job.status
         try:
             job.fail(error_code)
         except InvalidStageTransition:
@@ -193,7 +195,7 @@ class SingleWorkerQueue:
         self._repository.update(job)
         if self._failure_observer is not None:
             try:
-                self._failure_observer()
+                self._failure_observer(analysis_id, failed_stage, error_code)
             except Exception:
                 pass
 

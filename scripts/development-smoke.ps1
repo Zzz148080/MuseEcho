@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$DockerCommand = 'docker'
+    [string]$DockerCommand = 'docker',
+    [string]$CurlCommand = 'curl.exe'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -32,14 +33,12 @@ try {
         --build --detach --wait app-dev gateway-dev
     if ($LASTEXITCODE -ne 0) { throw 'documented HTTPS development profile failed to start' }
 
-    $curlCommand = Get-Command curl.exe -ErrorAction SilentlyContinue
-    if (-not $curlCommand) { $curlCommand = Get-Command curl -ErrorAction Stop }
-    $health = & $curlCommand.Source --fail --silent --show-error --insecure `
+    $health = & $CurlCommand --fail --silent --show-error --insecure `
         https://localhost:4173/api/health
     if ($LASTEXITCODE -ne 0 -or ($health | Out-String) -notmatch '"status":"ready"') {
         throw "development HTTPS API health probe failed: $health"
     }
-    $page = & $curlCommand.Source --fail --silent --show-error --insecure `
+    $page = & $CurlCommand --fail --silent --show-error --insecure `
         https://localhost:4173/
     if ($LASTEXITCODE -ne 0 -or ($page | Out-String) -notmatch '<div id="root">') {
         throw 'development HTTPS same-origin frontend probe failed'

@@ -2,7 +2,7 @@
 
 当前没有阻塞本地继续实施或完成 Task 23 的已确认 Blocker。历史审批通道问题 `CS-001` 已在此前通过多次真实提权命令成功执行而关闭。
 
-当前 Functional Audit 矩阵为 `29 PASS / 11 PARTIAL / 0 FAIL`，结论为 `PARTIALLY_READY`；以下未完成条件阻止 `READY`。
+当前 Functional Audit 矩阵为 `28 PASS / 12 PARTIAL / 0 FAIL`，结论为 `PARTIALLY_READY`；Task 23 复审将本轮未重跑的 frontend type/build 从当前 PASS 证据中移除。以下未完成条件阻止 `READY`。
 
 以下外部验收条件会阻止 `MUSEECHO V1 READY`，但不阻止本地 Task 22 完成：
 

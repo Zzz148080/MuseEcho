@@ -440,3 +440,11 @@ Review fix round 2 is
 `86be4968ed3b6abf14c3d058f22409a923e33f1f` —
 `docs: keep functional audit statistics current`. Its hash is backfilled in the
 following documentation-only commit.
+
+## Superseded by Task 23 review round 1
+
+Task 23 did not rerun frontend typecheck/build because the exact locked cache
+was unavailable and downloads were prohibited. Therefore the Task 22 current
+claim above is historical, not current evidence. The authoritative matrix is
+now `28 PASS / 12 PARTIAL / 0 FAIL`, with AC-F-4 changed to PARTIAL and linked
+to the still-open current-browser/frontend environment blocker.

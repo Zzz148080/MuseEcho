@@ -1,16 +1,16 @@
 {
   "app": {
     "audit_exit": 0,
-    "config_image_id": "sha256:ee74a82050c6c8d5d499cfd04ca1fd70112a44f8ef71d5549efbbcbacfd021c0",
+    "config_image_id": "sha256:7884992579acdf4bbd8a01071bf6d86cda499ac7ae4d15b0db4be56f7dd5d62d",
     "critical_occurrences": 12,
-    "daemon_image_id": "sha256:655f785560e3c1163397fab3095411c29374ab6fcd6782211bf9a53aafcd3be4",
+    "daemon_image_id": "sha256:56995ceef3cbe55fc422ce95587198a225a8c04e20e45d4fb844c6c4c3d56a04",
     "distinct_cves": 67,
     "high_occurrences": 169,
-    "inventory_sha256": "8ac91477c540057c7a4a325840ce3f6a3e14f7fcf0abc1b41fe4f32bdda15b8d",
+    "inventory_sha256": "a4efb700178df3003575a8ca520189207f3d12b815815dd6e034d8cc3ca12b7d",
     "occurrences": 181,
     "package_files_sha256": "0568117b227db2891f82aab0022e5b4bc65c1eabfa5e3f5e282aa6bc746ce470",
-    "raw_sha256": "66aa3f3552c362e2a7c95406d01bc4991baafb0b7b8510a1deca5807f5e2934b",
-    "tar_sha256": "f6d396b708da44d6a1bb8882486906dc608eac85e0416cac674685c859987d44",
+    "raw_sha256": "0be1e5851afeb8e28ab625e8668b1ca838bb01601ca25104c2668e044ae64595",
+    "tar_sha256": "c50ce705594810b21852ff2358c75d221e6ebc97de3396ff4f3408017792a147",
     "tuple_sha256": "d4c768da22473cc886ed76eb40ed74c66379a2c267356b8d14925658c7ec9fe9",
     "vex_gate_exit": 0,
     "vex_sha256": "76b539cb0b71dbb6339150f322eaf049207d862d66a209fdb97bf64245c7afaa"
@@ -19,8 +19,8 @@
     "build_kind": "controlled_current_source_derivation_from_task20_final",
     "formal_dockerfile_build_exit": 1,
     "formal_dockerfile_build_reason": "locked pip and apt BuildKit layers unavailable under network none",
-    "policy_sha256": "aa0eb03c2c16b8075fef56589e4756b91038fe2d08045cd5a003246f1d02d538",
-    "runtime_boundary_sha256": "5f8275abb0289ff67d635f6f5a9c68496d3c8ed11a1abdca4fe9a6b1d84d3f0d",
+    "policy_sha256": "1e42cb86c1d7aed4ea21142654d0ebcfde41b3e7544238ed7c90b4c231502d1c",
+    "runtime_boundary_sha256": "26828f41334ab92e09d597e708676b29af1e1792b740bb302af5c9075dffd7dc",
     "task20_base_daemon_image_id": "sha256:96cd900d6c17c360b01665362330aca8ef032b0d4d1f140659a52265ce47f39c"
   },
   "gateway": {
@@ -29,18 +29,18 @@
     "distinct_cves": 0,
     "gate_exit": 0,
     "occurrences": 0,
-    "raw_sha256": "a0e6295670317f88d2df041d3309d3fb7559f5154e5b2c84b187ccedd74d4931",
+    "raw_sha256": "64513e95a8ac9e5b9bcdf9a274a5e3108f08dbb6dbdb2ad97601c8eed7bbfd7d",
     "tar_sha256": "dd5dba88b52d3765c43ca1570d30307deb7a8c274f873cfd6258c4efa4fc820b"
   },
   "observed_at_utc": {
-    "app_audit": "2026-08-11T11:44:30Z",
-    "app_raw": "2026-08-11T11:44:08Z",
-    "app_vex_gate": "2026-08-11T11:50:41Z",
-    "gateway_gate": "2026-08-11T11:51:12Z",
-    "gateway_raw": "2026-08-11T11:36:24Z",
-    "release_verify": "2026-08-11T11:44:20Z"
+    "app_audit": "2026-08-11T13:13:30Z",
+    "app_raw": "2026-08-11T13:10:12Z",
+    "app_vex_gate": "2026-08-11T13:14:07Z",
+    "gateway_gate": "2026-08-11T13:16:41Z",
+    "gateway_raw": "2026-08-11T13:12:55Z",
+    "release_verify": "2026-08-11T13:17:16Z"
   },
-  "release_identity_sha256": "fc1a1e631fd4143634849d98a6c022a337343efcca8eb63bdb11de9fcb5fcbcd",
+  "release_identity_sha256": "2f87b61de7d79301b5a6870d4c870383ae04f1ec5aec5bf4086259708a681705",
   "release_verify_exit": 0,
   "schema_version": 1,
   "trivy": {

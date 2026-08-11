@@ -159,3 +159,120 @@ pwsh -File scripts/verify.ps1; if ($LASTEXITCODE) { exit $LASTEXITCODE }; uv run
 6. 最后一轮 host pytest 初次在全局 `C:\Users\P\AppData\Local\Temp\pytest-of-P` 枚举时被 ACL 拒绝，54 项均为 fixture setup error；改用此前不存在的 worktree 内 `--basetemp=tmp/task23-pytest-final-20260811-a` 后相同 61 项全部通过。没有更改测试或产品逻辑来绕过失败。
 
 结论只适用于当前本地提交边界及 compact manifest 固定的离线审计身份；不声称部署完成、远程 CI 通过或公开发布完成。
+
+## Review fix round 1/5 (base `47b203e`)
+
+### Review findings and TDD closure
+
+| Review area | RED | GREEN |
+| --- | --- | --- |
+| Independent FIXED/security evidence | 40 failed, 3 passed, 24 deselected | 43 passed, 24 deselected |
+| Trusted no-build identity and repeated start | synthetic contract exit 1 | wrong/duplicate/swapped/runtime-drift mutations rejected; both starts require `--no-build`; exit 0 |
+| Safe 500/background failure and waiting queue | 5 failed, 12 passed | 17 passed |
+| Development cleanup-only semantics | lifecycle contract exit 1 | partial-start, primary-only, cleanup-only, combined passed |
+| Functional Task 23 truth | 2 new assertions failed | 36 acceptance tests and CLI: 28 PASS / 12 PARTIAL / 0 FAIL |
+| Direct Linux checker CLI | outside-repository `ModuleNotFoundError: scripts` | package and direct-script entry points passed |
+| Cross-document Functional statistics | locked Linux: 727 passed, 1 stale `(29,11,0)` failure | delivery/audit focused suite 112 passed and all current documents use `(28,12,0)` |
+
+The checker now fixes every finding's relevant RED/GREEN kind, command, path,
+result, and coverage independently of the Markdown conclusion. E020-E025 have
+complete command/flag/path/result contracts. Every compact-manifest field has a
+coherent mutation, the entire object and normalized digest are fixed, and the
+real runtime-boundary builder is rerun against current source and policy.
+
+### Production behavior fixes
+
+- `container-smoke.ps1 -NoBuild` requires a tracked trusted manifest and exact,
+  distinct app/gateway daemon and config IDs. It validates Compose image tags,
+  local daemon identities, and both running container identities after initial
+  start and restart recovery. No no-build start can omit `--no-build`.
+- The ASGI observability boundary ignores malicious inbound request IDs,
+  generates a safe ID, adds it to stable unhandled-500 JSON, and never logs
+  exception text, uploaded names/content, questions, headers, or tokens.
+  Background failures expose only UUID task, pre-failure stage, and stable code.
+- Queue depth reports waiting jobs only. Active-only, active-plus-waiting,
+  retry, failure, and finally cleanup states are covered.
+- Development smoke preserves primary and cleanup errors independently and has
+  a real cleanup-only synthetic mode.
+
+### Fresh offline current-source security chain
+
+The review source changed `app.py`, `application/queue.py`, and
+`observability.py`; Dockerfile, Compose, Caddy, Python/npm manifests, and locks
+did not change. The controlled audit-only derivative removed stale base
+egg-info and overlaid current `src/`; it is not a formal Dockerfile release.
+
+| Identity/evidence | Value |
+| --- | --- |
+| app daemon/config | `sha256:56995ceef3cbe55fc422ce95587198a225a8c04e20e45d4fb844c6c4c3d56a04` / `sha256:7884992579acdf4bbd8a01071bf6d86cda499ac7ae4d15b0db4be56f7dd5d62d` |
+| app tar/raw | `c50ce705594810b21852ff2358c75d221e6ebc97de3396ff4f3408017792a147` / `0be1e5851afeb8e28ab625e8668b1ca838bb01601ca25104c2668e044ae64595` |
+| app inventory/VEX | `a4efb700178df3003575a8ca520189207f3d12b815815dd6e034d8cc3ca12b7d` / `76b539cb0b71dbb6339150f322eaf049207d862d66a209fdb97bf64245c7afaa` |
+| runtime/policy | `26828f41334ab92e09d597e708676b29af1e1792b740bb302af5c9075dffd7dc` / `1e42cb86c1d7aed4ea21142654d0ebcfde41b3e7544238ed7c90b4c231502d1c` |
+| release manifest | `2f87b61de7d79301b5a6870d4c870383ae04f1ec5aec5bf4086259708a681705` |
+| gateway raw | `64513e95a8ac9e5b9bcdf9a274a5e3108f08dbb6dbdb2ad97601c8eed7bbfd7d` |
+| compact manifest | 2605 bytes; normalized SHA-256 `5ad3e832ed439d9d7b6486b5a3d98dc43b7bb80e487ea3c7884c8d3659eb795b` |
+
+Trivy `0.70.0`, image digest
+`sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e`,
+and the retained Task 20 DB SHA-256
+`fbd7a1751c20449fc014ce29514c745d16d196d2c67ad6fb88315ac7357d62bf`
+were unchanged. DB was read-only, cache was tmpfs, and all scanner commands
+used `--network none`, offline, and no-update flags.
+
+| Gate (UTC) | Exit/result |
+| --- | --- |
+| app raw `2026-08-11T13:10:12Z` | 0; 181 occurrences, 169 High, 12 Critical, 67 CVEs |
+| gateway raw `2026-08-11T13:12:55Z` | 0; 0 occurrences |
+| exact audit `2026-08-11T13:13:30Z` | 0; package ownership, 52-file runtime, 181 tuples, 67 statements exact |
+| app VEX `2026-08-11T13:14:07Z` | 0; residual High/Critical 0 |
+| gateway gate `2026-08-11T13:16:41Z` | 0; unsuppressed High/Critical 0 |
+| tar+scan identity `2026-08-11T13:17:16Z` | 0; app/gateway config, tar, scan agree |
+
+The observability/queue changes add no decoder, FFmpeg, dynamic SQL,
+subprocess, or external execution path. Reuse of the 67 CVE assessments was
+therefore accepted only after current runtime/policy mutation tests and the
+fresh raw/audit/VEX chain passed. Complete raw JSON, tars, and the 1.2 GB DB
+remain ignored; only the deterministic compact manifest is tracked.
+
+### Fresh gates
+
+- Trusted real no-build smoke: `2026-08-11T13:21:51Z`, exit 0 in 66.2s;
+  identity checked across both starts; real WAV, restart, ciphertext, history,
+  and cleanup passed; containers/volume/network empty afterward.
+- Locked Linux attempts recorded rather than hidden: 721 passed / 6 stale
+  audit failures; then 727 passed / 1 stale process-statistics failure; final
+  `2026-08-11T13:45:34Z` run was `728 passed in 342.25s`, exit 0, cleanup empty.
+- Static/type `2026-08-11T13:51:59Z`: Ruff format 93 files, Ruff lint, strict
+  mypy 46 source files, and acceptance checker typing all exit 0.
+- Secret/license `2026-08-11T13:52:11Z`: real Secret scan checked 210 files;
+  synthetic mutations and reviewed license policy passed. Python 14 direct
+  dependencies, root 8 lock packages, and frontend 218 lock packages parsed
+  offline.
+- Frontend Vitest remains the existing current 12 files / 66 tests. Frontend
+  type/build and current Chrome E2E are NOT_RUN in this review; no npm or
+  browser download was attempted.
+
+Final focused verification at `2026-08-11T13:56:12Z` passed 139 selected
+Python tests, both container/development lifecycle synthetic scripts, both
+audit CLIs, Ruff format (93 files), and Ruff lint. Container-pytest cleanup and
+fresh-checkout LF/per-file Bash parse contracts passed at
+`2026-08-11T13:57:31Z`.
+
+The exact required wrapper was then executed verbatim and returned exit `1`:
+both `pwsh` and `uv` raised `CommandNotFoundException`. Because the wrapper
+continued after the first missing command under Windows PowerShell semantics,
+neither absence is hidden. No tool was downloaded. The locked equivalent tail
+`.venv\Scripts\python.exe scripts/check_engineering_audit.py
+docs/audits/ENGINEERING_AUDIT.md` returned exit 0; its prerequisite gates are
+the fresh 728-test locked Linux run, static/type, Secret, license/dependency,
+synthetic lifecycle, no-build real smoke, and offline security chain above.
+
+### Remaining concerns
+
+The formal Dockerfile current-source build still cannot be completed with the
+available offline BuildKit cache; the derivative must not be promoted. Remote
+GitHub/GitLab CI, Tencent Cloud/DNS/SSH/public TLS/cross-network/24h/
+backup/rollback, current browser E2E, frontend type/build, ShellCheck, exact
+`pwsh`/`uv` wrapper, and student manual acceptance remain outside the proven
+local boundary unless a later section records a real run. No remote write or
+push occurred.
