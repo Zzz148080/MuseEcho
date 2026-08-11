@@ -691,7 +691,7 @@ bash deploy/tencent-cloud/install.sh --check-only
 
 **最终命令：** `shellcheck deploy/tencent-cloud/*.sh && bash deploy/tencent-cloud/install.sh --check-only`；公网 smoke 命令在获得真实域名后写入 `DEPLOYMENT_EVIDENCE.md` 并逐条执行。
 
-**并行：** 否。**依赖：** T20 和用户云端授权。**对应验收标准：** AC-F 公网 URL 与完整 smoke。**分支：** `ops/21-tencent-delivery`。**计划提交：** `ops: deploy verified Tencent Cloud release`。**实际提交：** 待执行。
+**并行：** 否。**依赖：** T20 和用户云端授权。**对应验收标准：** AC-F 公网 URL 与完整 smoke。**分支：** `ops/21-tencent-delivery`。**计划提交：** `ops: deploy verified Tencent Cloud release`。**实际提交：** `1bc9f72`（本地交付脚本、证据与合约测试已完成；公网 URL/完整 smoke 仍受真实云端授权约束，未声称完成）。
 
 ### 任务 22：Functional Audit 与验收缺口闭环
 
