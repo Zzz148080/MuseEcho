@@ -212,6 +212,8 @@ koalaman/shellcheck-alpine:v0.10.0@sha256:7c6a5115899d99323b22fc84b29e924aef5b6f
 
 Raw `shellcheck --version` command, exit 0:
 
+The version command exit 0 is recorded with its raw captured stdout below.
+
 ```powershell
 docker run --pull=never --rm --network none --entrypoint shellcheck koalaman/shellcheck-alpine:v0.10.0@sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577 --version
 ```
@@ -234,3 +236,46 @@ docker run --pull=never --rm --network none --entrypoint shellcheck -v "$PWD:/wo
 The lint exit 0; captured stdout/stderr were empty. The focused evidence contract
 now verifies the complete reference, `--network none`, raw version banner and
 line, version command, and lint exit in both evidence files.
+
+## Review fix round 3/5 — evidence contract mutations
+
+### RED
+
+The checker was first made to read `MUSEECHO_EVIDENCE_ROOT`, so mutations could
+run against task-local temporary evidence copies without changing real records.
+Fresh command:
+
+```bash
+bash tests/deploy/test_shellcheck_evidence.sh
+bash tests/deploy/test_shellcheck_evidence_mutations.sh
+```
+
+The unstrengthened checker passed after each required fact was deleted:
+`--pull=never` and, separately, each of `lib.sh`, `install.sh`, `deploy.sh`,
+`rollback.sh`, and `backup.sh` (six accepted mutations). This reproduced the
+review finding. Adding the new assertions then exposed two expected document
+failures for the missing explicit `version command exit 0` wording.
+
+### GREEN
+
+The contract now requires in **each** evidence file: complete
+`v0.10.0@sha256` reference, `--pull=never`, `--network none`, raw version
+banner and version line, `shellcheck --version` plus version-command exit,
+lint empty stdout/stderr and exit, and every one of the five script paths.
+
+Fresh mutation output:
+
+```text
+PASS: legacy checker accepted missing --pull=never evidence
+PASS: rejected mutation: --pull=never
+PASS: rejected mutation: deploy/tencent-cloud/lib.sh
+PASS: rejected mutation: deploy/tencent-cloud/install.sh
+PASS: rejected mutation: deploy/tencent-cloud/deploy.sh
+PASS: rejected mutation: deploy/tencent-cloud/rollback.sh
+PASS: rejected mutation: deploy/tencent-cloud/backup.sh
+ShellCheck evidence mutations rejected.
+```
+
+The same cached full tag@digest image was rerun with `--pull=never --network
+none` for version and lint; no image pull or production deployment behavior
+occurred in this round.

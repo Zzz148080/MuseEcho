@@ -29,6 +29,8 @@ koalaman/shellcheck-alpine:v0.10.0@sha256:7c6a5115899d99323b22fc84b29e924aef5b6f
 
 Raw offline `shellcheck --version` command and output (exit 0):
 
+The version command exit 0 is recorded with its raw output below.
+
 ```powershell
 docker run --pull=never --rm --network none --entrypoint shellcheck koalaman/shellcheck-alpine:v0.10.0@sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577 --version
 ```
