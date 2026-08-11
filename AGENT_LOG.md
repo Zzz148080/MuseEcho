@@ -1,5 +1,12 @@
 # MuseEcho Agent Log
 
+## 2026-08-11 — TASK 21 / Tencent Cloud delivery scripts (local-only)
+
+- **授权边界：** 未提供腾讯云账号、Lighthouse、域名/DNS、SSH 或 registry 发布授权；未执行任何云、DNS、SSH 或公网变更，也不声称远端 CI 或公网 URL。
+- **RED→GREEN：** 先新增 `tests/deploy/test_tencent_cloud.sh`；初次 WSL 运行因 Task 21 脚本与证据文件尚不存在而失败。随后实现安装、digest-only 部署、自动/手动回滚、备份和真实状态证据文件。第二个 RED 发现生成的 release Compose 无条件设置 provider key 路径，导致 KEK-only `docker compose config` 缺少 image interpolation并且不能验证默认启动；release env 现同时持有非秘密镜像/域名/provider 设置，provider 三项默认均为空，测试转绿。
+- **本地验证：** WSL2 `bash tests/deploy/test_tencent_cloud.sh` 与 `bash deploy/tencent-cloud/install.sh --check-only` 均 exit 0；覆盖 check-only 无写入、owned paths/firewall/systemd、tag 拒绝/Secret 不泄露、health rollback、KEK-only provider、备份排除及 SHA-256 元数据、证据真实性。
+- **ShellCheck：** WSL 未安装 ShellCheck。尝试查询单一可固定的官方 ShellCheck container manifest 超时，未下载或运行任何容器；保留 `bash -n`（由合约测试执行）并如实记录未运行 ShellCheck。
+
 ## 2026-08-08T03:21:59+08:00 — PRE-SPEC / Brainstorming
 
 - **PLAN Task**：尚未生成 PLAN；处于课程前置设计 gate。

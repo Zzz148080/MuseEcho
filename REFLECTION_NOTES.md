@@ -2,6 +2,12 @@
 
 本文件仅积累客观过程材料，不代写学生的 `REFLECTION.md`，也不替学生生成主观结论。
 
+## 2026-08-11 — TASK 21 / 交付边界的本地证据
+
+- Task 20 的 tar/config identity 不能被叙述成已发布的 registry digest；Task 21 因而明确拒绝 tag，要求部署操作员提供真实 `name@sha256:` 引用。
+- 第一次 script integration test 暴露 test-root 的非 root 身份不能模拟生产 `chown`，因此测试适配器只在 `MUSEECHO_TEST_ROOT` 下省略所有者切换；真实路径仍使用 root 与 GID 10001。另一个 RED 暴露 systemd 只读取 runtime env 却没有 release image 变量，且 provider secret 路径被无条件配置；修复后每个 immutable release 有非秘密 `release.env`，默认 KEK-only 启动保持 provider 三项全空。
+- 外部授权缺失不是停止可验证本地工作的理由。`DEPLOYMENT_EVIDENCE.md` 把脚本和临时根目录证据与尚未发生的公网 smoke、跨网测试、清理和回滚演练明确分开。
+
 ## 2026-08-08 — 前置设计阶段
 
 - `brainstorming` 的一次一问机制产生了连续的真实用户选择，没有用 AI 自行模拟批准。

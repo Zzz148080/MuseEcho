@@ -1,0 +1,18 @@
+# MuseEcho Tencent Cloud deployment; managed only by deploy/tencent-cloud/install.sh.
+[Unit]
+Description=MuseEcho Tencent Cloud deployment
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/srv/museecho/current
+ExecStart=/usr/bin/docker compose --project-name museecho --env-file /srv/museecho/current/release.env -f /srv/museecho/current/compose.yaml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose --project-name museecho --env-file /srv/museecho/current/release.env -f /srv/museecho/current/compose.yaml down
+TimeoutStartSec=180
+TimeoutStopSec=90
+
+[Install]
+WantedBy=multi-user.target
