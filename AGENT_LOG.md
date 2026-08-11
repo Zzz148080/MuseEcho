@@ -7,6 +7,12 @@
 - **本地验证：** WSL2 `bash tests/deploy/test_tencent_cloud.sh` 与 `bash deploy/tencent-cloud/install.sh --check-only` 均 exit 0；覆盖 check-only 无写入、owned paths/firewall/systemd、tag 拒绝/Secret 不泄露、health rollback、KEK-only provider、备份排除及 SHA-256 元数据、证据真实性。
 - **ShellCheck：** WSL 未安装 ShellCheck。尝试查询单一可固定的官方 ShellCheck container manifest 超时，未下载或运行任何容器；保留 `bash -n`（由合约测试执行）并如实记录未运行 ShellCheck。
 
+## 2026-08-11 — TASK 21 / review fix round 1
+
+- **RED→GREEN：** 独立复审确认 failed release 在 health 前被写入 `.verified`、恢复旧 release 未 health-check、WAL SQLite 直接复制、UFW 只追加 allow、以及 provider 三项可部分写入。新增 WSL 合约测试先得到 12 个预期失败断言：失败发行物仍 eligible、恢复未复验/未 fail-closed、WAL 中已提交行不能从归档恢复、8080 ALLOW 仍写入、partial provider 仍 pull/switch。修复后同一套 11 个 delivery contracts 全部通过。
+- **修复：** `.verified` 仅在 restart+health 成功后写入；恢复 prior release 也重新 health-check，失败时清除 `current` 并 stop service。备份改用 Python 标准库 SQLite online backup 与 `PRAGMA integrity_check`，得到独立 snapshot。实际 install 在任何目录写入前要求 UFW active/default deny-or-reject 并拒绝 22/80/443 外的 inbound ALLOW。provider 配置现在必须三项全空或全设。
+- **ShellCheck：** 有界 Docker Registry 查询取得官方 `koalaman/shellcheck-alpine:v0.10.0` linux/amd64 digest `sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577`。只 pull/run 该一份 digest-pinned image，`--network none --entrypoint shellcheck` 对五个交付脚本 exit 0；首次 run 的 image 默认 `/bin/sh` 误执行 bash shebang，inspect 后改用 entrypoint，未下载任何其他工具或镜像。
+
 ## 2026-08-08T03:21:59+08:00 — PRE-SPEC / Brainstorming
 
 - **PLAN Task**：尚未生成 PLAN；处于课程前置设计 gate。

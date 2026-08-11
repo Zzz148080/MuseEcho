@@ -26,8 +26,7 @@ Run the non-mutating prerequisite gate first:
 sudo bash deploy/tencent-cloud/install.sh --check-only
 ```
 
-After it passes, install the owned directories, systemd unit, and UFW rules
-(when UFW is active):
+After it passes, install the owned directories, systemd unit, and UFW rules:
 
 ```bash
 sudo bash deploy/tencent-cloud/install.sh
@@ -38,8 +37,11 @@ sudoedit /srv/museecho/config/runtime.env
 The installer creates `/srv/museecho/data`, `releases`, and `config` as
 `root:10001` `0750`; it creates `/etc/museecho/secrets` with the same
 traversal boundary. It refuses to overwrite a systemd file it does not own.
-It only adds UFW allow rules for 22/80/443 and otherwise prints the required
-Lighthouse security-group action. It never disables unrelated firewall rules.
+Before any install write, it requires active UFW with a deny/reject default
+incoming policy and rejects existing inbound ALLOW rules other than TCP
+22/80/443. It then idempotently adds only those three TCP allows. Configure
+the Lighthouse security group to the same allowlist; the script cannot inspect
+or change a cloud-provider firewall without cloud authorization.
 
 ## Deploy and rollback
 
@@ -71,9 +73,10 @@ references before this script can be used; a tag such as `:latest` is rejected.
 sudo bash deploy/tencent-cloud/backup.sh
 ```
 
-Backups contain the SQLite database and non-secret runtime/release metadata,
-with `SHA256SUMS` inside the archive. They intentionally exclude encrypted
-audio ciphertext and wrapped per-analysis-key material. Restoring audio needs
+Backups use SQLite's online backup API to produce an integrity-checked,
+standalone database snapshot while WAL writes may continue, and include
+non-secret runtime/release metadata plus `SHA256SUMS`. They intentionally
+exclude encrypted audio ciphertext and wrapped per-analysis-key material. Restoring audio needs
 a separately protected data backup and the KEK that stays outside the archive;
 the archive never copies secret files. Regularly test a restore in an isolated
 environment before relying on a backup.

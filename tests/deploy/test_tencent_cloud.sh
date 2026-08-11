@@ -48,17 +48,30 @@ set -eu
 printf 'systemctl %s\n' "$*" >> "$MUSEECHO_TEST_LOG"
 exit 0
 EOF
-    cat > "$bin/ufw" <<'EOF'
+cat > "$bin/ufw" <<'EOF'
 #!/usr/bin/env bash
 set -eu
 printf 'ufw %s\n' "$*" >> "$MUSEECHO_TEST_LOG"
-if [[ "${1:-}" == status ]]; then echo 'Status: active'; fi
+if [[ "${1:-}" == status && "${2:-}" == verbose ]]; then
+  printf '%s\n' 'Status: active' "${MUSEECHO_TEST_UFW_DEFAULT:-Default: deny (incoming), allow (outgoing), disabled (routed)}"
+elif [[ "${1:-}" == status && "${2:-}" == numbered ]]; then
+  printf '%s\n' 'Status: active'
+  printf '%s\n' "${MUSEECHO_TEST_UFW_NUMBERED:-[ 1] 22/tcp ALLOW IN Anywhere}"
+elif [[ "${1:-}" == status ]]; then
+  echo 'Status: active'
+fi
 EOF
     cat > "$bin/curl" <<'EOF'
 #!/usr/bin/env bash
 set -eu
 printf 'curl %s\n' "$*" >> "$MUSEECHO_TEST_LOG"
-[[ "${MUSEECHO_TEST_HEALTH_FAIL:-0}" != 1 ]]
+if [[ -n "${MUSEECHO_TEST_HEALTH_SEQUENCE_FILE:-}" && -s "$MUSEECHO_TEST_HEALTH_SEQUENCE_FILE" ]]; then
+  result="$(head -n 1 "$MUSEECHO_TEST_HEALTH_SEQUENCE_FILE")"
+  sed -i '1d' "$MUSEECHO_TEST_HEALTH_SEQUENCE_FILE"
+  [[ "$result" == pass ]]
+else
+  [[ "${MUSEECHO_TEST_HEALTH_FAIL:-0}" != 1 ]]
+fi
 EOF
     chmod +x "$bin"/*
 }
@@ -85,7 +98,7 @@ test_check_only_is_non_mutating() {
     assert_no_file "$root/etc/systemd/system/museecho.service"
     [[ ! -e "$log" ]] || {
         assert_not_contains 'systemctl ' "$(<"$log")"
-        assert_not_contains 'ufw ' "$(<"$log")"
+        assert_not_contains 'ufw allow ' "$(<"$log")"
     }
     pass "check-only has no host mutation"
 }
@@ -132,7 +145,7 @@ test_digest_only_and_secret_safe_deploy() {
 }
 
 test_failed_health_restores_previous_release() {
-    local root="$TEST_TMP/rollback-root" bin="$TEST_TMP/rollback-bin" log="$TEST_TMP/rollback.log" old="$TEST_TMP/rollback-root/srv/museecho/releases/old" output
+    local root="$TEST_TMP/rollback-root" bin="$TEST_TMP/rollback-bin" log="$TEST_TMP/rollback.log" old="$TEST_TMP/rollback-root/srv/museecho/releases/old" output sequence failed_release
     mkdir -p "$old" "$root/srv/museecho/config" "$root/etc/museecho/secrets" "$bin"; : > "$log"; make_fake_bin "$bin"
     printf 'MUSEECHO_DOMAIN=example.test\n' > "$root/srv/museecho/config/runtime.env"
     printf 'test-kek' > "$root/etc/museecho/secrets/audio-kek"
@@ -143,12 +156,37 @@ MUSEECHO_GATEWAY_IMAGE=registry.example/museecho-gateway@sha256:bbbbbbbbbbbbbbbb
 EOF
     : > "$old/compose.yaml"; : > "$old/Caddyfile"
     ln -s "$old" "$root/srv/museecho/current"
-    output="$(PATH="$bin:$PATH" MUSEECHO_TEST_ROOT="$root" MUSEECHO_TEST_LOG="$log" MUSEECHO_TEST_HEALTH_FAIL=1 \
+    sequence="$TEST_TMP/health-sequence"; printf 'fail\npass\n' > "$sequence"
+    output="$(PATH="$bin:$PATH" MUSEECHO_TEST_ROOT="$root" MUSEECHO_TEST_LOG="$log" MUSEECHO_TEST_HEALTH_SEQUENCE_FILE="$sequence" \
         bash "$DEPLOY_DIR/deploy.sh" --app-image 'registry.example/museecho-app@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
         --gateway-image 'registry.example/museecho-gateway@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' 2>&1 || true)"
     assert_contains 'rolling back' "$output"
     [[ "$(readlink "$root/srv/museecho/current")" == "$old" ]] || fail "health failure did not restore previous release"
-    pass "failed health check rolls back atomically"
+    [[ "$(grep -c '^curl ' "$log")" -eq 2 ]] || fail "restored release did not receive a health check"
+    failed_release="$(find "$root/srv/museecho/releases" -mindepth 1 -maxdepth 1 -type d ! -name old -print -quit)"
+    assert_no_file "$failed_release/.verified"
+    pass "failed health release is unverified and prior release is checked"
+}
+
+test_unhealthy_restored_release_fails_closed() {
+    local root="$TEST_TMP/unhealthy-rollback-root" bin="$TEST_TMP/unhealthy-rollback-bin" log="$TEST_TMP/unhealthy-rollback.log" old="$TEST_TMP/unhealthy-rollback-root/srv/museecho/releases/old" output sequence
+    mkdir -p "$old" "$root/srv/museecho/config" "$root/etc/museecho/secrets" "$bin"; : > "$log"; make_fake_bin "$bin"
+    printf 'MUSEECHO_DOMAIN=example.test\n' > "$root/srv/museecho/config/runtime.env"
+    printf 'test-kek' > "$root/etc/museecho/secrets/audio-kek"
+    printf 'verified\n' > "$old/.verified"
+    cat > "$old/release.env" <<'EOF'
+MUSEECHO_APP_IMAGE=registry.example/museecho-app@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+MUSEECHO_GATEWAY_IMAGE=registry.example/museecho-gateway@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+EOF
+    : > "$old/compose.yaml"; : > "$old/Caddyfile"; ln -s "$old" "$root/srv/museecho/current"
+    sequence="$TEST_TMP/unhealthy-health-sequence"; printf 'fail\nfail\n' > "$sequence"
+    output="$(PATH="$bin:$PATH" MUSEECHO_TEST_ROOT="$root" MUSEECHO_TEST_LOG="$log" MUSEECHO_TEST_HEALTH_SEQUENCE_FILE="$sequence" \
+        bash "$DEPLOY_DIR/deploy.sh" --app-image 'registry.example/museecho-app@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
+        --gateway-image 'registry.example/museecho-gateway@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' 2>&1 || true)"
+    assert_contains 'previous release failed health check' "$output"
+    assert_no_file "$root/srv/museecho/current"
+    assert_contains 'systemctl stop museecho.service' "$(<"$log")"
+    pass "unhealthy restored release fails closed"
 }
 
 test_default_release_keeps_provider_mode_disabled() {
@@ -167,20 +205,77 @@ test_default_release_keeps_provider_mode_disabled() {
 }
 
 test_backup_excludes_ciphertext_and_has_integrity_metadata() {
-    local root="$TEST_TMP/backup-root" bin="$TEST_TMP/backup-bin" log="$TEST_TMP/backup.log" output archive listing
+    local root="$TEST_TMP/backup-root" bin="$TEST_TMP/backup-bin" log="$TEST_TMP/backup.log" output archive listing database ready source_pid restored
     mkdir -p "$root/srv/museecho/data/audio" "$root/srv/museecho/config" "$bin"; : > "$log"; make_fake_bin "$bin"
-    printf 'sqlite-data' > "$root/srv/museecho/data/museecho.db"
+    database="$root/srv/museecho/data/museecho.db"; ready="$TEST_TMP/sqlite-ready"
+    python3 - "$database" "$ready" <<'PY' &
+import sqlite3
+import sys
+import time
+from pathlib import Path
+
+connection = sqlite3.connect(sys.argv[1])
+connection.execute("PRAGMA journal_mode=WAL")
+connection.execute("CREATE TABLE backup_probe (value TEXT NOT NULL)")
+connection.execute("INSERT INTO backup_probe VALUES ('committed-in-wal')")
+connection.commit()
+Path(sys.argv[2]).touch()
+time.sleep(3)
+connection.close()
+PY
+    source_pid=$!
+    for _ in $(seq 1 30); do [[ -e "$ready" ]] && break; sleep 0.1; done
+    assert_file "$ready"
     printf 'encrypted-audio' > "$root/srv/museecho/data/audio/opaque.enc"
     printf 'MUSEECHO_DOMAIN=example.test\n' > "$root/srv/museecho/config/runtime.env"
     output="$(PATH="$bin:$PATH" MUSEECHO_TEST_ROOT="$root" MUSEECHO_TEST_LOG="$log" bash "$DEPLOY_DIR/backup.sh" 2>&1)" || fail "backup should pass: $output"
     archive="$(find "$root/srv/museecho/backups" -name '*.tar.gz' -print -quit)"
+    wait "$source_pid"
     assert_file "$archive"
     listing="$(tar -tzf "$archive")"
     assert_contains 'museecho.db' "$listing"
     assert_contains 'SHA256SUMS' "$listing"
     assert_contains 'BACKUP-METADATA.txt' "$listing"
     assert_not_contains 'opaque.enc' "$listing"
-    pass "backup excludes encrypted audio and records integrity"
+    mkdir -p "$TEST_TMP/backup-restore"; tar -xzf "$archive" -C "$TEST_TMP/backup-restore"
+    restored="$(python3 - "$TEST_TMP/backup-restore/museecho.db" <<'PY'
+import sqlite3
+import sys
+
+connection = sqlite3.connect(sys.argv[1])
+print(connection.execute("PRAGMA integrity_check").fetchone()[0])
+print(connection.execute("SELECT value FROM backup_probe").fetchone()[0])
+PY
+    2>&1)" || fail "online SQLite backup was not restorable: $restored"
+    assert_contains 'ok' "$restored"
+    assert_contains 'committed-in-wal' "$restored"
+    (cd "$TEST_TMP/backup-restore" && sha256sum -c SHA256SUMS >/dev/null) || fail "backup integrity manifest does not verify"
+    pass "backup is WAL-safe, excludes ciphertext, and records integrity"
+}
+
+test_unexpected_ufw_allow_fails_before_mutation() {
+    local root="$TEST_TMP/firewall-root" bin="$TEST_TMP/firewall-bin" log="$TEST_TMP/firewall.log" output
+    mkdir -p "$root" "$bin"; : > "$log"; make_fake_bin "$bin"
+    output="$(PATH="$bin:$PATH" MUSEECHO_TEST_ROOT="$root" MUSEECHO_TEST_LOG="$log" MUSEECHO_TEST_UFW_NUMBERED='[ 1] 8080/tcp ALLOW IN Anywhere' \
+        MUSEECHO_SKIP_CAPACITY_CHECK=1 bash "$DEPLOY_DIR/install.sh" 2>&1 || true)"
+    assert_contains 'unexpected UFW ALLOW IN rule' "$output"
+    assert_no_file "$root/srv/museecho/data/.keep"
+    assert_not_contains 'ufw allow ' "$(<"$log")"
+    pass "unexpected inbound UFW allow fails before mutation"
+}
+
+test_partial_provider_configuration_is_rejected() {
+    local root="$TEST_TMP/partial-provider-root" bin="$TEST_TMP/partial-provider-bin" log="$TEST_TMP/partial-provider.log" output
+    mkdir -p "$root/srv/museecho/releases" "$root/srv/museecho/config" "$root/etc/museecho/secrets" "$bin"; : > "$log"; make_fake_bin "$bin"
+    printf 'MUSEECHO_DOMAIN=example.test\nMUSEECHO_PROVIDER_BASE_URL=https://provider.example/v1\n' > "$root/srv/museecho/config/runtime.env"
+    printf 'test-kek' > "$root/etc/museecho/secrets/audio-kek"
+    output="$(PATH="$bin:$PATH" MUSEECHO_TEST_ROOT="$root" MUSEECHO_TEST_LOG="$log" \
+        bash "$DEPLOY_DIR/deploy.sh" --app-image 'registry.example/museecho-app@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
+        --gateway-image 'registry.example/museecho-gateway@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' 2>&1 || true)"
+    assert_contains 'provider configuration must set all three values or none' "$output"
+    assert_no_file "$root/srv/museecho/current"
+    assert_not_contains 'docker pull ' "$(<"$log")"
+    pass "partial provider configuration is rejected before deployment"
 }
 
 test_evidence_is_truthful() {
@@ -196,8 +291,11 @@ test_check_only_is_non_mutating
 test_install_layout_firewall_and_systemd
 test_digest_only_and_secret_safe_deploy
 test_failed_health_restores_previous_release
+test_unhealthy_restored_release_fails_closed
 test_default_release_keeps_provider_mode_disabled
 test_backup_excludes_ciphertext_and_has_integrity_metadata
+test_unexpected_ufw_allow_fails_before_mutation
+test_partial_provider_configuration_is_rejected
 test_evidence_is_truthful
 
 if (( failures > 0 )); then

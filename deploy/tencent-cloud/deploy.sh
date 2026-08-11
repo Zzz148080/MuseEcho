@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib.sh
+# shellcheck disable=SC1091 # SCRIPT_DIR resolves this sibling at runtime.
 source "$SCRIPT_DIR/lib.sh"
 
 app_image=''
@@ -19,6 +19,7 @@ require_digest_reference "$app_image"
 require_digest_reference "$gateway_image"
 require_root
 domain="$(read_domain)"
+validate_provider_configuration
 [[ -f "$MUSEECHO_SECRETS_DIR/audio-kek" ]] || fail "required secret file is missing: $MUSEECHO_SECRETS_DIR/audio-kek"
 
 release_id="$(date -u +%Y%m%dT%H%M%SZ)-${app_image##*@sha256:}"
@@ -36,7 +37,7 @@ MUSEECHO_GATEWAY_IMAGE=$gateway_image
 MUSEECHO_DOMAIN=$domain
 EOF
 for setting in MUSEECHO_PROVIDER_BASE_URL MUSEECHO_PROVIDER_MODEL MUSEECHO_PROVIDER_SECRET_FILE; do
-    value="$(sed -n "s/^${setting}=//p" "$MUSEECHO_RUNTIME_ENV" | tail -n 1)"
+    value="$(read_runtime_value "$setting")"
     printf '%s=%s\n' "$setting" "$value" >> "$stage/release.env"
 done
 cat > "$stage/Caddyfile" <<EOF
@@ -99,21 +100,29 @@ final_release="$MUSEECHO_RELEASES_DIR/$release_id"
 [[ ! -e "$final_release" ]] || fail "release already exists: $release_id"
 mv "$stage" "$final_release"
 cleanup_stage=0
-printf 'verified\n' > "$final_release/.verified"
-chmod 0640 "$final_release/release.env" "$final_release/.verified"
+chmod 0640 "$final_release/release.env"
 
 previous=''
 if [[ -L "$MUSEECHO_CURRENT_LINK" ]]; then previous="$(readlink -f "$MUSEECHO_CURRENT_LINK")"; fi
 switch_current_to "$final_release"
-if ! restart_service || ! health_check "$domain"; then
-    printf 'ERROR: new release failed health check; rolling back\n' >&2
-    if [[ -n "$previous" ]] && release_is_verified "$previous"; then
-        switch_current_to "$previous"
-        restart_service || true
-    else
-        rm -f "$MUSEECHO_CURRENT_LINK"
-        systemctl stop museecho.service || true
-    fi
-    exit 1
+if restart_service && health_check "$domain"; then
+    printf 'verified\n' > "$final_release/.verified"
+    chmod 0640 "$final_release/.verified"
+    printf 'Deployment activated: %s\n' "$release_id"
+    exit 0
 fi
-printf 'Deployment activated: %s\n' "$release_id"
+
+printf 'ERROR: new release failed health check; rolling back\n' >&2
+if [[ -n "$previous" ]] && release_is_verified "$previous"; then
+    switch_current_to "$previous"
+    if restart_service && health_check "$domain"; then
+        printf 'ERROR: new release failed health check; verified prior release restored\n' >&2
+        exit 1
+    fi
+    printf 'ERROR: previous release failed health check; stopping service\n' >&2
+else
+    printf 'ERROR: no verified prior release is available; stopping service\n' >&2
+fi
+rm -f "$MUSEECHO_CURRENT_LINK"
+systemctl stop museecho.service || true
+exit 1

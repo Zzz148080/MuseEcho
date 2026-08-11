@@ -92,13 +92,12 @@ git diff --check
 Result: `Secret scan passed: 193 tracked/non-ignored files checked.` and no
 whitespace errors. Remote GitHub Actions/GitLab CI was not run.
 
-## ShellCheck constraint
+## Initial ShellCheck constraint
 
-ShellCheck is not installed in WSL. An attempt to query the manifest for the
-single allowed official, version/digest-pinned ShellCheck container timed out
-before it returned a digest. No container or host tool was downloaded or run.
-This report therefore does **not** claim a ShellCheck pass; `bash -n` and the
-behavioral contract suite were run instead.
+ShellCheck was not installed in WSL. The initial Docker manifest query timed
+out, so the original implementation evidence recorded only `bash -n` and the
+behavioral contract suite. Review fix round 1 later completed the bounded
+official digest-pinned container run recorded below.
 
 ## Files delivered
 
@@ -128,11 +127,66 @@ behavioral contract suite were run instead.
   complete product smoke, cross-mainland testing, 24-hour cleanup observation,
   backup restore, and live rollback remain pending and must be recorded only
   after they occur.
-- ShellCheck was unavailable and its allowed pinned-container discovery timed
-  out. This is a verification gap, not a claimed green gate.
+- ShellCheck is covered by the one scoped pinned-container run in review fix
+  round 1; it remains unavailable as a host binary by design.
 - The existing Task 20 remote CI status remains unrun.
 
 ## Commit
 
 - `1bc9f724124cbc0a6769fea8a72b4c9fb9dbf660` —
   `ops: deploy verified Tencent Cloud release` (delivery implementation).
+
+## Review fix round 1/5
+
+### Root-cause verification and RED
+
+The review findings were reproduced before changing production code. Fresh
+WSL `bash tests/deploy/test_tencent_cloud.sh` exited 1 with 12 expected
+assertion failures: a failed release was still `.verified`; rollback made only
+one health request and retained an unhealthy `current`; an archive copied from
+an active WAL database lacked `backup_probe`; an existing `8080/tcp ALLOW IN`
+rule did not stop pre-install writes; and a one-field provider configuration
+still pulled images and switched current.
+
+### GREEN
+
+- Deploy writes `.verified` only after its restart and health request pass.
+  Failed activation verifies the restored prior release; if that check fails,
+  it clears `current` and stops the owned service.
+- Backup uses Python's standard-library SQLite online backup API, verifies
+  `PRAGMA integrity_check`, then hashes/archives the resulting standalone
+  snapshot. The new test holds committed data in WAL and restores both `ok`
+  and `committed-in-wal` from the archive.
+- Install audits active UFW/default deny-or-reject and numbered ALLOW IN rules
+  before writes. A non-22/80/443 inbound allow fails closed; clean desired
+  rules remain idempotent.
+- Provider base URL, model, and secret-file setting are now validated as an
+  all-empty or all-configured trio before image pull/staging.
+
+Fresh WSL green command, exit 0:
+
+```bash
+bash tests/deploy/test_tencent_cloud.sh
+bash deploy/tencent-cloud/install.sh --check-only
+for file in deploy/tencent-cloud/*.sh tests/deploy/test_tencent_cloud.sh; do bash -n "$file"; done
+```
+
+All 11 delivery contract cases passed. Fresh Windows `scripts/secret-scan.ps1`
+also passed (194 files), and `git diff --check` exited 0.
+
+### ShellCheck evidence
+
+One official scoped image was resolved and used:
+
+```text
+koalaman/shellcheck-alpine:v0.10.0
+sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577
+docker pull koalaman/shellcheck-alpine@sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577
+docker run --rm --network none --entrypoint shellcheck -v "$PWD:/work:ro" -w /work koalaman/shellcheck-alpine@sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577 deploy/tencent-cloud/lib.sh deploy/tencent-cloud/install.sh deploy/tencent-cloud/deploy.sh deploy/tencent-cloud/rollback.sh deploy/tencent-cloud/backup.sh
+```
+
+The final offline run against all five delivery scripts exited 0. The first
+attempt after the single pull exited 1 because that image's default command is
+`/bin/sh`, which tried to execute bash-shebang script paths; `docker image
+inspect` identified that root cause and the same image was rerun with its
+`shellcheck` entrypoint. No other image or host tool was installed.

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib.sh
+# shellcheck disable=SC1091 # SCRIPT_DIR resolves this sibling at runtime.
 source "$SCRIPT_DIR/lib.sh"
 
 check_only=0
@@ -33,6 +33,7 @@ check_requirements() {
     compose_major="${BASH_REMATCH[1]}"
     [[ "$compose_major" -ge 2 ]] || fail 'Docker Compose v2 is required'
     command -v curl >/dev/null || fail 'curl is required for health checks'
+    command -v python3 >/dev/null || fail 'python3 is required for SQLite online backups'
     command -v systemctl >/dev/null || fail 'systemd/systemctl is required'
     command -v install >/dev/null || fail 'install is required'
     if [[ -n "$MUSEECHO_ROOT_PREFIX" ]]; then
@@ -45,13 +46,29 @@ check_requirements() {
 }
 
 install_firewall_rules() {
-    if command -v ufw >/dev/null && ufw status 2>/dev/null | grep -q '^Status: active'; then
-        ufw allow 22/tcp
-        ufw allow 80/tcp
-        ufw allow 443/tcp
-    else
-        printf 'NOTICE: no active UFW detected; allow only TCP 22, 80, and 443 in Lighthouse security groups/firewall.\n'
-    fi
+    ufw allow 22/tcp
+    ufw allow 80/tcp
+    ufw allow 443/tcp
+}
+
+audit_firewall_policy() {
+    command -v ufw >/dev/null || fail 'UFW is required to enforce the inbound 22/80/443-only policy'
+    local verbose numbered unexpected
+    verbose="$(ufw status verbose)" || fail 'cannot read UFW policy'
+    [[ "$verbose" == *'Status: active'* ]] || fail 'UFW must be active before installation'
+    [[ "$verbose" =~ Default:\ (deny|reject)\ \(incoming\) ]] \
+        || fail 'UFW default incoming policy must be deny or reject'
+    numbered="$(ufw status numbered)" || fail 'cannot read numbered UFW rules'
+    unexpected="$(printf '%s\n' "$numbered" | awk '
+        /ALLOW IN/ {
+            rule = $0
+            sub(/^[^]]*][[:space:]]*/, "", rule)
+            split(rule, fields, /[[:space:]]+/)
+            rule = fields[1]
+            if (rule !~ /^(22|80|443)\/tcp$/) print
+        }
+    ')"
+    [[ -z "$unexpected" ]] || fail "unexpected UFW ALLOW IN rule; remove it before install: $unexpected"
 }
 
 install_layout() {
@@ -99,4 +116,5 @@ if [[ "$check_only" -eq 1 ]]; then
     printf 'check-only: no host changes made\n'
     exit 0
 fi
+audit_firewall_policy
 install_layout

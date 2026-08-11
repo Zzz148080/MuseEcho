@@ -14,12 +14,16 @@ root_path() {
 }
 
 MUSEECHO_BASE="$(root_path /srv/museecho)"
+# shellcheck disable=SC2034 # Consumed by scripts that source this shared contract.
 MUSEECHO_DATA_DIR="$MUSEECHO_BASE/data"
+# shellcheck disable=SC2034 # Consumed by scripts that source this shared contract.
 MUSEECHO_RELEASES_DIR="$MUSEECHO_BASE/releases"
 MUSEECHO_CONFIG_DIR="$MUSEECHO_BASE/config"
 MUSEECHO_RUNTIME_ENV="$MUSEECHO_CONFIG_DIR/runtime.env"
 MUSEECHO_CURRENT_LINK="$MUSEECHO_BASE/current"
+# shellcheck disable=SC2034 # Consumed by scripts that source this shared contract.
 MUSEECHO_SECRETS_DIR="$(root_path /etc/museecho/secrets)"
+# shellcheck disable=SC2034 # Consumed by scripts that source this shared contract.
 MUSEECHO_UNIT_PATH="$(root_path /etc/systemd/system/museecho.service)"
 
 fail() {
@@ -46,6 +50,21 @@ read_domain() {
     [[ "$domain" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$ ]] \
         || fail 'MUSEECHO_DOMAIN must be a DNS hostname in runtime.env'
     printf '%s\n' "$domain"
+}
+
+read_runtime_value() {
+    local setting="$1"
+    sed -n "s/^${setting}=//p" "$MUSEECHO_RUNTIME_ENV" | tail -n 1
+}
+
+validate_provider_configuration() {
+    local setting value configured=0
+    for setting in MUSEECHO_PROVIDER_BASE_URL MUSEECHO_PROVIDER_MODEL MUSEECHO_PROVIDER_SECRET_FILE; do
+        value="$(read_runtime_value "$setting")"
+        [[ -z "$value" ]] || configured=$((configured + 1))
+    done
+    [[ "$configured" -eq 0 || "$configured" -eq 3 ]] \
+        || fail 'provider configuration must set all three values or none'
 }
 
 release_is_verified() {

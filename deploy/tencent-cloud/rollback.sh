@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib.sh
+# shellcheck disable=SC1091 # SCRIPT_DIR resolves this sibling at runtime.
 source "$SCRIPT_DIR/lib.sh"
 
 [[ "$#" -eq 0 ]] || fail 'usage: rollback.sh'
