@@ -190,3 +190,47 @@ attempt after the single pull exited 1 because that image's default command is
 `/bin/sh`, which tried to execute bash-shebang script paths; `docker image
 inspect` identified that root cause and the same image was rerun with its
 `shellcheck` entrypoint. No other image or host tool was installed.
+
+## Review fix round 2/5 — pinned ShellCheck evidence
+
+### RED
+
+Before documentation changes, focused command
+`bash tests/deploy/test_shellcheck_evidence.sh` exited 1 with 11 expected
+evidence-contract failures: `DEPLOYMENT_EVIDENCE.md` had no ShellCheck record,
+and this report separated `v0.10.0` from a digest-only image reference without
+capturing version output or a lint result.
+
+### GREEN
+
+No new image or tool was downloaded. The existing image was used with the
+complete version-and-digest reference:
+
+```text
+koalaman/shellcheck-alpine:v0.10.0@sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577
+```
+
+Raw `shellcheck --version` command, exit 0:
+
+```powershell
+docker run --pull=never --rm --network none --entrypoint shellcheck koalaman/shellcheck-alpine:v0.10.0@sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577 --version
+```
+
+Captured stdout:
+
+```text
+ShellCheck - shell script analysis tool
+version: 0.10.0
+license: GNU General Public License, version 3
+website: https://www.shellcheck.net
+```
+
+Offline lint command:
+
+```powershell
+docker run --pull=never --rm --network none --entrypoint shellcheck -v "$PWD:/work:ro" -w /work koalaman/shellcheck-alpine:v0.10.0@sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577 deploy/tencent-cloud/lib.sh deploy/tencent-cloud/install.sh deploy/tencent-cloud/deploy.sh deploy/tencent-cloud/rollback.sh deploy/tencent-cloud/backup.sh
+```
+
+The lint exit 0; captured stdout/stderr were empty. The focused evidence contract
+now verifies the complete reference, `--network none`, raw version banner and
+line, version command, and lint exit in both evidence files.
