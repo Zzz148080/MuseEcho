@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import subprocess
 import sys
 from collections import Counter
@@ -327,14 +328,22 @@ def test_current_boundary_is_stable_across_text_checkout_line_endings(tmp_path: 
 
 
 def test_boundary_keeps_binary_line_endings_exact():
+    relative_path = "tests/api/fixture.bin"
+    crlf_content = b"\0first\r\nsecond\r\n"
     lf_boundary = check_acceptance_matrix._digest_boundary_entries(
-        [("tests/api/fixture.bin", b"\0first\nsecond\n")]
+        [(relative_path, b"\0first\nsecond\n")]
     )
     crlf_boundary = check_acceptance_matrix._digest_boundary_entries(
-        [("tests/api/fixture.bin", b"\0first\r\nsecond\r\n")]
+        [(relative_path, crlf_content)]
     )
+    expected = hashlib.sha256()
+    expected.update(relative_path.encode("utf-8"))
+    expected.update(b"\0")
+    expected.update(hashlib.sha256(crlf_content).hexdigest().encode("ascii"))
+    expected.update(b"\n")
 
     assert crlf_boundary != lf_boundary
+    assert crlf_boundary == expected.hexdigest()
 
 
 def test_drifted_historical_browser_boundary_cannot_make_current_item_pass(tmp_path: Path):
@@ -472,7 +481,9 @@ def test_functional_engineering_evidence_matches_current_engineering_audit() -> 
     assert contract.result.startswith(expected_prefix)
 
 
-def test_current_acceptance_evidence_uses_the_executed_locked_python_command() -> None:
+def test_current_acceptance_evidence_uses_the_executed_locked_python_command(
+    request: pytest.FixtureRequest,
+) -> None:
     expected_command = (
         ".venv\\Scripts\\python.exe -m pytest tests/unit/test_acceptance_matrix.py -q "
         "--basetemp tmp/task23-e014 -p no:cacheprovider; "
@@ -485,10 +496,17 @@ def test_current_acceptance_evidence_uses_the_executed_locked_python_command() -
     engineering_e030 = next(
         evidence for evidence in engineering.evidence if evidence.evidence_id == "E030"
     )
+    acceptance_path = Path(__file__).resolve()
+    collected_count = sum(
+        Path(str(item.path)).resolve() == acceptance_path for item in request.session.items
+    )
 
     assert contract.command == expected_command
     assert engineering_e030.command == expected_command
-    assert engineering_e030.result == "39 passed; 40 items validated PASS=28 PARTIAL=12 FAIL=0"
+    assert contract.result == (f"pytest-tests={collected_count}; pass=28; partial=12; fail=0")
+    assert engineering_e030.result == (
+        f"{collected_count} passed; 40 items validated PASS=28 PARTIAL=12 FAIL=0"
+    )
 
 
 def test_task23_report_labels_superseded_statistics_and_attributes_round_four() -> None:

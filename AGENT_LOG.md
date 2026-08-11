@@ -380,4 +380,5 @@
   legal CRLF/LF working-tree differences produced different Functional Audit
   boundary digests. A focused test failed first; text boundary bytes now use a
   canonical LF form while NUL-containing binary content remains byte-exact.
-  The acceptance file and Functional CLI pass at 28/12/0.
+  The acceptance file passes 41 tests and the Functional CLI passes at
+  28/12/0; E014/E030 are bound to the collected file count.

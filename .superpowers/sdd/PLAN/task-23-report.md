@@ -432,5 +432,6 @@ line endings. A focused RED reproduced distinct digests for the same text with
 LF and CRLF. The digest now canonicalizes CRLF to LF only for text-like content
 (no NUL byte), while a binary regression contract proves binary bytes remain
 exact. E004 was refreshed to the canonical current-boundary digest. The full
-acceptance test file and Functional CLI then passed with 28 PASS / 12 PARTIAL /
-0 FAIL.
+acceptance test file passed 41 tests and the Functional CLI then passed with
+28 PASS / 12 PARTIAL / 0 FAIL. A session-collection assertion now binds E014
+and E030 to the actual complete-file count so later test additions fail closed.

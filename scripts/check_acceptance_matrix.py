@@ -326,7 +326,7 @@ EVIDENCE_CONTRACTS = {
         ),
         path="tests/unit/test_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-15"),
-        result="pytest-tests=39; pass=28; partial=12; fail=0",
+        result="pytest-tests=41; pass=28; partial=12; fail=0",
         exit_code_raw="0",
     ),
     "E902": EvidenceContract(
