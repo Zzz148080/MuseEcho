@@ -400,3 +400,23 @@ claimed for that unsupported command.
 Independent final merge review returned 0 Critical, 0 Important, and 0 Minor.
 The branch was published as `origin/audit/23-engineering`, and draft PR #1 is
 `https://github.com/Zzz148080/MuseEcho/pull/1` against `main`.
+
+## Merged-result verification fix
+
+The first local `--no-ff` merge reproduced seven audit-only failures on the
+main checkout even though the merged tracked tree was byte-identical to the
+reviewed branch. Root-cause tracing found pre-existing generated
+`src/museecho.egg-info` in the main checkout. The Docker context already
+excluded every `**/*.egg-info`, and the committed policy intentionally bound a
+clean source tree, but `build_runtime_boundary_manifest()` excluded only
+`__pycache__` and bytecode. A dirty checkout could therefore change the audit
+boundary even though those files can never enter the release image.
+
+A focused RED created a temporary dirty source tree and observed
+`src/museecho.egg-info/PKG-INFO` in the manifest. The minimal fix ignores any
+path component ending in `.egg-info`, matching `.dockerignore`; the dirty and
+clean boundary tests then passed. The focused security/audit set passed 168
+tests, and the final locked Linux suite passed `753 passed, 1 skipped in
+352.52s`. The behavior fix is commit
+`acb2cb09e7c62e104ef64331f105514d6ce3016a` —
+`fix: ignore generated runtime metadata`.
