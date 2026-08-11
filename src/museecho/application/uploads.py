@@ -28,6 +28,25 @@ _UPLOAD_TEMP_PREFIX = "museecho-upload-"
 _UPLOAD_OWNER_MARKER = ".owner"
 _UPLOAD_OWNER_BYTES = b"MuseEcho temporary plaintext v1\n"
 _UPLOAD_DIRECTORY_PATTERN = re.compile(rf"^{_UPLOAD_TEMP_PREFIX}[0-9a-f]{{32}}-[a-z0-9_]{{8}}$")
+_MPEG1_LAYER_THREE_BITRATES_KBPS = (
+    0,
+    32,
+    40,
+    48,
+    56,
+    64,
+    80,
+    96,
+    112,
+    128,
+    160,
+    192,
+    224,
+    256,
+    320,
+)
+_MPEG2_LAYER_THREE_BITRATES_KBPS = (0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160)
+_MPEG1_SAMPLE_RATES = (44_100, 48_000, 32_000)
 
 _VALIDATION_GATE = threading.Lock()
 _TEMP_ROOT_INIT_LOCK = threading.Lock()
@@ -82,6 +101,14 @@ class AnalysisQueue(Protocol):
 class SubmittedAnalysis:
     job: AnalysisJob
     access: IssuedAccess
+
+
+@dataclass(frozen=True)
+class _LayerThreeHeader:
+    version: int
+    sample_rate: int
+    channels: int
+    frame_size: int
 
 
 class FFmpegAudioValidator:
@@ -139,17 +166,20 @@ def _validate_audio_signature(path: Path) -> None:
                     tag_size = (tag_size << 7) | value
                 frame_offset = 10 + tag_size
                 if header[3] == 4 and header[5] & 0x10:
+                    source.seek(frame_offset)
+                    footer = source.read(10)
+                    if footer[:3] != b"3DI" or footer[3:] != header[3:10]:
+                        raise InvalidAudioError("audio file signature is invalid")
                     frame_offset += 10
-                source.seek(frame_offset)
-                frame_header = source.read(4)
             else:
-                frame_header = header[:4]
+                frame_offset = 0
+            source.seek(0, os.SEEK_END)
+            file_size = source.tell()
+            _validate_layer_three_frames(source, frame_offset, file_size)
     except InvalidAudioError:
         raise
     except OSError:
         raise InvalidAudioError("audio file signature could not be read") from None
-    if not _is_mp3_frame_header(frame_header):
-        raise InvalidAudioError("audio file signature is invalid")
 
 
 def _validate_wave_format(source: BinaryIO, header: bytes) -> None:
@@ -195,7 +225,8 @@ def _validate_pcm_wave_format(format_data: bytes) -> None:
         "<HHIIHH", format_data
     )
     if format_tag == 0xFFFE:
-        if len(format_data) != 40 or struct.unpack_from("<H", format_data, 16)[0] != 22:
+        extension_size = struct.unpack_from("<H", format_data, 16)[0]
+        if extension_size < 22 or len(format_data) != 18 + extension_size:
             raise InvalidAudioError("audio file signature is invalid")
         valid_bits = struct.unpack_from("<H", format_data, 18)[0]
         subformat = format_data[24:40]
@@ -203,7 +234,7 @@ def _validate_pcm_wave_format(format_data: bytes) -> None:
         if subformat[4:] != pcm_guid_tail:
             raise InvalidAudioError("audio file signature is invalid")
         format_tag = struct.unpack_from("<I", subformat)[0]
-        if valid_bits != bits_per_sample:
+        if not 0 < valid_bits <= bits_per_sample:
             raise InvalidAudioError("audio file signature is invalid")
     elif len(format_data) not in (16, 18) or (
         len(format_data) == 18 and struct.unpack_from("<H", format_data, 16)[0] != 0
@@ -224,21 +255,71 @@ def _validate_pcm_wave_format(format_data: bytes) -> None:
         raise InvalidAudioError("audio file signature is invalid")
 
 
-def _is_mp3_frame_header(value: bytes) -> bool:
+def _parse_layer_three_header(value: bytes) -> _LayerThreeHeader | None:
     if len(value) != 4 or value[0] != 0xFF or value[1] & 0xE0 != 0xE0:
-        return False
+        return None
     version = (value[1] >> 3) & 0x03
     layer = (value[1] >> 1) & 0x03
-    bitrate = (value[2] >> 4) & 0x0F
-    sample_rate = (value[2] >> 2) & 0x03
+    bitrate_index = (value[2] >> 4) & 0x0F
+    sample_rate_index = (value[2] >> 2) & 0x03
     emphasis = value[3] & 0x03
-    return (
-        version != 0x01
-        and layer == 0x01
-        and bitrate not in (0x00, 0x0F)
-        and sample_rate != 0x03
-        and emphasis != 0x02
+    if (
+        version == 0x01
+        or layer != 0x01
+        or bitrate_index in (0x00, 0x0F)
+        or sample_rate_index == 0x03
+        or emphasis == 0x02
+    ):
+        return None
+
+    rate_shift = 0 if version == 0x03 else 1 if version == 0x02 else 2
+    sample_rate = _MPEG1_SAMPLE_RATES[sample_rate_index] >> rate_shift
+    padding = (value[2] >> 1) & 0x01
+    channels = 1 if value[3] >> 6 == 0x03 else 2
+    bitrates = (
+        _MPEG1_LAYER_THREE_BITRATES_KBPS if version == 0x03 else _MPEG2_LAYER_THREE_BITRATES_KBPS
     )
+    coefficient = 144 if version == 0x03 else 72
+    frame_size = coefficient * bitrates[bitrate_index] * 1000 // sample_rate + padding
+    return _LayerThreeHeader(
+        version=version,
+        sample_rate=sample_rate,
+        channels=channels,
+        frame_size=frame_size,
+    )
+
+
+def _matching_layer_three_header(
+    candidate: _LayerThreeHeader | None,
+    first: _LayerThreeHeader,
+) -> bool:
+    return bool(
+        candidate is not None
+        and candidate.version == first.version
+        and candidate.sample_rate == first.sample_rate
+        and candidate.channels == first.channels
+    )
+
+
+def _read_layer_three_header(source: BinaryIO, offset: int) -> _LayerThreeHeader | None:
+    source.seek(offset)
+    return _parse_layer_three_header(source.read(4))
+
+
+def _validate_layer_three_frames(source: BinaryIO, frame_offset: int, file_size: int) -> None:
+    if frame_offset < 0 or frame_offset + 4 > file_size:
+        raise InvalidAudioError("audio file signature is invalid")
+    first = _read_layer_three_header(source, frame_offset)
+    if first is None:
+        raise InvalidAudioError("audio file signature is invalid")
+    second_offset = frame_offset + first.frame_size
+    second = _read_layer_three_header(source, second_offset)
+    if (
+        not _matching_layer_three_header(second, first)
+        or second is None
+        or second_offset + second.frame_size > file_size
+    ):
+        raise InvalidAudioError("audio file signature is invalid")
 
 
 class UploadSubmissionService:

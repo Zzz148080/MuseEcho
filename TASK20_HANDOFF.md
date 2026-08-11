@@ -108,3 +108,9 @@
 - **验证：** Linux 锁定运行时 `573 passed`，post-review production smoke exit 0（45.3s），聚焦 `58 passed, 1 skipped`，Ruff 80 files、mypy 45 files、前端 66 tests、type/build、Chrome E2E 4 tests、license/npm/Secret/container contracts 全绿。主机 `verify.ps1` 无法选择 uv，且主机无 FFmpeg；未主机安装任何工具，权威 Python 结果来自实际 Linux 运行时。
 - **构建/网络事实：** 最终 `--pull=false` 产品 Dockerfile 构建的基础、uv/pip、apt/FFmpeg、锁定 venv 层全部 `CACHED`，仅复制 source，无包/基础层下载。Trivy 使用已有数据库并设置 offline/skip-update/skip-version-check。
 - **控制器后续：** 该分支尚未推送、未合并，远端 GitHub Actions/GitLab CI 未运行。控制器应先合并 Task 20，再开始 Task 21；不得把本地结果写成远端 CI 证据。
+
+## 2026-08-11 安全审查修复轮 5（进行中）
+
+- **产品边界决定：** 保留安全 PCM/IEEE-float WAVEFORMATEXTENSIBLE：`cbSize >= 22`、有界声明扩展字节、`0 < valid_bits <= container_bits`，并继续精确校验 GUID、速率、通道、block-align 与 byte-rate。MP3 只支持可计算帧大小的常规 MPEG Layer III；free-format bitrate index `0000` 在 probe/decode 前拒绝。锁定 FFmpeg 5.1.9 拒绝了尝试的真实 free-format 端到端流，因此不宣称支持全部 MP3 子类型。
+- **GitLab 合约：** 同一不可变 `museecho-app.tar` 必须执行 raw 无 suppression 扫描 → package/probe inventory → 精确 audit/OpenVEX → VEX gate；inventory 不能先于 raw，raw 与 audit artifacts 必须 `when: always`。本地 contract tests 覆盖错误顺序、不同 tar identity 和缺失证据。
+- **状态边界：** 轮 4 的 READY 结论已由上述两个 Important 发现取代。源码/CI 合约、policy hash、最终 Linux `583 passed`、cached-only build 和 smoke 已完成；但本机缓存 Trivy 0.70.0 镜像首次离线运行拒绝且不得下载 DB，故没有本轮 fresh raw→audit→VEX/gate 证据，Task 20 保持 BLOCKED 而非 READY。远端 GitHub Actions/GitLab CI 仍未运行。

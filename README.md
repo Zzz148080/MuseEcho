@@ -182,6 +182,10 @@ Compose、命令行、截图、日志、Git 历史或前端变量。`scripts/sec
   16/24/32 位、IEEE float 32/64 位（含匹配的 WAVE_FORMAT_EXTENSIBLE 子格式）。压缩或
   歧义 RIFF codec 会在启动媒体工具前失败关闭；`ffprobe` 与 `ffmpeg` 均在输入前应用完全
   相同的 `wav,mp3` format、`file,pipe` protocol 和上述 PCM/MP3 decoder allowlist。
+- WAVEFORMATEXTENSIBLE 仅在 `cbSize >= 22`、声明扩展字节有界、`0 < valid_bits <=
+  container_bits`、GUID/速率/通道/block-align/byte-rate 全部一致时接受。MP3 仅支持可由非零
+  bitrate index 计算帧大小的常规 MPEG Layer III；V1 明确拒绝 free-format (`0000`) MP3，因为
+  锁定 FFmpeg 5.1.9 拒绝了该端到端流，不能将所有 MP3 子类型称为受支持。
 - Caddy 是唯一公开入口；FastAPI 不应直接暴露公网。
 - 镜像 CI 先保存不带 suppression 的完整 Trivy JSON，再核对每个 finding tuple、PURL、
   package/version/status/severity、完整 dpkg 文件清单、镜像内运行时探针，以及全部 `src/`、
@@ -216,6 +220,7 @@ SHA-256 inventory，以及固定容器、构建工具、Go replacement 和 OS �
   HIGH/CRITICAL package 条目。发布门禁不会隐藏这份原始 inventory；它仅在精确 package
   文件与执行边界均未漂移时应用 67 条逐 CVE `not_affected` 结论。获得可用上游修复后仍应
   优先升级运行时并删除不再需要的 VEX statement。
+- MP3 支持不包括 free-format bitrate index `0000`；仅支持可计算帧长度的常规 MPEG Layer III。
 - 内部 CA 只适合本地 smoke；公网证书和腾讯云运行证据在 Task 21 完成。
 - LLM 可用性、计费和第三方数据处理由用户选择的平台负责；MuseEcho 不把原始音频发送给
   LLM。

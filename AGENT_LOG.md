@@ -301,3 +301,10 @@
 - **最终产物与门禁：** `--pull=false` 产品 Dockerfile 构建中基础、pip/uv、apt/FFmpeg、venv 层全部 `CACHED`，只执行 `COPY src/`，无下载。app 为 `sha256:ab1afb4db2e601920944c88bc1b73718a97534de42564ce65e9191949bab34a5`，gateway 为 `sha256:c20e61e9558d16045f7aa839f1d29bbf940da7874b85db0a96f5acc3edbb4e63`；完整 raw app 181（169 HIGH/12 CRITICAL、67 CVE、fixed 0）、gateway 0，精确 audit exit 0，app VEX/gateway 门禁均 exit 0 且可见 0。
 - **验证与审查：** 与最终镜像 51/51 源文件 SHA-256 完全一致的锁定运行时完成 `573 passed`；post-review production smoke exit 0；聚焦 `58 passed, 1 skipped`，前端 `66 passed`、真实 Chrome E2E `4 passed`，Ruff/mypy、type/build、license/npm/Secret/container contracts 通过。第一轮审查提出 3 组 Important 后全部 RED→GREEN；第二轮 Critical/Important/Minor 均为 0，结论 `READY`。
 - **Git：** 安全实现提交 `f6ad8679af1f913f412fe5a29c9d6fbe9c8ea921`。未推送、未合并，且没有声称远端 GitHub Actions/GitLab CI 已运行。
+
+## 2026-08-11 — TASK 20 / 安全审查修复轮 5（进行中）
+
+- **范围收敛：** 保留符合标准且失败关闭的 PCM/IEEE-float WAVEFORMATEXTENSIBLE：`cbSize >= 22`、有界声明扩展、`0 < valid_bits <= container_bits`（包括 32-bit container 的 24 valid bits），以及精确 GUID/速率/通道/block-align/byte-rate 校验和两个媒体工具的相同 allowlist。
+- **MP3 边界：** 仅支持可由非零 bitrate index 计算帧大小的常规 MPEG Layer III。锁定 FFmpeg 5.1.9 拒绝了尝试的 free-format 真实流，所以移除未完成的 free-format 接受/fixture/正向集成实验，新增工具启动前的负向拒绝测试；不声明所有 MP3 子类型受支持。
+- **GitLab 证据顺序：** 同一不可变 app tar 现在要求 raw 无 suppression 扫描 → package/probe inventory → 精确 audit/OpenVEX → VEX gate；raw/audit artifacts 设为 `when: always`，且 contract tests 拒绝顺序、identity 或证据漂移。
+- **验证与状态：** cached-only final Docker build 的 base/uv/apt/FFmpeg/venv 层全为 CACHED，最终锁定 Linux 为 `583 passed`，production smoke、Ruff/mypy、前端 66 tests/type/build 通过；hash 已刷新。缓存 Trivy 0.70.0 镜像无数据库，`--offline-scan --skip-db-update` 首次运行明确拒绝下载，因此本轮没有 fresh raw→audit→VEX/gate 证据，Task 20 为 `BLOCKED` 而非 READY；远端 CI 未运行。

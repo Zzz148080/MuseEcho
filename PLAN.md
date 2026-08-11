@@ -666,7 +666,7 @@ Invoke-RestMethod http://localhost/api/health | Should -BeLike '*ready*'
 
 **最终命令：** `pwsh -File scripts/secret-scan.ps1; if ($LASTEXITCODE) { exit $LASTEXITCODE }; pwsh -File scripts/container-smoke.ps1`
 
-**并行：** 否。**依赖：** T19。**对应验收标准：** AC-E Secret audit 与 AC-F Docker、双 CI、README、许可证。**分支：** `feat/20-production-delivery`。**计划提交：** `build: package and verify production distribution`。**实际状态：** `70dde35` 为初始实现；审查修复轮 2/3 移除 suppression 并补齐生产合约。安全轮 4 提交 `f6ad867` 对上传 WAV/MP3 路径实施失败关闭的 format/protocol/decoder 限制，并用 schema-v2 精确 raw inventory、57 文件运行时清单、镜像内符号 probe 和 67 条逐 CVE OpenVEX 门禁解决唯一 blocker。最终产物 app `ab1afb4d...` 的 raw Trivy 仍完整保留 181 项（169 HIGH/12 CRITICAL，67 CVE，fixed 0），精确审计 exit 0、VEX 门禁可见 0；gateway raw 0。两轮审查最终 Critical/Important/Minor 均为 0，本地状态 `READY`；远端 CI 未运行，尚未合并。
+**并行：** 否。**依赖：** T19。**对应验收标准：** AC-E Secret audit 与 AC-F Docker、双 CI、README、许可证。**分支：** `feat/20-production-delivery`。**计划提交：** `build: package and verify production distribution`。**实际状态：** `70dde35` 为初始实现；审查修复轮 2/3 移除 suppression 并补齐生产合约。安全轮 4 提交 `f6ad867` 并引入 schema-v2 精确 181 tuple/67 CVE OpenVEX 门禁。轮 5 保留安全 PCM/IEEE-float WAVEFORMATEXTENSIBLE（`cbSize >= 22`、有界声明扩展、`0 < valid_bits <= container_bits`），但产品明确仅支持可计算帧大小的常规 MPEG Layer III；free-format bitrate index `0000` 因锁定 FFmpeg 5.1.9 端到端拒绝而在工具前失败关闭。GitLab 已改为同一不可变 app tar 的 raw 无 suppression 扫描 → package/probe inventory → 精确 audit/VEX → VEX gate，raw/audit 证据均 `when: always`。轮 5 的源码/CI finding 已由 RED→GREEN 和最终 Linux 583-test、smoke、静态/前端门禁覆盖；但本机缓存 Trivy 镜像没有数据库，离线 raw scan 明确拒绝下载，因此不能重跑要求的 181 tuple 精确 audit/VEX gate，也不能写本地 READY。远端 CI 未运行，尚未合并。
 
 ### 任务 21：腾讯云交付手册与真实部署
 

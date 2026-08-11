@@ -79,11 +79,10 @@ container-build:
     - docker build --target gateway --tag museecho-gateway:ci .
     - test "$(docker image inspect --format '{{.Config.User}}' museecho-app:ci)" = "10001:10001"
     - test "$(docker image inspect --format '{{.Config.User}}' museecho-gateway:ci)" = "10001:10001"
-    - docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges -i --entrypoint /app/.venv/bin/python museecho-app:ci - --generate-package-files - < scripts/image_vulnerability_audit.py > app.package-files.json
     - docker save museecho-app:ci > museecho-app.tar
     - docker save museecho-gateway:ci > museecho-gateway.tar
   artifacts:
-    paths: [museecho-app.tar, museecho-gateway.tar, app.package-files.json]
+    paths: [museecho-app.tar, museecho-gateway.tar]
     expire_in: 1 day
 
 secret-scan:
@@ -110,7 +109,30 @@ image-scan-raw:
     - trivy image --input museecho-app.tar --scanners vuln --format json --output app.raw.json --severity HIGH,CRITICAL
     - trivy image --input museecho-gateway.tar --scanners vuln --format json --output gateway.raw.json --severity HIGH,CRITICAL
   artifacts:
+    when: always
     paths: [app.raw.json, gateway.raw.json]
+    expire_in: 1 day
+
+image-package-inventory:
+  image: docker:29-cli
+  stage: image-audit
+  services:
+    - name: docker:29-dind
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  needs:
+    - job: container-build
+      artifacts: true
+    - job: image-scan-raw
+      artifacts: true
+  script:
+    - docker load < museecho-app.tar
+    - docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges -i --entrypoint /app/.venv/bin/python museecho-app:ci - --generate-package-files - < scripts/image_vulnerability_audit.py > app.package-files.json
+  artifacts:
+    when: always
+    paths: [app.package-files.json]
     expire_in: 1 day
 
 image-vex-audit:
@@ -121,9 +143,12 @@ image-vex-audit:
       artifacts: true
     - job: image-scan-raw
       artifacts: true
+    - job: image-package-inventory
+      artifacts: true
   script:
     - python scripts/image_vulnerability_audit.py --scan app.raw.json --package-files app.package-files.json --policy scripts/image-vulnerability-policy.json --vex-output app.openvex.json --inventory-output app.inventory.json
   artifacts:
+    when: always
     paths: [app.openvex.json, app.inventory.json]
     expire_in: 1 day
 
