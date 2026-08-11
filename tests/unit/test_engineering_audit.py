@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -63,6 +64,10 @@ def test_engineering_audit_has_no_open_critical_or_high(
 
 def _audit_text() -> str:
     return AUDIT_PATH.read_text(encoding="utf-8")
+
+
+def _audit_text_with_formal_build_blocker() -> str:
+    return _audit_text()
 
 
 def _write_audit(tmp_path: Path, text: str) -> Path:
@@ -457,6 +462,7 @@ def test_checker_cli_accepts_the_committed_engineering_audit() -> None:
             sys.executable,
             str(ROOT / "scripts" / "check_engineering_audit.py"),
             str(AUDIT_PATH),
+            "--schema-only",
         ],
         cwd=ROOT,
         capture_output=True,
@@ -467,6 +473,191 @@ def test_checker_cli_accepts_the_committed_engineering_audit() -> None:
 
     assert completed.returncode == 0, completed.stderr
     assert "engineering findings validated" in completed.stdout
+    assert "schema only; retained materials NOT validated" in completed.stdout
+
+
+def test_completion_cli_rejects_missing_retained_security_materials(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("MUSEECHO_TASK23_EVIDENCE_DIR", str(tmp_path / "missing-evidence"))
+    monkeypatch.setenv("MUSEECHO_TASK20_TRIVY_DB_DIR", str(tmp_path / "missing-db"))
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "check_engineering_audit.py"),
+            str(AUDIT_PATH),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=30,
+    )
+
+    assert completed.returncode != 0
+    assert "retained security material" in completed.stderr
+
+
+def test_completion_material_validation_rejects_present_but_forged_files(
+    tmp_path: Path,
+) -> None:
+    materials = tmp_path / "evidence"
+    database = tmp_path / "db"
+    materials.mkdir()
+    database.mkdir()
+    for filename in checker.SECURITY_MATERIAL_FILENAMES:
+        (materials / filename).write_bytes(f"forged:{filename}".encode())
+    (database / "trivy.db").write_bytes(b"forged-db")
+    (database / "metadata.json").write_text(
+        '{"UpdatedAt":"2026-08-09T12:54:52.355618652Z"}', encoding="utf-8"
+    )
+
+    with pytest.raises(AuditValidationError, match="retained security material digest mismatch"):
+        checker.validate_security_materials(
+            materials_dir=materials,
+            trivy_db_dir=database,
+        )
+
+
+@pytest.mark.parametrize(
+    "missing_name",
+    (*checker.SECURITY_MATERIAL_FILENAMES, "trivy.db", "metadata.json"),
+)
+def test_completion_material_validation_rejects_each_missing_input(
+    tmp_path: Path, missing_name: str
+) -> None:
+    materials = tmp_path / "evidence"
+    database = tmp_path / "db"
+    materials.mkdir()
+    database.mkdir()
+    for filename in checker.SECURITY_MATERIAL_FILENAMES:
+        if filename != missing_name:
+            (materials / filename).write_bytes(b"present")
+    for filename in ("trivy.db", "metadata.json"):
+        if filename != missing_name:
+            (database / filename).write_bytes(b"present")
+
+    with pytest.raises(AuditValidationError, match=re.escape(missing_name)):
+        checker.validate_security_materials(
+            materials_dir=materials,
+            trivy_db_dir=database,
+        )
+
+
+def test_scan_summary_counts_occurrences_severity_and_distinct_cves() -> None:
+    scan = {
+        "Results": [
+            {
+                "Vulnerabilities": [
+                    {"VulnerabilityID": "CVE-1", "Severity": "HIGH"},
+                    {"VulnerabilityID": "CVE-1", "Severity": "CRITICAL"},
+                    {"VulnerabilityID": "CVE-2", "Severity": "HIGH"},
+                ]
+            },
+            {"Vulnerabilities": None},
+        ]
+    }
+
+    assert checker._scan_summary(scan) == {
+        "occurrences": 3,
+        "high_occurrences": 2,
+        "critical_occurrences": 1,
+        "distinct_cves": 2,
+    }
+
+
+def test_scan_summary_rejects_malformed_vulnerability_inventory() -> None:
+    with pytest.raises(AuditValidationError, match="raw scan Results must be an array"):
+        checker._scan_summary({"Results": None})
+
+    with pytest.raises(AuditValidationError, match="Vulnerabilities must be an array or null"):
+        checker._scan_summary({"Results": [{"Vulnerabilities": {}}]})
+
+
+def test_canonical_finding_digest_is_order_stable_and_content_sensitive() -> None:
+    first = {"cve": "CVE-1", "package": "alpha", "severity": "HIGH"}
+    second = {"cve": "CVE-2", "package": "beta", "severity": "CRITICAL"}
+
+    observed = checker._canonical_finding_digest([second, first])
+
+    assert observed == checker._canonical_finding_digest([first, second])
+    assert observed != checker._canonical_finding_digest([first, {**second, "severity": "HIGH"}])
+
+
+def test_trivy_metadata_and_local_image_identity_are_fail_closed() -> None:
+    expected = checker.SECURITY_MANIFEST_CONTRACT
+    image_ids = {
+        "museecho-app:task23-review1": expected["app"]["daemon_image_id"],
+        "museecho-gateway:local": expected["gateway"]["daemon_image_id"],
+        "museecho-app:task20-final": expected["boundary"]["task20_base_daemon_image_id"],
+        "aquasec/trivy:0.70.0": expected["trivy"]["image_digest"],
+    }
+
+    checker._validate_trivy_metadata({"UpdatedAt": expected["trivy"]["db_updated_at"]}, expected)
+    checker._validate_local_image_identities(image_ids.__getitem__, expected)
+
+    with pytest.raises(AuditValidationError, match="Trivy DB metadata UpdatedAt mismatch"):
+        checker._validate_trivy_metadata({"UpdatedAt": "2000-01-01T00:00:00Z"}, expected)
+    with pytest.raises(AuditValidationError, match="local image identity mismatch"):
+        checker._validate_local_image_identities(lambda _tag: "sha256:" + "0" * 64, expected)
+
+
+def test_completion_cli_accepts_the_actual_retained_materials_when_available() -> None:
+    materials = ROOT / "tmp" / "task23-engineering"
+    database = ROOT.parent / "feat-20-production-delivery" / "tmp" / "trivy-cache" / "db"
+    if not materials.is_dir() or not database.is_dir():
+        pytest.skip("Task 23 retained completion materials are not present in this checkout")
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "check_engineering_audit.py"),
+            str(AUDIT_PATH),
+            "--materials-dir",
+            str(materials),
+            "--trivy-db-dir",
+            str(database),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=180,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "completion materials validated" in completed.stdout
+    assert "10" in completed.stdout
+
+
+def test_formal_dockerfile_offline_build_blocker_is_a_fixed_audit_contract(
+    tmp_path: Path,
+) -> None:
+    audit = load_audit(_write_audit(tmp_path, _audit_text_with_formal_build_blocker()))
+
+    validate_audit(audit, repo_root=ROOT, now=NOW)
+
+
+def test_formal_dockerfile_offline_build_blocker_cannot_be_deleted(tmp_path: Path) -> None:
+    mutation = _remove_table_row(
+        _audit_text_with_formal_build_blocker(), FINDING_HEADING, "ENG-010"
+    )
+
+    assert "missing findings: ENG-010" in _validation_error(tmp_path, mutation)
+
+
+@pytest.mark.parametrize(("column", "value"), (("Severity", "Low"), ("Status", "FIXED")))
+def test_formal_dockerfile_offline_build_blocker_cannot_be_downgraded_or_fake_fixed(
+    tmp_path: Path, column: str, value: str
+) -> None:
+    mutation = _replace_table_cell(
+        _audit_text_with_formal_build_blocker(), FINDING_HEADING, "ENG-010", column, value
+    )
+
+    assert "ENG-010 does not match its fixed finding contract" in _validation_error(
+        tmp_path, mutation
+    )
 
 
 def test_checker_cli_help_is_runnable_outside_the_repository(tmp_path: Path) -> None:

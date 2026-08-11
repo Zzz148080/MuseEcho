@@ -1,8 +1,8 @@
 # MuseEcho V1 Engineering Audit
 
-- **Generated at UTC:** `2026-08-11T13:57:43Z`
+- **Generated at UTC:** `2026-08-11T17:11:57Z`
 - **Scope:** Task 23 engineering risks at base `2b612947e5b06ee060e9341409e8056bf1129cc0`, including current working-source fixes and retained Task 20 security artifacts.
-- **Method:** Findings were recorded only after reproduction. Fixed findings retain both failing and passing evidence. Current commands ran without dependency downloads; external, public, remote-CI, and unavailable-tool evidence remains explicitly not run.
+- **Method:** Findings were recorded only after reproduction. Fixed findings retain both failing and passing evidence. The default completion checker reads and recomputes the retained raw/package/VEX/inventory/tar/release/DB/image materials; `--schema-only` is explicitly non-completion. Current commands ran without dependency downloads; external, public, remote-CI, and unavailable-tool evidence remains explicitly not run.
 - **Security boundary:** The formal Dockerfile rebuild failed closed under `--network none` because its BuildKit dependency layers were unavailable. Security evidence therefore uses a declared, non-release audit image derived from the exact Task 20 app runtime with stale egg metadata removed and current `src/` overlaid. The compact tracked manifest binds the retained Trivy DB, exact tars/config IDs, raw tuple digest, policy, inventory, VEX, and gate exits.
 
 ## Domain coverage
@@ -63,6 +63,8 @@
 | E032 | CURRENT_COMMAND | .venv/Scripts/python.exe scripts/license_audit.py; parse pyproject.toml package-lock.json frontend/package-lock.json offline | scripts/license_audit.py | License policy passed; Python 14 dependencies, root 8 lock packages, and frontend 218 lock packages parsed without network | 2026-08-11T13:52:20Z | 0 |
 | E033 | RED_COMMAND | .venv/Scripts/python.exe -m pytest tests/unit/test_task20_final_delivery_contract.py::test_docker_context_excludes_generated_python_package_metadata -q | tests/unit/test_task20_final_delivery_contract.py | 1 failed because .dockerignore did not exclude gitignored egg-info metadata | 2026-08-11T11:39:00Z | 1 |
 | E034 | CURRENT_COMMAND | .venv/Scripts/python.exe -m pytest tests/unit/test_task20_final_delivery_contract.py::test_docker_context_excludes_generated_python_package_metadata tests/unit/test_image_vulnerability_audit.py::test_committed_policy_matches_clean_runtime_boundary_without_generated_metadata tests/unit/test_image_vulnerability_audit.py::test_audit_rejects_schema_probe_or_complete_runtime_boundary_drift -q | tests/unit/test_image_vulnerability_audit.py | Clean Docker context contract passed and 6 policy/runtime drift mutations passed; derived image contains no egg-info | 2026-08-11T11:45:10Z | 0 |
+| E035 | RED_COMMAND | docker build --pull=false --network none --tag museecho-app:task23-formal-offline . | Dockerfile | Formal current-source Dockerfile build exited 1 because locked pip and apt BuildKit layers were unavailable with network disabled | 2026-08-11T11:40:10Z | 1 |
+| E036 | EXTERNAL_NOT_RUN | NOT RUN: formal current-source Dockerfile build requires the complete locked BuildKit pip and apt cache under network none | Dockerfile | Controlled current-source derivative is audit-only and is not a release artifact | 2026-08-11T11:40:11Z | NOT_RUN |
 
 ## Review round 1 RED/GREEN record
 
@@ -102,12 +104,13 @@
 | ENG-007 | reproducible-build-ci-release-identity | Medium | BLOCKED | Local CI definitions and contracts cannot establish a remote GitHub Actions or GitLab pipeline result for Task 23. | E027 | Repository owner | EXTERNAL: run both remote pipelines on the committed Task 23 hash with retained logs and artifacts. | Review when authorized remote runners are available for the exact final commit. |
 | ENG-008 | operations-recovery | Medium | BLOCKED | Target-cloud, public TLS, cross-network, 24-hour observation, backup/restore, and live rollback evidence requires external infrastructure authorization. | E028 | Deployment owner | EXTERNAL: execute the documented deployment and recovery gates on the authorized target without fabricating local substitutes. | Review when Tencent Cloud, DNS, SSH, public test, and rollback authority are supplied. |
 | ENG-009 | reproducible-build-ci-release-identity | High | FIXED | The Docker context could copy gitignored museecho.egg-info files, and the Task 20 policy/image were bound to six such dirty-worktree artifacts absent from a clean checkout. | E033, E034, E022 | Task 23 engineering | FIXED: exclude all egg-info directories, remove stale metadata from the controlled audit layer, and bind policy to the complete clean current runtime manifest without changing CVE statements. | Reopen if a clean-context probe finds egg-info, the policy differs from the full runtime manifest, or source changes introduce decoder, FFmpeg, dynamic SQL, subprocess, or external execution paths without CVE rereview. |
+| ENG-010 | reproducible-build-ci-release-identity | Medium | BLOCKED | The formal current-source Dockerfile cannot be rebuilt with the retained offline BuildKit cache, so the controlled current-source derivative is audit-only and cannot prove a release artifact. | E035, E036 | Build environment owner | EXTERNAL: restore the complete locked pip and apt BuildKit cache, then rebuild the formal Dockerfile with network disabled; never promote the derivative. | Review when the formal Dockerfile build returns zero offline and the resulting release identity and security chain pass. |
 
 ## Disposition summary
 
 - Critical: 0.
 - High: 4 FIXED, 0 OPEN, 0 ACCEPTED, 0 BLOCKED.
-- Medium: 2 FIXED, 0 OPEN, 0 ACCEPTED, 3 BLOCKED.
+- Medium: 2 FIXED, 0 OPEN, 0 ACCEPTED, 4 BLOCKED.
 - Low: 0.
 
-The three Medium blockers are evidence/environment gaps, not product Critical/High defects. The formal Dockerfile could not be freshly rebuilt without dependency caches; the current-source security artifact is explicitly non-release and must not be promoted. No vulnerability was removed, downgraded, or hidden: the raw app tuple remains 181 occurrences / 67 CVEs and only the unchanged per-CVE reviewed OpenVEX statements reduce the gate to zero.
+The four Medium blockers are evidence/environment gaps, not product Critical/High defects. The formal Dockerfile build boundary is now an explicit finding rather than prose-only context: it could not be freshly rebuilt without the complete locked cache, and the current-source security artifact is explicitly non-release and must not be promoted. No vulnerability was removed, downgraded, or hidden: the raw app tuple remains 181 occurrences / 67 CVEs and only the unchanged per-CVE reviewed OpenVEX statements reduce the gate to zero.

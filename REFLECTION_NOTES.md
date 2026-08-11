@@ -40,3 +40,4 @@
 - 大型安全证据不必全量进入 Git，但 compact manifest 必须是确定性的、由 checker 固定并包含足够交叉字段。单独的“文件存在”或 Markdown 中的“0 findings”仍不构成验证。
 - 宿主缺 ffmpeg 导致 benchmark 失败时，应在实际锁定 Linux 镜像中复验；本轮同一五分钟测试在镜像内 51.24 秒通过。相同原则适用于缺 `pwsh`、`uv`、`@types/node` 或 Playwright cache：记录精确环境限制，不下载修环境，也不把历史成功伪装成本轮执行。
 - 复审还说明“证据内部自洽”并不等于证据独立。FIXED finding 必须绑定它自己的 RED/GREEN 命令、路径、结果和覆盖；no-build 必须绑定信任身份并检查实际运行容器；历史 frontend build 也不能在本轮未执行时继续支持 PASS。
+- Task 23 第二轮复审进一步证明 compact manifest 自身固定仍不足以构成 completion：默认 checker 必须实际读取并复算 retained raw/package/VEX/inventory/tar/release/DB/image；无材料的便携校验只能显式称为 `--schema-only`。正式离线 Dockerfile 构建失败也必须成为独立 BLOCKED finding，而不能只藏在报告 concern 中。

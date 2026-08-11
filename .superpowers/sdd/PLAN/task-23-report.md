@@ -11,14 +11,14 @@
 | Medium | 0 | 2 | 0 | 3 |
 | Low | 0 | 0 | 0 | 0 |
 
-三个 Medium blocker 分别是当前浏览器/前端完整链、远程 GitHub/GitLab CI、目标云与公网/恢复证据。宿主还缺少 brief 最终 wrapper 所需的 `pwsh` 和 `uv`。这些边界没有被伪装为成功，因此状态不是无条件 `DONE`。
+四个 Medium blocker 分别是当前浏览器/前端完整链、远程 GitHub/GitLab CI、目标云与公网/恢复证据、正式 current-source Dockerfile 的离线可重建性。宿主还缺少 brief 最终 wrapper 所需的 `pwsh` 和 `uv`。这些边界没有被伪装为成功，因此状态不是无条件 `DONE`。
 
 计划主提交为 `audit: close engineering risks`，实际主提交：`31b2351fcf308b4aeb3ce8b1931afafe3350522d`。未 push、未执行远程写操作、未代写学生 `REFLECTION.md`。
 
 ## 审计合约
 
 - 人可读记录位于 `docs/audits/ENGINEERING_AUDIT.md`；checker 为纯标准库 `scripts/check_engineering_audit.py`。
-- 固定 15 个工程域、9 个真实 finding 和 34 个 evidence ID。每个 finding 均固定 ID、domain、severity、status、description、evidence、owner、disposition 与 verification/reopen condition。
+- 固定 15 个工程域、10 个真实 finding 和 36 个 evidence ID。每个 finding 均固定 ID、domain、severity、status、description、evidence、owner、disposition 与 verification/reopen condition。
 - checker 拒绝缺失/重复域、finding 和 evidence，非法 schema/status/severity，未来时间，FIXED 无 RED+GREEN，空泛 ACCEPTED/BLOCKED，OPEN Critical/High，finding 删除或 severity 降级，文件存在冒充验证，同一证据换 ID，以及改写为无意义成功的 scan/audit/release 命令。
 - 镜像安全证据不只信任 Markdown。Checker 解析 `docs/audits/evidence/task23-security-manifest.json`，固定其 normalized SHA-256，并交叉当前 vulnerability policy 与完整 runtime boundary digest。
 - 完整 1.8MB Trivy raw、366MB tar 和 1.2GB DB 不纳入 Git；本轮原始材料保留在 ignored Task 23 证据目录及 Task 20 worktree cache。提交的 2.6KB deterministic compact manifest 固定工具/DB/image/config/tar/raw/inventory/VEX/tuple/policy/runtime digest、计数、exit 与 UTC。
@@ -210,7 +210,7 @@ egg-info and overlaid current `src/`; it is not a formal Dockerfile release.
 | runtime/policy | `26828f41334ab92e09d597e708676b29af1e1792b740bb302af5c9075dffd7dc` / `1e42cb86c1d7aed4ea21142654d0ebcfde41b3e7544238ed7c90b4c231502d1c` |
 | release manifest | `2f87b61de7d79301b5a6870d4c870383ae04f1ec5aec5bf4086259708a681705` |
 | gateway raw | `64513e95a8ac9e5b9bcdf9a274a5e3108f08dbb6dbdb2ad97601c8eed7bbfd7d` |
-| compact manifest | 2605 bytes; normalized SHA-256 `5ad3e832ed439d9d7b6486b5a3d98dc43b7bb80e487ea3c7884c8d3659eb795b` |
+| compact manifest | canonical finding tuple SHA-256 `4ab629f0f3b74d2357fcf19d195831c37adbee645d881e9a3fb4605224de35ba`; normalized manifest SHA-256 `ac75e92cf00bb04d13bcd8097b166ec7558088960afda9f0aa239d2c0ebfc0b6` |
 
 Trivy `0.70.0`, image digest
 `sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e`,
@@ -284,3 +284,43 @@ process updates are committed as
 `07cf82687df5fa4adba9448c1fbaf1a81871a29e` —
 `fix: harden engineering audit evidence`. This exact hash is backfilled by a
 documentation-only follow-up commit; neither commit was pushed.
+
+## Review fix round 2/5
+
+The rereview confirmed that the retained materials were internally valid but
+that the completion CLI did not read them. The behavioral RED pointed both
+material-directory environment variables at empty directories; the old CLI
+still returned zero and claimed nine findings validated. The default CLI now
+fails closed unless every retained app/gateway raw, package, inventory, VEX,
+tar, release manifest, Trivy DB/metadata, and required local image is present
+and exact. Only explicit `--schema-only` is portable and its output states that
+retained materials were not validated.
+
+Strict completion recomputes app raw counts (`181`, `169 High`, `12 Critical`,
+`67` CVEs), the exact policy/package audit, inventory, 67-statement OpenVEX,
+canonical finding tuple, app/gateway tar/config/scan release identity, Trivy DB
+timestamp/hash, current source boundary, and four local daemon image IDs. Each
+required input has a deletion mutation; malformed scan inventories, count,
+tuple, DB timestamp, local image identity, manifest fields and current-source
+drift fail closed. Focused verification passed 89 checker tests and the actual
+strict CLI returned exit 0 with `10` findings.
+
+The formal current-source Dockerfile build failure is now `ENG-010 Medium
+BLOCKED` rather than prose-only context. Evidence E035 records the offline build
+exit 1; E036 states the external cache precondition and prohibits promoting the
+controlled derivative. Current disposition is 4 High FIXED, 2 Medium FIXED, 4
+Medium BLOCKED, and 0 OPEN.
+
+Fresh round-2 verification completed at `2026-08-11T17:11:57Z`: locked Linux
+returned `748 passed, 1 skipped in 358.26s` (the skip is the deliberately
+portable integration when the sibling retained DB is absent); the host strict
+completion path validated the real retained materials and all four local image
+IDs. Ruff format/check, `mypy src` for 46 source files, Functional `28/12/0`,
+Engineering 10-findings completion, Secret synthetic and the 210-file real
+scan all returned zero. Container-pytest and task-local temp cleanup were empty.
+
+After the user explicitly requested GitHub publication, the authenticated
+`Zzz148080/MuseEcho` remote received the already-reviewed Task 20, Task 21 and
+Task 22 branches without force-push. Task 23 remains local until this fix round
+passes independent rereview; no cloud deployment or other external system was
+modified.

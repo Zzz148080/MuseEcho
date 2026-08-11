@@ -351,3 +351,9 @@
 - **Full-suite checkpoint:** The first review run was 721 passed / 6 expected stale-audit failures. After audit repair, the next run was 727 passed / 1 stale cross-document statistics failure; final green evidence is recorded only after that contract and every process document agree.
 - **Review closure:** Final locked Linux was `728 passed in 342.25s`; final focused review was 139 passed; trusted no-build, static/type, Secret/license, lifecycle/shell contracts, Functional `28/12/0`, and Engineering 9-finding checker all passed. The exact wrapper remained exit 1 because host `pwsh` and `uv` are absent; no dependency/tool download was used to hide the boundary.
 - **Review commit:** `07cf82687df5fa4adba9448c1fbaf1a81871a29e` (`fix: harden engineering audit evidence`); hash backfill is documentation-only. No push or external write was performed.
+
+## 2026-08-12 — TASK 23 / review fix round 2
+
+- **RED→GREEN:** 默认 Engineering completion CLI 指向空 evidence/DB 目录时旧实现仍 exit 0；修复后缺任一 retained material、摘要/JSON/scan 结构、计数/tuple、DB 时间、本地镜像、release identity、policy/runtime/VEX/inventory 漂移均失败关闭。完整 checker 文件为 89 passed，实际 retained-material strict CLI exit 0。
+- **审计真值：** 新增 `ENG-010 Medium BLOCKED` 记录正式 current-source Dockerfile 在离线 BuildKit cache 不完整时真实 exit 1，并明确 derivative 不可发布。当前共 10 findings：4 High FIXED、2 Medium FIXED、4 Medium BLOCKED、0 OPEN；Functional Audit 保持 28/12/0。
+- **远端发布：** 用户明确要求发布 Task 20 起的本地分支；已在认证的 `Zzz148080/MuseEcho` 上无强推创建 `feat/20-production-delivery`、`ops/21-tencent-delivery`、`audit/22-functional`。Task 23/24 仅在各自最终复审通过后发布。

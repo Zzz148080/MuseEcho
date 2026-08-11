@@ -11,6 +11,7 @@
 - `TASK24-AUDIT`：Engineering Audit 已完成；Product Audit 与最终交付验证尚未开始；
 - `STUDENT-MANUAL`：学生最终亲自验收和 `REFLECTION.md` 正文仍保留为人工待办。
 - `CURRENT-BROWSER-E2E`：Task 19 的浏览器证据与当前 108-file source/test boundary 不同；Task 23 no-build HTTPS 已可由宿主访问且 Chrome 存在，但保留的锁定 root Playwright 缓存目标已消失，在禁止下载下当前真实浏览器套件仍未运行。
+- `FORMAL-OFFLINE-BUILD`：正式 current-source Dockerfile 在 `--network none` 下缺少完整锁定 pip/apt BuildKit cache，真实构建 exit 1；当前受控 derivative 仅供审计，禁止作为发布镜像。恢复完整缓存后必须重新构建并重跑 release identity 与安全链。
 
 以下是尚未到达执行时点的外部 gate，不在本阶段虚假标记为 Blocker：
 

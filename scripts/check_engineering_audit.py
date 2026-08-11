@@ -6,16 +6,22 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
+import subprocess
 import sys
+from contextlib import chdir
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, Callable
 
 if __package__:
-    from scripts.image_vulnerability_audit import build_runtime_boundary_manifest
+    from scripts.image_vulnerability_audit import audit_image, build_runtime_boundary_manifest
+    from scripts.verify_release_identity import audit_release_identity, image_id_from_tar
 else:
-    from image_vulnerability_audit import build_runtime_boundary_manifest
+    from image_vulnerability_audit import audit_image, build_runtime_boundary_manifest
+    from verify_release_identity import audit_release_identity, image_id_from_tar
 
 EXPECTED_DOMAINS = (
     "architecture-boundaries",
@@ -52,10 +58,33 @@ FINDING_CONTRACTS = {
     "ENG-007": ("reproducible-build-ci-release-identity", "Medium", "BLOCKED"),
     "ENG-008": ("operations-recovery", "Medium", "BLOCKED"),
     "ENG-009": ("reproducible-build-ci-release-identity", "High", "FIXED"),
+    "ENG-010": ("reproducible-build-ci-release-identity", "Medium", "BLOCKED"),
 }
 
 SECURITY_MANIFEST_PATH = "docs/audits/evidence/task23-security-manifest.json"
-SECURITY_MANIFEST_SHA256 = "5ad3e832ed439d9d7b6486b5a3d98dc43b7bb80e487ea3c7884c8d3659eb795b"
+SECURITY_MANIFEST_SHA256 = "ac75e92cf00bb04d13bcd8097b166ec7558088960afda9f0aa239d2c0ebfc0b6"
+
+SECURITY_MATERIAL_FILENAMES = (
+    "app-raw-review1.json",
+    "app-package-files-review1.json",
+    "app-inventory-review1.json",
+    "app-openvex-review1.json",
+    "museecho-app-task23-review1.tar",
+    "gateway-raw-review1.json",
+    "museecho-gateway-task20.tar",
+    "release-images-review1.json",
+)
+
+SECURITY_MATERIAL_DIGEST_PATHS = {
+    "app-raw-review1.json": ("app", "raw_sha256"),
+    "app-package-files-review1.json": ("app", "package_files_sha256"),
+    "app-inventory-review1.json": ("app", "inventory_sha256"),
+    "app-openvex-review1.json": ("app", "vex_sha256"),
+    "museecho-app-task23-review1.tar": ("app", "tar_sha256"),
+    "gateway-raw-review1.json": ("gateway", "raw_sha256"),
+    "museecho-gateway-task20.tar": ("gateway", "tar_sha256"),
+    "release-images-review1.json": ("release_identity_sha256",),
+}
 
 FIXED_FINDING_EVIDENCE_IDS = {
     "ENG-001": ("E002", "E003"),
@@ -64,6 +93,7 @@ FIXED_FINDING_EVIDENCE_IDS = {
     "ENG-004": ("E008", "E009", "E019"),
     "ENG-005": ("E010", "E011"),
     "ENG-009": ("E033", "E034", "E022"),
+    "ENG-010": ("E035", "E036"),
 }
 
 SECURITY_DOMAIN_EVIDENCE_IDS = ("E020", "E021", "E022", "E023", "E024", "E025")
@@ -252,6 +282,20 @@ FIXED_EVIDENCE_CONTRACTS = {
         "Clean Docker context contract passed and 6 policy/runtime drift mutations passed; "
         "derived image contains no egg-info",
     ),
+    "E035": (
+        "RED_COMMAND",
+        "docker build --pull=false --network none --tag museecho-app:task23-formal-offline .",
+        "Dockerfile",
+        "Formal current-source Dockerfile build exited 1 because locked pip and apt "
+        "BuildKit layers were unavailable with network disabled",
+    ),
+    "E036": (
+        "EXTERNAL_NOT_RUN",
+        "NOT RUN: formal current-source Dockerfile build requires the complete locked "
+        "BuildKit pip and apt cache under network none",
+        "Dockerfile",
+        "Controlled current-source derivative is audit-only and is not a release artifact",
+    ),
 }
 
 SECURITY_MANIFEST_CONTRACT = {
@@ -273,7 +317,7 @@ SECURITY_MANIFEST_CONTRACT = {
         ),
         "raw_sha256": "0be1e5851afeb8e28ab625e8668b1ca838bb01601ca25104c2668e044ae64595",
         "tar_sha256": "c50ce705594810b21852ff2358c75d221e6ebc97de3396ff4f3408017792a147",
-        "tuple_sha256": "d4c768da22473cc886ed76eb40ed74c66379a2c267356b8d14925658c7ec9fe9",
+        "tuple_sha256": "4ab629f0f3b74d2357fcf19d195831c37adbee645d881e9a3fb4605224de35ba",
         "vex_gate_exit": 0,
         "vex_sha256": "76b539cb0b71dbb6339150f322eaf049207d862d66a209fdb97bf64245c7afaa",
     },
@@ -550,7 +594,7 @@ def validate_audit(
     if duplicate_evidence:
         errors.append(f"duplicate evidence ids: {', '.join(duplicate_evidence)}")
 
-    expected_evidence_ids = {f"E{index:03d}" for index in range(1, 35)}
+    expected_evidence_ids = {f"E{index:03d}" for index in range(1, 37)}
     missing_evidence = sorted(expected_evidence_ids - set(evidence_ids))
     extra_evidence = sorted(set(evidence_ids) - expected_evidence_ids)
     if missing_evidence:
@@ -800,13 +844,254 @@ def _validate_security_manifest(repo_root: Path, errors: list[str]) -> None:
         errors.append("security manifest runtime boundary does not match current source")
 
 
+def _default_trivy_db_dir(repo_root: Path) -> Path:
+    return repo_root.parent / "feat-20-production-delivery" / "tmp" / "trivy-cache" / "db"
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _read_json_object(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise AuditValidationError(f"retained security JSON is invalid: {path}") from error
+    if not isinstance(value, dict):
+        raise AuditValidationError(f"retained security JSON must be an object: {path}")
+    return value
+
+
+def _scan_summary(scan: dict[str, Any]) -> dict[str, int]:
+    results = scan.get("Results")
+    if not isinstance(results, list):
+        raise AuditValidationError("raw scan Results must be an array")
+    occurrences = 0
+    severities = {"HIGH": 0, "CRITICAL": 0}
+    cves: set[str] = set()
+    for result in results:
+        if not isinstance(result, dict):
+            raise AuditValidationError("raw scan result must be an object")
+        vulnerabilities = result.get("Vulnerabilities")
+        if vulnerabilities is None:
+            continue
+        if not isinstance(vulnerabilities, list):
+            raise AuditValidationError("raw scan Vulnerabilities must be an array or null")
+        for vulnerability in vulnerabilities:
+            if not isinstance(vulnerability, dict):
+                raise AuditValidationError("raw scan vulnerability must be an object")
+            cve = vulnerability.get("VulnerabilityID")
+            severity = vulnerability.get("Severity")
+            if not isinstance(cve, str) or not cve:
+                raise AuditValidationError("raw scan vulnerability has no CVE id")
+            if severity not in severities:
+                raise AuditValidationError(
+                    f"raw scan vulnerability has unexpected severity: {severity!r}"
+                )
+            occurrences += 1
+            severities[severity] += 1
+            cves.add(cve)
+    return {
+        "occurrences": occurrences,
+        "high_occurrences": severities["HIGH"],
+        "critical_occurrences": severities["CRITICAL"],
+        "distinct_cves": len(cves),
+    }
+
+
+def _canonical_finding_digest(findings: list[dict[str, Any]]) -> str:
+    normalized = sorted(
+        findings,
+        key=lambda item: json.dumps(
+            item, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ),
+    )
+    payload = json.dumps(
+        normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _validate_trivy_metadata(metadata: dict[str, Any], contract: dict[str, Any]) -> None:
+    if metadata.get("UpdatedAt") != contract["trivy"]["db_updated_at"]:
+        raise AuditValidationError("Trivy DB metadata UpdatedAt mismatch")
+
+
+def _docker_image_id(tag: str) -> str:
+    try:
+        completed = subprocess.run(
+            ["docker", "image", "inspect", "--format={{.Id}}", tag],
+            capture_output=True,
+            check=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise AuditValidationError(f"local image identity unavailable: {tag}") from error
+    image_id = completed.stdout.strip()
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", image_id):
+        raise AuditValidationError(f"local image identity is invalid: {tag}")
+    return image_id
+
+
+def _validate_local_image_identities(
+    image_id_reader: Callable[[str], str], contract: dict[str, Any]
+) -> None:
+    expected = {
+        "museecho-app:task23-review1": contract["app"]["daemon_image_id"],
+        "museecho-gateway:local": contract["gateway"]["daemon_image_id"],
+        "museecho-app:task20-final": contract["boundary"]["task20_base_daemon_image_id"],
+        "aquasec/trivy:0.70.0": contract["trivy"]["image_digest"],
+    }
+    mismatches = [
+        tag for tag, expected_id in expected.items() if image_id_reader(tag) != expected_id
+    ]
+    if mismatches:
+        raise AuditValidationError("local image identity mismatch: " + ", ".join(mismatches))
+
+
+def _json_output_digest(value: dict[str, Any]) -> str:
+    payload = (json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode(
+        "utf-8"
+    )
+    return hashlib.sha256(payload).hexdigest()
+
+
+def validate_security_materials(
+    *,
+    materials_dir: Path,
+    trivy_db_dir: Path,
+    repo_root: Path | None = None,
+    image_id_reader: Callable[[str], str] = _docker_image_id,
+) -> None:
+    selected_repo_root = repo_root or Path(__file__).resolve().parents[1]
+    required = [materials_dir / name for name in SECURITY_MATERIAL_FILENAMES]
+    required.extend((trivy_db_dir / "trivy.db", trivy_db_dir / "metadata.json"))
+    missing = [str(path) for path in required if not path.is_file()]
+    if missing:
+        raise AuditValidationError("retained security material is missing: " + ", ".join(missing))
+    mismatches: list[str] = []
+    for filename, field_path in SECURITY_MATERIAL_DIGEST_PATHS.items():
+        expected: object = SECURITY_MANIFEST_CONTRACT
+        for field in field_path:
+            assert isinstance(expected, dict)
+            expected = expected[field]
+        observed = _sha256_file(materials_dir / filename)
+        if observed != expected:
+            mismatches.append(filename)
+    if _sha256_file(trivy_db_dir / "trivy.db") != SECURITY_MANIFEST_CONTRACT["trivy"]["db_sha256"]:
+        mismatches.append("trivy.db")
+    if mismatches:
+        raise AuditValidationError(
+            "retained security material digest mismatch: " + ", ".join(mismatches)
+        )
+
+    metadata = _read_json_object(trivy_db_dir / "metadata.json")
+    _validate_trivy_metadata(metadata, SECURITY_MANIFEST_CONTRACT)
+
+    app_scan = _read_json_object(materials_dir / "app-raw-review1.json")
+    gateway_scan = _read_json_object(materials_dir / "gateway-raw-review1.json")
+    app_package_files = _read_json_object(materials_dir / "app-package-files-review1.json")
+    retained_inventory = _read_json_object(materials_dir / "app-inventory-review1.json")
+    retained_vex = _read_json_object(materials_dir / "app-openvex-review1.json")
+    release_identity = _read_json_object(materials_dir / "release-images-review1.json")
+    policy = _read_json_object(selected_repo_root / "scripts/image-vulnerability-policy.json")
+
+    app_summary = _scan_summary(app_scan)
+    expected_app_summary = {
+        key: SECURITY_MANIFEST_CONTRACT["app"][key]
+        for key in (
+            "occurrences",
+            "high_occurrences",
+            "critical_occurrences",
+            "distinct_cves",
+        )
+    }
+    if app_summary != expected_app_summary:
+        raise AuditValidationError(f"retained app raw scan summary mismatch: {app_summary!r}")
+    gateway_summary = _scan_summary(gateway_scan)
+    if gateway_summary["occurrences"] != 0 or gateway_summary["distinct_cves"] != 0:
+        raise AuditValidationError(
+            f"retained gateway raw scan summary mismatch: {gateway_summary!r}"
+        )
+
+    with chdir(selected_repo_root):
+        audit_errors, recomputed_vex, recomputed_inventory = audit_image(
+            app_scan,
+            app_package_files,
+            policy,
+            expected_image_id=SECURITY_MANIFEST_CONTRACT["app"]["config_image_id"],
+        )
+    if audit_errors or recomputed_vex is None or recomputed_inventory is None:
+        raise AuditValidationError(
+            "retained app audit recomputation failed: " + "; ".join(audit_errors)
+        )
+    if recomputed_vex != retained_vex or recomputed_inventory != retained_inventory:
+        raise AuditValidationError("retained VEX or audit inventory differs from recomputation")
+    if _json_output_digest(recomputed_vex) != SECURITY_MANIFEST_CONTRACT["app"]["vex_sha256"]:
+        raise AuditValidationError("recomputed VEX digest mismatch")
+    if (
+        _json_output_digest(recomputed_inventory)
+        != SECURITY_MANIFEST_CONTRACT["app"]["inventory_sha256"]
+    ):
+        raise AuditValidationError("recomputed audit inventory digest mismatch")
+    findings = recomputed_inventory.get("findings")
+    if not isinstance(findings, list) or not all(isinstance(item, dict) for item in findings):
+        raise AuditValidationError("recomputed audit inventory findings are invalid")
+    if _canonical_finding_digest(findings) != SECURITY_MANIFEST_CONTRACT["app"]["tuple_sha256"]:
+        raise AuditValidationError("recomputed finding tuple digest mismatch")
+
+    tar_paths = {
+        "app": materials_dir / "museecho-app-task23-review1.tar",
+        "gateway": materials_dir / "museecho-gateway-task20.tar",
+    }
+    image_ids = {name: image_id_from_tar(path) for name, path in tar_paths.items()}
+    release_findings = audit_release_identity(
+        release_identity,
+        image_ids=image_ids,
+        tar_digests={name: _sha256_file(path) for name, path in tar_paths.items()},
+        scans={"app": app_scan, "gateway": gateway_scan},
+    )
+    if release_findings:
+        raise AuditValidationError(
+            "retained release identity mismatch: " + "; ".join(release_findings)
+        )
+    _validate_local_image_identities(image_id_reader, SECURITY_MANIFEST_CONTRACT)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("audit", type=Path)
+    parser.add_argument(
+        "--schema-only",
+        action="store_true",
+        help="validate tracked audit/schema contracts without claiming retained materials",
+    )
+    parser.add_argument("--materials-dir", type=Path)
+    parser.add_argument("--trivy-db-dir", type=Path)
     args = parser.parse_args(argv)
     try:
         audit = load_audit(args.audit)
-        validate_audit(audit, repo_root=Path(__file__).resolve().parents[1])
+        repo_root = Path(__file__).resolve().parents[1]
+        validate_audit(audit, repo_root=repo_root)
+        if not args.schema_only:
+            materials_dir = args.materials_dir or Path(
+                os.environ.get(
+                    "MUSEECHO_TASK23_EVIDENCE_DIR", repo_root / "tmp" / "task23-engineering"
+                )
+            )
+            trivy_db_dir = args.trivy_db_dir or Path(
+                os.environ.get("MUSEECHO_TASK20_TRIVY_DB_DIR", _default_trivy_db_dir(repo_root))
+            )
+            validate_security_materials(
+                materials_dir=materials_dir,
+                trivy_db_dir=trivy_db_dir,
+                repo_root=repo_root,
+            )
     except (AuditValidationError, OSError) as exc:
         print(f"engineering audit validation failed: {exc}", file=sys.stderr)
         return 1
@@ -817,7 +1102,12 @@ def main(argv: list[str] | None = None) -> int:
     summary = ", ".join(
         f"{status}/{severity}={count}" for (status, severity), count in sorted(counts.items())
     )
-    print(f"engineering findings validated: {len(audit.findings)} ({summary})")
+    mode = (
+        "schema only; retained materials NOT validated"
+        if args.schema_only
+        else "completion materials validated"
+    )
+    print(f"engineering findings validated ({mode}): {len(audit.findings)} ({summary})")
     return 0
 
 
