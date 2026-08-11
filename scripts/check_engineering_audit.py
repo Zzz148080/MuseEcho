@@ -62,7 +62,7 @@ FINDING_CONTRACTS = {
 }
 
 SECURITY_MANIFEST_PATH = "docs/audits/evidence/task23-security-manifest.json"
-SECURITY_MANIFEST_SHA256 = "ac75e92cf00bb04d13bcd8097b166ec7558088960afda9f0aa239d2c0ebfc0b6"
+SECURITY_MANIFEST_SHA256 = "c662ae5b52167dfb2dd74b52fb997e6f302820b45682ee08c3506169f4e83fd9"
 
 SECURITY_MATERIAL_FILENAMES = (
     "app-raw-review1.json",
@@ -188,9 +188,9 @@ FIXED_EVIDENCE_CONTRACTS = {
         "scripts/container-smoke.ps1 -NoBuild -ReleaseManifest "
         "docs/audits/evidence/task23-security-manifest.json "
         "-ExpectedAppDaemonImageId "
-        "sha256:56995ceef3cbe55fc422ce95587198a225a8c04e20e45d4fb844c6c4c3d56a04 "
+        "sha256:b0231299644d58f7845e3c137faeca6f0f8cc7df2f3dbbcb656c75060128a724 "
         "-ExpectedAppConfigImageId "
-        "sha256:7884992579acdf4bbd8a01071bf6d86cda499ac7ae4d15b0db4be56f7dd5d62d "
+        "sha256:89c7b7ad0a9d1708ce0cf277389c1fca7e13e05bb3937b602a6e2533cf9729ac "
         "-ExpectedGatewayDaemonImageId "
         "sha256:2235e208dd7d8568c735ba19f1969644384626296eaff5cabb41acfaed86c547 "
         "-ExpectedGatewayConfigImageId "
@@ -312,21 +312,21 @@ SECURITY_MANIFEST_CONTRACT = {
     "app": {
         "audit_exit": 0,
         "config_image_id": (
-            "sha256:7884992579acdf4bbd8a01071bf6d86cda499ac7ae4d15b0db4be56f7dd5d62d"
+            "sha256:89c7b7ad0a9d1708ce0cf277389c1fca7e13e05bb3937b602a6e2533cf9729ac"
         ),
         "critical_occurrences": 12,
         "daemon_image_id": (
-            "sha256:56995ceef3cbe55fc422ce95587198a225a8c04e20e45d4fb844c6c4c3d56a04"
+            "sha256:b0231299644d58f7845e3c137faeca6f0f8cc7df2f3dbbcb656c75060128a724"
         ),
         "distinct_cves": 67,
         "high_occurrences": 169,
-        "inventory_sha256": ("a4efb700178df3003575a8ca520189207f3d12b815815dd6e034d8cc3ca12b7d"),
+        "inventory_sha256": ("2f47a957d0cceac194079d4f07cfa8e3952c12574fd1eee66c29f3c9fbd1e507"),
         "occurrences": 181,
         "package_files_sha256": (
             "0568117b227db2891f82aab0022e5b4bc65c1eabfa5e3f5e282aa6bc746ce470"
         ),
-        "raw_sha256": "0be1e5851afeb8e28ab625e8668b1ca838bb01601ca25104c2668e044ae64595",
-        "tar_sha256": "c50ce705594810b21852ff2358c75d221e6ebc97de3396ff4f3408017792a147",
+        "raw_sha256": "3706685719c8295bbcaf746b9eb6816181aa1b63dcee80fb54855c8760377c0f",
+        "tar_sha256": "c45998dfa5bc6c733799b036f07d64ebce081f23a4cd7497bcb323f72bb7e25e",
         "tuple_sha256": "4ab629f0f3b74d2357fcf19d195831c37adbee645d881e9a3fb4605224de35ba",
         "vex_gate_exit": 0,
         "vex_sha256": "76b539cb0b71dbb6339150f322eaf049207d862d66a209fdb97bf64245c7afaa",
@@ -337,9 +337,9 @@ SECURITY_MANIFEST_CONTRACT = {
         "formal_dockerfile_build_reason": (
             "locked pip and apt BuildKit layers unavailable under network none"
         ),
-        "policy_sha256": "1e42cb86c1d7aed4ea21142654d0ebcfde41b3e7544238ed7c90b4c231502d1c",
+        "policy_sha256": "d01cc0559b7dffe6e2b93617493ae5a93ca99cb2630f6fc01c899a30b8013679",
         "runtime_boundary_sha256": (
-            "26828f41334ab92e09d597e708676b29af1e1792b740bb302af5c9075dffd7dc"
+            "92f1f7b034daed01a6edac12de7293b56ea1abfd37b5e9448bb593c4a6079958"
         ),
         "task20_base_daemon_image_id": (
             "sha256:96cd900d6c17c360b01665362330aca8ef032b0d4d1f140659a52265ce47f39c"
@@ -359,14 +359,14 @@ SECURITY_MANIFEST_CONTRACT = {
         "tar_sha256": "dd5dba88b52d3765c43ca1570d30307deb7a8c274f873cfd6258c4efa4fc820b",
     },
     "observed_at_utc": {
-        "app_audit": "2026-08-11T13:13:30Z",
-        "app_raw": "2026-08-11T13:10:12Z",
-        "app_vex_gate": "2026-08-11T13:14:07Z",
-        "gateway_gate": "2026-08-11T13:16:41Z",
+        "app_audit": "2026-08-11T19:08:00Z",
+        "app_raw": "2026-08-11T19:07:10Z",
+        "app_vex_gate": "2026-08-11T19:11:58Z",
+        "gateway_gate": "2026-08-11T19:12:21Z",
         "gateway_raw": "2026-08-11T13:12:55Z",
-        "release_verify": "2026-08-11T13:17:16Z",
+        "release_verify": "2026-08-11T19:08:20Z",
     },
-    "release_identity_sha256": ("2f87b61de7d79301b5a6870d4c870383ae04f1ec5aec5bf4086259708a681705"),
+    "release_identity_sha256": ("c41563ea754d1f892d7dc596646d040582f6503f457f273cecc11f291558933a"),
     "release_verify_exit": 0,
     "schema_version": 1,
     "trivy": {

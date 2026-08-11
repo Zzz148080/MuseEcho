@@ -251,7 +251,7 @@ EVIDENCE_CONTRACTS = {
             "DOD-14",
             "DOD-15",
         ),
-        result="pytest-tests=728",
+        result="pytest-tests=755; skipped=1",
         exit_code_raw="0",
     ),
     "E009": EvidenceContract(
@@ -260,9 +260,9 @@ EVIDENCE_CONTRACTS = {
             "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
             "scripts/container-smoke.ps1 -NoBuild -ReleaseManifest "
             "docs/audits/evidence/task23-security-manifest.json -ExpectedAppDaemonImageId "
-            "sha256:56995ceef3cbe55fc422ce95587198a225a8c04e20e45d4fb844c6c4c3d56a04 "
+            "sha256:b0231299644d58f7845e3c137faeca6f0f8cc7df2f3dbbcb656c75060128a724 "
             "-ExpectedAppConfigImageId "
-            "sha256:7884992579acdf4bbd8a01071bf6d86cda499ac7ae4d15b0db4be56f7dd5d62d "
+            "sha256:89c7b7ad0a9d1708ce0cf277389c1fca7e13e05bb3937b602a6e2533cf9729ac "
             "-ExpectedGatewayDaemonImageId "
             "sha256:2235e208dd7d8568c735ba19f1969644384626296eaff5cabb41acfaed86c547 "
             "-ExpectedGatewayConfigImageId "

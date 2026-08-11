@@ -209,13 +209,13 @@ egg-info and overlaid current `src/`; it is not a formal Dockerfile release.
 
 | Identity/evidence | Value |
 | --- | --- |
-| app daemon/config | `sha256:56995ceef3cbe55fc422ce95587198a225a8c04e20e45d4fb844c6c4c3d56a04` / `sha256:7884992579acdf4bbd8a01071bf6d86cda499ac7ae4d15b0db4be56f7dd5d62d` |
-| app tar/raw | `c50ce705594810b21852ff2358c75d221e6ebc97de3396ff4f3408017792a147` / `0be1e5851afeb8e28ab625e8668b1ca838bb01601ca25104c2668e044ae64595` |
-| app inventory/VEX | `a4efb700178df3003575a8ca520189207f3d12b815815dd6e034d8cc3ca12b7d` / `76b539cb0b71dbb6339150f322eaf049207d862d66a209fdb97bf64245c7afaa` |
-| runtime/policy | `26828f41334ab92e09d597e708676b29af1e1792b740bb302af5c9075dffd7dc` / `1e42cb86c1d7aed4ea21142654d0ebcfde41b3e7544238ed7c90b4c231502d1c` |
-| release manifest | `2f87b61de7d79301b5a6870d4c870383ae04f1ec5aec5bf4086259708a681705` |
+| app daemon/config | `sha256:b0231299644d58f7845e3c137faeca6f0f8cc7df2f3dbbcb656c75060128a724` / `sha256:89c7b7ad0a9d1708ce0cf277389c1fca7e13e05bb3937b602a6e2533cf9729ac` |
+| app tar/raw | `c45998dfa5bc6c733799b036f07d64ebce081f23a4cd7497bcb323f72bb7e25e` / `3706685719c8295bbcaf746b9eb6816181aa1b63dcee80fb54855c8760377c0f` |
+| app inventory/VEX | `2f47a957d0cceac194079d4f07cfa8e3952c12574fd1eee66c29f3c9fbd1e507` / `76b539cb0b71dbb6339150f322eaf049207d862d66a209fdb97bf64245c7afaa` |
+| runtime/policy | `92f1f7b034daed01a6edac12de7293b56ea1abfd37b5e9448bb593c4a6079958` / `d01cc0559b7dffe6e2b93617493ae5a93ca99cb2630f6fc01c899a30b8013679` |
+| release manifest | `c41563ea754d1f892d7dc596646d040582f6503f457f273cecc11f291558933a` |
 | gateway raw | `64513e95a8ac9e5b9bcdf9a274a5e3108f08dbb6dbdb2ad97601c8eed7bbfd7d` |
-| compact manifest | canonical finding tuple SHA-256 `4ab629f0f3b74d2357fcf19d195831c37adbee645d881e9a3fb4605224de35ba`; normalized manifest SHA-256 `ac75e92cf00bb04d13bcd8097b166ec7558088960afda9f0aa239d2c0ebfc0b6` |
+| compact manifest | canonical finding tuple SHA-256 `4ab629f0f3b74d2357fcf19d195831c37adbee645d881e9a3fb4605224de35ba`; normalized manifest SHA-256 `c662ae5b52167dfb2dd74b52fb997e6f302820b45682ee08c3506169f4e83fd9` |
 
 Trivy `0.70.0`, image digest
 `sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e`,
@@ -226,12 +226,12 @@ used `--network none`, offline, and no-update flags.
 
 | Gate (UTC) | Exit/result |
 | --- | --- |
-| app raw `2026-08-11T13:10:12Z` | 0; 181 occurrences, 169 High, 12 Critical, 67 CVEs |
+| app raw `2026-08-11T19:07:10Z` | 0; 181 occurrences, 169 High, 12 Critical, 67 CVEs |
 | gateway raw `2026-08-11T13:12:55Z` | 0; 0 occurrences |
-| exact audit `2026-08-11T13:13:30Z` | 0; package ownership, 52-file runtime, 181 tuples, 67 statements exact |
-| app VEX `2026-08-11T13:14:07Z` | 0; residual High/Critical 0 |
-| gateway gate `2026-08-11T13:16:41Z` | 0; unsuppressed High/Critical 0 |
-| tar+scan identity `2026-08-11T13:17:16Z` | 0; app/gateway config, tar, scan agree |
+| exact audit `2026-08-11T19:08:00Z` | 0; package ownership, 52-file runtime, 181 tuples, 67 statements exact |
+| app VEX `2026-08-11T19:11:58Z` | 0; residual High/Critical 0 |
+| gateway gate `2026-08-11T19:12:21Z` | 0; unsuppressed High/Critical 0 |
+| tar+scan identity `2026-08-11T19:08:20Z` | 0; app/gateway config, tar, scan agree |
 
 The observability/queue changes add no decoder, FFmpeg, dynamic SQL,
 subprocess, or external execution path. Reuse of the 67 CVE assessments was
@@ -435,3 +435,20 @@ exact. E004 was refreshed to the canonical current-boundary digest. The full
 acceptance test file passed 41 tests and the Functional CLI then passed with
 28 PASS / 12 PARTIAL / 0 FAIL. A session-collection assertion now binds E014
 and E030 to the actual complete-file count so later test additions fail closed.
+
+## GitHub Linux quality fix
+
+Draft PR #1 supplied the first remote CI run and failed in `quality`: Linux
+mypy reported four `attr-defined` errors for Windows-only `ctypes.WinDLL` and
+`subprocess.CREATE_NEW_PROCESS_GROUP`. The exact failure was reproduced with
+`mypy --platform linux` before implementation. The minimal production change
+uses runtime-guarded `getattr` access (and an integer cast for the creation
+flag), preserving the existing Windows process-tree behavior while making
+both Linux and Windows mypy pass. Because production source changed, the
+non-release audit derivative and retained app tar/raw/package/inventory/VEX/
+release identity were regenerated with the fixed offline Trivy DB. Raw stayed
+181 occurrences / 67 CVEs, exact audit and VEX residual passed, gateway stayed
+zero, and trusted no-build smoke passed the refreshed app identity. The locked
+Linux current-source suite then passed `755 passed, 1 skipped in 360.54s` with
+empty cleanup. The branch must be pushed again before remote CI can establish
+the remote GREEN result.

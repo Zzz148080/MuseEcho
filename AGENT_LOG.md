@@ -346,7 +346,7 @@
 ## 2026-08-11 — TASK 23 / review fix round 1
 
 - **RED→GREEN:** Audit evidence isolation produced 40 expected failures before 43 focused mutations passed. Trusted no-build identity, safe 500/background failure observability, waiting-only queue metrics, cleanup-only reporting, Functional truth, and direct Linux checker execution each retained a focused failing reproduction before repair.
-- **Current evidence:** The non-release current-source derivative is app daemon/config `56995cee…` / `78849925…`. Fixed-DB offline evidence remains 181 app occurrences / 67 CVEs / 0 VEX residual and 0 gateway occurrences. The trusted no-build smoke passed both startup identity checks and exact cleanup.
+- **Current evidence:** The non-release current-source derivative is app daemon/config `b0231299…` / `89c7b7ad…`. Fixed-DB offline evidence remains 181 app occurrences / 67 CVEs / 0 VEX residual and 0 gateway occurrences. The trusted no-build smoke passed both startup identity checks and exact cleanup.
 - **Truth boundary:** Functional Audit is `28 PASS / 12 PARTIAL / 0 FAIL`; Task 23 frontend type/build and current Chrome E2E are NOT_RUN, not inherited from historical Task 22 evidence. Engineering findings remain 4 High FIXED, 2 Medium FIXED, 3 Medium BLOCKED, and 0 OPEN.
 - **Full-suite checkpoint:** The first review run was 721 passed / 6 expected stale-audit failures. After audit repair, the next run was 727 passed / 1 stale cross-document statistics failure; final green evidence is recorded only after that contract and every process document agree.
 - **Review closure:** Final locked Linux was `728 passed in 342.25s`; final focused review was 139 passed; trusted no-build, static/type, Secret/license, lifecycle/shell contracts, Functional `28/12/0`, and Engineering 9-finding checker all passed. The exact wrapper remained exit 1 because host `pwsh` and `uv` are absent; no dependency/tool download was used to hide the boundary.
@@ -382,3 +382,12 @@
   canonical LF form while NUL-containing binary content remains byte-exact.
   The acceptance file passes 41 tests and the Functional CLI passes at
   28/12/0; E014/E030 are bound to the collected file count.
+
+- **Remote CI RED→GREEN local fix:** GitHub Actions quality exposed four Linux
+  mypy errors for Windows-only `ctypes.WinDLL` and
+  `subprocess.CREATE_NEW_PROCESS_GROUP`. `mypy --platform linux` reproduced
+  the exact RED locally; platform-safe `getattr` boundaries make Linux and
+  Windows mypy green without changing runtime behavior. The current-source
+  audit image and all raw→audit→VEX→identity materials were regenerated
+  offline, and trusted no-build smoke passed on the refreshed identity.
+  The refreshed locked Linux suite passed 755 tests with one explicit skip.
