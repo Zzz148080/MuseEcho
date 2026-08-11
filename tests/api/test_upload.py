@@ -491,6 +491,31 @@ def test_ffmpeg_validator_rejects_extensible_precision_outside_container_before_
     assert calls == []
 
 
+def test_ffmpeg_validator_rejects_short_extensible_format_before_audio_tools(
+    tmp_path: Path, monkeypatch
+):
+    from museecho.application import uploads
+
+    source = tmp_path / "short-extensible.wav"
+    source.write_bytes(_minimal_wave(format_tag=0xFFFE))
+    calls: list[str] = []
+    monkeypatch.setattr(
+        uploads,
+        "probe_audio",
+        lambda *_args, **_kwargs: calls.append("probe"),
+    )
+    monkeypatch.setattr(
+        uploads,
+        "decode_audio",
+        lambda *_args, **_kwargs: calls.append("decode"),
+    )
+
+    with pytest.raises(InvalidAudioError, match="signature"):
+        FFmpegAudioValidator()(source)
+
+    assert calls == []
+
+
 @pytest.mark.parametrize(
     "payload",
     (
