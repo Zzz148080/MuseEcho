@@ -363,3 +363,7 @@
 
 - **跨审计 RED→GREEN：** Functional E902 与 acceptance contract 仍接受旧 `9 findings / 3 blocked`；新增测试从真实 Engineering Audit 推导统计并先失败。E902 改为实际 strict-material 命令与 `10/4` 后，Functional、Engineering 与交付契约 134 tests、两个 CLI 均通过；Task 23 顶部统计表同步为 4 Medium BLOCKED。
 - **复审轮 3 提交：** `93baab9f6f20d6e34dc393a837a6d6cb2a5fddaf`（跨审计统计与严格材料命令一致性）。
+
+## 2026-08-12 — TASK 23 / review fix round 4
+
+- **CURRENT evidence RED→GREEN：** 独立复审实测 acceptance 单文件已为 37 tests，而 E014 仍固定 36；同步 E014/contract 为 37，并让跨审计测试从 Engineering findings 推导 OPEN 总数，不再硬编码 `open=0`。修正 Generated 时间边界后，acceptance 37 tests 与跨审计/交付联合 134 tests 均通过；Functional 仍为 `28/12/0`，Engineering 严格材料门仍为 10 findings。

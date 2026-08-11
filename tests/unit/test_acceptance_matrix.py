@@ -438,11 +438,12 @@ def test_functional_engineering_evidence_matches_current_engineering_audit() -> 
     contract = check_acceptance_matrix.EVIDENCE_CONTRACTS["E902"]
     engineering = load_engineering_audit(ROOT / "docs" / "audits" / "ENGINEERING_AUDIT.md")
     counts = Counter((finding.severity, finding.status) for finding in engineering.findings)
+    open_count = sum(count for (_severity, status), count in counts.items() if status == "OPEN")
     expected_prefix = (
         f"findings={len(engineering.findings)}; "
         f"fixed-high={counts[('High', 'FIXED')]}; "
         f"fixed-medium={counts[('Medium', 'FIXED')]}; "
-        f"blocked-medium={counts[('Medium', 'BLOCKED')]}; open=0; "
+        f"blocked-medium={counts[('Medium', 'BLOCKED')]}; open={open_count}; "
     )
 
     assert contract.result.startswith(expected_prefix)

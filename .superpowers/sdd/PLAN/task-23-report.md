@@ -341,6 +341,21 @@ Round-3 implementation and current-evidence consistency are committed as
 `93baab9f6f20d6e34dc393a837a6d6cb2a5fddaf` —
 `fix: keep audit statistics consistent`.
 
+## Review fix round 4/5
+
+The final rereview correctly found that adding the cross-audit test changed the
+acceptance-suite boundary from 36 to 37 tests while E014 still claimed 36.
+The current evidence record and executable contract now say 37, and the
+cross-audit assertion derives the OPEN count from Engineering findings instead
+of hard-coding zero. The acceptance-only RED evidence was `37 passed` against
+the stale record. After advancing the audit generation time to the new current
+evidence boundary, the acceptance-only suite passed `37` tests; the combined
+Functional, Engineering, and delivery-contract suite passed `134` tests.
+Functional validation remained `28 PASS / 12 PARTIAL / 0 FAIL`, strict
+Engineering completion revalidated all retained materials and `10` findings,
+Ruff format/check passed, both the 210-file and synthetic Secret scans passed,
+and `git diff --check` returned zero.
+
 Round-2 implementation and evidence are committed as
 `a240f64bcd57a34818356805b9a177086668752c` —
 `fix: validate retained engineering evidence`; this hash is backfilled by a
