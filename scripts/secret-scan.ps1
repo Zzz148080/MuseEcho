@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$RepositoryRoot = ''
+    [string]$RepositoryRoot = '',
+    [switch]$RequireFrontendDist
 )
 
 $ErrorActionPreference = 'Stop'
@@ -98,11 +99,21 @@ function Test-FileContent {
 
 Push-Location $repositoryRoot
 try {
-    $candidateFiles = @(
-        & git -c "safe.directory=$repositoryRoot" -c core.quotepath=false `
-            ls-files --cached --others --exclude-standard
-    )
-    if ($LASTEXITCODE -ne 0) { throw 'git ls-files failed' }
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+        $candidateFiles = @(
+            & git -c "safe.directory=$repositoryRoot" -c core.quotepath=false `
+                ls-files --cached --others --exclude-standard
+        )
+        if ($LASTEXITCODE -ne 0) { throw 'git ls-files failed' }
+    } else {
+        $candidateFiles = @(
+            Get-ChildItem -LiteralPath $repositoryRoot -Recurse -File -Force |
+                Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' } |
+                ForEach-Object {
+                    $_.FullName.Substring($repositoryRoot.Length).TrimStart('\', '/')
+                }
+        )
+    }
     $candidateFiles = @($candidateFiles | Where-Object { $_ })
     foreach ($relativePath in $candidateFiles) {
         $normalized = $relativePath -replace '\\', '/'
@@ -115,7 +126,11 @@ try {
     }
 
     $frontendDist = Join-Path $repositoryRoot 'frontend\dist'
-    if (Test-Path -LiteralPath $frontendDist -PathType Container) {
+    if (-not (Test-Path -LiteralPath $frontendDist -PathType Container)) {
+        if ($RequireFrontendDist) {
+            $findings.Add('scan-error: required release bundle is missing: frontend/dist')
+        }
+    } else {
         foreach ($asset in Get-ChildItem -LiteralPath $frontendDist -Recurse -File) {
             $relativeAsset = $asset.FullName.Substring($repositoryRoot.Length).TrimStart('\', '/')
             Test-FileContent -Path $asset.FullName -DisplayPath ($relativeAsset -replace '\\', '/')

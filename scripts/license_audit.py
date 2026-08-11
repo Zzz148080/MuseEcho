@@ -26,11 +26,23 @@ def audit_repository(repository_root: Path, policy_path: Path) -> list[str]:
         return ["license policy error: allowed_licenses must be a string array"]
     allowed_licenses = set(allowed_licenses_value)
 
-    locked_python = {
-        package["name"]: package["version"]
-        for package in uv_lock.get("package", [])
-        if "name" in package and "version" in package
-    }
+    locked_python: dict[str, str] = {}
+    duplicate_python: dict[str, list[str]] = {}
+    for package in uv_lock.get("package", []):
+        if "name" not in package or "version" not in package:
+            continue
+        name = str(package["name"])
+        version = str(package["version"])
+        if name in locked_python:
+            duplicate_python.setdefault(name, [locked_python[name]]).append(version)
+        else:
+            locked_python[name] = version
+    if duplicate_python:
+        return [
+            "python lock has duplicate package name: "
+            + ", ".join(f"{name}@{version}" for version in versions)
+            for name, versions in sorted(duplicate_python.items())
+        ]
     python_policy = policy.get("python")
     if not isinstance(python_policy, dict):
         return ["license policy error: python must be an object"]

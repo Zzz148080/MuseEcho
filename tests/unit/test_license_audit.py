@@ -139,3 +139,17 @@ def test_license_audit_rejects_distribution_inventory_drift(tmp_path: Path):
         "missing [python:3.12.13-slim-bookworm]; "
         "unexpected [python:3.12.12-slim-bookworm]"
     ]
+
+
+def test_license_audit_rejects_duplicate_python_name_version_identities(tmp_path: Path):
+    policy_path = _write_repository(tmp_path)
+    (tmp_path / "uv.lock").write_text(
+        "version = 1\n\n"
+        '[[package]]\nname = "demo"\nversion = "1.2.3"\n\n'
+        '[[package]]\nname = "demo"\nversion = "9.9.9"\n',
+        encoding="utf-8",
+    )
+
+    assert audit_repository(tmp_path, policy_path) == [
+        "python lock has duplicate package name: demo@1.2.3, demo@9.9.9"
+    ]

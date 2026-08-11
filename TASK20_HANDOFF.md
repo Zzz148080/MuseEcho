@@ -114,3 +114,12 @@
 - **产品边界决定：** 保留安全 PCM/IEEE-float WAVEFORMATEXTENSIBLE：`cbSize >= 22`、有界声明扩展字节、`0 < valid_bits <= container_bits`，并继续精确校验 GUID、速率、通道、block-align 与 byte-rate。MP3 只支持可计算帧大小的常规 MPEG Layer III；free-format bitrate index `0000` 在 probe/decode 前拒绝。锁定 FFmpeg 5.1.9 拒绝了尝试的真实 free-format 端到端流，因此不宣称支持全部 MP3 子类型。
 - **GitLab 合约：** 同一不可变 `museecho-app.tar` 必须执行 raw 无 suppression 扫描 → package/probe inventory → 精确 audit/OpenVEX → VEX gate；inventory 不能先于 raw，raw 与 audit artifacts 必须 `when: always`。本地 contract tests 覆盖错误顺序、不同 tar identity 和缺失证据。
 - **状态边界：** 轮 4 的 READY 结论已由上述两个 Important 发现取代。源码/CI 合约、policy hash、最终 Linux `583 passed`、cached-only build 和 smoke 已完成；但本机缓存 Trivy 0.70.0 镜像首次离线运行拒绝且不得下载 DB，故没有本轮 fresh raw→audit→VEX/gate 证据，Task 20 保持 BLOCKED 而非 READY。远端 GitHub Actions/GitLab CI 仍未运行。
+
+## 2026-08-11 最终修复波（取代轮 5 状态）
+
+- 上述“轮 5 进行中/BLOCKED”只描述当时的缓存边界，已不再是当前状态来源。
+- 最终修复波正在以固定镜像 digest、Debian snapshot、精确 OS 包、release image/tar/raw-scan
+  identity，以及最终镜像 Debian/Python/Alpine/Go 完整许可证 inventory 重建全部证据。
+- 当前结果和最终 READY/BLOCKED 判定只以
+  `.superpowers/sdd/PLAN/task-20-final-fix-wave-report.md` 为准；在该报告完成前不提前声称 READY。
+- 远端 GitHub Actions/GitLab CI 仍未运行，最终报告也不得把本地合约结果写成远端 CI 结果。

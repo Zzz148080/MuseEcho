@@ -10,9 +10,10 @@ variables:
   UV_VERSION: "0.11.29"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.uv-cache"
+  SOURCE_DATE_EPOCH: 1785888000
 
 .python-job:
-  image: python:3.12.13-bookworm
+  image: python:3.12.13-bookworm@sha256:3cd9086bdb30f7c9bc08a3fa621d9842e0d3f6f9291aeb4677e0547817c10b12
   before_script:
     - apt-get update && apt-get install --yes ffmpeg
     - python -m pip install "uv==$UV_VERSION"
@@ -39,7 +40,7 @@ unit-test:
     - uv run pytest -q --basetemp tmp/pytest-ci
 
 frontend:
-  image: node:22.23.0-bookworm-slim
+  image: node:22.23.0-bookworm-slim@sha256:d9f850096136edbc402debdd8729579a288aac64574ada0ff4db26b6ae58b0b2
   stage: test
   script:
     - npm ci
@@ -50,9 +51,12 @@ frontend:
     - npm --prefix frontend run typecheck
     - npm --prefix frontend run build
     - npm --prefix frontend audit --audit-level=high
+  artifacts:
+    paths: [frontend/dist/]
+    expire_in: 1 day
 
 e2e:
-  image: mcr.microsoft.com/playwright:v1.61.1-noble
+  image: mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48
   stage: test
   script:
     - apt-get update && apt-get install --yes python3 python3-venv ffmpeg
@@ -64,10 +68,10 @@ e2e:
     - MUSEECHO_E2E_PYTHON=.venv/bin/python npm run e2e
 
 container-build:
-  image: docker:29-cli
+  image: docker:29-cli@sha256:000bb62ff495f986c9f5578eb67cc2cb98b91138eda81d7762d5371eb8a497fe
   stage: build
   services:
-    - name: docker:29-dind
+    - name: docker:29-dind@sha256:12e683a161823b2a839aeea999b9d960e6e1f9a97b1679ad6b441982e2d9cf07
       command: ["--tls=false"]
   variables:
     DOCKER_HOST: tcp://docker:2375
@@ -75,31 +79,41 @@ container-build:
   script:
     - production_config="$(docker compose --profile production config)"
     - 'case "$production_config" in *"source: /etc/museecho/secrets"*) ;; *) echo "production Secret source is not fixed" >&2; exit 1 ;; esac'
-    - docker build --target app --tag museecho-app:ci .
-    - docker build --target gateway --tag museecho-gateway:ci .
+    - docker buildx build --pull=false --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" --target app --output "type=docker,name=museecho-app:ci,dest=museecho-app.tar,rewrite-timestamp=true" .
+    - docker load --input museecho-app.tar
+    - docker buildx build --pull=false --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" --target gateway-builder --tag museecho-gateway-builder:ci --load .
+    - docker buildx build --pull=false --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" --target gateway --output "type=docker,name=museecho-gateway:ci,dest=museecho-gateway.tar,rewrite-timestamp=true" .
+    - docker load --input museecho-gateway.tar
     - test "$(docker image inspect --format '{{.Config.User}}' museecho-app:ci)" = "10001:10001"
     - test "$(docker image inspect --format '{{.Config.User}}' museecho-gateway:ci)" = "10001:10001"
-    - docker save museecho-app:ci > museecho-app.tar
-    - docker save museecho-gateway:ci > museecho-gateway.tar
+    - docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --mount "type=bind,source=$CI_PROJECT_DIR,target=/workspace,readonly" -i --entrypoint /app/.venv/bin/python museecho-app:ci - record --output - --tar app=/workspace/museecho-app.tar --tar gateway=/workspace/museecho-gateway.tar < scripts/verify_release_identity.py > release-images.json
+    - docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges -i --entrypoint /app/.venv/bin/python museecho-app:ci - generate-app --output - < scripts/release_license_inventory.py > app.release-components.json
+    - docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --entrypoint cat museecho-gateway:ci /lib/apk/db/installed > gateway.apk-installed
+    - docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --entrypoint go museecho-gateway-builder:ci version -m /usr/bin/caddy > gateway.go-version-m.txt
+    - BUILDER_CADDY_SHA="$(docker run --rm --network none --entrypoint sha256sum museecho-gateway-builder:ci /usr/bin/caddy | cut -d' ' -f1)"
+    - CADDY_SHA="$(docker run --rm --network none --entrypoint sha256sum museecho-gateway:ci /usr/bin/caddy | cut -d' ' -f1)"
+    - test "$BUILDER_CADDY_SHA" = "$CADDY_SHA"
+    - printf '%s\n' "$CADDY_SHA" > gateway.caddy.sha256
   artifacts:
-    paths: [museecho-app.tar, museecho-gateway.tar]
+    paths: [museecho-app.tar, museecho-gateway.tar, release-images.json, app.release-components.json, gateway.apk-installed, gateway.go-version-m.txt, gateway.caddy.sha256]
     expire_in: 1 day
 
 secret-scan:
   image:
-    name: mcr.microsoft.com/powershell:lts-alpine-3.20
+    name: mcr.microsoft.com/powershell:lts-alpine-3.20@sha256:6827da316115b10df9ce9435b89abbf1f062909db0e1a8a24472b05dee704fd6
     entrypoint: [""]
   stage: security
-  before_script:
-    - apk add --no-cache git
+  needs:
+    - job: frontend
+      artifacts: true
   script:
     - pwsh -NoProfile -File scripts/test-secret-scan.ps1
-    - pwsh -NoProfile -File scripts/secret-scan.ps1
+    - pwsh -NoProfile -File scripts/secret-scan.ps1 -RequireFrontendDist
     - pwsh -NoProfile -File scripts/test-container-pytest.ps1
 
 image-scan-raw:
   image:
-    name: aquasec/trivy:0.70.0
+    name: aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e
     entrypoint: [""]
   stage: image-scan-raw
   needs:
@@ -114,10 +128,10 @@ image-scan-raw:
     expire_in: 1 day
 
 image-package-inventory:
-  image: docker:29-cli
+  image: docker:29-cli@sha256:000bb62ff495f986c9f5578eb67cc2cb98b91138eda81d7762d5371eb8a497fe
   stage: image-audit
   services:
-    - name: docker:29-dind
+    - name: docker:29-dind@sha256:12e683a161823b2a839aeea999b9d960e6e1f9a97b1679ad6b441982e2d9cf07
       command: ["--tls=false"]
   variables:
     DOCKER_HOST: tcp://docker:2375
@@ -136,7 +150,7 @@ image-package-inventory:
     expire_in: 1 day
 
 image-vex-audit:
-  image: python:3.12.13-bookworm
+  image: python:3.12.13-bookworm@sha256:3cd9086bdb30f7c9bc08a3fa621d9842e0d3f6f9291aeb4677e0547817c10b12
   stage: image-audit
   needs:
     - job: container-build
@@ -146,15 +160,17 @@ image-vex-audit:
     - job: image-package-inventory
       artifacts: true
   script:
-    - python scripts/image_vulnerability_audit.py --scan app.raw.json --package-files app.package-files.json --policy scripts/image-vulnerability-policy.json --vex-output app.openvex.json --inventory-output app.inventory.json
+    - python scripts/verify_release_identity.py verify --manifest release-images.json --tar app=museecho-app.tar --tar gateway=museecho-gateway.tar --scan app=app.raw.json --scan gateway=gateway.raw.json
+    - python scripts/release_license_inventory.py assemble --app app.release-components.json --gateway-apk gateway.apk-installed --gateway-go gateway.go-version-m.txt --caddy-sha256 "$(cat gateway.caddy.sha256)" --release-identity release-images.json --policy scripts/release-license-policy.json --output release-license-inventory.json
+    - python scripts/image_vulnerability_audit.py --scan app.raw.json --package-files app.package-files.json --policy scripts/image-vulnerability-policy.json --release-identity release-images.json --image-name app --vex-output app.openvex.json --inventory-output app.inventory.json
   artifacts:
     when: always
-    paths: [app.openvex.json, app.inventory.json]
+    paths: [app.openvex.json, app.inventory.json, release-license-inventory.json]
     expire_in: 1 day
 
 image-scan:
   image:
-    name: aquasec/trivy:0.70.0
+    name: aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e
     entrypoint: [""]
   stage: security
   needs:
@@ -163,5 +179,7 @@ image-scan:
     - job: image-vex-audit
       artifacts: true
   script:
+    - trivy image --input museecho-app.tar --scanners vuln --format json --output app.gate-identity.json --severity HIGH,CRITICAL
+    - trivy image --input museecho-gateway.tar --scanners vuln --format json --output gateway.gate-identity.json --severity HIGH,CRITICAL
     - trivy image --input museecho-app.tar --scanners vuln --exit-code 1 --severity HIGH,CRITICAL --vex app.openvex.json
     - trivy image --input museecho-gateway.tar --scanners vuln --exit-code 1 --severity HIGH,CRITICAL

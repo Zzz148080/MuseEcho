@@ -75,7 +75,7 @@ Linux/macOS 将 `npm.cmd`/`npx.cmd` 改为 `npm`/`npx`。依赖必须来自已�
 ## 本地运行
 
 生产运行时要求把音频 KEK 放在仓库之外的绝对只读文件中。该文件内容是 32 个随机字节
-的 Base64；它与可选模型 API Key 绝不能复用。
+的 Base64；它与可选模型 API Key 绝不能复用。Windows 开发机先创建仓库外 Secret：
 
 ```powershell
 $secretDir = 'D:\MuseEchoSecrets'
@@ -85,14 +85,11 @@ $bytes = New-Object byte[] 32
 [IO.File]::WriteAllText("$secretDir\audio-kek", [Convert]::ToBase64String($bytes))
 Set-ItemProperty "$secretDir\audio-kek" -Name IsReadOnly -Value $true
 
-$env:MUSEECHO_DATA_ROOT = 'D:\MuseEchoData'
-$env:MUSEECHO_AUDIO_KEK_FILE = "$secretDir\audio-kek"
-$env:MUSEECHO_TRUSTED_ORIGINS = 'https://localhost:4173'
-uv run uvicorn museecho.runtime:app --factory --host 127.0.0.1 --port 8000
 ```
 
-前端开发服务器另开终端运行 `npm.cmd --prefix frontend run dev`。直接使用
-`museecho.app:create_app` 只适合依赖注入测试；完整服务必须使用 `museecho.runtime:app`。
+浏览器开发必须使用下文 Docker development profile 的同源 HTTPS 网关；不要把 Secure cookie
+降级为明文 HTTP，也不要把 FastAPI 端口直接当作浏览器入口。直接使用
+`museecho.app:create_app` 只适合依赖注入测试；完整服务使用 `museecho.runtime:app`。
 
 ## 测试与质量门
 
@@ -124,29 +121,79 @@ npm.cmd run e2e
 `/run/secrets`，不接受环境变量改成仓库相对路径，也不会复制到 Docker 卷。应用和网关均以
 UID 10001 非 root 运行，根文件系统只读。
 
-```powershell
-docker compose --profile production config --quiet
-docker compose --profile production build --pull
-docker compose --profile production up -d --wait
-# 仅限本机内部 CA smoke；公网不得跳过证书校验。
-curl.exe --fail --silent --show-error --insecure https://localhost:8443/api/health
+Linux 冷启动使用下面的精确所有者和模式。目录由 `root:10001` 持有且为 `0750`，让容器 UID
+10001 可遍历；两个文件由 `10001:10001` 持有且为 `0400`，没有任何写位。可选
+`provider-key` 必须与 `audio-kek` 分开生成；交互读取避免把 API Key 放进 shell 历史：
+
+```bash
+sudo install -d -o root -g 10001 -m 0750 /etc/museecho/secrets
+
+audio_tmp="$(mktemp)"
+provider_tmp="$(mktemp)"
+trap 'rm -f "$audio_tmp" "$provider_tmp"' EXIT
+umask 077
+openssl rand -base64 32 | tr -d '\n' > "$audio_tmp"
+sudo install -o 10001 -g 10001 -m 0400 "$audio_tmp" /etc/museecho/secrets/audio-kek
+
+# 仅在启用第三方模型时执行以下四行。
+IFS= read -r -s -p 'Provider API key: ' provider_key; printf '\n'
+printf '%s' "$provider_key" > "$provider_tmp"
+unset provider_key
+sudo install -o 10001 -g 10001 -m 0400 "$provider_tmp" /etc/museecho/secrets/provider-key
+
+stat -c '%u:%g %a %n' /etc/museecho/secrets \
+  /etc/museecho/secrets/audio-kek /etc/museecho/secrets/provider-key
+# 期望：目录 0:10001 750；两个文件 10001:10001 400。
 ```
 
-浏览器使用 `https://localhost:8443`。本地发行物采用 Caddy 内部 CA，第一次访问会显示本地
-证书警告；上述 `--insecure` 只用于本机健康探针。需要严格验证时，应从 Caddy 数据目录导出
-本地根 CA、导入 Windows“受信任的根证书颁发机构”，再用不带 `--insecure` 的
-`curl.exe`。公网部署必须使用受信任域名证书。数据保存在 `museecho_data` 卷，普通重启不会
-丢失；`docker compose --profile production down --volumes` 会删除数据库和密文音频，但
-不会删除外部 Secret 目录。
+`powershell -File scripts/test-linux-secret-contract.ps1` 会在 Linux 容器文件系统中重建这些
+所有者/模式，以 UID/GID 10001 读取两个 Secret，并验证只读挂载不能写入。普通 Compose 构建只适合
+本地便捷开发，不是可复核的发行物。Linux 上的生产发行与启动必须使用同一批保存的 tar：
 
-开发 profile 只启动绑定到回环地址的后端、只读挂载当前 `src/` 并启用 reload；前端仍按
-“本地运行”章节用 Vite 启动。它使用独立的 `museecho_dev_data` 卷，不能当作生产部署：
+```bash
+mkdir -p tmp/image-security
+export SOURCE_DATE_EPOCH=1785888000
+docker buildx build --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" --target app \
+  --output "type=docker,name=museecho-app:local,dest=tmp/image-security/museecho-app.tar,rewrite-timestamp=true" .
+docker buildx build --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" --target gateway \
+  --output "type=docker,name=museecho-gateway:local,dest=tmp/image-security/museecho-gateway.tar,rewrite-timestamp=true" .
+python scripts/verify_release_identity.py record \
+  --output tmp/image-security/release-images.json \
+  --tar app=tmp/image-security/museecho-app.tar \
+  --tar gateway=tmp/image-security/museecho-gateway.tar
+docker load --input tmp/image-security/museecho-app.tar
+docker load --input tmp/image-security/museecho-gateway.tar
+docker compose --profile production config --quiet
+docker compose --profile production up -d --wait --no-build
+# 仅限本机内部 CA smoke；公网不得跳过证书校验。
+curl --fail --silent --show-error --insecure https://localhost:8443/api/health
+```
+
+可重现身份来自 digest 锁定的基础镜像、不可变仓库快照/精确包版本、固定时间戳和
+`rewrite-timestamp=true`，不来自 pull 策略。重建后必须重新记录 `release-images.json`，并让
+同一 tar 身份贯穿原始扫描、inventory、audit、gate 与发行。
+
+浏览器使用 `https://localhost:8443`。本地发行物采用 Caddy 内部 CA，第一次访问会显示本地
+证书警告；上述 `--insecure` 只用于本机健康探针。当前 Compose 把 Caddy 数据放在 `/tmp`
+tmpfs，因此内部 CA 是容器重建即可能变化的临时 CA；不要把它导出并当作稳定根 CA 永久信任。
+本机浏览器例外也只针对当前临时实例。公网部署必须使用受信任域名证书。数据保存在
+`museecho_data` 卷，普通重启不会丢失；`docker compose --profile production down --volumes`
+会删除数据库和密文音频，但不会删除外部 Secret 目录。
+
+development profile 通过 `https://localhost:4173` 同时提供构建后的前端和同源 `/api` 代理；
+FastAPI 不暴露宿主机端口，Secure cookie、Origin 与 CSRF 边界保持不变。后端只读挂载当前
+`src/` 并启用 reload；前端修改后重新执行同一条 `up --build`。它使用独立的
+`museecho_dev_data` 卷，不能当作生产部署：
 
 ```powershell
 $env:MUSEECHO_SECRETS_DIR = 'D:\MuseEchoSecrets'
-docker compose --profile development up --build app-dev
-Invoke-RestMethod http://127.0.0.1:8000/api/health
+docker compose --profile development up --build --detach --wait app-dev gateway-dev
+curl.exe --fail --silent --show-error --insecure https://localhost:4173/api/health
+# 浏览器打开 https://localhost:4173
 ```
+
+`powershell.exe -File scripts\development-smoke.ps1` 会执行同一 development profile，真实访问
+HTTPS 前端和同源 API，并在成功或失败后清理其独立容器、网络、卷与 task-temp Secret。
 
 完整容器 smoke 会在 OS task-temp 中创建 Secret 和 Compose override（仅覆盖 smoke 的固定
 Secret bind）、构建镜像、上传真实 WAV、等待分析、重启验证持久性并检查持久卷无明文音频；
@@ -200,7 +247,11 @@ Python/TypeScript 静态检查、后端/前端测试、构建、真实 HTTPS E2E
 Secret 审计、Docker 构建和镜像漏洞门；GitLab 的后端测试 job 固定名为 `unit-test`。
 `uv run python scripts/license_audit.py` 会要求 `uv.lock` 名称/版本、两个 npm lock 的完整
 SHA-256 inventory，以及固定容器、构建工具、Go replacement 和 OS 包清单与人工复核策略
-精确一致，并拒绝显式审批集合外的许可证。`scripts/container-pytest.ps1` 可用现有 app
+精确一致，并拒绝重复 Python 名称或显式审批集合外的许可证。发行阶段还会从最终 app 镜像
+记录全部已安装 Debian/Python 组件，从最终 gateway 镜像记录全部 Alpine 组件，并用
+`go version -m` 记录 Caddy 实际链接的全部 Go 模块；`release-license-policy.json` 对每个精确
+身份、版本、Go sum、许可证元数据哈希和 Caddy 二进制哈希逐项审批，任何新增、缺失、版本、
+许可证或哈希漂移都会失败并保留 inventory 证据。`scripts/container-pytest.ps1` 可用现有 app
 镜像的 FFmpeg 运行完整 Python 套件：仓库和现有 pytest 模块只读挂载、网络关闭，不向生产
 镜像加入测试工具。本地配置通过不代表远端 CI 已运行，只有对应提交的真实流水线结果才能
 作为远端证据。

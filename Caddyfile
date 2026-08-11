@@ -8,7 +8,7 @@ https://localhost:8443, https://127.0.0.1:8443 {
     encode zstd gzip
 
     handle /api/* {
-        reverse_proxy app:8000
+        reverse_proxy {$MUSEECHO_API_UPSTREAM:app}:8000
     }
 
     handle {
