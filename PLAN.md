@@ -718,7 +718,7 @@ def test_every_spec_acceptance_item_has_a_verdict_and_evidence(audit):
 
 **最终命令：** `uv run pytest tests/unit/test_acceptance_matrix.py -q && uv run python scripts/check_acceptance_matrix.py SPEC.md docs/audits/FUNCTIONAL_AUDIT.md`
 
-**并行：** 否。**依赖：** T1–T21。**对应验收标准：** SPEC 全部 AC 与 DoD 的 Functional Audit。**分支：** `audit/22-functional`。**计划提交：** `audit: verify functional acceptance criteria`。**实际提交：** `abb33e036965f877a860ad5916f4b23ea7ffa417`（`audit: verify functional acceptance criteria`）。**实际状态：** 本地实现与验证完成；修复轮 1 将历史浏览器边界漂移相关项降级后，矩阵为 29 PASS / 11 PARTIAL / 0 FAIL，结论保持 `PARTIALLY_READY`。
+**并行：** 否。**依赖：** T1–T21。**对应验收标准：** SPEC 全部 AC 与 DoD 的 Functional Audit。**分支：** `audit/22-functional`。**计划提交：** `audit: verify functional acceptance criteria`。**实际提交：** `abb33e036965f877a860ad5916f4b23ea7ffa417`（`audit: verify functional acceptance criteria`）；审查修复轮 1 为 `22d587b84200c9ca93902dc19b22a5fc6b45c36d`（`fix: bind functional audit evidence contracts`）。**实际状态：** 本地实现与验证完成；修复轮 1 将历史浏览器边界漂移相关项降级后，矩阵为 29 PASS / 11 PARTIAL / 0 FAIL，结论保持 `PARTIALLY_READY`。
 
 ### 任务 23：Engineering Audit 与高风险缺陷闭环
 
