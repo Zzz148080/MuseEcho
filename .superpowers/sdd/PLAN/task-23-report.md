@@ -276,3 +276,11 @@ backup/rollback, current browser E2E, frontend type/build, ShellCheck, exact
 `pwsh`/`uv` wrapper, and student manual acceptance remain outside the proven
 local boundary unless a later section records a real run. No remote write or
 push occurred.
+
+### Review commit
+
+The review implementation, tests, current security evidence, audit truth, and
+process updates are committed as
+`07cf82687df5fa4adba9448c1fbaf1a81871a29e` —
+`fix: harden engineering audit evidence`. This exact hash is backfilled by a
+documentation-only follow-up commit; neither commit was pushed.

@@ -756,7 +756,8 @@ chains must be green before the review follow-up is closed.
 locked-Linux failures. It closed only after the fresh offline security chain,
 trusted no-build smoke, `728 passed` locked Linux run, static/type,
 Secret/license, lifecycle synthetics, and both audit CLIs were green. External,
-browser/frontend-build, remote-CI, and Task 24 work remains open.
+browser/frontend-build, remote-CI, and Task 24 work remains open. Review commit:
+`07cf82687df5fa4adba9448c1fbaf1a81871a29e` (`fix: harden engineering audit evidence`).
 
 ### 任务 24：Product Audit、最终验证与交付报告
 
