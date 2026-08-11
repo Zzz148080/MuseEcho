@@ -13,7 +13,7 @@
 
 四个 Medium blocker 分别是当前浏览器/前端完整链、远程 GitHub/GitLab CI、目标云与公网/恢复证据、正式 current-source Dockerfile 的离线可重建性。宿主还缺少 brief 最终 wrapper 所需的 `pwsh` 和 `uv`。这些边界没有被伪装为成功，因此状态不是无条件 `DONE`。
 
-计划主提交为 `audit: close engineering risks`，实际主提交：`31b2351fcf308b4aeb3ce8b1931afafe3350522d`。未 push、未执行远程写操作、未代写学生 `REFLECTION.md`。
+计划主提交为 `audit: close engineering risks`，实际实现从 `31b2351fcf308b4aeb3ce8b1931afafe3350522d` 延续到最终复审修复 `f697d13`。`audit/23-engineering` 已非 force 推送并建立 GitHub 草稿 PR #1；未执行云部署或代写学生 `REFLECTION.md`。
 
 ## 审计合约
 
@@ -326,8 +326,9 @@ scan all returned zero. Container-pytest and task-local temp cleanup were empty.
 
 After the user explicitly requested GitHub publication, the authenticated
 `Zzz148080/MuseEcho` remote received the already-reviewed Task 20, Task 21 and
-Task 22 branches without force-push. Task 23 remains local until this fix round
-passes independent rereview; no cloud deployment or other external system was
+Task 22 branches without force-push. Task 23 was kept local until all five fix
+rounds passed independent rereview; it was then pushed without force and opened
+as GitHub draft PR #1. No cloud deployment or other external system was
 modified.
 
 Round-2 implementation and evidence are committed as
@@ -395,3 +396,7 @@ temporary-directory cleanup all returned zero. A combined mypy invocation for
 the dual package/direct-script Engineering entry point is not a project gate:
 it discovers the same imported modules under two names, so no success is
 claimed for that unsupported command.
+
+Independent final merge review returned 0 Critical, 0 Important, and 0 Minor.
+The branch was published as `origin/audit/23-engineering`, and draft PR #1 is
+`https://github.com/Zzz148080/MuseEcho/pull/1` against `main`.
