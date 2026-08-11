@@ -28,19 +28,20 @@ expect_rejected() {
 }
 
 expect_legacy_accepted() {
-    local destination="$1" legacy_checker="$TEST_TMP/legacy-shellcheck-evidence.sh" output
+    local label="$1" destination="$2" legacy_checker="$TEST_TMP/legacy-shellcheck-evidence.sh" output
     cp "$CHECKER" "$legacy_checker"
     sed -i "/assert_contains '--pull=never'/d" "$legacy_checker"
+    sed -i '/    for script_path in /,/    done/d' "$legacy_checker"
     if output="$(MUSEECHO_EVIDENCE_ROOT="$destination" bash "$legacy_checker" 2>&1)"; then
-        printf 'PASS: legacy checker accepted missing --pull=never evidence\n'
+        printf 'PASS: legacy checker accepted missing %s evidence\n' "$label"
     else
-        fail "legacy checker unexpectedly rejected --pull=never mutation: $output"
+        fail "legacy checker unexpectedly rejected $label mutation: $output"
     fi
 }
 
 mutation_root="$TEST_TMP/pull-never"; copy_evidence "$mutation_root"
 sed -i 's/--pull=never/REMOVED-PULL-POLICY/g' "$mutation_root/DEPLOYMENT_EVIDENCE.md"
-expect_legacy_accepted "$mutation_root"
+expect_legacy_accepted '--pull=never' "$mutation_root"
 expect_rejected '--pull=never' "$mutation_root"
 
 for script_path in \
@@ -52,6 +53,7 @@ for script_path in \
     mutation_root="$TEST_TMP/$(basename "$script_path")"; copy_evidence "$mutation_root"
     escaped_path="${script_path//\//\\/}"
     sed -i "0,/$escaped_path/s//REMOVED-SCRIPT-PATH/" "$mutation_root/DEPLOYMENT_EVIDENCE.md"
+    expect_legacy_accepted "$script_path" "$mutation_root"
     expect_rejected "$script_path" "$mutation_root"
 done
 

@@ -279,3 +279,84 @@ ShellCheck evidence mutations rejected.
 The same cached full tag@digest image was rerun with `--pull=never --network
 none` for version and lint; no image pull or production deployment behavior
 occurred in this round.
+
+## Review fix round 4/5 — legacy mutation acceptance evidence
+
+### Root cause and focused RED
+
+The round-3 mutation harness created a task-local legacy checker only for the
+missing `--pull=never` case. Each of the five script-path mutations called only
+`expect_rejected`, so its output proved final-checker rejection but did not run
+or prove legacy-checker acceptance.
+
+The missing five legacy calls were added first, while the legacy copy still
+retained the script-path assertion loop. Fresh focused commands:
+
+```bash
+bash tests/deploy/test_shellcheck_evidence.sh
+bash tests/deploy/test_shellcheck_evidence_mutations.sh
+```
+
+The evidence checker exited 0. The mutation suite exited 1 with the expected
+five focused failures:
+
+```text
+FAIL: legacy checker unexpectedly rejected deploy/tencent-cloud/lib.sh mutation
+FAIL: legacy checker unexpectedly rejected deploy/tencent-cloud/install.sh mutation
+FAIL: legacy checker unexpectedly rejected deploy/tencent-cloud/deploy.sh mutation
+FAIL: legacy checker unexpectedly rejected deploy/tencent-cloud/rollback.sh mutation
+FAIL: legacy checker unexpectedly rejected deploy/tencent-cloud/backup.sh mutation
+5 ShellCheck evidence mutation(s) accepted
+```
+
+### GREEN
+
+The minimal harness fix removes the six round-3 guards from its disposable
+legacy-checker copy: the `--pull=never` assertion and the script-path assertion
+loop. It still mutates only copied evidence under `mktemp`; tracked evidence is
+never changed. Each mutation now runs the legacy copy and final checker, with
+its exact name visible.
+
+The same two focused commands exited 0 with this output:
+
+```text
+ShellCheck evidence contract passed.
+PASS: legacy checker accepted missing --pull=never evidence
+PASS: rejected mutation: --pull=never
+PASS: legacy checker accepted missing deploy/tencent-cloud/lib.sh evidence
+PASS: rejected mutation: deploy/tencent-cloud/lib.sh
+PASS: legacy checker accepted missing deploy/tencent-cloud/install.sh evidence
+PASS: rejected mutation: deploy/tencent-cloud/install.sh
+PASS: legacy checker accepted missing deploy/tencent-cloud/deploy.sh evidence
+PASS: rejected mutation: deploy/tencent-cloud/deploy.sh
+PASS: legacy checker accepted missing deploy/tencent-cloud/rollback.sh evidence
+PASS: rejected mutation: deploy/tencent-cloud/rollback.sh
+PASS: legacy checker accepted missing deploy/tencent-cloud/backup.sh evidence
+PASS: rejected mutation: deploy/tencent-cloud/backup.sh
+ShellCheck evidence mutations rejected.
+```
+
+### Proportional verification
+
+No image or tool was downloaded. `docker image inspect` confirmed the cached
+image ID was the required digest. Version and lint used the complete
+tag@digest reference with `--pull=never --network none`:
+
+```powershell
+docker run --pull=never --rm --network none --entrypoint shellcheck koalaman/shellcheck-alpine:v0.10.0@sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577 --version
+docker run --pull=never --rm --network none --entrypoint shellcheck -v "$PWD:/work:ro" -w /work koalaman/shellcheck-alpine:v0.10.0@sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577 deploy/tencent-cloud/lib.sh deploy/tencent-cloud/install.sh deploy/tencent-cloud/deploy.sh deploy/tencent-cloud/rollback.sh deploy/tencent-cloud/backup.sh
+```
+
+Both exited 0. Version stdout reported `version: 0.10.0`; lint stdout/stderr
+were empty. The remaining fresh gates were:
+
+```bash
+bash tests/deploy/test_tencent_cloud.sh
+bash deploy/tencent-cloud/install.sh --check-only
+for file in deploy/tencent-cloud/*.sh tests/deploy/test_tencent_cloud.sh tests/deploy/test_shellcheck_evidence*.sh; do bash -n "$file"; done
+```
+
+All 11 delivery contracts passed; check-only reported no host changes; all
+syntax checks exited 0. Windows Secret scan passed for 196 tracked/non-ignored
+files, and `git diff --check` exited 0. No production deployment behavior or
+real deployment evidence changed.
