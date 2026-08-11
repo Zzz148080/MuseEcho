@@ -9,6 +9,10 @@
 - PowerShell 会把子进程 ErrorRecord 按显示宽度换行。Secret scanner 已正确 fail-closed，但 synthetic harness 把格式化文本当原始字符串匹配而误报；对诊断输出先规范空白即可保持完整文件名断言，不需要降低扫描标准。
 - 本地两核五分钟基准、内部 CA smoke 和配置文件存在不能替代目标服务器、公网受信 TLS 或远程 CI。矩阵因此保持 6 个 PARTIAL，且学生人工验收继续保留为人工待办。
 - 容器 smoke 的强制 build 在缓存失效时执行了锁定 `npm ci`。虽然锁文件和依赖版本没有变化，这仍是一次与 Task 22 禁止下载约束不一致的过程事件，必须保留在报告而不能用“可复现构建”掩盖。
+- exit 0 只是进程结果，不是功能证据。审查 mutation 证明把当前 evidence 的命令和结果一起改成无意义成功仍可绕过初版 checker；代码内逐 evidence 固定 command、coverage、可量化 result 后，审计文本本身不能同步改写策略。
+- 无 Git 可移植性不能以放弃真实性为代价。历史 E2E 现在同时绑定 PLAN 中的完整 commit 锚点、历史内容摘要和当前 source/test SHA-256 manifest；有 Git 时再用单次 archive 校验历史 manifest。这样 Git-less runtime 能拒绝 audit-only 伪造，同时不要求生产镜像安装 Git。
+- “过去跑过浏览器测试”只有在相关边界未变时才能支撑当前 PASS。Task 19 与当前 manifest 的客观漂移使 5 个条目从 PASS 降为 PARTIAL；这比用历史成功填满矩阵更准确，也保留了在合适隔离环境重跑的明确闭环。
+- README 与 CI 文件存在不等于交付可用。当前 E005 通过解析两套 CI（包括 GitLab `unit-test`）并断言 README 的锁定安装、开发 HTTPS、生产 smoke、health 与 cleanup 路径，把 AC-F-2/AC-F-3/DOD-11/DOD-12 绑定到可测合约而不是 `git show --stat`。
 
 ## 2026-08-11 — TASK 21 / 交付边界的本地证据
 

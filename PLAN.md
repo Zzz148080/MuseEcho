@@ -638,7 +638,7 @@ test('upload to delete completes without console errors', async ({page}) => {
 
 **最终命令：** `uv run pytest -q && npm --prefix frontend test -- --run && npm run typecheck && npm run e2e && uv run python scripts/benchmark.py --duration 300 --json docs/evidence/performance.json`
 
-**并行：** 否。**依赖：** T14/T16–T18。**对应验收标准：** AC-A 至 AC-F 的真实浏览器、安全与性能证据。**分支：** `feat/19-system-verification`（按后续统一 `feat/*` 分支规则执行）。**计划提交：** `test: verify MuseEcho end to end`。**实际提交：** `9ad408c`（真实 HTTPS E2E、安全/响应式矩阵、独立 TypeScript 门禁、300 秒完整性能基准与非敏感证据），已完成。
+**并行：** 否。**依赖：** T14/T16–T18。**对应验收标准：** AC-A 至 AC-F 的真实浏览器、安全与性能证据。**分支：** `feat/19-system-verification`（按后续统一 `feat/*` 分支规则执行）。**计划提交：** `test: verify MuseEcho end to end`。**实际提交：** `9ad408c5b51e7d5ff15e3123d72d012df824e6df`（真实 HTTPS E2E、安全/响应式矩阵、独立 TypeScript 门禁、300 秒完整性能基准与非敏感证据）；证据记录提交为 `1047ce242884b6ba83a525524e88dcc44ab76a69`，已完成。
 
 ### 任务 20：生产容器、双 CI 与依赖/Secret 审计
 
@@ -718,7 +718,7 @@ def test_every_spec_acceptance_item_has_a_verdict_and_evidence(audit):
 
 **最终命令：** `uv run pytest tests/unit/test_acceptance_matrix.py -q && uv run python scripts/check_acceptance_matrix.py SPEC.md docs/audits/FUNCTIONAL_AUDIT.md`
 
-**并行：** 否。**依赖：** T1–T21。**对应验收标准：** SPEC 全部 AC 与 DoD 的 Functional Audit。**分支：** `audit/22-functional`。**计划提交：** `audit: verify functional acceptance criteria`。**实际提交：** `abb33e036965f877a860ad5916f4b23ea7ffa417`（`audit: verify functional acceptance criteria`）。**实际状态：** 本地实现与验证完成，矩阵为 34 PASS / 6 PARTIAL / 0 FAIL，结论为 `PARTIALLY_READY`。
+**并行：** 否。**依赖：** T1–T21。**对应验收标准：** SPEC 全部 AC 与 DoD 的 Functional Audit。**分支：** `audit/22-functional`。**计划提交：** `audit: verify functional acceptance criteria`。**实际提交：** `abb33e036965f877a860ad5916f4b23ea7ffa417`（`audit: verify functional acceptance criteria`）。**实际状态：** 本地实现与验证完成；修复轮 1 将历史浏览器边界漂移相关项降级后，矩阵为 29 PASS / 11 PARTIAL / 0 FAIL，结论保持 `PARTIALLY_READY`。
 
 ### 任务 23：Engineering Audit 与高风险缺陷闭环
 

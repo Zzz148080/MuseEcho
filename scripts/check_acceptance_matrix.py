@@ -4,10 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import io
 import re
 import shutil
 import subprocess
 import sys
+import tarfile
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -82,6 +85,7 @@ REQUIRED_OPEN_BLOCKERS = (
     "TASK23-AUDIT",
     "TASK24-AUDIT",
     "STUDENT-MANUAL",
+    "CURRENT-BROWSER-E2E",
 )
 VALID_VERDICTS = {"PASS", "PARTIAL", "FAIL"}
 VALID_IMPORTANCE = {"IMPORTANT", "STANDARD"}
@@ -98,10 +102,223 @@ FILE_ONLY_COMMAND = re.compile(
 )
 UTC_TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 COMMIT_HASH = re.compile(r"^[0-9a-f]{40}$")
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
+
+TASK19_EVIDENCE_COMMIT = "1047ce242884b6ba83a525524e88dcc44ab76a69"
+TASK19_HISTORICAL_BOUNDARY_SHA256 = (
+    "063f1dd0e3b9a27aa7772e3e2320e681facd7df2ff9e58e8e9e3c204f02bdc5d"
+)
+TASK19_BOUNDARY_PATHS = (
+    "e2e",
+    "frontend/src",
+    "src/museecho",
+    "tests/api",
+    "tests/integration",
+    "package.json",
+    "package-lock.json",
+    "frontend/package.json",
+    "frontend/package-lock.json",
+    "playwright.config.ts",
+    "tsconfig.e2e.json",
+)
 
 
 class AuditValidationError(ValueError):
     """Raised when one or more fail-closed audit checks fail."""
+
+
+@dataclass(frozen=True)
+class EvidenceContract:
+    kind: str
+    command: str
+    path: str
+    coverage_ids: tuple[str, ...]
+    result: str
+    exit_code_raw: str
+    commit: str = "-"
+    supports_pass: bool = True
+
+
+EVIDENCE_CONTRACTS = {
+    "E001": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command="npm.cmd --prefix frontend test -- --run",
+        path="frontend/src",
+        coverage_ids=(
+            "AC-A-3",
+            "AC-B-1",
+            "AC-B-2",
+            "AC-B-3",
+            "AC-C-1",
+            "AC-C-2",
+            "AC-D-4",
+            "AC-F-1",
+            "AC-F-4",
+            "DOD-01",
+            "DOD-03",
+            "DOD-05",
+            "DOD-06",
+            "DOD-07",
+        ),
+        result="vitest-files=12; vitest-tests=66",
+        exit_code_raw="0",
+    ),
+    "E002": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command=(
+            "npm.cmd --prefix frontend run typecheck; npm.cmd --prefix frontend run build; "
+            "npm.cmd run typecheck"
+        ),
+        path="frontend",
+        coverage_ids=("AC-F-1", "AC-F-4", "DOD-07"),
+        result="frontend-typecheck=0; frontend-build=0; e2e-typecheck=0",
+        exit_code_raw="0",
+    ),
+    "E003": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command=("powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/secret-scan.ps1"),
+        path="scripts/secret-scan.ps1",
+        coverage_ids=("AC-E-4", "DOD-09", "DOD-14"),
+        result="secret-scan-files=202",
+        exit_code_raw="0",
+    ),
+    "E004": EvidenceContract(
+        kind="HISTORICAL_COMMIT",
+        command=(
+            "git show 1047ce242884b6ba83a525524e88dcc44ab76a69:AGENT_LOG.md "
+            "1047ce242884b6ba83a525524e88dcc44ab76a69:PLAN.md"
+        ),
+        path="AGENT_LOG.md",
+        coverage_ids=("AC-A-4", "AC-C-3", "AC-F-1", "DOD-01", "DOD-03", "DOD-07"),
+        result=("browser-tests=4; benchmark-seconds=11.201268; boundary-state=DRIFT"),
+        exit_code_raw="0",
+        commit=TASK19_EVIDENCE_COMMIT,
+        supports_pass=False,
+    ),
+    "E005": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command=(
+            r".venv\Scripts\python.exe -m pytest "
+            "tests/unit/test_task20_final_delivery_contract.py -q "
+            "--basetemp=tmp/task22-delivery-contract"
+        ),
+        path="tests/unit/test_task20_final_delivery_contract.py",
+        coverage_ids=("AC-F-2", "AC-F-3", "DOD-11", "DOD-12"),
+        result=(
+            "pytest-tests=7; github=parsed; gitlab=parsed; gitlab-unit-test=present; "
+            "readme=verified"
+        ),
+        exit_code_raw="0",
+    ),
+    "E006": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command=(
+            r"..\feat-20-production-delivery\.venv\Scripts\python.exe -m pytest "
+            "tests/unit/test_acceptance_matrix.py -q"
+        ),
+        path="tests/unit/test_acceptance_matrix.py",
+        coverage_ids=("DOD-15",),
+        result="red=ModuleNotFoundError:scripts.check_acceptance_matrix",
+        exit_code_raw="1",
+        supports_pass=False,
+    ),
+    "E008": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command=(
+            "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
+            "scripts/container-pytest.ps1 -Image museecho-app:task20-final"
+        ),
+        path="tests",
+        coverage_ids=(
+            "AC-A-1",
+            "AC-A-2",
+            "AC-A-3",
+            "AC-A-4",
+            "AC-D-1",
+            "AC-D-2",
+            "AC-D-3",
+            "AC-D-4",
+            "AC-E-1",
+            "AC-E-2",
+            "AC-E-3",
+            "AC-F-1",
+            "DOD-01",
+            "DOD-02",
+            "DOD-04",
+            "DOD-05",
+            "DOD-06",
+            "DOD-07",
+            "DOD-14",
+            "DOD-15",
+        ),
+        result="pytest-tests=649",
+        exit_code_raw="0",
+    ),
+    "E009": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command=(
+            "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/container-smoke.ps1"
+        ),
+        path="scripts/container-smoke.ps1",
+        coverage_ids=("AC-E-1", "AC-E-3", "AC-F-1", "AC-F-3", "DOD-07", "DOD-08"),
+        result="smoke=real-wav+restart+ciphertext+image-history+cleanup",
+        exit_code_raw="0",
+    ),
+    "E010": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command=(
+            r".venv\Scripts\python.exe -m ruff format --check src tests scripts; "
+            r".venv\Scripts\python.exe -m ruff check .; "
+            r".venv\Scripts\python.exe -m mypy src; "
+            r".venv\Scripts\python.exe -m mypy scripts/check_acceptance_matrix.py"
+        ),
+        path="scripts/check_acceptance_matrix.py",
+        coverage_ids=("AC-F-1", "DOD-07"),
+        result="ruff-files=89; mypy-src-files=45; mypy-checker-files=1",
+        exit_code_raw="0",
+    ),
+    "E011": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command=r".venv\Scripts\python.exe scripts/license_audit.py",
+        path="scripts/license_audit.py",
+        coverage_ids=("DOD-14",),
+        result="license-audit=pass",
+        exit_code_raw="0",
+    ),
+    "E012": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command=(
+            "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-secret-scan.ps1"
+        ),
+        path="scripts/test-secret-scan.ps1",
+        coverage_ids=("AC-E-4", "DOD-09", "DOD-14"),
+        result="secret-mutations=pass",
+        exit_code_raw="0",
+    ),
+    "E013": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command=(
+            "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-secret-scan.ps1"
+        ),
+        path="scripts/test-secret-scan.ps1",
+        coverage_ids=("AC-E-4", "DOD-09"),
+        result="red=wrapped-unreadable-filename",
+        exit_code_raw="1",
+        supports_pass=False,
+    ),
+    "E014": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command=(
+            "uv run pytest tests/unit/test_acceptance_matrix.py -q && "
+            "uv run python scripts/check_acceptance_matrix.py SPEC.md "
+            "docs/audits/FUNCTIONAL_AUDIT.md"
+        ),
+        path="tests/unit/test_acceptance_matrix.py",
+        coverage_ids=("AC-F-1", "DOD-15"),
+        result="pytest-tests=35; pass=29; partial=11; fail=0",
+        exit_code_raw="0",
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -110,6 +327,9 @@ class EvidenceRecord:
     kind: str
     command: str
     path: str
+    coverage_ids: tuple[str, ...]
+    result: str
+    boundary_sha256: str
     observed_at_raw: str
     exit_code_raw: str
     commit: str
@@ -270,6 +490,9 @@ def load_audit(spec_path: Path | str, audit_path: Path | str) -> AcceptanceAudit
             "Kind",
             "Command",
             "Path",
+            "Coverage",
+            "Result",
+            "Boundary SHA256",
             "Observed at UTC",
             "Exit code",
             "Commit",
@@ -304,6 +527,9 @@ def load_audit(spec_path: Path | str, audit_path: Path | str) -> AcceptanceAudit
             kind=row["Kind"],
             command=row["Command"],
             path=row["Path"],
+            coverage_ids=_refs(row["Coverage"]),
+            result=row["Result"],
+            boundary_sha256=row["Boundary SHA256"],
             observed_at_raw=row["Observed at UTC"],
             exit_code_raw=row["Exit code"],
             commit=row["Commit"],
@@ -373,6 +599,105 @@ def _resolve_evidence_path(repo_root: Path, value: str) -> Path | None:
     return resolved
 
 
+def _is_boundary_file(relative_path: Path) -> bool:
+    return "__pycache__" not in relative_path.parts and relative_path.suffix != ".pyc"
+
+
+def _digest_boundary_entries(entries: Iterable[tuple[str, bytes]]) -> str:
+    digest = hashlib.sha256()
+    for relative_path, content in sorted(entries):
+        digest.update(relative_path.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(hashlib.sha256(content).hexdigest().encode("ascii"))
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
+def _current_boundary_sha256(repo_root: Path) -> str:
+    entries: list[tuple[str, bytes]] = []
+    for value in TASK19_BOUNDARY_PATHS:
+        path = repo_root / value
+        candidates = (path,) if path.is_file() else path.rglob("*")
+        for candidate in candidates:
+            if not candidate.is_file():
+                continue
+            relative = candidate.relative_to(repo_root)
+            if _is_boundary_file(relative):
+                entries.append((relative.as_posix(), candidate.read_bytes()))
+    return _digest_boundary_entries(entries)
+
+
+def _historical_boundary_sha256(repo_root: Path, commit: str) -> str | None:
+    archive = subprocess.run(
+        [
+            "git",
+            "-c",
+            "core.autocrlf=false",
+            "archive",
+            "--format=tar",
+            commit,
+            "--",
+            *TASK19_BOUNDARY_PATHS,
+        ],
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+        timeout=30,
+    )
+    if archive.returncode != 0:
+        return None
+    entries: list[tuple[str, bytes]] = []
+    with tarfile.open(fileobj=io.BytesIO(archive.stdout), mode="r:") as boundary_archive:
+        for member in boundary_archive.getmembers():
+            relative = Path(member.name)
+            if not member.isfile() or not _is_boundary_file(relative):
+                continue
+            extracted = boundary_archive.extractfile(member)
+            if extracted is None:
+                return None
+            entries.append((relative.as_posix(), extracted.read()))
+    return _digest_boundary_entries(entries)
+
+
+def _validate_task19_historical_boundary(
+    record: EvidenceRecord,
+    *,
+    repo_root: Path,
+    issues: list[str],
+) -> None:
+    if SHA256.fullmatch(record.boundary_sha256) is None:
+        issues.append("E004 current boundary SHA256 is missing or invalid")
+    else:
+        current_boundary = _current_boundary_sha256(repo_root)
+        if record.boundary_sha256 != current_boundary:
+            issues.append("E004 current boundary SHA256 does not match repository content")
+
+    plan_path = repo_root / "PLAN.md"
+    if not plan_path.is_file() or TASK19_EVIDENCE_COMMIT not in plan_path.read_text(
+        encoding="utf-8"
+    ):
+        issues.append("E004 authoritative PLAN anchor does not confirm its exact commit")
+
+    if shutil.which("git") is None:
+        return
+    historical_boundary = _historical_boundary_sha256(repo_root, TASK19_EVIDENCE_COMMIT)
+    if historical_boundary != TASK19_HISTORICAL_BOUNDARY_SHA256:
+        issues.append("E004 historical boundary does not match its exact commit")
+    anchor = subprocess.run(
+        ["git", "show", f"{TASK19_EVIDENCE_COMMIT}:AGENT_LOG.md"],
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+        text=True,
+        encoding="utf-8",
+        timeout=30,
+    )
+    if anchor.returncode != 0 or not all(
+        fragment in anchor.stdout for fragment in ("真实浏览器 `4 passed`", "11.201268")
+    ):
+        issues.append("E004 historical AGENT_LOG anchor does not expose the claimed results")
+
+
 def validate_audit(
     audit: AcceptanceAudit,
     *,
@@ -415,6 +740,12 @@ def validate_audit(
             issues.append(f"{record.evidence_id} has invalid evidence kind: {record.kind}")
         if record.command in {"", "-"}:
             issues.append(f"{record.evidence_id} requires an evidence command")
+        if not record.coverage_ids:
+            issues.append(f"{record.evidence_id} requires declared item coverage")
+        if record.result in {"", "-"}:
+            issues.append(f"{record.evidence_id} requires a measurable result")
+        if record.boundary_sha256 == "":
+            issues.append(f"{record.evidence_id} requires a boundary SHA256 field")
         resolved_path = _resolve_evidence_path(repo_root, record.path)
         if resolved_path is None:
             issues.append(f"{record.evidence_id} requires an evidence path")
@@ -438,6 +769,24 @@ def validate_audit(
             except ValueError:
                 issues.append(f"{record.evidence_id} has invalid exit code")
         evidence_exit_codes[record.evidence_id] = exit_code
+        contract = EVIDENCE_CONTRACTS.get(record.evidence_id)
+        if record.kind in EXECUTED_EVIDENCE_KINDS and contract is None:
+            issues.append(f"{record.evidence_id} has no fixed evidence contract")
+        if contract is not None:
+            fixed_fields_match = (
+                record.kind == contract.kind
+                and record.command == contract.command
+                and record.path == contract.path
+                and record.coverage_ids == contract.coverage_ids
+                and record.result == contract.result
+                and record.exit_code_raw == contract.exit_code_raw
+                and record.commit == contract.commit
+                and (record.evidence_id == "E004" or record.boundary_sha256 == "-")
+            )
+            if not fixed_fields_match:
+                issues.append(f"{record.evidence_id} does not match its fixed evidence contract")
+        if record.evidence_id == "E004":
+            _validate_task19_historical_boundary(record, repo_root=repo_root, issues=issues)
         if record.kind == "HISTORICAL_COMMIT":
             if COMMIT_HASH.fullmatch(record.commit) is None:
                 issues.append(f"{record.evidence_id} requires an exact 40-character commit")
@@ -464,6 +813,9 @@ def validate_audit(
             record.kind,
             record.command,
             record.path,
+            *record.coverage_ids,
+            record.result,
+            record.boundary_sha256,
             record.observed_at_raw,
             record.exit_code_raw,
             record.commit,
@@ -509,7 +861,16 @@ def validate_audit(
             if evidence is None:
                 issues.append(f"{item.item_id} references unknown evidence {evidence_id}")
                 continue
+            if item.item_id not in evidence.coverage_ids:
+                issues.append(f"{evidence_id} does not cover {item.item_id}")
             if item.verdict == "PASS":
+                contract = EVIDENCE_CONTRACTS.get(evidence_id)
+                if evidence_id == "E004":
+                    issues.append("E004 historical boundary drift cannot support PASS")
+                elif contract is None or not contract.supports_pass:
+                    issues.append(
+                        f"{item.item_id} PASS lacks a fixed passing contract for {evidence_id}"
+                    )
                 if evidence.kind not in EXECUTED_EVIDENCE_KINDS or FILE_ONLY_COMMAND.match(
                     evidence.command
                 ):

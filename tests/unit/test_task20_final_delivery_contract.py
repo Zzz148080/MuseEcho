@@ -135,3 +135,54 @@ def test_linux_secret_modes_and_documented_development_path_have_real_ci_smokes(
     assert "verify_release_identity.py record" in readme
     assert "docker compose --profile production build" not in readme
     assert "docker compose --profile production up -d --wait --no-build" in readme
+
+
+def test_dual_ci_definitions_include_executable_tests_and_gitlab_unit_test_job():
+    github = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    gitlab = yaml.safe_load((ROOT / ".gitlab-ci.yml").read_text(encoding="utf-8"))
+
+    github_jobs = github["jobs"]
+    assert {"quality", "e2e", "distribution"}.issubset(github_jobs)
+    quality_commands = "\n".join(
+        str(step.get("run", "")) for step in github_jobs["quality"]["steps"]
+    )
+    assert "uv run pytest -q --basetemp tmp/pytest-ci" in quality_commands
+    assert "npm --prefix frontend test" in quality_commands
+
+    unit_test = gitlab["unit-test"]
+    assert unit_test["stage"] == "test"
+    assert unit_test["script"] == ["uv run pytest -q --basetemp tmp/pytest-ci"]
+    assert {"lint", "unit-test", "frontend", "e2e", "secret-scan"}.issubset(gitlab)
+
+
+def test_readme_cold_start_contract_covers_locked_setup_https_health_and_cleanup():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    for required in (
+        "uv sync --frozen --extra dev",
+        "npm.cmd ci",
+        "npm.cmd --prefix frontend ci",
+        "docker compose --profile production config --quiet",
+        "docker compose --profile production up -d --wait --no-build",
+        "curl --fail --silent --show-error --insecure https://localhost:8443/api/health",
+        "docker compose --profile production down --volumes",
+        "docker compose --profile development up --build --detach --wait app-dev gateway-dev",
+        "curl.exe --fail --silent --show-error --insecure https://localhost:4173/api/health",
+        "scripts\\development-smoke.ps1",
+        "scripts\\container-smoke.ps1",
+    ):
+        assert required in readme
+
+
+def test_process_documents_anchor_task19_evidence_and_external_truth_boundaries():
+    plan = (ROOT / "PLAN.md").read_text(encoding="utf-8")
+    agent_log = (ROOT / "AGENT_LOG.md").read_text(encoding="utf-8")
+    task20 = (ROOT / "TASK20_HANDOFF.md").read_text(encoding="utf-8")
+    deployment = (ROOT / "DEPLOYMENT_EVIDENCE.md").read_text(encoding="utf-8")
+
+    assert "1047ce242884b6ba83a525524e88dcc44ab76a69" in plan
+    assert "4 个真实 HTTPS 浏览器 E2E" in agent_log
+    assert "11.201268" in agent_log
+    assert "远端 GitHub Actions/GitLab CI 仍未运行" in task20
+    assert "No public URL is claimed." in deployment
+    assert "## Pending real-server evidence" in deployment

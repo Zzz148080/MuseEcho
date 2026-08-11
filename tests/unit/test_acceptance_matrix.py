@@ -206,11 +206,139 @@ def test_same_evidence_cannot_be_reindexed_under_another_id(tmp_path: Path):
     assert "duplicate evidence records: E001 and E999" in _validation_error(tmp_path, mutation)
 
 
+def test_current_command_cannot_be_replaced_by_vacuous_success(tmp_path: Path):
+    mutation = _replace_table_cell(
+        _audit_text(), "## Evidence index", "E008", "Command", "python -c pass"
+    )
+    mutation = _replace_table_cell(
+        mutation,
+        "## Evidence index",
+        "E008",
+        "Summary",
+        "The replacement command exited successfully without exercising MuseEcho.",
+    )
+
+    assert "E008 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
+
+def test_pass_item_rejects_successful_evidence_without_item_coverage(tmp_path: Path):
+    mutation = _replace_table_cell(
+        _audit_text(), "## Acceptance matrix", "AC-A-1", "Evidence IDs", "E001"
+    )
+
+    assert "E001 does not cover AC-A-1" in _validation_error(tmp_path, mutation)
+
+
+def test_current_command_result_contract_cannot_be_rewritten_coherently(tmp_path: Path):
+    text = _audit_text()
+    result_column = "Result" if "| Result |" in text else "Summary"
+    mutation = _replace_table_cell(
+        text,
+        "## Evidence index",
+        "E008",
+        result_column,
+        "command-exit=0; functional-assertions=0",
+    )
+
+    assert "E008 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
+
 def test_exact_historical_evidence_is_structurally_verifiable_without_git(monkeypatch):
     monkeypatch.setenv("PATH", "")
     audit = load_audit(SPEC_PATH, AUDIT_PATH)
 
     validate_audit(audit, repo_root=ROOT, now=NOW)
+
+
+def test_gitless_historical_evidence_rejects_coherent_fake_commit_and_command(
+    tmp_path: Path, monkeypatch
+):
+    monkeypatch.setenv("PATH", "")
+    fake_commit = "b" * 40
+    mutation = _replace_table_cell(
+        _audit_text(), "## Evidence index", "E004", "Commit", fake_commit
+    )
+    mutation = _replace_table_cell(
+        mutation,
+        "## Evidence index",
+        "E004",
+        "Command",
+        f"git show --format=fuller --stat {fake_commit} -- AGENT_LOG.md PLAN.md",
+    )
+
+    assert "E004 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
+
+def test_historical_evidence_rejects_audit_only_boundary_path_drift(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("PATH", "")
+    commit = "1047ce242884b6ba83a525524e88dcc44ab76a69"
+    mutation = _replace_table_cell(
+        _audit_text(), "## Evidence index", "E004", "Path", "frontend/src"
+    )
+    mutation = _replace_table_cell(
+        mutation,
+        "## Evidence index",
+        "E004",
+        "Command",
+        f"git show --format=fuller --stat {commit} -- frontend/src",
+    )
+
+    assert "E004 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
+
+@pytest.mark.parametrize("replacement", ("-", "0" * 64))
+def test_historical_evidence_requires_current_boundary_hash(tmp_path: Path, replacement: str):
+    text = _audit_text()
+    if "| Boundary SHA256 |" in text:
+        mutation = _replace_table_cell(
+            text,
+            "## Evidence index",
+            "E004",
+            "Boundary SHA256",
+            replacement,
+        )
+    else:
+        mutation = text
+
+    assert "E004 current boundary SHA256" in _validation_error(tmp_path, mutation)
+
+
+def test_drifted_historical_browser_boundary_cannot_make_current_item_pass(tmp_path: Path):
+    mutation = _replace_table_cell(
+        _audit_text(), "## Acceptance matrix", "AC-C-3", "Evidence IDs", "E004"
+    )
+    mutation = _replace_table_cell(mutation, "## Acceptance matrix", "AC-C-3", "Verdict", "PASS")
+    mutation = _replace_table_cell(mutation, "## Acceptance matrix", "AC-C-3", "Disposition", "-")
+
+    assert "E004 historical boundary drift cannot support PASS" in _validation_error(
+        tmp_path, mutation
+    )
+
+
+def test_ci_and_readme_evidence_cannot_omit_current_contract_scope(tmp_path: Path):
+    text = _audit_text()
+    if "| E005 | HISTORICAL_COMMIT |" in text:
+        mutation = text
+    else:
+        mutation = _replace_table_cell(
+            text,
+            "## Evidence index",
+            "E005",
+            "Command",
+            "python -c pass",
+        )
+
+    assert "E005 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
 
 
 def test_historical_evidence_command_must_bind_its_exact_commit_and_path(tmp_path: Path):

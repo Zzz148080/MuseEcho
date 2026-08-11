@@ -4,9 +4,10 @@
 
 `DONE_WITH_CONCERNS`. The local Task 22 deliverables and proportionate
 verification are complete. The machine-readable audit validates all 40 SPEC
-items as `34 PASS / 6 PARTIAL / 0 FAIL` and deliberately reports
+items as `29 PASS / 11 PARTIAL / 0 FAIL` and deliberately reports
 `PARTIALLY_READY`. Public/target-server evidence, remote CI, Task 23/24 audits,
-and the student's own acceptance remain open and prevent `READY`.
+the current browser E2E, and the student's own acceptance remain open and
+prevent `READY`.
 
 One process constraint was violated during current Docker smoke: the existing
 smoke script's mandatory build encountered an invalid gateway cache and ran the
@@ -23,10 +24,16 @@ recorded in full under **Constraint concern** and is the reason for the
 - The item contract is fixed to 24 AC items (`AC-A-1` through `AC-F-6`) plus 16
   ordered DoD items (`DOD-01` through `DOD-16`). The checker traces the AC
   counts/order and DoD fragments back to `SPEC.md`.
-- Evidence has an ID, kind, exact command, repository-relative path, real UTC
-  observation time, exit status, and summary. Historical evidence additionally
-  requires a full 40-character commit bound to the command and path; Git is
-  used to verify the object when available.
+- Evidence has an ID, kind, exact command, repository-relative path, explicit
+  item coverage, measurable result, optional boundary digest, real UTC
+  observation time, exit status, and summary. Executed evidence is checked
+  against independent code policy, not merely accepted because audit text is
+  internally consistent.
+- Historical browser evidence additionally requires its fixed full commit,
+  current source/test boundary SHA-256, a repository PLAN anchor, and fixed
+  historical content assertions. Git-enabled runs also verify the commit and
+  historical archive; Git-less runs retain the independent policy and current
+  boundary checks.
 - `PASS` requires successful executed evidence. `FILE_EXISTENCE` and
   `EXTERNAL_NOT_RUN` cannot make an item pass. Important `PARTIAL`/`FAIL` items
   need a linked open blocker or passing fix/revalidation evidence.
@@ -253,6 +260,123 @@ was not modified, described as closed, or used to alter a functional verdict.
 - Reviewed the diff for secrets and protected/unrelated paths. Neither
   `ai4coding-agentos-lab/` nor `docs/input/` was read or changed.
 - Confirmed the parked Task 21 harness issue remains assigned to Task 23.
+
+## Review fix round 1/5 — evidence authenticity
+
+### Findings reproduced and RED
+
+The review findings were verified against `4ca6be8`. The root issue was not a
+single weak command: the checker treated audit-text coherence as authenticity.
+For `CURRENT_COMMAND`, kind plus exit `0` and a short denylist were sufficient.
+For historical evidence in a Git-less runtime, commit/command/path agreement
+inside the same editable Markdown row was sufficient. E005 used a historical
+`git show --stat` and never read either CI definition or README.
+
+Nine audit-only mutation tests were written before the implementation change.
+The old checker accepted every mutation, so the focused RED was `9 failed, 26
+deselected`, exit `1`. The mutations covered:
+
+- replacing E008 command, result, and summary coherently with a vacuous success;
+- valid evidence claiming an unrelated item, and coherent result rewriting;
+- coherent fake E004 commit/command in a Git-less process;
+- E004 boundary path drift, missing/zero boundary SHA, and a drifted historical
+  record used as the sole support for PASS;
+- E005 omitting a current CI/README contract while its Markdown row remained
+  superficially successful.
+
+### Minimal implementation and GREEN
+
+`scripts/check_acceptance_matrix.py` now owns a compact immutable contract for
+each executed evidence ID: kind, exact command, path, exact item coverage,
+measurable result, exit status, and whether it may support PASS. A PASS row must
+cite a passing contract that explicitly covers that item. This policy cannot be
+changed by editing only the audit. The nine review mutations then passed (`9
+passed, 26 deselected`), and the full focused suite passed (`35 passed`).
+
+Historical E004 is fixed to commit
+`1047ce242884b6ba83a525524e88dcc44ab76a69` and command
+`git show 1047ce242884b6ba83a525524e88dcc44ab76a69:AGENT_LOG.md
+1047ce242884b6ba83a525524e88dcc44ab76a69:PLAN.md`. The current canonical
+browser/source/test boundary contains 107 files and has SHA-256
+`dc3ccfff5d317e489be27454425ffd1e48a07c5e292cb3638a3d07d0b562f489`.
+The historical boundary contains 105 files and has SHA-256
+`063f1dd0e3b9a27aa7772e3e2320e681facd7df2ff9e58e8e9e3c204f02bdc5d`.
+The checker verifies the current digest and exact PLAN anchor in every runtime;
+with Git it additionally verifies the commit and a single canonical archive of
+the historical boundary, including the recorded browser count and benchmark.
+Consequently E004 is explicitly `boundary-state=DRIFT` and cannot support PASS.
+
+The first boundary implementation performed roughly 105 `git show` processes
+per checker invocation and the focused run hit its 124-second bound. A trace
+identified repeated process startup, not a product failure. One offline `git
+-c core.autocrlf=false archive` replaced the per-file calls; the explicit Git
+configuration also removed a Windows line-ending digest mismatch. The suite
+then completed in seconds without a cache or fail-open fallback.
+
+E005 is now a current seven-test delivery contract. It parses both
+`.github/workflows/ci.yml` and `.gitlab-ci.yml`, requires the GitLab `unit-test`
+stage/script and relevant GitHub commands, reads the README locked cold-start,
+development HTTPS, production smoke, health, and cleanup instructions, and
+checks SPEC/PLAN/log/handoff/deployment truth anchors. Its initial run was `6
+passed, 1 failed` because PLAN abbreviated the Task 19 evidence commit; after
+recording the already-authoritative full hash it passed `7 passed in 0.52s` at
+`2026-08-11T10:17:47Z`.
+
+### Current browser attempt and verdict changes
+
+The current frontend built successfully from existing local dependencies. A
+bounded Chrome E2E attempt then launched the existing FFmpeg-capable app image
+on a Docker `--internal` network. The app started and was healthy inside the
+container, but Docker Desktop did not expose the published port to host Chrome;
+the 60-second loopback health bound expired before Playwright started. The
+container and temporary network were removed. No outbound-capable bridge was
+tried because that would relax the explicit no-network boundary, and no
+dependency, image, browser, or tool was downloaded.
+
+Because the only completed Chrome record has a drifted boundary, AC-C-3,
+AC-F-1, DOD-01, DOD-03, and DOD-07 were downgraded from PASS to important
+PARTIAL with `CURRENT-BROWSER-E2E`. The matrix is therefore `29 PASS / 11
+PARTIAL / 0 FAIL`; readiness remains `PARTIALLY_READY`. This is an environment
+and evidence gap, not a claimed product failure.
+
+### Review verification evidence
+
+- Git-less pristine gates: existing cached uv `0.11.29`, `--pull=never`,
+  `--network none`, read-only worktree, `UV_NO_SYNC=1`, and pytest cache provider
+  disabled. The first review pass was `35 passed in 69.04s`, checker `29 PASS /
+  11 PARTIAL / 0 FAIL`, exit `0`, wall 80.4 seconds. The completed-audit run was
+  `35 passed in 67.98s`, the same checker result, exit `0`, wall 77.78 seconds,
+  with no warning. The processes had no `git` executable.
+- Locked Linux regression: existing `museecho-app:task20-final`, network none
+  and read-only repository; `649 passed in 244.21s`, exit `0`, wall 256.7
+  seconds. Containers and task temporary directories were empty afterward.
+- Current CI/README/process contract: `7 passed in 0.52s`, exit `0`.
+- Quality: Ruff format check covered 89 files, Ruff lint passed, mypy passed for
+  45 application sources and the checker; license audit passed.
+- Secret gates: all synthetic mutations passed and the fresh real scan checked
+  202 tracked/non-ignored files, both exit `0`.
+
+Remote CI, public/target-server smoke and benchmark, Task 23/24 audits, and the
+student acceptance were not run. The earlier mandatory Docker smoke build's
+167-package locked npm fetch remains a process concern; this review round made
+no network retrieval and changed no package or lock manifest.
+
+Two final-run setup probes also failed closed before test collection and are
+not hidden: making the entire container root read-only prevented uv from
+creating its own cache lock (exit `2`, 0.77 seconds), and omitting
+`UV_PROJECT_ENVIRONMENT=/app/.venv` made uv reject the read-only repository
+`.venv` junction (exit `2`, 0.83 seconds). The final invocation preserved the
+required read-only worktree while using the existing writable container overlay
+and existing `/app/.venv`; it performed no sync, install, or download.
+
+A final short-gate pass initially found one documentation-contract regression:
+updating AGENT_LOG had preserved the historical browser fact but removed the
+exact phrase `4 个真实 HTTPS 浏览器 E2E` required by E005. The 7-test contract
+reported `6 passed, 1 failed`; restoring that exact fact while explicitly
+retaining the drift/non-PASS qualification made it `7 passed in 0.49s`. The
+same final batch produced focused `35 passed in 14.67s`, checker `29/11/0`,
+Ruff/mypy/Secret/license success, unchanged package/lock manifests, no protected
+path diff, and a clean diff check.
 
 ## Commit
 
