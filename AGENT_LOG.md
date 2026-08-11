@@ -367,3 +367,7 @@
 ## 2026-08-12 — TASK 23 / review fix round 4
 
 - **CURRENT evidence RED→GREEN：** 独立复审实测 acceptance 单文件已为 37 tests，而 E014 仍固定 36；同步 E014/contract 为 37，并让跨审计测试从 Engineering findings 推导 OPEN 总数，不再硬编码 `open=0`。修正 Generated 时间边界后，acceptance 37 tests 与跨审计/交付联合 134 tests 均通过；Functional 仍为 `28/12/0`，Engineering 严格材料门仍为 10 findings。
+
+## 2026-08-12 — TASK 23 / review fix round 5
+
+- **真实命令与历史边界 RED→GREEN：** E014 曾把宿主不可用的 `uv run` 命令记为 current exit 0，E030 仍记录 36 tests，初始 9 findings/`29/11` 表格也未标注 superseded。三个聚焦测试先失败；现固定实际 `.venv\Scripts\python.exe` 命令、E030 结果与历史标签。新增两个跨审计测试后单文件实际为 39 tests，精确命令已返回 `39 passed`。

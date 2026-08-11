@@ -33,7 +33,7 @@ uv run pytest tests/unit/test_engineering_audit.py -q
 
 预期 RED：collection exit `1`，`ModuleNotFoundError: scripts.check_engineering_audit`。
 
-最终 focused GREEN：
+初始实现 focused GREEN（已由后续复审轮取代）：
 
 ```powershell
 .venv\Scripts\python.exe -m pytest tests/unit/test_engineering_audit.py -q
@@ -112,7 +112,12 @@ Derivative 保留 production UID 10001、CMD 与环境，只删除旧 egg-info �
 
 Observability diff 另外检查了 decoder、FFmpeg、动态 SQL、subprocess 和外部执行入口，未新增任何路径；因此复用 67 条逐 CVE reachability statement 是在完整 policy/runtime mutation GREEN 后进行，不是自动沿用或 VEX 降级。
 
-## 新鲜验证
+## 初始实现验证（已由后续复审轮取代）
+
+本节保留 Task 23 首次实现的历史证据；其中 `681 passed`、
+Functional `29/11/0` 与 Engineering `9 findings / 3 blockers` 已被下文
+review fix rounds 的 current `748 passed, 1 skipped`、`28/12/0` 与
+`10 findings / 4 blockers` 取代，不得用于当前完成声明。
 
 工具版本：Python `3.12.13`、pytest `9.1.1`、Ruff `0.16.2`、mypy `2.3.0`、Docker client/server `29.1.3`、Trivy `0.70.0`、Node `24.16.0`、npm `11.13.0`、Chrome `151.0.7922.76`、Git `2.48.1.windows.1`。宿主没有 `pwsh`、`uv` 或 ShellCheck。
 
@@ -325,6 +330,11 @@ Task 22 branches without force-push. Task 23 remains local until this fix round
 passes independent rereview; no cloud deployment or other external system was
 modified.
 
+Round-2 implementation and evidence are committed as
+`a240f64bcd57a34818356805b9a177086668752c` —
+`fix: validate retained engineering evidence`; this hash is backfilled by a
+documentation-only follow-up commit.
+
 ## Review fix round 3/5
 
 The second rereview found one current-evidence drift after `ENG-010` was added:
@@ -356,7 +366,32 @@ Engineering completion revalidated all retained materials and `10` findings,
 Ruff format/check passed, both the 210-file and synthetic Secret scans passed,
 and `git diff --check` returned zero.
 
-Round-2 implementation and evidence are committed as
-`a240f64bcd57a34818356805b9a177086668752c` —
-`fix: validate retained engineering evidence`; this hash is backfilled by a
-documentation-only follow-up commit.
+Round-4 implementation is committed as `f75c808` —
+`fix: align current acceptance evidence`.
+
+## Review fix round 5/5
+
+The final read-only review found two remaining truth-boundary gaps. Engineering
+E030 still contained the superseded 36-test result, while Functional E014
+claimed an unavailable `uv run` command had exited zero. The earlier 9-finding
+and `29/11` evidence was also presented under an unlabeled current-validation
+heading. Three focused tests failed on those exact conditions before any
+implementation change.
+
+E014 and E030 now use the actual locked `.venv\Scripts\python.exe` PowerShell
+command, including an explicit fail-fast check and the worktree-local pytest
+basetemp. E030 is part of the Engineering fixed evidence contract, so later
+command or result drift fails closed. The initial evidence sections are
+explicitly labeled superseded, while the retained historical RED/GREEN facts
+remain available. Adding the two cross-audit tests moved the acceptance file to
+39 tests; the exact recorded command then produced `39 passed` and the
+Functional CLI remained `28 PASS / 12 PARTIAL / 0 FAIL`.
+
+The final round-5 focused suite passed `137` tests. Strict Engineering
+completion re-read the retained materials and validated 10 findings; Ruff
+format/check and acceptance-checker strict mypy passed. The 210-file real
+Secret scan, synthetic Secret mutations, `git diff --check`, and task-local
+temporary-directory cleanup all returned zero. A combined mypy invocation for
+the dual package/direct-script Engineering entry point is not a project gate:
+it discovers the same imported modules under two names, so no success is
+claimed for that unsupported command.

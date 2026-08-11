@@ -261,6 +261,16 @@ FIXED_EVIDENCE_CONTRACTS = {
         SECURITY_MANIFEST_PATH,
         "App and gateway config IDs, tar SHA256 values, and raw scan ImageIDs agree",
     ),
+    "E030": (
+        "CURRENT_COMMAND",
+        ".venv\\Scripts\\python.exe -m pytest tests/unit/test_acceptance_matrix.py -q "
+        "--basetemp tmp/task23-e014 -p no:cacheprovider; "
+        "if ($LASTEXITCODE) { exit $LASTEXITCODE }; "
+        ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
+        "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md",
+        "docs/audits/FUNCTIONAL_AUDIT.md",
+        "39 passed; 40 items validated PASS=28 PARTIAL=12 FAIL=0",
+    ),
     "E033": (
         "RED_COMMAND",
         ".venv/Scripts/python.exe -m pytest "

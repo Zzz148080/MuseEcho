@@ -660,6 +660,31 @@ def test_formal_dockerfile_offline_build_blocker_cannot_be_downgraded_or_fake_fi
     )
 
 
+def test_current_acceptance_evidence_is_a_fixed_engineering_contract(tmp_path: Path) -> None:
+    expected_command = (
+        ".venv\\Scripts\\python.exe -m pytest tests/unit/test_acceptance_matrix.py -q "
+        "--basetemp tmp/task23-e014 -p no:cacheprovider; "
+        "if ($LASTEXITCODE) { exit $LASTEXITCODE }; "
+        ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
+        "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md"
+    )
+    expected_result = "39 passed; 40 items validated PASS=28 PARTIAL=12 FAIL=0"
+
+    assert checker.FIXED_EVIDENCE_CONTRACTS["E030"] == (
+        "CURRENT_COMMAND",
+        expected_command,
+        "docs/audits/FUNCTIONAL_AUDIT.md",
+        expected_result,
+    )
+
+    mutation = _replace_table_cell(
+        _audit_text(), EVIDENCE_HEADING, "E030", "Result", "36 passed; stale current result"
+    )
+    assert "E030 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
+
 def test_checker_cli_help_is_runnable_outside_the_repository(tmp_path: Path) -> None:
     completed = subprocess.run(
         [sys.executable, str(ROOT / "scripts" / "check_engineering_audit.py"), "--help"],

@@ -449,6 +449,35 @@ def test_functional_engineering_evidence_matches_current_engineering_audit() -> 
     assert contract.result.startswith(expected_prefix)
 
 
+def test_current_acceptance_evidence_uses_the_executed_locked_python_command() -> None:
+    expected_command = (
+        ".venv\\Scripts\\python.exe -m pytest tests/unit/test_acceptance_matrix.py -q "
+        "--basetemp tmp/task23-e014 -p no:cacheprovider; "
+        "if ($LASTEXITCODE) { exit $LASTEXITCODE }; "
+        ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
+        "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md"
+    )
+    contract = check_acceptance_matrix.EVIDENCE_CONTRACTS["E014"]
+    engineering = load_engineering_audit(ROOT / "docs" / "audits" / "ENGINEERING_AUDIT.md")
+    engineering_e030 = next(
+        evidence for evidence in engineering.evidence if evidence.evidence_id == "E030"
+    )
+
+    assert contract.command == expected_command
+    assert engineering_e030.command == expected_command
+    assert engineering_e030.result == "39 passed; 40 items validated PASS=28 PARTIAL=12 FAIL=0"
+
+
+def test_task23_report_labels_superseded_statistics_and_attributes_round_four() -> None:
+    report = (ROOT / ".superpowers" / "sdd" / "PLAN" / "task-23-report.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "## 初始实现验证（已由后续复审轮取代）" in report
+    assert "初始实现 focused GREEN（已由后续复审轮取代）" in report
+    assert "Round-4 implementation is committed as `f75c808" in report
+
+
 def test_audit_generated_time_and_evidence_time_must_be_real_utc(tmp_path: Path):
     mutation = _audit_text().replace(
         "- **Generated at UTC:** `2026-08-11T", "- **Generated at UTC:** `2999-08-11T", 1
