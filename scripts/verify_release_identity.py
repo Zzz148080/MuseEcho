@@ -192,6 +192,8 @@ def main() -> int:
             else:
                 args.output.write_text(payload, encoding="utf-8")
             return 0
+        if not (args.image_id or args.tar or args.scan):
+            raise ValueError("verify requires at least one complete comparison inventory")
         manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
         if not isinstance(manifest, dict):
             raise ValueError("release manifest must contain a JSON object")

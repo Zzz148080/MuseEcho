@@ -152,3 +152,20 @@ OpenCode 的原始 cold-start 成功暴露了规约缺口，但其首版代码�
 
 **Consequences**
 保留原始失败和直接合并（无 PR）的真实记录；Tasks 3–24 必须恢复独立分支、PR、TDD、规格审查和代码质量审查，不得把 Tasks 1–2 的证据外推为完整产品完成。
+
+## ADR-010：Engineering Audit 使用固定 finding/evidence 合约与 compact security manifest
+
+**Context**
+Task 23 必须允许人工阅读审计，同时拒绝通过删除 finding、降低 severity、重写 scan 命令或仅声称文件存在来清零。完整 Trivy raw、tar 和 DB 体积较大，且正式 Dockerfile 依赖层在本机离线 cache 中不可用。
+
+**Options**
+1. 只提交 Markdown 结论；2. 跟踪全部 raw/tar/DB；3. 固定 audit schema、finding/evidence 命令和 deterministic compact manifest，同时保留 ignored 原始证据用于本轮复核。
+
+**Decision**
+采用选项 3。Checker 固定 15 域、9 finding、34 evidence ID，解析 compact manifest 的 normalized SHA-256，并交叉当前 vulnerability policy/runtime boundary。Manifest 固定 Trivy image/DB、current audit image、tar/config、raw/package/inventory/VEX/tuple digest、181/67 severity 统计与所有 gate exit。正式 Dockerfile build 失败和受控 current-source 派生身份均作为边界事实记录，派生镜像禁止被描述或推广为 release artifact。
+
+**Reason**
+该方案能在小型 tracked 证据中阻止 audit-only 虚假改写，又不会把 366MB tar、1.2GB DB 或 1.8MB raw 混入仓库；逐 CVE statement、raw tuple 与当前 source/policy 的真实复核仍在本轮离线链中完成。
+
+**Consequences**
+任何 source、policy、scanner DB、image/tar/config、raw tuple 或 VEX 变化都必须重新运行安全链并更新固定 manifest/checker。Compact manifest 不能替代 retained raw 的取证价值；正式发布仍需在具有完整 locked cache 的环境执行 Dockerfile build 和远程 CI。

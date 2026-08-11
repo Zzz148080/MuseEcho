@@ -22,6 +22,15 @@ def _needs_artifact(job: dict[str, Any], dependency: str) -> bool:
     )
 
 
+def test_docker_context_excludes_generated_python_package_metadata():
+    dockerignore = (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+
+    assert "**/*.egg-info" in dockerignore
+    assert "COPY --chown=10001:10001 src/ /app/src/" in dockerfile
+    assert Path("src/museecho.egg-info").match("**/*.egg-info")
+
+
 def test_gitlab_secret_scanner_receives_and_requires_the_built_frontend_bundle():
     pipeline = yaml.safe_load((ROOT / ".gitlab-ci.yml").read_text(encoding="utf-8"))
     frontend = pipeline["frontend"]

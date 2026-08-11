@@ -42,11 +42,13 @@ class SingleWorkerQueue:
         *,
         clock: Callable[[], datetime] | None = None,
         thread_name: str = "museecho-analysis-worker",
+        failure_observer: Callable[[], None] | None = None,
     ) -> None:
         self._repository = repository
         self._handler = handler
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._thread_name = thread_name
+        self._failure_observer = failure_observer
         self._items: queue.Queue[uuid.UUID | object] = queue.Queue()
         self._condition = threading.Condition()
         self._pending: set[uuid.UUID] = set()
@@ -126,6 +128,10 @@ class SingleWorkerQueue:
                 self._condition.notify_all()
         return stopped
 
+    def metrics(self) -> tuple[int, int]:
+        with self._condition:
+            return len(self._pending), int(self._active)
+
     def _run(self) -> None:
         while True:
             item = self._items.get()
@@ -185,6 +191,11 @@ class SingleWorkerQueue:
         except InvalidStageTransition:
             return
         self._repository.update(job)
+        if self._failure_observer is not None:
+            try:
+                self._failure_observer()
+            except Exception:
+                pass
 
     def _expire_if_needed(self, job: AnalysisJob) -> bool:
         if job.status.is_terminal:

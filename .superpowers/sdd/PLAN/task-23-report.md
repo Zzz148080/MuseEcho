@@ -1,0 +1,161 @@
+# Task 23 — Engineering Audit 与高风险缺陷闭环报告
+
+## 状态
+
+`DONE_WITH_CONCERNS`。本地 Engineering Audit、全部 6 项指定风险重评、4 个 High finding 闭环、2 个 Medium finding 闭环、锁定 Linux 全量回归和离线镜像安全链均已完成。最终审计为：
+
+| Severity | OPEN | FIXED | ACCEPTED | BLOCKED |
+| --- | ---: | ---: | ---: | ---: |
+| Critical | 0 | 0 | 0 | 0 |
+| High | 0 | 4 | 0 | 0 |
+| Medium | 0 | 2 | 0 | 3 |
+| Low | 0 | 0 | 0 | 0 |
+
+三个 Medium blocker 分别是当前浏览器/前端完整链、远程 GitHub/GitLab CI、目标云与公网/恢复证据。宿主还缺少 brief 最终 wrapper 所需的 `pwsh` 和 `uv`。这些边界没有被伪装为成功，因此状态不是无条件 `DONE`。
+
+计划主提交为 `audit: close engineering risks`，实际主提交：`PRIMARY_COMMIT_PENDING`。未 push、未执行远程写操作、未代写学生 `REFLECTION.md`。
+
+## 审计合约
+
+- 人可读记录位于 `docs/audits/ENGINEERING_AUDIT.md`；checker 为纯标准库 `scripts/check_engineering_audit.py`。
+- 固定 15 个工程域、9 个真实 finding 和 34 个 evidence ID。每个 finding 均固定 ID、domain、severity、status、description、evidence、owner、disposition 与 verification/reopen condition。
+- checker 拒绝缺失/重复域、finding 和 evidence，非法 schema/status/severity，未来时间，FIXED 无 RED+GREEN，空泛 ACCEPTED/BLOCKED，OPEN Critical/High，finding 删除或 severity 降级，文件存在冒充验证，同一证据换 ID，以及改写为无意义成功的 scan/audit/release 命令。
+- 镜像安全证据不只信任 Markdown。Checker 解析 `docs/audits/evidence/task23-security-manifest.json`，固定其 normalized SHA-256，并交叉当前 vulnerability policy 与完整 runtime boundary digest。
+- 完整 1.8MB Trivy raw、366MB tar 和 1.2GB DB 不纳入 Git；本轮原始材料保留在 ignored Task 23 证据目录及 Task 20 worktree cache。提交的 2.6KB deterministic compact manifest 固定工具/DB/image/config/tar/raw/inventory/VEX/tuple/policy/runtime digest、计数、exit 与 UTC。
+
+## TDD：checker RED → GREEN
+
+首个测试先于 checker/audit 创建。`2026-08-11T10:40:00Z`：
+
+```powershell
+uv run pytest tests/unit/test_engineering_audit.py -q
+```
+
+预期 RED：collection exit `1`，`ModuleNotFoundError: scripts.check_engineering_audit`。
+
+最终 focused GREEN：
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests/unit/test_engineering_audit.py -q
+```
+
+结果：`27 passed in 1.73s`，exit `0`。CLI 结果为 `engineering findings validated: 9 (BLOCKED/Medium=3, FIXED/High=4, FIXED/Medium=2)`，exit `0`。
+
+Mutation 覆盖固定域、schema、重复/删除/降级、时间、RED+GREEN、ACCEPTED/BLOCKED、OPEN Critical/High、证据换 ID、文件存在冒充、虚假 scan/verify、compact manifest 与 current policy/runtime drift。
+
+## 指定风险与真实 finding 闭环
+
+### ENG-001 High FIXED — 多文件 Bash parse harness
+
+- RED：把无效语法放入 fresh-checkout inventory 的最后一个 shell 文件；旧 harness 只调用一次 `bash -n file1 file2 ...`，exit `0`，证明后续文件未被解析。
+- 修复：每个 tracked 与 fresh-checkout shell 文件分别启动一次 `bash -n`，任一失败即 fail closed。
+- GREEN：`powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/deploy/test_shell_line_endings.ps1`，8 个文件逐个解析，exit `0`。
+
+### ENG-002 High FIXED — release identity 空 comparison class
+
+- RED：manifest-only verify 在 image-id、tar、scan 三类 comparison inventory 全空时返回成功。
+- 修复：至少要求一个完整 comparison class；保留现有 CI 的 tar+scan 语义和可选 image-id，partial inventory 仍失败。
+- GREEN：`tests/unit/test_release_identity.py` 为 `10 passed`，exit `0`；current app/gateway tar+scan identity verify exit `0`。
+
+### ENG-003 High FIXED — development partial startup/cleanup
+
+- RED：部分 `compose up` 失败可能不执行 down；down 失败可能覆盖或吞掉 startup 主错误。
+- 修复：进入 startup 前即标记 cleanup required，finally 总是执行 down；保留主错误并同时报告 cleanup error。
+- GREEN：新的 synthetic `scripts/test-development-smoke.ps1` 覆盖 partial-start、primary-only、cleanup-only 与 combined failure，exit `0`。
+
+### ENG-004 Medium FIXED — container smoke 无离线 no-build 路径
+
+- RED：旧 smoke 无条件 build，cache miss 可进入锁定 `npm ci` 的网络获取；没有 local identity 校验或 `compose up --no-build`。
+- 修复：新增显式 `-NoBuild`/`-DockerCommand` 路径，在启动前检查 app/gateway exact local sha256 ID，强制 `compose up --no-build`，默认生产 build smoke 语义不变。
+- GREEN：synthetic contract 证明 no-build 不调用 build；真实 no-build smoke 校验 app `655f785560e3…` 与 gateway `2235e208dd7d…`，完成 WAV、restart、ciphertext、history、cleanup，exit `0`。
+
+### ENG-005 Medium FIXED — production observability
+
+- RED：`museecho.observability` 不存在；生产仅返回简单 health，缺少安全 request ID、阶段耗时、队列/失败/清理/fallback 指标。
+- 修复：加入线程安全 runtime metrics、32-hex request ID、稳定 error code、safe resource summary、liveness/readiness 区分，并接入 queue、stage、cleanup、LLM/fallback。日志禁止 header、原始文件名、音频、完整问题和 token。
+- GREEN：focused observability/health/runtime 为 `14 passed`；安全、访问、上传、队列、repository、cleanup 比例回归为 `82 passed, 1 skipped`。
+
+### ENG-009 High FIXED — dirty Docker context egg-info
+
+- RED：Task 20 runtime policy/image 包含 6 个 gitignored `src/museecho.egg-info/*`，clean checkout 不存在；`.dockerignore` 未排除任意 `*.egg-info`。
+- 修复：`.dockerignore` 增加 `**/*.egg-info`；正式 Dockerfile clean context contract 证明不会 COPY 该类目录；受控审计派生层显式删除旧 base 残留；policy runtime manifest 更新为完整 clean current boundary，不改 67 条 CVE statement。
+- GREEN：clean-context test、committed-policy equality 与完整 runtime drift mutations 全部通过；审计镜像内无 egg-info。
+
+### BLOCKED Medium
+
+- `ENG-006`：当前 Chrome/accessibility/workflow 以及 current frontend type/build。宿主 Chrome `151.0.7922.76` 存在且 no-build HTTPS 可达，但锁定 root Playwright junction 目标已消失，当前 exact-lock frontend cache 缺 `@types/node`。禁止下载后不能启动完整链。
+- `ENG-007`：GitHub Actions/GitLab CI 需要远程仓库与 runner 授权；本轮只验证本地定义/合约，不声称远程结果。
+- `ENG-008`：腾讯云、DNS、SSH、公网 TLS、跨网、24h、backup/restore、live rollback 需要外部 target 授权；本轮没有以本地证据替代。
+
+## 当前 runtime 与离线镜像安全链
+
+Base 到当前 worktree 的 runtime/build 边界只改变 4 个观测性相关 source 文件并新增 `src/museecho/observability.py`；Dockerfile、Compose、Caddy、Python/npm manifests 和 locks 均未变。因为 source 已变，Task 20 镜像不能直接声称为 current artifact。
+
+正式 Dockerfile 使用 `--pull=false --network none` 重建时，锁定 pip/apt BuildKit layer 在当前 builder cache 不可用，构建 fail closed，exit `1`。没有为 GREEN 开放网络或改 Dockerfile。用于本地审计的是明确标为非发布的受控 current-source derivative：
+
+- base daemon image ID：`sha256:96cd900d6c17c360b01665362330aca8ef032b0d4d1f140659a52265ce47f39c`
+- current audit daemon/config ID：`sha256:655f785560e3c1163397fab3095411c29374ab6fcd6782211bf9a53aafcd3be4` / `sha256:ee74a82050c6c8d5d499cfd04ca1fd70112a44f8ef71d5549efbbcbacfd021c0`
+- audit tar SHA-256：`f6d396b708da44d6a1bb8882486906dc608eac85e0416cac674685c859987d44`
+- gateway daemon/config ID：`sha256:2235e208dd7d8568c735ba19f1969644384626296eaff5cabb41acfaed86c547` / `sha256:8cc0429e45fd48c911a92fd8504c1f3c14daccb0fee8a24529d72af51b0b4053`
+
+Derivative 保留 production UID 10001、CMD 与环境，只删除旧 egg-info 并覆盖 current source。它仅用于 current-source Linux regression、no-build smoke 与安全审计，禁止当作正式 Dockerfile release artifact。
+
+离线 scanner 边界：Trivy `0.70.0`，image digest `sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e`；Task 20 DB SHA-256 `fbd7a1751c20449fc014ce29514c745d16d196d2c67ad6fb88315ac7357d62bf`，UpdatedAt `2026-08-09T12:54:52.355618652Z`。DB 子目录只读挂载，fanal cache 使用 container tmpfs；全部扫描使用 `--network none --skip-db-update --skip-java-db-update --skip-version-check --offline-scan`。
+
+| Gate | UTC | Exit | 结果 |
+| --- | --- | ---: | --- |
+| Current app raw | `2026-08-11T11:44:08Z` | 0 | 181 occurrences；67 unique CVE；12 Critical + 169 High；raw/tuple SHA fixed |
+| Exact policy/runtime audit | `2026-08-11T11:44:30Z` | 0 | 181 tuple、38 affected packages、52 clean runtime files、67 OpenVEX statements |
+| App VEX gate | `2026-08-11T11:50:41Z` | 0 | residual High/Critical = 0 |
+| Gateway raw/gate | `2026-08-11T11:36:24Z` / `11:51:12Z` | 0 / 0 | unsuppressed occurrences = 0 |
+| Release tar+scan identity | `2026-08-11T11:44:20Z` | 0 | app/gateway config ID、tar SHA、raw scan ImageID 全一致 |
+
+Observability diff 另外检查了 decoder、FFmpeg、动态 SQL、subprocess 和外部执行入口，未新增任何路径；因此复用 67 条逐 CVE reachability statement 是在完整 policy/runtime mutation GREEN 后进行，不是自动沿用或 VEX 降级。
+
+## 新鲜验证
+
+工具版本：Python `3.12.13`、pytest `9.1.1`、Ruff `0.16.2`、mypy `2.3.0`、Docker client/server `29.1.3`、Trivy `0.70.0`、Node `24.16.0`、npm `11.13.0`、Chrome `151.0.7922.76`、Git `2.48.1.windows.1`。宿主没有 `pwsh`、`uv` 或 ShellCheck。
+
+| Gate | UTC | Command / boundary | Result |
+| --- | --- | --- | --- |
+| Static/type | `2026-08-11T11:21:30Z` | Ruff format/check + strict mypy src | 87 formatted files；46 source files；exit 0 |
+| Locked Linux full | `2026-08-11T12:14:10Z` | `scripts/container-pytest.ps1 -Image museecho-app:task23-audit` | `681 passed in 248.21s`；wrapper cleanup exit 0 |
+| Risk regression | `2026-08-11T12:07:35Z` | runtime security/access/upload/repository/cleanup/queue | `82 passed, 1 intentional skip`；exit 0 |
+| Five-minute budget | `2026-08-11T12:06:30Z` | locked Linux ffmpeg-capable runtime | `1 passed in 51.24s`；exit 0 |
+| Frontend Vitest | `2026-08-11T11:54:30Z` | current frontend; retained offline cache | 12 files / 66 tests；exit 0 |
+| Frontend type/build | `2026-08-11T11:56:55Z` | exact current lock cache | NOT_RUN；missing `@types/node`, no download |
+| Current Chrome E2E | `2026-08-11T12:01:00Z` | installed Chrome + reachable no-build HTTPS | NOT_RUN；missing locked Playwright cache |
+| Secret real | observed by `2026-08-11T12:27:51Z` | `scripts/secret-scan.ps1` | 210 tracked/non-ignored files；exit 0 |
+| Secret synthetic | `2026-08-11T11:57:18Z` | `scripts/test-secret-scan.ps1` | credential/error mutations passed；exit 0 |
+| License/dependency | `2026-08-11T11:57:35Z` | stdlib license audit + offline lock parse | policies/inventories passed；exit 0 |
+| No-build smoke | `2026-08-11T12:00:10Z` | exact local IDs + `compose up --no-build` | real WAV/restart/ciphertext/history/cleanup；exit 0 |
+| Functional/Engineering audits | observed by `2026-08-11T12:25:38Z` | both checker unit suites and CLIs with a unique worktree basetemp | `61 passed in 15.76s`; Functional `29 PASS / 11 PARTIAL / 0 FAIL`; Engineering 9 findings；exit 0 |
+
+Host five-minute test originally failed because host lacks ffmpeg/ffprobe；同一测试在实际锁定 Linux runtime 中通过，所以没有误判为产品缺陷。Fresh-checkout Bash 门通过；ShellCheck 因宿主/WSL均无该工具而未运行。
+
+## 最终 brief command 与等价门
+
+Brief 要求在提交前运行以下 exact command：
+
+```powershell
+pwsh -File scripts/verify.ps1; if ($LASTEXITCODE) { exit $LASTEXITCODE }; uv run python scripts/check_engineering_audit.py docs/audits/ENGINEERING_AUDIT.md
+```
+
+在 `2026-08-11T12:25:38Z` 前逐字运行。`pwsh` 与 `uv` 均被 PowerShell 报告为 `CommandNotFoundException`，整体 exit `1`；因此 `verify.ps1` 和尾随 checker 没有由这个 wrapper 启动。没有下载工具来凑形式。
+
+等价门不依赖缺失 wrapper：直接使用锁定 `.venv`、Windows PowerShell 5.1 和 locked/current-source Linux 审计镜像，覆盖 Ruff、mypy、681-test Linux full、27-test Engineering checker、35-test Functional checker、PowerShell lifecycle/container/shell contracts、Secret、license、frontend Vitest、no-build production smoke、five-minute budget、offline raw→audit→VEX/gateway 与 release identity。当前 frontend type/build、Chrome E2E 和远程/公网门仍如实 NOT_RUN/BLOCKED。
+
+## 自审与 concerns
+
+自审逐项检查了源/构建 manifest 差异、no-build 不进入 build、cleanup 双错误保留、release comparison 非空、checker mutation、audit finding/证据交叉、egg-info clean context、observability 敏感信息与外部执行路径、VEX identity/policy drift、容器/volume/network/task-temp cleanup 以及 `git diff --check`。
+
+保留 concerns：
+
+1. 正式 Dockerfile current-source rebuild 在当前离线 BuildKit cache 无法完成；受控 derivative 不是 release artifact。
+2. 一次 frontend `--pull=false --network none` cache probe 仍执行了 registry metadata/auth resolution；容器网络禁止了 npm 获取，发现后不再重复 build。没有执行 host `npm ci`。
+3. 当前 exact-lock frontend type/build 和 Chrome E2E 因 retained cache 缺失未重跑；Task 22 历史成功只作历史参考，不作为 Task 23 current PASS。
+4. exact wrapper 因宿主缺 `pwsh`/`uv` 不可运行；ShellCheck 也不可用。没有联网修复环境。
+5. 远程 CI、腾讯云/DNS/SSH、公网 TLS/跨网/24h/backup/rollback 与学生人工验收均未运行，继续由 Functional Audit/`BLOCKERS.md` 保持开放。
+6. 最后一轮 host pytest 初次在全局 `C:\Users\P\AppData\Local\Temp\pytest-of-P` 枚举时被 ACL 拒绝，54 项均为 fixture setup error；改用此前不存在的 worktree 内 `--basetemp=tmp/task23-pytest-final-20260811-a` 后相同 61 项全部通过。没有更改测试或产品逻辑来绕过失败。
+
+结论只适用于当前本地提交边界及 compact manifest 固定的离线审计身份；不声称部署完成、远程 CI 通过或公开发布完成。

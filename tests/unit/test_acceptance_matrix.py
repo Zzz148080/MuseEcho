@@ -394,9 +394,7 @@ def test_external_not_run_evidence_cannot_make_an_item_pass(tmp_path: Path):
     )
 
 
-@pytest.mark.parametrize(
-    "blocker_id", ("TC-021", "REMOTE-CI", "TASK23-AUDIT", "TASK24-AUDIT", "STUDENT-MANUAL")
-)
+@pytest.mark.parametrize("blocker_id", ("TC-021", "REMOTE-CI", "TASK24-AUDIT", "STUDENT-MANUAL"))
 def test_external_follow_up_and_manual_work_cannot_be_marked_resolved_without_execution(
     tmp_path: Path, blocker_id: str
 ):

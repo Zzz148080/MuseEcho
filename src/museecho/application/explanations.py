@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import uuid
+from collections.abc import Callable
 
 from museecho.application.evidence import select_for_segment
 from museecho.domain.models import Evidence, ExplanationDraft
@@ -19,8 +20,14 @@ _KIND_LABELS = {
 
 
 class ExplanationService:
-    def __init__(self, provider: ExplanationProvider | None) -> None:
+    def __init__(
+        self,
+        provider: ExplanationProvider | None,
+        *,
+        mode_observer: Callable[[str], None] | None = None,
+    ) -> None:
         self._provider = provider
+        self._mode_observer = mode_observer
 
     def explain(
         self,
@@ -39,8 +46,18 @@ class ExplanationService:
                 pass
             else:
                 if _valid_provider_draft(draft, allowed_ids):
+                    self._observe_mode("llm")
                     return draft
+        self._observe_mode("fallback")
         return _fallback(selected)
+
+    def _observe_mode(self, mode: str) -> None:
+        if self._mode_observer is None:
+            return
+        try:
+            self._mode_observer(mode)
+        except Exception:
+            pass
 
 
 def _select_all(evidence: tuple[Evidence, ...]) -> tuple[Evidence, ...]:

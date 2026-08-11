@@ -100,6 +100,16 @@ try {
     Invoke-Checked 'Container test-runner cleanup coverage' {
         & $powershellCommand -NoProfile -ExecutionPolicy Bypass -File scripts/test-container-pytest.ps1
     }
+    Invoke-Checked 'Development smoke lifecycle coverage' {
+        & $powershellCommand -NoProfile -ExecutionPolicy Bypass -File scripts/test-development-smoke.ps1
+    }
+    Invoke-Checked 'Container smoke no-build coverage' {
+        & $powershellCommand -NoProfile -ExecutionPolicy Bypass -File scripts/test-container-contract.ps1
+    }
+    Invoke-Checked 'Fresh-checkout shell parse coverage' {
+        & $powershellCommand -NoProfile -ExecutionPolicy Bypass `
+            -File tests/deploy/test_shell_line_endings.ps1
+    }
 } finally {
     Pop-Location
     if ($null -eq $existingPythonPath) {

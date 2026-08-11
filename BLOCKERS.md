@@ -1,6 +1,6 @@
 # MuseEcho Blockers
 
-当前没有阻塞本地继续实施或完成 Task 22 的已确认 Blocker。历史审批通道问题 `CS-001` 已在本轮通过多次真实提权命令成功执行而关闭。
+当前没有阻塞本地继续实施或完成 Task 23 的已确认 Blocker。历史审批通道问题 `CS-001` 已在此前通过多次真实提权命令成功执行而关闭。
 
 当前 Functional Audit 矩阵为 `29 PASS / 11 PARTIAL / 0 FAIL`，结论为 `PARTIALLY_READY`；以下未完成条件阻止 `READY`。
 
@@ -8,9 +8,9 @@
 
 - `TC-021`：目标服务器五分钟性能实测、腾讯云公网 URL、受信 TLS 完整 smoke、跨网与 24 小时观察仍未执行；
 - `REMOTE-CI`：当前合并状态的 GitHub Actions 和 GitLab CI 均未真实运行；
-- `TASK23-AUDIT` / `TASK24-AUDIT`：Engineering 与 Product Audit 尚未开始；
+- `TASK24-AUDIT`：Engineering Audit 已完成；Product Audit 与最终交付验证尚未开始；
 - `STUDENT-MANUAL`：学生最终亲自验收和 `REFLECTION.md` 正文仍保留为人工待办。
-- `CURRENT-BROWSER-E2E`：Task 19 的浏览器证据与当前 source/test boundary 不同；严格内部 Docker 网络下服务已启动，但 Docker Desktop 未向宿主 Chrome 暴露端口，当前真实浏览器套件未运行。
+- `CURRENT-BROWSER-E2E`：Task 19 的浏览器证据与当前 108-file source/test boundary 不同；Task 23 no-build HTTPS 已可由宿主访问且 Chrome 存在，但保留的锁定 root Playwright 缓存目标已消失，在禁止下载下当前真实浏览器套件仍未运行。
 
 以下是尚未到达执行时点的外部 gate，不在本阶段虚假标记为 Blocker：
 
@@ -28,10 +28,10 @@
 
 ## CURRENT-BROWSER-E2E：当前提交的真实浏览器边界
 
-- **状态：** 环境待决；不阻止 Task 22 本地审计完成，但阻止依赖当前浏览器链路的 5 个验收项成为 PASS。
-- **已验证：** 当前 frontend build 离线通过；锁定 app 容器在 `--internal` 网络内成功启动并自检健康。宿主 Chrome 在 60 秒有界等待内无法访问已发布端口，Playwright 因此未启动；容器和临时网络已清理。
-- **真实性边界：** 历史 `1047ce242884b6ba83a525524e88dcc44ab76a69` 有 4 个 Chrome E2E，但其 105-file browser/source/test manifest 与当前 107-file manifest 不同，不能作为当前 PASS。
-- **后续动作：** 仅在不允许外部网络、已存在 FFmpeg 能力且宿主 Chrome 可达的本地运行时重跑；否则 Task 24 继续保留这些条目为 PARTIAL。
+- **状态：** 环境待决；不阻止 Task 23 本地审计完成，但阻止依赖当前浏览器链路的 5 个验收项成为 PASS。
+- **已验证：** 当前 frontend Vitest 为 12 files / 66 tests；锁定 current app 与 gateway 的 production no-build HTTPS smoke 可由宿主访问并完成重启与清理，已安装 Chrome 存在。保留的 root `node_modules` junction 目标已消失，当前没有锁定 Playwright harness；未执行 `npm ci` 或浏览器下载。
+- **真实性边界：** 历史 `1047ce242884b6ba83a525524e88dcc44ab76a69` 有 4 个 Chrome E2E，但其 105-file browser/source/test manifest 与当前 108-file manifest 不同，不能作为当前 PASS。
+- **后续动作：** 恢复与当前 lock 完全一致的 root/frontend dependency cache，或提供预建且 no-egress 的浏览器测试环境后重跑；否则 Task 24 继续保留这些条目为 PARTIAL。
 
 若其中任一在所需阶段确实不可用，将按用户要求记录精确错误、命令、日志、至少三种尝试和剩余可继续工作。
 

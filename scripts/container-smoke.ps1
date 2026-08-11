@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
-    [string]$TaskTempParent = [System.IO.Path]::GetTempPath()
+    [string]$TaskTempParent = [System.IO.Path]::GetTempPath(),
+    [switch]$NoBuild,
+    [string]$DockerCommand = 'docker'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,10 +42,21 @@ function Get-FreeTcpPort {
 
 function Invoke-DockerCompose {
     param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
-    & docker compose @composeFiles --profile production @Arguments
+    & $DockerCommand compose @composeFiles --profile production @Arguments
     if ($LASTEXITCODE -ne 0) {
         throw "docker compose smoke override $($Arguments -join ' ') failed"
     }
+}
+
+function Get-ExistingImageId {
+    param([Parameter(Mandatory = $true)][string]$Image)
+    $output = @(& $DockerCommand image inspect --format '{{.Id}}' $Image)
+    $inspectExit = $LASTEXITCODE
+    $imageId = ($output -join '').Trim()
+    if ($inspectExit -ne 0 -or $imageId -notmatch '^sha256:[0-9a-f]{64}$') {
+        throw "no-build smoke requires an existing sha256 image identity for $Image"
+    }
+    return $imageId
 }
 
 function Write-SmokeWave {
@@ -114,8 +127,16 @@ try {
     $locationPushed = $true
     $composeCleanupRequired = $true
     Invoke-DockerCompose config --quiet
-    Invoke-DockerCompose build
-    Invoke-DockerCompose up --detach --wait
+    if ($NoBuild) {
+        $appImageId = Get-ExistingImageId -Image 'museecho-app:local'
+        $gatewayImageId = Get-ExistingImageId -Image 'museecho-gateway:local'
+        Write-Host "No-build smoke app identity: $appImageId"
+        Write-Host "No-build smoke gateway identity: $gatewayImageId"
+        Invoke-DockerCompose up --no-build --detach --wait
+    } else {
+        Invoke-DockerCompose build
+        Invoke-DockerCompose up --detach --wait
+    }
 
     & curl.exe --fail --silent --show-error --insecure `
         --output $healthResponsePath "$httpsBaseUrl/api/health"
@@ -150,12 +171,12 @@ try {
     $persisted = Get-Content -Raw -LiteralPath $statusResponsePath | ConvertFrom-Json
     if ($persisted.stage -ne 'complete') { throw 'analysis did not persist across restart' }
 
-    & docker compose @composeFiles --profile production exec --no-TTY app python -c `
+    & $DockerCommand compose @composeFiles --profile production exec --no-TTY app python -c `
         "import pathlib,sys; files=(p for p in pathlib.Path('/data').rglob('*') if p.is_file()); bad=[str(p) for p in files if p.suffix.lower() in {'.wav','.mp3'} or p.open('rb').read(12).startswith((b'RIFF',b'ID3'))]; print(*bad,sep='\n'); sys.exit(bool(bad))"
     if ($LASTEXITCODE -ne 0) { throw 'plaintext audio remained in the persistent volume' }
 
     $keyText = Get-Content -Raw -LiteralPath $audioKeyPath
-    $imageHistory = & docker history --no-trunc museecho-app:local
+    $imageHistory = & $DockerCommand history --no-trunc museecho-app:local
     if ($LASTEXITCODE -ne 0) { throw 'container image history audit failed' }
     if (($imageHistory -join "`n").Contains($keyText)) {
         throw 'audio key appeared in container image history'
@@ -166,7 +187,7 @@ try {
         $savedErrorPreference = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
         try {
-            & docker compose @composeFiles --profile production down `
+            & $DockerCommand compose @composeFiles --profile production down `
                 --volumes --remove-orphans 2>&1 | Out-Null
             $composeDownExit = $LASTEXITCODE
         } finally {

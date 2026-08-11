@@ -13,6 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from museecho.domain.status import AnalysisJob
+from museecho.observability import RuntimeMetrics
 from museecho.runtime import RuntimeResources, RuntimeSettings, _run_cleanup, create_runtime_app
 
 
@@ -100,7 +101,19 @@ def test_runtime_starts_upload_api_without_provider_and_deletes_expired_jobs(tmp
     runtime.repository.add(expired)
 
     with TestClient(app, base_url="https://museecho.test") as client:
-        assert client.get("/api/health").json() == {"status": "ready"}
+        health = client.get("/api/health").json()
+        assert health["status"] == "ready"
+        assert health["liveness"] == "alive"
+        assert health["readiness"] == "ready"
+        assert set(health["metrics"]) == {
+            "queue_length",
+            "active_analyses",
+            "analysis_failure_count",
+            "cleanup_deleted_count",
+            "cleanup_failure_count",
+            "fallback_count",
+            "stage_duration_seconds",
+        }
         invalid = client.post(
             "/api/analyses",
             files={"file": ("notes.txt", b"not audio", "text/plain")},
@@ -145,7 +158,9 @@ def test_runtime_health_degrades_on_cleanup_failure_and_recovers_safely(
             response = client.get("/api/health")
 
         assert response.status_code == 503
-        assert response.json() == {"status": "degraded"}
+        assert response.json()["status"] == "degraded"
+        assert response.json()["liveness"] == "alive"
+        assert response.json()["readiness"] == "degraded"
 
         runtime.cleanup = RecoveredCleanup()
         deadline = time.monotonic() + 2.0
@@ -154,7 +169,9 @@ def test_runtime_health_degrades_on_cleanup_failure_and_recovers_safely(
             response = client.get("/api/health")
 
         assert response.status_code == 200
-        assert response.json() == {"status": "ready"}
+        assert response.json()["status"] == "ready"
+        assert response.json()["liveness"] == "alive"
+        assert response.json()["readiness"] == "ready"
 
 
 def test_cleanup_thread_logs_failure_and_recovery_without_exception_detail(
@@ -182,6 +199,7 @@ def test_cleanup_thread_logs_failure_and_recovery_without_exception_detail(
         cleanup=FailingCleanup(),  # type: ignore[arg-type]
         cleanup_stop=StopAfterOneIteration(),  # type: ignore[arg-type]
         cleanup_failed=threading.Event(),
+        metrics=RuntimeMetrics(),
     )
     logger = logging.getLogger("museecho.runtime")
     logger_was_disabled = logger.disabled

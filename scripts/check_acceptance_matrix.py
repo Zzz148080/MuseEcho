@@ -82,7 +82,6 @@ DOD_FRAGMENTS = (
 REQUIRED_OPEN_BLOCKERS = (
     "TC-021",
     "REMOTE-CI",
-    "TASK23-AUDIT",
     "TASK24-AUDIT",
     "STUDENT-MANUAL",
     "CURRENT-BROWSER-E2E",
@@ -316,6 +315,17 @@ EVIDENCE_CONTRACTS = {
         path="tests/unit/test_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-15"),
         result="pytest-tests=35; pass=29; partial=11; fail=0",
+        exit_code_raw="0",
+    ),
+    "E902": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command=(
+            r".venv\Scripts\python.exe scripts/check_engineering_audit.py "
+            "docs/audits/ENGINEERING_AUDIT.md"
+        ),
+        path="docs/audits/ENGINEERING_AUDIT.md",
+        coverage_ids=("AC-F-6", "DOD-13"),
+        result="findings=9; fixed-high=4; fixed-medium=2; blocked-medium=3; open=0",
         exit_code_raw="0",
     ),
 }

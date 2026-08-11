@@ -29,3 +29,13 @@
 - Fly.io 的大陆访问和付款问题使初始部署建议失效。AutoDL 又因个人公网端口和第三方访问条款不满足课程公网 WebUI。最终选定腾讯云香港 Lighthouse。
 - 此阶段尚未执行 TDD、subagent、worktree、CI 或 code review；不得提前评价它们的效果。
 - 现有工作区没有 Git 历史，必须从设计文档开始建立真实的细粒度历史。
+
+## 2026-08-11 — TASK 23 / 工程审计过程材料
+
+- 多文件 CLI 的“exit 0”不能证明每个输入都被消费。Bash `-n` 只解析第一个脚本的行为说明，mutation 必须放在最后一个输入才能暴露这种 coverage gap；修复应逐文件建立独立进程边界。
+- cleanup 不是附属成功路径。部分启动后必须进入 cleanup，且 primary failure 与 cleanup failure 是两个独立事实；只保留任一都会让运维诊断失真。
+- “no-build”不仅是不运行 build，还要在启动前确认 exact local image identity，并让 Compose 显式 `up --no-build`。这使离线审计不会因 cache miss 意外进入依赖下载。
+- 完整 runtime manifest 揭示了 gitignored egg-info 被 Docker context 带入 Task20 镜像/策略。`.gitignore` 不等于 `.dockerignore`；干净 checkout 可复现性必须从真实 Docker context 和镜像内容验证，而不是从 tracked 文件列表推断。
+- VEX 可以在 raw 181/67 不变时得到 residual zero，但前提是每个 CVE 的 package/file/reachability 证据、完整 source/runtime hash 与 exact image identity 均未漂移。本轮 observability 变更不增加 decoder、FFmpeg、动态 SQL、subprocess 或外部执行路径，因此保留原 67 条 statement；先观察到的 boundary drift 被明确当作 RED，而非自动刷新掩盖。
+- 大型安全证据不必全量进入 Git，但 compact manifest 必须是确定性的、由 checker 固定并包含足够交叉字段。单独的“文件存在”或 Markdown 中的“0 findings”仍不构成验证。
+- 宿主缺 ffmpeg 导致 benchmark 失败时，应在实际锁定 Linux 镜像中复验；本轮同一五分钟测试在镜像内 51.24 秒通过。相同原则适用于缺 `pwsh`、`uv`、`@types/node` 或 Playwright cache：记录精确环境限制，不下载修环境，也不把历史成功伪装成本轮执行。

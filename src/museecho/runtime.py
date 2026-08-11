@@ -27,6 +27,7 @@ from museecho.infrastructure.db import create_session_factory
 from museecho.infrastructure.llm import OpenAICompatibleProvider, ProviderConfig
 from museecho.infrastructure.repositories import SqliteAnalysisRepository, init_db
 from museecho.infrastructure.secrets import FileSecretStore
+from museecho.observability import RuntimeMetrics
 
 DEFAULT_CLEANUP_INTERVAL_SECONDS = 60.0
 LOGGER = logging.getLogger(__name__)
@@ -121,6 +122,7 @@ class RuntimeResources:
     cleanup: ExpiryCleanup
     cleanup_stop: threading.Event
     cleanup_failed: threading.Event
+    metrics: RuntimeMetrics
     cleanup_thread: threading.Thread | None = None
 
 
@@ -147,12 +149,18 @@ def create_runtime_app(
         repository=repository,
     )
     access_service = AccessService(repository)
+    metrics = RuntimeMetrics()
     coordinator = AnalysisCoordinator(
         repository=repository,
         audio_store=audio_store,
         temp_root=selected.data_root / "tmp" / "analysis",
+        stage_observer=metrics.observe_stage,
     )
-    queue = SingleWorkerQueue(repository, coordinator)
+    queue = SingleWorkerQueue(
+        repository,
+        coordinator,
+        failure_observer=metrics.observe_analysis_failure,
+    )
     upload_service = UploadSubmissionService(
         repository=repository,
         audio_store=audio_store,
@@ -170,7 +178,10 @@ def create_runtime_app(
         )
         provider_secret_store.get()
         provider = OpenAICompatibleProvider(selected.provider_config, provider_secret_store)
-    explanation_service = ExplanationService(provider)
+    explanation_service = ExplanationService(
+        provider,
+        mode_observer=lambda mode: metrics.observe_explanation(mode=mode),
+    )
     deletion_service = AnalysisDeletionService(repository, audio_store)
     cleanup = ExpiryCleanup(repository, deletion_service)
     resources = RuntimeResources(
@@ -179,11 +190,12 @@ def create_runtime_app(
         cleanup,
         threading.Event(),
         threading.Event(),
+        metrics,
     )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        cleanup.run_once()
+        metrics.observe_cleanup(deleted=cleanup.run_once())
         queue.start(recover=True)
         resources.cleanup_stop.clear()
         resources.cleanup_thread = threading.Thread(
@@ -222,6 +234,7 @@ def create_runtime_app(
         trusted_origins=selected.trusted_origins,
         lifespan=lifespan,
         readiness_check=lambda: not resources.cleanup_failed.is_set(),
+        metrics_snapshot=lambda: _metrics_snapshot(resources),
     )
     app.state.museecho_runtime = resources
     return app
@@ -233,14 +246,23 @@ def app() -> FastAPI:
     return create_runtime_app()
 
 
+def _metrics_snapshot(resources: RuntimeResources) -> dict[str, object]:
+    queue_length, active_analyses = resources.queue.metrics()
+    return resources.metrics.snapshot(
+        queue_length=queue_length,
+        active_analyses=active_analyses,
+    )
+
+
 def _run_cleanup(resources: RuntimeResources, interval_seconds: float) -> None:
     while not resources.cleanup_stop.wait(interval_seconds):
         try:
-            resources.cleanup.run_once()
+            resources.metrics.observe_cleanup(deleted=resources.cleanup.run_once())
             if resources.cleanup_failed.is_set():
                 resources.cleanup_failed.clear()
                 LOGGER.info("expiry cleanup recovered")
         except Exception:
+            resources.metrics.observe_cleanup_failure()
             if not resources.cleanup_failed.is_set():
                 LOGGER.error("expiry cleanup failed; readiness degraded")
                 resources.cleanup_failed.set()

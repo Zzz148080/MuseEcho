@@ -65,11 +65,48 @@ try {
         }
     }
 
+    $mutationTarget = $shellFiles[-1]
+    $mutationPath = Join-Path $checkoutRoot $mutationTarget
+    $originalMutationBytes = [IO.File]::ReadAllBytes($mutationPath)
+    try {
+        [IO.File]::AppendAllText(
+            $mutationPath,
+            "`nif then`n",
+            [Text.UTF8Encoding]::new($false)
+        )
+        Push-Location $checkoutRoot
+        try {
+            $mutationRejected = $false
+            foreach ($shellFile in $shellFiles) {
+                & bash -n -- $shellFile
+                if ($LASTEXITCODE -ne 0) {
+                    $mutationRejected = $true
+                    break
+                }
+            }
+            if (-not $mutationRejected) {
+                $failures.Add(
+                    "bash syntax harness accepted a later-file mutation: $mutationTarget"
+                )
+            }
+        }
+        finally {
+            Pop-Location
+        }
+    }
+    finally {
+        [IO.File]::WriteAllBytes($mutationPath, $originalMutationBytes)
+    }
+
     Push-Location $checkoutRoot
     try {
-        & bash -n -- @shellFiles
-        if ($LASTEXITCODE -ne 0) {
-            $failures.Add("bash -n rejected the fresh checkout (exit $LASTEXITCODE)")
+        foreach ($shellFile in $shellFiles) {
+            & bash -n -- $shellFile
+            if ($LASTEXITCODE -ne 0) {
+                $failures.Add(
+                    "bash -n rejected fresh-checkout file $shellFile (exit $LASTEXITCODE)"
+                )
+            }
         }
     }
     finally {
@@ -95,4 +132,4 @@ if ($failures.Count -ne 0) {
 
 Write-Output "PASS: eol=lf for $($shellFiles.Count) tracked shell files."
 Write-Output 'PASS: core.autocrlf=true fresh checkout contains no CRLF shell content.'
-Write-Output 'PASS: bash -n parsed every fresh-checkout shell file.'
+Write-Output "PASS: bash -n independently parsed $($shellFiles.Count) fresh-checkout shell files."
