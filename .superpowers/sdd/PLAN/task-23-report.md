@@ -8,7 +8,7 @@
 | --- | ---: | ---: | ---: | ---: |
 | Critical | 0 | 0 | 0 | 0 |
 | High | 0 | 4 | 0 | 0 |
-| Medium | 0 | 2 | 0 | 3 |
+| Medium | 0 | 2 | 0 | 4 |
 | Low | 0 | 0 | 0 | 0 |
 
 四个 Medium blocker 分别是当前浏览器/前端完整链、远程 GitHub/GitLab CI、目标云与公网/恢复证据、正式 current-source Dockerfile 的离线可重建性。宿主还缺少 brief 最终 wrapper 所需的 `pwsh` 和 `uv`。这些边界没有被伪装为成功，因此状态不是无条件 `DONE`。
@@ -324,6 +324,18 @@ After the user explicitly requested GitHub publication, the authenticated
 Task 22 branches without force-push. Task 23 remains local until this fix round
 passes independent rereview; no cloud deployment or other external system was
 modified.
+
+## Review fix round 3/5
+
+The second rereview found one current-evidence drift after `ENG-010` was added:
+Functional evidence E902 and its executable contract still asserted nine
+findings and three Medium blockers, while Engineering strict completion
+reported ten and four. A new cross-audit test derived the expected counts from
+the parsed Engineering Audit and failed on the stale E902 result. E902 now runs
+the explicit strict-material command and records `findings=10`,
+`blocked-medium=4`; the report summary table matches. Functional and
+Engineering and delivery-contract suites passed 134 tests, and both exact audit
+CLI commands returned zero.
 
 Round-2 implementation and evidence are committed as
 `a240f64bcd57a34818356805b9a177086668752c` —

@@ -331,12 +331,14 @@ EVIDENCE_CONTRACTS = {
         kind="CURRENT_COMMAND",
         command=(
             r".venv\Scripts\python.exe scripts/check_engineering_audit.py "
-            "docs/audits/ENGINEERING_AUDIT.md"
+            "docs/audits/ENGINEERING_AUDIT.md "
+            "--materials-dir tmp/task23-engineering "
+            "--trivy-db-dir ../feat-20-production-delivery/tmp/trivy-cache/db"
         ),
         path="docs/audits/ENGINEERING_AUDIT.md",
         coverage_ids=("AC-F-6", "DOD-13"),
         result=(
-            "findings=9; fixed-high=4; fixed-medium=2; blocked-medium=3; open=0; "
+            "findings=10; fixed-high=4; fixed-medium=2; blocked-medium=4; open=0; "
             "app-occurrences=181; app-distinct-cves=67; gateway-occurrences=0"
         ),
         exit_code_raw="0",

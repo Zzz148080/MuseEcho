@@ -358,3 +358,7 @@
 - **审计真值：** 新增 `ENG-010 Medium BLOCKED` 记录正式 current-source Dockerfile 在离线 BuildKit cache 不完整时真实 exit 1，并明确 derivative 不可发布。当前共 10 findings：4 High FIXED、2 Medium FIXED、4 Medium BLOCKED、0 OPEN；Functional Audit 保持 28/12/0。
 - **远端发布：** 用户明确要求发布 Task 20 起的本地分支；已在认证的 `Zzz148080/MuseEcho` 上无强推创建 `feat/20-production-delivery`、`ops/21-tencent-delivery`、`audit/22-functional`。Task 23/24 仅在各自最终复审通过后发布。
 - **复审轮 2 提交：** `a240f64bcd57a34818356805b9a177086668752c`（strict retained-material completion 与 `ENG-010`）；哈希回填为纯文档提交。
+
+## 2026-08-12 — TASK 23 / review fix round 3
+
+- **跨审计 RED→GREEN：** Functional E902 与 acceptance contract 仍接受旧 `9 findings / 3 blocked`；新增测试从真实 Engineering Audit 推导统计并先失败。E902 改为实际 strict-material 命令与 `10/4` 后，Functional、Engineering 与交付契约 134 tests、两个 CLI 均通过；Task 23 顶部统计表同步为 4 Medium BLOCKED。
