@@ -420,3 +420,17 @@ tests, and the final locked Linux suite passed `753 passed, 1 skipped in
 352.52s`. The behavior fix is commit
 `acb2cb09e7c62e104ef64331f105514d6ce3016a` —
 `fix: ignore generated runtime metadata`.
+
+## Cross-checkout line-ending verification fix
+
+The second merged-result verification retained the generated metadata and
+found a separate checkout portability defect: `core.autocrlf=true` had written
+the two Task 23 Python files as CRLF on `main`, while the reviewed worktree
+contained LF. The Functional Audit current-boundary digest hashed raw working
+tree bytes, so identical Git content failed only because of legal checkout
+line endings. A focused RED reproduced distinct digests for the same text with
+LF and CRLF. The digest now canonicalizes CRLF to LF only for text-like content
+(no NUL byte), while a binary regression contract proves binary bytes remain
+exact. E004 was refreshed to the canonical current-boundary digest. The full
+acceptance test file and Functional CLI then passed with 28 PASS / 12 PARTIAL /
+0 FAIL.

@@ -633,6 +633,8 @@ def _is_boundary_file(relative_path: Path) -> bool:
 def _digest_boundary_entries(entries: Iterable[tuple[str, bytes]]) -> str:
     digest = hashlib.sha256()
     for relative_path, content in sorted(entries):
+        if b"\0" not in content:
+            content = content.replace(b"\r\n", b"\n")
         digest.update(relative_path.encode("utf-8"))
         digest.update(b"\0")
         digest.update(hashlib.sha256(content).hexdigest().encode("ascii"))

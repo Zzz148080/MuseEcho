@@ -314,6 +314,29 @@ def test_historical_evidence_requires_current_boundary_hash(tmp_path: Path, repl
     assert "E004 current boundary SHA256" in _validation_error(tmp_path, mutation)
 
 
+def test_current_boundary_is_stable_across_text_checkout_line_endings(tmp_path: Path):
+    source = tmp_path / "src" / "museecho" / "app.py"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"first\nsecond\n")
+    lf_boundary = check_acceptance_matrix._current_boundary_sha256(tmp_path)
+
+    source.write_bytes(b"first\r\nsecond\r\n")
+    crlf_boundary = check_acceptance_matrix._current_boundary_sha256(tmp_path)
+
+    assert crlf_boundary == lf_boundary
+
+
+def test_boundary_keeps_binary_line_endings_exact():
+    lf_boundary = check_acceptance_matrix._digest_boundary_entries(
+        [("tests/api/fixture.bin", b"\0first\nsecond\n")]
+    )
+    crlf_boundary = check_acceptance_matrix._digest_boundary_entries(
+        [("tests/api/fixture.bin", b"\0first\r\nsecond\r\n")]
+    )
+
+    assert crlf_boundary != lf_boundary
+
+
 def test_drifted_historical_browser_boundary_cannot_make_current_item_pass(tmp_path: Path):
     mutation = _replace_table_cell(
         _audit_text(), "## Acceptance matrix", "AC-C-3", "Evidence IDs", "E004"

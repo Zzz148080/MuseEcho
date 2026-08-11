@@ -373,3 +373,11 @@
 - **真实命令与历史边界 RED→GREEN：** E014 曾把宿主不可用的 `uv run` 命令记为 current exit 0，E030 仍记录 36 tests，初始 9 findings/`29/11` 表格也未标注 superseded。三个聚焦测试先失败；现固定实际 `.venv\Scripts\python.exe` 命令、E030 结果与历史标签。新增两个跨审计测试后单文件实际为 39 tests，精确命令已返回 `39 passed`。
 - **网页交付：** 独立最终复审为 0 Critical / 0 Important / 0 Minor；`audit/23-engineering` 已推送至 `origin`，GitHub 草稿 PR #1 为 `https://github.com/Zzz148080/MuseEcho/pull/1`。
 - **合并结果 RED→GREEN：** main checkout 的既有 `src/museecho.egg-info` 曾被 runtime boundary builder 重新纳入，导致 7 个审计失败；跟踪确认该目录已由 `.dockerignore` 排除。新 dirty-checkout RED 先失败，边界 builder 对任意 `.egg-info` 路径组件排除后 GREEN；聚焦 168 tests 与锁定 Linux `753 passed, 1 skipped` 通过。修复提交 `acb2cb09e7c62e104ef64331f105514d6ce3016a`。
+
+## 2026-08-12 — TASK 23 / merged checkout line endings
+
+- **RED→GREEN:** `main` and the reviewed worktree had identical Git trees but
+  legal CRLF/LF working-tree differences produced different Functional Audit
+  boundary digests. A focused test failed first; text boundary bytes now use a
+  canonical LF form while NUL-containing binary content remains byte-exact.
+  The acceptance file and Functional CLI pass at 28/12/0.
