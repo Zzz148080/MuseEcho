@@ -337,6 +337,10 @@ the explicit strict-material command and records `findings=10`,
 Engineering and delivery-contract suites passed 134 tests, and both exact audit
 CLI commands returned zero.
 
+Round-3 implementation and current-evidence consistency are committed as
+`93baab9f6f20d6e34dc393a837a6d6cb2a5fddaf` —
+`fix: keep audit statistics consistent`.
+
 Round-2 implementation and evidence are committed as
 `a240f64bcd57a34818356805b9a177086668752c` —
 `fix: validate retained engineering evidence`; this hash is backfilled by a

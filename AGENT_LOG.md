@@ -362,3 +362,4 @@
 ## 2026-08-12 — TASK 23 / review fix round 3
 
 - **跨审计 RED→GREEN：** Functional E902 与 acceptance contract 仍接受旧 `9 findings / 3 blocked`；新增测试从真实 Engineering Audit 推导统计并先失败。E902 改为实际 strict-material 命令与 `10/4` 后，Functional、Engineering 与交付契约 134 tests、两个 CLI 均通过；Task 23 顶部统计表同步为 4 Medium BLOCKED。
+- **复审轮 3 提交：** `93baab9f6f20d6e34dc393a837a6d6cb2a5fddaf`（跨审计统计与严格材料命令一致性）。
