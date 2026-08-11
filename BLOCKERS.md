@@ -1,6 +1,13 @@
 # MuseEcho Blockers
 
-当前没有阻塞本地继续实施的已确认 Blocker。历史审批通道问题 `CS-001` 已在本轮通过多次真实提权命令成功执行而关闭。
+当前没有阻塞本地继续实施或完成 Task 22 的已确认 Blocker。历史审批通道问题 `CS-001` 已在本轮通过多次真实提权命令成功执行而关闭。
+
+以下外部验收条件会阻止 `MUSEECHO V1 READY`，但不阻止本地 Task 22 完成：
+
+- `TC-021`：目标服务器五分钟性能实测、腾讯云公网 URL、受信 TLS 完整 smoke、跨网与 24 小时观察仍未执行；
+- `REMOTE-CI`：当前合并状态的 GitHub Actions 和 GitLab CI 均未真实运行；
+- `TASK23-AUDIT` / `TASK24-AUDIT`：Engineering 与 Product Audit 尚未开始；
+- `STUDENT-MANUAL`：学生最终亲自验收和 `REFLECTION.md` 正文仍保留为人工待办。
 
 以下是尚未到达执行时点的外部 gate，不在本阶段虚假标记为 Blocker：
 
@@ -11,7 +18,7 @@
 
 ## TC-021：腾讯云公网部署授权与外部验收
 
-- **状态：** 外部待决；不阻塞 Task 21 的本地脚本、文档和审查工作，但阻止任何真实公网 URL、TLS、跨网 smoke、4 小时清理或服务器回滚证据。
+- **状态：** 外部待决；不阻塞 Task 21/22 的本地脚本、审计和文档工作，但阻止目标服务器性能 PASS，以及任何真实公网 URL、TLS、跨网 smoke、24 小时清理观察或服务器回滚证据。
 - **缺少条件：** 腾讯云账号/实名与 Lighthouse、可控域名/DNS、服务器 SSH 授权，以及可发布的 digest-qualified app/gateway OCI 镜像引用。
 - **已完成的安全范围：** 本地实现只接受 `name@sha256:<digest>`，不使用 tag 回退；`install.sh --check-only` 和临时根目录合约测试没有修改真实主机、云资源或秘密。
 - **后续动作：** 获授权后按 `DEPLOYMENT_EVIDENCE.md` 逐项执行，记录 UTC 时间、红acted 命令结果和真实失败；未完成前不得填写公网 URL 或 PASS。

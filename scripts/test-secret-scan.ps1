@@ -120,9 +120,10 @@ try {
     )
     try {
         $unreadableOutput = Invoke-Scanner -ExpectedExit 1
+        $normalizedUnreadableOutput = $unreadableOutput -replace '\s', ''
         if (
             $unreadableOutput -notmatch 'scan-error' -or
-            $unreadableOutput -notmatch 'tracked-unrea'
+            $normalizedUnreadableOutput -notmatch 'tracked-unreadable\.txt'
         ) {
             throw "Secret scan did not fail closed for an unreadable file`n$unreadableOutput"
         }

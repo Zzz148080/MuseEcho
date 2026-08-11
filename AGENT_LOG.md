@@ -1,5 +1,15 @@
 # MuseEcho Agent Log
 
+## 2026-08-11 — TASK 22 / Functional Audit 与验收缺口闭环
+
+- **范围与结论：** 按 `SPEC.md` AC-A 至 AC-F 的 24 项和 Definition of Done 的 16 项建立 40 项机器可解析矩阵；当前为 `34 PASS / 6 PARTIAL / 0 FAIL`、`PARTIALLY_READY`。目标服务器性能、公网 URL/完整 smoke、远程双 CI、Task 23/24 和学生人工验收均保持真实未运行，任何一项都阻止 `READY`。
+- **TDD checker：** 首个 RED 为 `scripts.check_acceptance_matrix` 不存在。实现后 26 个测试覆盖缺失/重复条目、非法 verdict、PASS 无证据、命令/路径/UTC/未来时间、重复证据、文件存在冒充 PASS、重要非 PASS 无 blocker/修复重验、READY 矛盾，以及外部/后续/人工状态真实性。最终 exact brief gate 在已有 uv 0.11.29 builder 中以 `--network none`、`--pull=never` 和锁定 pytest 模块完成，26 tests 与 40-item checker 均 exit 0。
+- **真实缺口 1（checker 可移植性）：** 第一次锁定 Linux 全量门得到 `612 passed, 23 failed`；23 项均因生产镜像不含 Git，而 checker 直接启动 `git cat-file` 抛 `FileNotFoundError`。新增无 Git 与 commit/path 绑定 RED 后，最小修复要求 40 位 commit 且证据命令同时绑定 exact commit/path；Git 可用时仍验证对象，Git 不可用时结构化证据保持可离线检查。修复后锁定 Linux 全量 `637 passed in 177.01s`。
+- **真实缺口 2（Secret synthetic harness）：** 当前 scanner 对被占用文件已 exit 1 并输出 `scan-error`，但 Windows PowerShell 将 `tracked-unreadable.txt` 格式化换行成两段，测试 harness 的直接子串匹配误报。以现有失败为 RED，只在断言前去除空白并匹配完整文件名；生产扫描规则未改，GREEN 为 `Secret scan synthetic tests passed`。
+- **当前验证：** 前端 `12 files / 66 tests`；frontend typecheck/build 和 E2E TypeScript gate；锁定 Linux `637 passed`；生产容器真实 WAV smoke、重启持久性、持久卷无明文、镜像历史无测试 KEK 和清理；89-file Ruff format、Ruff lint、45-source mypy 与 checker mypy；许可证审计；真实/合成 Secret scan；checker exact gate均通过。Task 19 的 4 个真实 HTTPS 浏览器 E2E 与 11.201268 秒本地两核五分钟基准使用精确提交证据；本轮未把它们冒充目标服务器或公网证据。
+- **约束 concern：** `scripts/container-smoke.ps1` 没有 no-build 入口；其 gateway 缓存失效后执行锁文件限定的 `npm ci`，下载 167 个包（39 秒，0 vulnerabilities）。manifest/lock 与基线 diff 为零，未安装宿主工具，只更新正常 `museecho-app:local`/`museecho-gateway:local` smoke 标签，但该网络获取仍违反 Task 22 的禁止下载约束，已明确保留在审计报告；后续门全部使用缓存、`--network none`/`--pull=never` 或标记未运行。
+- **停放边界：** Task 21 的 `tests/deploy/test_shell_line_endings.ps1` 多文件 `bash -n` harness 缺陷只记录给 Task 23，不写成功能缺陷已关闭，也不改变 AC verdict。
+
 ## 2026-08-11 — TASK 21 / Tencent Cloud delivery scripts (local-only)
 
 - **授权边界：** 未提供腾讯云账号、Lighthouse、域名/DNS、SSH 或 registry 发布授权；未执行任何云、DNS、SSH 或公网变更，也不声称远端 CI 或公网 URL。

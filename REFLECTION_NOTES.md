@@ -2,6 +2,14 @@
 
 本文件仅积累客观过程材料，不代写学生的 `REFLECTION.md`，也不替学生生成主观结论。
 
+## 2026-08-11 — TASK 22 / 证据驱动验收材料
+
+- 单纯列出文件无法证明验收通过。Task 22 将 24 个 AC 和 16 个 DoD 条目固定为 40 个 ID，并让 checker 拒绝缺失/重复、文件存在型 PASS、无命令/路径/UTC/退出码证据、未来时间和 blocker/READY 矛盾。
+- 当前锁定 Linux 运行时没有 Git。checker 首版把“精确历史提交可验证”误实现为“任何环境都必须现场启动 Git”，导致 612 个既有测试通过而 23 个新测试同因 `FileNotFoundError` 失败。修复后的边界是 exact 40 位 commit 与 command/path 绑定；有 Git 时额外验证对象，没有 Git 时仍能运行离线矩阵门。
+- PowerShell 会把子进程 ErrorRecord 按显示宽度换行。Secret scanner 已正确 fail-closed，但 synthetic harness 把格式化文本当原始字符串匹配而误报；对诊断输出先规范空白即可保持完整文件名断言，不需要降低扫描标准。
+- 本地两核五分钟基准、内部 CA smoke 和配置文件存在不能替代目标服务器、公网受信 TLS 或远程 CI。矩阵因此保持 6 个 PARTIAL，且学生人工验收继续保留为人工待办。
+- 容器 smoke 的强制 build 在缓存失效时执行了锁定 `npm ci`。虽然锁文件和依赖版本没有变化，这仍是一次与 Task 22 禁止下载约束不一致的过程事件，必须保留在报告而不能用“可复现构建”掩盖。
+
 ## 2026-08-11 — TASK 21 / 交付边界的本地证据
 
 - Task 20 的 tar/config identity 不能被叙述成已发布的 registry digest；Task 21 因而明确拒绝 tag，要求部署操作员提供真实 `name@sha256:` 引用。
