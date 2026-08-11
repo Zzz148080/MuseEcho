@@ -7,7 +7,7 @@
 - 单纯列出文件无法证明验收通过。Task 22 将 24 个 AC 和 16 个 DoD 条目固定为 40 个 ID，并让 checker 拒绝缺失/重复、文件存在型 PASS、无命令/路径/UTC/退出码证据、未来时间和 blocker/READY 矛盾。
 - 当前锁定 Linux 运行时没有 Git。checker 首版把“精确历史提交可验证”误实现为“任何环境都必须现场启动 Git”，导致 612 个既有测试通过而 23 个新测试同因 `FileNotFoundError` 失败。修复后的边界是 exact 40 位 commit 与 command/path 绑定；有 Git 时额外验证对象，没有 Git 时仍能运行离线矩阵门。
 - PowerShell 会把子进程 ErrorRecord 按显示宽度换行。Secret scanner 已正确 fail-closed，但 synthetic harness 把格式化文本当原始字符串匹配而误报；对诊断输出先规范空白即可保持完整文件名断言，不需要降低扫描标准。
-- 本地两核五分钟基准、内部 CA smoke 和配置文件存在不能替代目标服务器、公网受信 TLS 或远程 CI。矩阵因此保持 6 个 PARTIAL，且学生人工验收继续保留为人工待办。
+- 本地两核五分钟基准、内部 CA smoke 和配置文件存在不能替代目标服务器、公网受信 TLS 或远程 CI。审查修复轮 1 后的当前矩阵为 `29 PASS / 11 PARTIAL / 0 FAIL`，且学生人工验收继续保留为人工待办。
 - 容器 smoke 的强制 build 在缓存失效时执行了锁定 `npm ci`。虽然锁文件和依赖版本没有变化，这仍是一次与 Task 22 禁止下载约束不一致的过程事件，必须保留在报告而不能用“可复现构建”掩盖。
 - exit 0 只是进程结果，不是功能证据。审查 mutation 证明把当前 evidence 的命令和结果一起改成无意义成功仍可绕过初版 checker；代码内逐 evidence 固定 command、coverage、可量化 result 后，审计文本本身不能同步改写策略。
 - 无 Git 可移植性不能以放弃真实性为代价。历史 E2E 现在同时绑定 PLAN 中的完整 commit 锚点、历史内容摘要和当前 source/test SHA-256 manifest；有 Git 时再用单次 archive 校验历史 manifest。这样 Git-less runtime 能拒绝 audit-only 伪造，同时不要求生产镜像安装 Git。

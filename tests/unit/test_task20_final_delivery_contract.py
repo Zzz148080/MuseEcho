@@ -4,10 +4,13 @@ import json
 import re
 import shutil
 import subprocess
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+from scripts.check_acceptance_matrix import load_audit
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -174,11 +177,18 @@ def test_readme_cold_start_contract_covers_locked_setup_https_health_and_cleanup
         assert required in readme
 
 
-def test_process_documents_anchor_task19_evidence_and_external_truth_boundaries():
+def test_process_documents_anchor_evidence_and_share_current_audit_status():
     plan = (ROOT / "PLAN.md").read_text(encoding="utf-8")
     agent_log = (ROOT / "AGENT_LOG.md").read_text(encoding="utf-8")
+    blockers = (ROOT / "BLOCKERS.md").read_text(encoding="utf-8")
+    reflection_notes = (ROOT / "REFLECTION_NOTES.md").read_text(encoding="utf-8")
+    task22_report = (ROOT / ".superpowers/sdd/PLAN/task-22-report.md").read_text(encoding="utf-8")
     task20 = (ROOT / "TASK20_HANDOFF.md").read_text(encoding="utf-8")
     deployment = (ROOT / "DEPLOYMENT_EVIDENCE.md").read_text(encoding="utf-8")
+    audit = load_audit(ROOT / "SPEC.md", ROOT / "docs/audits/FUNCTIONAL_AUDIT.md")
+    counts = Counter(item.verdict for item in audit.items)
+    assert (counts["PASS"], counts["PARTIAL"], counts["FAIL"]) == (29, 11, 0)
+    current_status = f"{counts['PASS']} PASS / {counts['PARTIAL']} PARTIAL / {counts['FAIL']} FAIL"
 
     assert "1047ce242884b6ba83a525524e88dcc44ab76a69" in plan
     assert "4 个真实 HTTPS 浏览器 E2E" in agent_log
@@ -186,3 +196,24 @@ def test_process_documents_anchor_task19_evidence_and_external_truth_boundaries(
     assert "远端 GitHub Actions/GitLab CI 仍未运行" in task20
     assert "No public URL is claimed." in deployment
     assert "## Pending real-server evidence" in deployment
+
+    for name, document in (
+        ("REFLECTION_NOTES.md", reflection_notes),
+        ("AGENT_LOG.md", agent_log),
+        ("BLOCKERS.md", blockers),
+        ("PLAN.md", plan),
+        ("task-22-report.md", task22_report),
+    ):
+        assert current_status in document, f"{name} lacks current audit status {current_status}"
+
+    assert "保持 6 个 PARTIAL" not in reflection_notes
+    pre_review_report = task22_report.split("## Review fix round 1/5", maxsplit=1)[0]
+    assert "The final verification" not in pre_review_report
+    assert "pristine final run" not in pre_review_report
+    legacy_statuses = ("PASS=34 PARTIAL=6 FAIL=0", "34 PASS / 6 PARTIAL / 0 FAIL")
+    assert any(status in task22_report for status in legacy_statuses)
+    for legacy_status in legacy_statuses:
+        for match in re.finditer(re.escape(legacy_status), task22_report):
+            context = task22_report[max(0, match.start() - 240) : match.end() + 240].lower()
+            assert "pre-review" in context
+            assert "superseded" in context

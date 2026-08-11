@@ -136,13 +136,15 @@ installation, or download occurred. The command itself remained exactly:
 uv run pytest tests/unit/test_acceptance_matrix.py -q && uv run python scripts/check_acceptance_matrix.py SPEC.md docs/audits/FUNCTIONAL_AUDIT.md
 ```
 
-Output was `26 passed in 2.93s` followed by
+The pre-review output, superseded by review fix round 1, was `26 passed in
+2.93s` followed by
 `40 acceptance items validated: PASS=34 PARTIAL=6 FAIL=0;
 readiness=PARTIALLY_READY`, exit `0`.
 
-The final verification repeated this exact inner command against the completed
-audit. The three bounded setup attempts all remained offline and demonstrated
-fail-closed behavior rather than being hidden:
+The pre-review verification, superseded by review fix round 1, repeated this
+exact inner command against the then-completed audit. The three bounded setup
+attempts all remained offline and demonstrated fail-closed behavior rather than
+being hidden:
 
 1. Mounting `scripts`, `tests`, `docs`, and `SPEC.md` without `src/` exited `4`
    because the repository `tests/conftest.py` could not import `museecho`.
@@ -153,17 +155,18 @@ fail-closed behavior rather than being hidden:
    checker, exit `0`, but emitted one expected `PytestCacheWarning` because its
    cache provider tried to write below `/repo`.
 
-For the pristine final run, the same whole-worktree read-only mount added only
-`PYTEST_ADDOPTS=-p no:cacheprovider`; the brief command itself was unchanged.
-At `2026-08-11T09:34:42Z`, cached `uv 0.11.29` reported `26 passed in 5.96s`,
-then the checker reported `PASS=34 PARTIAL=6 FAIL=0` and
+For the pre-review pristine run, which review fix round 1 superseded, the same
+whole-worktree read-only mount added only `PYTEST_ADDOPTS=-p no:cacheprovider`;
+the brief command itself was unchanged. At `2026-08-11T09:34:42Z`, cached uv
+`0.11.29` reported `26 passed in 5.96s`; the superseded pre-review checker
+reported `PASS=34 PARTIAL=6 FAIL=0` and
 `readiness=PARTIALLY_READY`. Exit was `0`, with no warnings. All four attempts
 used `--pull=never --network none`, `UV_NO_SYNC=1`, and the same existing
 builder/locked modules; none performed a fetch or install.
 
-## Acceptance result and open blockers
+## Pre-review acceptance result and open blockers (superseded)
 
-The six truthful PARTIAL items are:
+At the pre-review checkpoint, the six then-current PARTIAL items were:
 
 - `AC-A-4`: no five-minute benchmark from the actual target server
   (`TC-021`);
@@ -377,6 +380,48 @@ retaining the drift/non-PASS qualification made it `7 passed in 0.49s`. The
 same final batch produced focused `35 passed in 14.67s`, checker `29/11/0`,
 Ruff/mypy/Secret/license success, unchanged package/lock manifests, no protected
 path diff, and a clean diff check.
+
+## Review fix round 2/5 — current-stat documentation consistency
+
+The review finding was reproduced at `d6d3eab`: the audit and checker said
+`29 PASS / 11 PARTIAL / 0 FAIL`, while REFLECTION_NOTES still described six
+PARTIAL items as current. The pre-review exact-gate section also preserved the
+real 34/6 command output but called it `final verification`, `pristine final`,
+and a completed-audit result without saying that review fix round 1 superseded
+it.
+
+The existing seven-test process contract was extended before editing prose. It
+derives verdict counts by parsing the current functional audit, pins the
+expected `29/11/0` result, requires the canonical status in REFLECTION_NOTES,
+AGENT_LOG, BLOCKERS, PLAN, and this report, rejects the stale Chinese
+`保持 6 个 PARTIAL` statement, and allows 34/6 history only when `pre-review`
+and `superseded` occur next to each old result. This preserves real historical
+output without allowing it to masquerade as current/final state.
+
+The focused RED was `1 failed` because REFLECTION_NOTES lacked the current
+29/11/0 status. After the first prose change it remained RED because the
+superseded marker was too far from the second 34/6 output to survive a bounded
+context read. Moving `superseded pre-review` directly next to that checker
+result produced the targeted GREEN (`1 passed in 0.17s`). The full process
+contract then passed `7 passed in 0.51s` after Ruff's mechanical formatting.
+
+Fresh review-round verification:
+
+- host acceptance suite: `35 passed in 14.48s`;
+- current process contract: `7 passed in 0.51s`;
+- host checker: 40 items, `29 PASS / 11 PARTIAL / 0 FAIL`,
+  `PARTIALLY_READY`;
+- Git-less pristine exact gate: cached uv `0.11.29`, `--pull=never`,
+  `--network none`, read-only worktree, no sync, pytest cache disabled;
+  `35 passed in 67.70s`, the same checker result, no warning, exit `0`, wall
+  76.80 seconds;
+- focused Ruff format/lint clean; fresh Secret scan checked 202 files; package
+  and lock manifests unchanged; protected-path and diff checks clean.
+
+No checker policy, audit evidence, functional verdict, package/lock file, or
+Task 19 browser boundary input changed, so the locked Linux suite and boundary
+policy did not require regeneration. This round used no network and performed
+no external-state operation.
 
 ## Commit
 

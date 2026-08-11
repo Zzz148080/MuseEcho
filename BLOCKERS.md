@@ -2,6 +2,8 @@
 
 当前没有阻塞本地继续实施或完成 Task 22 的已确认 Blocker。历史审批通道问题 `CS-001` 已在本轮通过多次真实提权命令成功执行而关闭。
 
+当前 Functional Audit 矩阵为 `29 PASS / 11 PARTIAL / 0 FAIL`，结论为 `PARTIALLY_READY`；以下未完成条件阻止 `READY`。
+
 以下外部验收条件会阻止 `MUSEECHO V1 READY`，但不阻止本地 Task 22 完成：
 
 - `TC-021`：目标服务器五分钟性能实测、腾讯云公网 URL、受信 TLS 完整 smoke、跨网与 24 小时观察仍未执行；
