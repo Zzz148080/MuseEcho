@@ -360,3 +360,99 @@ All 11 delivery contracts passed; check-only reported no host changes; all
 syntax checks exited 0. Windows Secret scan passed for 196 tracked/non-ignored
 files, and `git diff --check` exited 0. No production deployment behavior or
 real deployment evidence changed.
+
+## Review fix round 5/5 — LF-safe Windows checkout
+
+### Root cause
+
+The Windows Git installation resolves `core.autocrlf=true` from
+`D:/Git/Git/etc/gitconfig`. The repository had no `.gitattributes`, and
+`git check-attr text eol` reported both attributes as `unspecified` for the
+Task 21 shell scripts. The linked feature worktree still contained LF bytes,
+which masked what a fresh Windows checkout would do.
+
+A disposable checkout reproduced the complete failure chain without changing
+main or using the network:
+
+```powershell
+git -c core.autocrlf=true checkout-index --all --force --prefix=<task-temp>/
+```
+
+In that checkout, `deploy/tencent-cloud/install.sh` contained 120 CRLF and zero
+bare-LF sequences. Running the evidence checker there exited 2 with:
+
+```text
+tests/deploy/test_shellcheck_evidence.sh: line 4: set: pipefail\r: invalid option name
+```
+
+### RED
+
+`tests/deploy/test_shell_line_endings.ps1` was added before the attribute fix.
+It asks Git for the effective `eol` attribute, creates a GUID-named directory
+under the system temporary directory, uses real `checkout-index` conversion
+with `core.autocrlf=true`, inspects the resulting bytes, and invokes WSL
+`bash -n` on all eight tracked shell files. Its `finally` block validates that
+the resolved cleanup target remains under the temporary directory before
+removing only that directory.
+
+Fresh command:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\deploy\test_shell_line_endings.ps1
+```
+
+It exited 1 with 17 expected failures: eight `eol: unspecified` results; CRLF
+counts of 61, 128, 120, 113, 26, 46, 64, and 305 for the five deployment and
+three test scripts; and `bash -n` exit 2 on the converted checkout.
+
+### GREEN
+
+The complete production fix is one repository attribute:
+
+```gitattributes
+*.sh text eol=lf
+```
+
+No per-file content rewrite or broader line-ending policy was added. The same
+focused command exited 0:
+
+```text
+PASS: eol=lf for 8 tracked shell files.
+PASS: core.autocrlf=true fresh checkout contains no CRLF shell content.
+PASS: bash -n parsed every fresh-checkout shell file.
+```
+
+`git check-attr text eol` now reports `text: set` and `eol: lf` for the shell
+files.
+
+### Proportional verification
+
+The fresh local command group was:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\deploy\test_shell_line_endings.ps1
+bash tests/deploy/test_shellcheck_evidence.sh
+bash tests/deploy/test_shellcheck_evidence_mutations.sh
+bash tests/deploy/test_tencent_cloud.sh
+bash deploy/tencent-cloud/install.sh --check-only
+bash -lc 'for file in deploy/tencent-cloud/*.sh tests/deploy/*.sh; do bash -n "$file" || exit 1; done'
+```
+
+Every command exited 0. The evidence tests reported the contract passed plus
+all six legacy-acceptance/final-rejection mutation pairs; all 11 delivery
+contracts passed; check-only reported `no host changes made`; and the current
+checkout syntax loop passed.
+
+No image or tool was downloaded. The existing complete tag@digest image was
+used again with `--pull=never --network none`:
+
+```powershell
+docker run --pull=never --rm --network none --entrypoint shellcheck koalaman/shellcheck-alpine:v0.10.0@sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577 --version
+docker run --pull=never --rm --network none --entrypoint shellcheck -v "$PWD:/work:ro" -w /work koalaman/shellcheck-alpine:v0.10.0@sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577 deploy/tencent-cloud/lib.sh deploy/tencent-cloud/install.sh deploy/tencent-cloud/deploy.sh deploy/tencent-cloud/rollback.sh deploy/tencent-cloud/backup.sh
+```
+
+Image inspect returned the required digest; version output reported 0.10.0;
+both runs exited 0 and lint stdout/stderr were empty. Secret scan passed for
+198 tracked/non-ignored files. Worktree and cached `git diff --check` both
+exited 0. `DEPLOYMENT_EVIDENCE.md` was not changed because this round records a
+repository checkout correction, not a new deployment event.
