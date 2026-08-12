@@ -142,6 +142,7 @@ try {
     }
 
     Write-Host 'Secret scan synthetic tests passed.'
+    $global:LASTEXITCODE = 0
 } finally {
     if (Test-Path -LiteralPath $fixtureRoot) {
         Get-ChildItem -LiteralPath $fixtureRoot -Recurse -Force -ErrorAction SilentlyContinue |
