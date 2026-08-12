@@ -105,6 +105,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
+        with:
+          driver: docker-container
+          use: true
       - name: Validate and build both non-root images
         run: |
           docker compose --profile production config --quiet

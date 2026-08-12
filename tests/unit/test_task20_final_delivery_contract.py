@@ -220,6 +220,7 @@ def test_distribution_uses_buildx_and_node24_artifact_without_weakening_evidence
         for index, step in enumerate(steps)
         if step.get("name") == "Retain image vulnerability evidence"
     )
+    buildx = steps[buildx_indexes[0]]
     build_commands = str(steps[build_index]["run"])
 
     assert uses.count("docker/setup-buildx-action@v4") == 1
@@ -233,6 +234,8 @@ def test_distribution_uses_buildx_and_node24_artifact_without_weakening_evidence
         for item in uses
     )
     assert checkout_index < buildx_indexes[0] < build_index < artifact_index
+    assert buildx["with"]["driver"] == "docker-container"
+    assert buildx["with"]["use"] is True
     assert (
         "type=docker,name=museecho-app:ci,dest=tmp/image-security/museecho-app.tar"
         in build_commands
