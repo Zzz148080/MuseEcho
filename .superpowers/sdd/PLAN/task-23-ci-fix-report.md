@@ -1043,7 +1043,7 @@ workflow, runtime version, or unrelated file changed.
 
 ### Commit
 
-`8fcb78d980db0507774228020136ef53366bbe6d` — `fix: install first-party release package`.
+`308450d8f1ac7d0032912062c253b0400679c056` — `fix: structure smoke child outcomes`.
 
 ## Fix round 14/15 — reproducible build backend and development source precedence
 
@@ -1123,7 +1123,7 @@ approval, identity gate, or non-root control was weakened.
 
 ### Commit
 
-Recorded with this round's local commit; no push performed.
+`5a4a35aa0b0b9a4f3435278d538487e1744dd50a` — `fix: lock builds and restore dev source`.
 
 ### Concerns
 
@@ -1225,4 +1225,68 @@ performed in this implementation round.
 
 ### Commit
 
+`8fcb78d980db0507774228020136ef53366bbe6d` — `fix: install first-party release package`.
+
+## Fix round 15/15 — real development reload process boundary
+
+### Review finding and root cause
+
+Round 14's development test replaced the Compose service command with a one-shot
+`python -c` import. It proved source-mount precedence, but never exercised the
+declared uvicorn command, changed source after startup, or observed a restarted
+service. Consequently, removing `--reload --reload-dir /app/src` did not affect
+that test. The test also relied on Compose's default project name and had no
+`finally` lifecycle cleanup.
+
+### Behavioral mutation RED
+
+The replacement test uses a unique Compose project/image plus isolated copied
+source and read-only test Secret. It builds and starts the actual `app-dev`
+uvicorn command, waits conditionally for real `/api/health` readiness through
+the running container, edits the mounted `museecho/app.py` after startup, and
+polls the same HTTP behavior for a unique response marker.
+
+With only the three reload command arguments temporarily removed from
+`compose.yaml`, the service reached the baseline and continued serving the old
+response after the edit:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/unit/test_task20_final_delivery_contract.py -q -k app_dev_reloads_mounted_source_changes_across_the_compose_process_boundary --basetemp tmp/task23-ci-round15-red3
+```
+
+Observed exit `1`, `1 failed, 19 deselected in 69.36s`; the bounded 45-second
+poll ended with the original ready health object and no `reload_probe`. This is
+the intended real process-boundary failure, not a source-text assertion. Two
+earlier setup attempts exposed and then corrected a test fixture issue: a
+Windows-created Secret was writable inside the Linux bind mount, so the product
+correctly rejected it before startup. Those setup failures were not counted as
+the behavioral RED.
+
+### Minimal test/lifecycle correction and GREEN
+
+The Compose reload command itself was restored unchanged. Only the regression
+test was replaced: it now validates actual post-start reload behavior, uses a
+unique project and isolated mounts, includes container logs in startup
+diagnostics, and always invokes `docker compose down --volumes
+--remove-orphans` from `finally` before removing its unique image. The Secret
+fixture uses read-only permission bits required by the real product boundary.
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/unit/test_task20_final_delivery_contract.py -q -k app_dev_reloads_mounted_source_changes_across_the_compose_process_boundary --basetemp tmp/task23-ci-round15-green
+```
+
+Observed exit `0`, `1 passed, 19 deselected in 29.01s`. The initial response
+contained no marker; after the source edit, the running service returned the
+new marker, proving that source precedence, uvicorn watching, restart, and
+post-restart execution all work together.
+
+### Commit
+
 Recorded with this round's local commit; no push performed.
+
+### Concerns
+
+The real Docker lifecycle passed on the local Docker Desktop Linux engine.
+GitHub Actions remains the authoritative Ubuntu confirmation after review and
+push. No product source, Compose behavior, workflow, packaging, license,
+vulnerability, or runtime-version contract changed in this round.

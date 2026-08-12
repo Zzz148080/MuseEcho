@@ -4,11 +4,14 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
+import time
 import tomllib
+import uuid
 from collections import Counter
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pytest
 import yaml
@@ -129,50 +132,183 @@ def test_packaging_boundary_fails_closed_when_a_present_docker_client_is_broken(
         test_app_image_runs_the_installed_first_party_release_distribution()
 
 
-def test_app_dev_executes_the_compose_mounted_source_tree(tmp_path: Path):
+def _read_app_dev_health(compose_command: list[str]) -> dict[str, object] | None:
+    completed = subprocess.run(
+        [
+            *compose_command,
+            "exec",
+            "-T",
+            "app-dev",
+            "python",
+            "-c",
+            (
+                "import urllib.request; "
+                "print(urllib.request.urlopen("
+                "'http://127.0.0.1:8000/api/health', timeout=2).read().decode())"
+            ),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=10,
+    )
+    if completed.returncode != 0:
+        return None
+    try:
+        response = json.loads(completed.stdout.strip())
+    except json.JSONDecodeError:
+        return None
+    return response if isinstance(response, dict) else None
+
+
+def _wait_for_app_dev_health(
+    compose_command: list[str],
+    predicate: Callable[[dict[str, object]], bool],
+    *,
+    timeout: float,
+) -> dict[str, object]:
+    deadline = time.monotonic() + timeout
+    last_response: dict[str, object] | None = None
+    while time.monotonic() < deadline:
+        last_response = _read_app_dev_health(compose_command)
+        if last_response is not None and predicate(last_response):
+            return last_response
+        time.sleep(0.5)
+    pytest.fail(f"app-dev health did not reach expected state; last response: {last_response!r}")
+
+
+def test_app_dev_reloads_mounted_source_changes_across_the_compose_process_boundary(
+    tmp_path: Path,
+):
     docker = shutil.which("docker")
     if docker is None:
         pytest.skip("Docker is unavailable for the development source boundary")
 
     source = tmp_path / "src"
     shutil.copytree(ROOT / "src", source)
-    marker = "round14-live-source-marker"
-    (source / "museecho" / "_live_source_probe.py").write_text(
-        f"VALUE = {marker!r}\n", encoding="utf-8"
+    secrets = tmp_path / "secrets"
+    secrets.mkdir()
+    (secrets / "audio-kek").write_text(
+        "a2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2s=",
+        encoding="ascii",
     )
+    (secrets / "audio-kek").chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+    project = f"museecho-reload-{os.getpid()}-{uuid.uuid4().hex[:12]}"
+    image = f"museecho-app:{project}"
     override = tmp_path / "compose.override.yaml"
     override.write_text(
-        f"services:\n  app-dev:\n    volumes:\n      - {source.as_posix()}:/app/src:ro\n",
+        yaml.safe_dump(
+            {
+                "services": {
+                    "app-dev": {
+                        "image": image,
+                        "volumes": [
+                            {
+                                "type": "bind",
+                                "source": str(source),
+                                "target": "/app/src",
+                                "read_only": True,
+                            },
+                            {
+                                "type": "bind",
+                                "source": str(secrets),
+                                "target": "/run/secrets",
+                                "read_only": True,
+                            },
+                        ],
+                    }
+                }
+            },
+            sort_keys=False,
+        ),
         encoding="utf-8",
     )
+    compose_command = [
+        docker,
+        "compose",
+        "--project-name",
+        project,
+        "-f",
+        str(ROOT / "compose.yaml"),
+        "-f",
+        str(override),
+        "--profile",
+        "development",
+    ]
+    down: subprocess.CompletedProcess[str] | None = None
+    try:
+        built = subprocess.run(
+            [*compose_command, "build", "app-dev"],
+            cwd=ROOT,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=600,
+        )
+        assert built.returncode == 0, built.stdout + built.stderr
+        started = subprocess.run(
+            [*compose_command, "up", "--detach", "--wait", "app-dev"],
+            cwd=ROOT,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=120,
+        )
+        if started.returncode != 0:
+            logs = subprocess.run(
+                [*compose_command, "logs", "--no-color", "app-dev"],
+                cwd=ROOT,
+                capture_output=True,
+                check=False,
+                text=True,
+                timeout=30,
+            )
+            pytest.fail(started.stdout + started.stderr + logs.stdout + logs.stderr)
+        baseline = _wait_for_app_dev_health(
+            compose_command,
+            lambda response: response.get("status") == "ready",
+            timeout=30,
+        )
+        assert "reload_probe" not in baseline
 
-    completed = subprocess.run(
-        [
-            docker,
-            "compose",
-            "-f",
-            str(ROOT / "compose.yaml"),
-            "-f",
-            str(override),
-            "--profile",
-            "development",
-            "run",
-            "--rm",
-            "--no-deps",
-            "app-dev",
-            "python",
-            "-c",
-            "from museecho._live_source_probe import VALUE; print(VALUE)",
-        ],
-        cwd=ROOT,
-        capture_output=True,
-        check=False,
-        text=True,
-        timeout=60,
-    )
+        marker = "round15-reloaded-source-marker"
+        app_module = source / "museecho" / "app.py"
+        app_text = app_module.read_text(encoding="utf-8")
+        needle = '        content: dict[str, object] = {\n            "status": status_value,'
+        replacement = (
+            "        content: dict[str, object] = {\n"
+            f'            "reload_probe": {marker!r},\n'
+            '            "status": status_value,'
+        )
+        assert needle in app_text
+        app_module.write_text(app_text.replace(needle, replacement, 1), encoding="utf-8")
 
-    assert completed.returncode == 0, completed.stdout + completed.stderr
-    assert marker in completed.stdout
+        reloaded = _wait_for_app_dev_health(
+            compose_command,
+            lambda response: response.get("reload_probe") == marker,
+            timeout=45,
+        )
+        assert reloaded["reload_probe"] == marker
+    finally:
+        down = subprocess.run(
+            [*compose_command, "down", "--volumes", "--remove-orphans"],
+            cwd=ROOT,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=120,
+        )
+        subprocess.run(
+            [docker, "image", "rm", "--force", image],
+            cwd=ROOT,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=30,
+        )
+    assert down is not None
+    assert down.returncode == 0, down.stdout + down.stderr
 
 
 def test_gitlab_secret_scanner_receives_and_requires_the_built_frontend_bundle():
