@@ -689,3 +689,41 @@ failure boundaries. It does not change `development-smoke.ps1`, curl platform
 selection, Unix/Windows fixtures, fake command exits, or process-exit reset.
 Remote Ubuntu PowerShell remains the authoritative confirmation; no tool was
 downloaded and no push was performed.
+
+### Review follow-up — exact cleanup exit-code boundary
+
+Review correctly identified that the formatting-tolerant matcher ended at
+`code 29` without a numeric boundary, so `code 290` or `code 291` could satisfy
+it. The defect was confined to the round-8 assertion, not the production smoke
+or fake Docker exit behavior.
+
+The behavioral harness now takes a formatter-mode cleanup exit-code value. It
+first runs the real copied smoke failure and then formats the resulting output
+as the Linux location boundary. A new `290` probe rejects the harness if that
+output matches the cleanup-code assertion; it does not inspect source text or
+use a change detector.
+
+RED:
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py -q --basetemp tmp\task23-ci-round8-exact-code-red
+```
+
+Observed exit `1`, `2 failed, 14 passed`: the probe raised
+`development smoke accepted cleanup exit code other than 29`, with the
+formatted `code 290` output captured in both affected real process-boundary
+contracts.
+
+The minimal fix adds `(?!\d)` immediately after `29`. It retains the complete
+formatter-tolerant prefix and rejects every decimal continuation of the exact
+required exit code.
+
+GREEN:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\test-development-smoke.ps1'; exit $LASTEXITCODE"
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py -q --basetemp tmp\task23-ci-round8-exact-code-green
+```
+
+Observed exit `0`: lifecycle harness printed its success line; focused
+delivery contract `16 passed in 32.78s`.

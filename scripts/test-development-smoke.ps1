@@ -19,14 +19,15 @@ $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { '
 $savedPath = $env:PATH
 $savedLog = $env:MUSEECHO_FAKE_DOCKER_LOG
 $savedMode = $env:MUSEECHO_FAKE_DOCKER_MODE
-$cleanupExitCodePattern = 'docker compose down failed with exit(?:\s|At\s+[^\r\n]+|\+\s+[^\r\n]+|~+|\r?\n)+code 29'
+$cleanupExitCodePattern = 'docker compose down failed with exit(?:\s|At\s+[^\r\n]+|\+\s+[^\r\n]+|~+|\r?\n)+code 29(?!\d)'
 
 function Invoke-SmokeProbe {
     param(
         [Parameter(Mandatory = $true)][string]$Mode,
         [switch]$SuccessfulCurl,
         [switch]$DefaultCurl,
-        [switch]$FormatCleanupFailure
+        [switch]$FormatCleanupFailure,
+        [int]$FormattedCleanupExitCode = 29
     )
     [System.IO.File]::WriteAllText($dockerLog, '', [Text.UTF8Encoding]::new($false))
     $env:MUSEECHO_FAKE_DOCKER_MODE = $Mode
@@ -46,7 +47,7 @@ function Invoke-SmokeProbe {
         if ($FormatCleanupFailure) {
             $output = $output.Replace(
                 'docker compose down failed with exit code 29',
-                "docker compose down failed with exit`nAt /tmp/development-smoke.ps1:84 char:5`n+     throw `$cleanupFailure`ncode 29"
+                "docker compose down failed with exit`nAt /tmp/development-smoke.ps1:84 char:5`n+     throw `$cleanupFailure`ncode $FormattedCleanupExitCode"
             )
         }
         $exitCode = $LASTEXITCODE
@@ -157,6 +158,11 @@ exit `$LASTEXITCODE
         $cleanupOnly.Output -match 'HTTPS API health probe failed'
     ) {
         throw "development smoke did not isolate cleanup-only failure`n$($cleanupOnly.Output)"
+    }
+
+    $wrongCleanupExitCode = Invoke-SmokeProbe -Mode 'down-fail' -SuccessfulCurl -FormatCleanupFailure -FormattedCleanupExitCode 290
+    if ($wrongCleanupExitCode.Output -match $cleanupExitCodePattern) {
+        throw "development smoke accepted cleanup exit code other than 29`n$($wrongCleanupExitCode.Output)"
     }
 
     $combinedFailure = Invoke-SmokeProbe -Mode 'down-fail'
