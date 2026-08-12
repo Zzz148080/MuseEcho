@@ -104,6 +104,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Validate and build both non-root images
         run: |
           docker compose --profile production config --quiet
@@ -220,7 +221,7 @@ jobs:
             --scanners vuln --exit-code 1 --severity HIGH,CRITICAL
       - name: Retain image vulnerability evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: image-vulnerability-evidence
           path: tmp/image-security/

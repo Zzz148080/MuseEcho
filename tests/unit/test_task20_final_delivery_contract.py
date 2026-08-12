@@ -198,6 +198,53 @@ def test_github_actions_use_node24_capable_majors_without_an_insecure_node_fallb
     assert workflow.count("node-version: 22.23.0") == 2
 
 
+def test_distribution_uses_buildx_and_node24_artifact_without_weakening_evidence():
+    github = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    steps = github["jobs"]["distribution"]["steps"]
+    uses = [step["uses"] for step in steps if "uses" in step]
+    checkout_index = next(
+        index for index, step in enumerate(steps) if step.get("uses") == "actions/checkout@v7"
+    )
+    buildx_indexes = [
+        index
+        for index, step in enumerate(steps)
+        if step.get("uses") == "docker/setup-buildx-action@v4"
+    ]
+    build_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Validate and build both non-root images"
+    )
+    artifact_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Retain image vulnerability evidence"
+    )
+    build_commands = str(steps[build_index]["run"])
+
+    assert uses.count("docker/setup-buildx-action@v4") == 1
+    assert uses.count("actions/upload-artifact@v7") == 1
+    assert not any(
+        item.startswith("docker/setup-buildx-action@") and item != "docker/setup-buildx-action@v4"
+        for item in uses
+    )
+    assert not any(
+        item.startswith("actions/upload-artifact@") and item != "actions/upload-artifact@v7"
+        for item in uses
+    )
+    assert checkout_index < buildx_indexes[0] < build_index < artifact_index
+    assert (
+        "type=docker,name=museecho-app:ci,dest=tmp/image-security/museecho-app.tar"
+        in build_commands
+    )
+    assert (
+        "type=docker,name=museecho-gateway:ci,dest=tmp/image-security/museecho-gateway.tar"
+        in build_commands
+    )
+    assert "verify_release_identity.py record" in build_commands
+    assert steps[artifact_index]["with"]["path"] == "tmp/image-security/"
+
+
 def test_github_quality_always_removes_its_exact_pytest_temp_root_before_secret_scan():
     github = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     steps = github["jobs"]["quality"]["steps"]
