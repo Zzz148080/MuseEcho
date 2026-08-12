@@ -7,6 +7,7 @@ $savedSecretsDirectory = $env:MUSEECHO_SECRETS_DIR
 $taskTempParent = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
 $fixtureRoot = Join-Path $taskTempParent "museecho-container-contract-test-$PID-$([System.IO.Path]::GetRandomFileName())"
 $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell.exe' }
+$isWindowsPlatform = $env:OS -eq 'Windows_NT'
 $savedPath = $env:PATH
 $savedDockerLog = $env:MUSEECHO_FAKE_DOCKER_LOG
 $savedDockerMode = $env:MUSEECHO_FAKE_DOCKER_MODE
@@ -71,8 +72,8 @@ try {
             [Text.UTF8Encoding]::new($false)
         )
     }
-    $fakeDocker = Join-Path $fakeBin 'docker.cmd'
-    $fakeCurl = Join-Path $fakeBin 'curl.cmd'
+    $fakeDocker = Join-Path $fakeBin $(if ($isWindowsPlatform) { 'docker.cmd' } else { 'docker' })
+    $fakeCurl = Join-Path $fakeBin $(if ($isWindowsPlatform) { 'curl.cmd' } else { 'curl' })
     $appDaemonId = 'sha256:' + ('1' * 64)
     $appConfigId = 'sha256:' + ('2' * 64)
     $gatewayDaemonId = 'sha256:' + ('3' * 64)
@@ -93,8 +94,7 @@ try {
         } | ConvertTo-Json -Depth 3),
         [Text.UTF8Encoding]::new($false)
     )
-    [System.IO.File]::WriteAllText(
-        $fakeDocker,
+    $fakeDockerContents = if ($isWindowsPlatform) {
         @'
 @echo off
 echo %*>>"%MUSEECHO_FAKE_DOCKER_LOG%"
@@ -123,11 +123,39 @@ echo %*| findstr /c:" exec " >nul && exit /b 0
 echo %*| findstr /c:" down " >nul && exit /b 0
 if "%1"=="history" echo safe-history && exit /b 0
 exit /b 99
-'@,
-        [Text.UTF8Encoding]::new($false)
-    )
-    [System.IO.File]::WriteAllText(
-        $fakeCurl,
+'@
+    } else {
+        @'
+#!/bin/sh
+printf '%s\n' "$*" >> "$MUSEECHO_FAKE_DOCKER_LOG"
+case "$*" in
+  *"image inspect"*"museecho-app:local"*)
+    if [ "$MUSEECHO_FAKE_DOCKER_MODE" = wrong-app-tag ]; then
+      echo sha256:5555555555555555555555555555555555555555555555555555555555555555
+    else
+      echo "$MUSEECHO_EXPECTED_APP_DAEMON_ID"
+    fi
+    exit 0 ;;
+  *"image inspect"*"museecho-gateway:local"*) echo "$MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID"; exit 0 ;;
+  *"container inspect"*"app-container"*)
+    if [ "$MUSEECHO_FAKE_DOCKER_MODE" = runtime-drift ]; then
+      echo sha256:6666666666666666666666666666666666666666666666666666666666666666
+    else
+      echo "$MUSEECHO_EXPECTED_APP_DAEMON_ID"
+    fi
+    exit 0 ;;
+  *"container inspect"*"gateway-container"*) echo "$MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID"; exit 0 ;;
+  *" config --format json"*) echo '{"services":{"app":{"image":"museecho-app:local"},"gateway":{"image":"museecho-gateway:local"}}}'; exit 0 ;;
+  *" config --quiet"*) exit 0 ;;
+  *" ps --quiet app"*) echo app-container; exit 0 ;;
+  *" ps --quiet gateway"*) echo gateway-container; exit 0 ;;
+  *" up "*|*" restart "*|*" exec "*|*" down "*) exit 0 ;;
+  history*) echo safe-history; exit 0 ;;
+esac
+exit 99
+'@
+    }
+    $fakeCurlContents = if ($isWindowsPlatform) {
         @'
 @echo off
 set OUT=
@@ -141,9 +169,30 @@ echo %OUT%| findstr /c:"health.json" >nul && echo {"status":"ready"}>"%OUT%" && 
 echo %OUT%| findstr /c:"create.json" >nul && echo {"analysis_id":"00000000-0000-0000-0000-000000000001"}>"%OUT%" && exit /b 0
 echo %OUT%| findstr /c:"status.json" >nul && echo {"stage":"complete"}>"%OUT%" && exit /b 0
 exit /b 0
-'@,
-        [Text.UTF8Encoding]::new($false)
-    )
+'@
+    } else {
+        @'
+#!/bin/sh
+output=''
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = --output ]; then output="$2"; shift 2; else shift; fi
+done
+case "$output" in
+  *health.json) echo '{"status":"ready"}' > "$output" ;;
+  *create.json) echo '{"analysis_id":"00000000-0000-0000-0000-000000000001"}' > "$output" ;;
+  *status.json) echo '{"stage":"complete"}' > "$output" ;;
+esac
+exit 0
+'@
+    }
+    [System.IO.File]::WriteAllText($fakeDocker, $fakeDockerContents, [Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($fakeCurl, $fakeCurlContents, [Text.UTF8Encoding]::new($false))
+    if (-not $isWindowsPlatform) {
+        & chmod 700 $fakeDocker
+        if ($LASTEXITCODE -ne 0) { throw 'could not make fake Docker executable' }
+        & chmod 700 $fakeCurl
+        if ($LASTEXITCODE -ne 0) { throw 'could not make fake curl executable' }
+    }
     $env:MUSEECHO_FAKE_DOCKER_LOG = $dockerLog
     $env:MUSEECHO_EXPECTED_APP_DAEMON_ID = $appDaemonId
     $env:MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID = $gatewayDaemonId

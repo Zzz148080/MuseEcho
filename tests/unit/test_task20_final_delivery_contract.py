@@ -296,6 +296,18 @@ def test_container_pytest_synthetic_harness_exits_zero_after_expected_failure_mu
     assert "Container pytest synthetic cleanup tests passed." in completed.stdout
 
 
+def test_container_contract_synthetic_harness_uses_an_executable_platform_fake_docker():
+    script = (ROOT / "scripts" / "test-container-contract.ps1").read_text(encoding="utf-8")
+
+    assert "$isWindowsPlatform = $env:OS -eq 'Windows_NT'" in script
+    assert "if ($isWindowsPlatform) { 'docker.cmd' } else { 'docker' }" in script
+    assert "if ($isWindowsPlatform) { 'curl.cmd' } else { 'curl' }" in script
+    assert "[Text.UTF8Encoding]::new($false)" in script
+    assert "& chmod 700 $fakeDocker" in script
+    assert "& chmod 700 $fakeCurl" in script
+    assert '$env:PATH = "$fakeBin$([IO.Path]::PathSeparator)$savedPath"' in script
+
+
 def test_readme_cold_start_contract_covers_locked_setup_https_health_and_cleanup():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
