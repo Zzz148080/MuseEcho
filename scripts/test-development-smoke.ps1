@@ -163,6 +163,7 @@ exit `$LASTEXITCODE
     }
 
     Write-Host 'Development smoke synthetic lifecycle tests passed.'
+    $global:LASTEXITCODE = 0
 }
 finally {
     $env:PATH = $savedPath

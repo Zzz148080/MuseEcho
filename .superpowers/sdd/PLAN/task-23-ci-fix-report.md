@@ -416,6 +416,69 @@ run rather than substituted with a claimed local Linux result.
 Remote distribution must rerun the Unix fake-command branch. The host remains
 unsuitable for an independent Linux pwsh execution or full image rebuild.
 
+## Fix round 6/10 — container-contract successful harness exit status
+
+### Remote evidence and root cause
+
+GitHub run `31591331876` completed quality, E2E, Buildx, and both image builds
+successfully. Its Linux production Compose contract ran every synthetic probe
+and printed `Container contract synthetic tests passed.`, then the step exited
+`1`. The final `runtime-drift` probe intentionally launches a child PowerShell
+process that exits nonzero; its expected failure is asserted, but the child
+leaves `$LASTEXITCODE=1` in the harness process. The subsequent success line
+does not reset that state, so a caller that exits `$LASTEXITCODE` reports a
+failure despite every contract assertion passing.
+
+### TDD RED → GREEN
+
+New real process-boundary regression
+`test_container_contract_synthetic_harness_exits_zero_after_expected_failure_mutation`
+invokes `pwsh`/`powershell.exe` independently with:
+
+```powershell
+& '.\scripts\test-container-contract.ps1'; exit $LASTEXITCODE
+```
+
+RED:
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py -q --basetemp tmp\task23-ci-round6-red
+```
+
+Observed exit `1`: the child output contained `Container contract synthetic
+tests passed.` but the new test observed return code `1`. The minimal harness
+repair sets `$global:LASTEXITCODE = 0` immediately after all successful
+assertions and the success message. It is deliberately before no cleanup or
+mutation change: any assertion or `finally` cleanup exception still terminates
+the harness nonzero, and all wrong-tag, swapped-manifest, duplicate-identity,
+and runtime-drift expected-failure assertions remain fail-closed.
+
+### Final verification
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py -q --basetemp tmp\task23-ci-round6-green-final
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\test-container-contract.ps1'; exit `$LASTEXITCODE"
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py tests\unit\test_engineering_audit.py -q --basetemp tmp\task23-ci-round6-final
+.venv\Scripts\python.exe -m ruff format --check src tests
+.venv\Scripts\python.exe -m ruff check tests\unit\test_task20_final_delivery_contract.py
+git diff --check
+```
+
+Observed exit `0`: independent contract regression `14 passed in 16.12s`;
+direct harness printed the success line and returned zero; delivery plus
+engineering contracts `106 passed in 30.89s`; 86 files formatted; Ruff clean;
+and no whitespace errors.
+
+### Commit
+
+Recorded with this round's local commit; no push was performed.
+
+### Concerns
+
+The direct confirmation used this Windows host's `powershell.exe`; the next
+GitHub Linux distribution run remains the required remote confirmation of the
+same pwsh boundary. No mutations or assertions were relaxed.
+
 ## Fix round 7/10 — cross-platform documented development-smoke curl selection
 
 ### Root cause
@@ -524,65 +587,48 @@ whitespace errors. This host's WSL Ubuntu installation has `/bin/sh`, `chmod`,
 and `curl` but no `pwsh`; therefore the exact Unix PowerShell fixture
 execution remains remote CI confirmation and is not claimed as locally run.
 
-## Fix round 6/10 — container-contract successful harness exit status
+### Follow-up: successful lifecycle harness exit status
 
-### Remote evidence and root cause
-
-GitHub run `31591331876` completed quality, E2E, Buildx, and both image builds
-successfully. Its Linux production Compose contract ran every synthetic probe
-and printed `Container contract synthetic tests passed.`, then the step exited
-`1`. The final `runtime-drift` probe intentionally launches a child PowerShell
-process that exits nonzero; its expected failure is asserted, but the child
-leaves `$LASTEXITCODE=1` in the harness process. The subsequent success line
-does not reset that state, so a caller that exits `$LASTEXITCODE` reports a
-failure despite every contract assertion passing.
-
-### TDD RED → GREEN
-
-New real process-boundary regression
-`test_container_contract_synthetic_harness_exits_zero_after_expected_failure_mutation`
-invokes `pwsh`/`powershell.exe` independently with:
-
-```powershell
-& '.\scripts\test-container-contract.ps1'; exit $LASTEXITCODE
-```
+Review found that the final `combinedFailure` probe intentionally observes a
+nonzero child process. Although its failure assertions passed and the harness
+printed its success line, that probe left `$LASTEXITCODE=1`; therefore a CI
+caller using `& scripts/test-development-smoke.ps1; exit $LASTEXITCODE` could
+still fail. A new real process-boundary regression
+`test_development_smoke_synthetic_harness_exits_zero_after_expected_failures`
+uses that exact command.
 
 RED:
 
 ```powershell
-.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py -q --basetemp tmp\task23-ci-round6-red
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py -q --basetemp tmp\task23-ci-round7-exit-red
 ```
 
-Observed exit `1`: the child output contained `Container contract synthetic
-tests passed.` but the new test observed return code `1`. The minimal harness
-repair sets `$global:LASTEXITCODE = 0` immediately after all successful
-assertions and the success message. It is deliberately before no cleanup or
-mutation change: any assertion or `finally` cleanup exception still terminates
-the harness nonzero, and all wrong-tag, swapped-manifest, duplicate-identity,
-and runtime-drift expected-failure assertions remain fail-closed.
+Observed exit `1`, `1 failed, 15 passed in 31.05s`: the test captured
+`Development smoke synthetic lifecycle tests passed.` with child return code
+`1`. The minimal repair assigns `$global:LASTEXITCODE = 0` immediately after
+the final success message, after all lifecycle assertions. It cannot mask an
+assertion or `finally` cleanup exception, which still terminates the harness.
 
-### Final verification
+Historical report rounds 1–6 were force-added along with round 7 because the
+plan directory is ignored; the full existing report was intentionally retained
+as audit evidence. This follow-up reordered the already-recorded round 6 ahead
+of round 7 without dropping or changing that evidence.
 
-```powershell
-.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py -q --basetemp tmp\task23-ci-round6-green-final
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\test-container-contract.ps1'; exit `$LASTEXITCODE"
-.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py tests\unit\test_engineering_audit.py -q --basetemp tmp\task23-ci-round6-final
-.venv\Scripts\python.exe -m ruff format --check src tests
+Final follow-up GREEN:
+
+`powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\test-development-smoke.ps1'; exit $LASTEXITCODE"
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py -q --basetemp tmp\task23-ci-round7-exit-green
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py tests\unit\test_engineering_audit.py -q --basetemp tmp\task23-ci-round7-exit-related
+.venv\Scripts\python.exe -m ruff format --check tests\unit\test_task20_final_delivery_contract.py
 .venv\Scripts\python.exe -m ruff check tests\unit\test_task20_final_delivery_contract.py
 git diff --check
-```
+`
 
-Observed exit `0`: independent contract regression `14 passed in 16.12s`;
-direct harness printed the success line and returned zero; delivery plus
-engineering contracts `106 passed in 30.89s`; 86 files formatted; Ruff clean;
-and no whitespace errors.
-
-### Commit
-
-Recorded with this round's local commit; no push was performed.
-
-### Concerns
-
-The direct confirmation used this Windows host's `powershell.exe`; the next
-GitHub Linux distribution run remains the required remote confirmation of the
-same pwsh boundary. No mutations or assertions were relaxed.
+Observed prior to formatting the newly added Python test: the direct lifecycle
+process returned exit 0 and printed its success line; focused contract 16
+passed in 31.04s; and related delivery/engineering contracts 108 passed in
+45.26s. Ruff then reported the new test required formatting; it was formatted,
+and fresh Ruff format/check plus git diff --check exited 0. The preceding
+focused/related test results exercised the same final PowerShell change; no
+production behavior changed during formatting.
