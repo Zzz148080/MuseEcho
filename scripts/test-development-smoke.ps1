@@ -19,12 +19,14 @@ $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { '
 $savedPath = $env:PATH
 $savedLog = $env:MUSEECHO_FAKE_DOCKER_LOG
 $savedMode = $env:MUSEECHO_FAKE_DOCKER_MODE
+$cleanupExitCodePattern = 'docker compose down failed with exit(?:\s|At\s+[^\r\n]+|\+\s+[^\r\n]+|~+|\r?\n)+code 29'
 
 function Invoke-SmokeProbe {
     param(
         [Parameter(Mandatory = $true)][string]$Mode,
         [switch]$SuccessfulCurl,
-        [switch]$DefaultCurl
+        [switch]$DefaultCurl,
+        [switch]$FormatCleanupFailure
     )
     [System.IO.File]::WriteAllText($dockerLog, '', [Text.UTF8Encoding]::new($false))
     $env:MUSEECHO_FAKE_DOCKER_MODE = $Mode
@@ -41,6 +43,12 @@ function Invoke-SmokeProbe {
             if ($SuccessfulCurl) { $arguments += @('-CurlCommand', $fakeCurlPath) }
         }
         $output = & $shell @arguments 2>&1 | Out-String
+        if ($FormatCleanupFailure) {
+            $output = $output.Replace(
+                'docker compose down failed with exit code 29',
+                "docker compose down failed with exit`nAt /tmp/development-smoke.ps1:84 char:5`n+     throw `$cleanupFailure`ncode 29"
+            )
+        }
         $exitCode = $LASTEXITCODE
     }
     finally {
@@ -139,13 +147,13 @@ exit `$LASTEXITCODE
         throw "development smoke default curl command was not executable`n$($defaultCurl.Output)"
     }
 
-    $cleanupOnly = Invoke-SmokeProbe -Mode 'down-fail' -SuccessfulCurl
+    $cleanupOnly = Invoke-SmokeProbe -Mode 'down-fail' -SuccessfulCurl -FormatCleanupFailure
     if ($cleanupOnly.ExitCode -eq 0) {
         throw 'development smoke swallowed its cleanup-only failure'
     }
     if (
         $cleanupOnly.Output -notmatch 'development smoke cleanup failed' -or
-        $cleanupOnly.Output -notmatch 'docker compose down failed with exit code 29' -or
+        $cleanupOnly.Output -notmatch $cleanupExitCodePattern -or
         $cleanupOnly.Output -match 'HTTPS API health probe failed'
     ) {
         throw "development smoke did not isolate cleanup-only failure`n$($cleanupOnly.Output)"
@@ -157,7 +165,7 @@ exit `$LASTEXITCODE
     }
     if (
         $combinedFailure.Output -notmatch 'development HTTPS API health probe failed' -or
-        $combinedFailure.Output -notmatch 'docker compose down failed with exit code 29'
+        $combinedFailure.Output -notmatch $cleanupExitCodePattern
     ) {
         throw "development smoke did not report both primary and cleanup failures`n$($combinedFailure.Output)"
     }

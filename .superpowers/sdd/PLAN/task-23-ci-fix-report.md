@@ -632,3 +632,60 @@ passed in 31.04s; and related delivery/engineering contracts 108 passed in
 and fresh Ruff format/check plus git diff --check exited 0. The preceding
 focused/related test results exercised the same final PowerShell change; no
 production behavior changed during formatting.
+
+## Fix round 8/10 — Linux PowerShell cleanup-error formatting
+
+### Remote RED and root cause
+
+GitHub Actions run `31601188608`, quality job `94128717977`, ran the complete
+suite under Ubuntu PowerShell and reported exactly two new development-smoke
+behavioral failures. The synthetic cleanup-only probe itself was correct: it
+printed the cleanup-only marker, identified Docker Compose down, retained exit
+code `29`, and did not report an HTTPS API-health primary failure. PowerShell
+had inserted line wrapping and location records between `exit` and `code 29`,
+however, while the harness required the single contiguous text
+`docker compose down failed with exit code 29`. Windows formatting had kept
+that phrase contiguous.
+
+### TDD RED → GREEN
+
+The focused local regression adds a formatter-boundary mode only to the
+existing behavioral probe: after the real copied smoke emits its cleanup-only
+failure, it inserts the Linux-style location record between `exit` and
+`code 29`. No production smoke text, fake command behavior, cleanup behavior,
+or primary failure path is changed.
+
+RED:
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py -q --basetemp tmp\task23-ci-round8-red
+```
+
+Observed exit `1`, `2 failed, 14 passed`: the lifecycle probe contained every
+required cleanup fact but threw `development smoke did not isolate
+cleanup-only failure` because the exact contiguous phrase was absent.
+
+The assertion now requires the existing cleanup marker and accepts only
+whitespace/newline or PowerShell location-format records between `exit` and
+the exact `code 29`. The no-API-primary-failure requirement remains unchanged;
+the combined-failure probe retains its required API-primary assertion and uses
+the same exact cleanup-code matcher.
+
+GREEN:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\test-development-smoke.ps1'; exit $LASTEXITCODE"
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py -q --basetemp tmp\task23-ci-round8-green
+```
+
+Observed exit `0`: lifecycle harness printed its success line; focused
+delivery contract `16 passed in 30.74s`.
+
+### Final verification and self-review
+
+The change is assertion-only and retains exact cleanup identification, Docker
+Compose-down context, exit code `29`, and both cleanup-only/combined primary
+failure boundaries. It does not change `development-smoke.ps1`, curl platform
+selection, Unix/Windows fixtures, fake command exits, or process-exit reset.
+Remote Ubuntu PowerShell remains the authoritative confirmation; no tool was
+downloaded and no push was performed.
