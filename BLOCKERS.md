@@ -7,7 +7,8 @@
 以下外部验收条件会阻止 `MUSEECHO V1 READY`，但不阻止本地 Task 22 完成：
 
 - `TC-021`：目标服务器五分钟性能实测、腾讯云公网 URL、受信 TLS 完整 smoke、跨网与 24 小时观察仍未执行；
-- `REMOTE-CI`：当前合并状态的 GitHub Actions 和 GitLab CI 均未真实运行；
+- `REMOTE-CI`：GitHub Actions 已在提交 `eec6dd0` 上真实运行并因 Linux mypy
+  失败；本地平台兼容修复尚待推送后的新一轮 GitHub 结果，GitLab CI 仍未运行；
 - `TASK24-AUDIT`：Engineering Audit 已完成；Product Audit 与最终交付验证尚未开始；
 - `STUDENT-MANUAL`：学生最终亲自验收和 `REFLECTION.md` 正文仍保留为人工待办。
 - `CURRENT-BROWSER-E2E`：Task 19 的浏览器证据与当前 108-file source/test boundary 不同；Task 23 no-build HTTPS 已可由宿主访问且 Chrome 存在，但保留的锁定 root Playwright 缓存目标已消失，在禁止下载下当前真实浏览器套件仍未运行。

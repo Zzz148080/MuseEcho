@@ -24,7 +24,7 @@ from scripts.image_vulnerability_audit import (
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_PATH = ROOT / "docs" / "audits" / "ENGINEERING_AUDIT.md"
-NOW = datetime(2026, 8, 12, tzinfo=UTC)
+NOW = datetime(2026, 8, 13, tzinfo=UTC)
 DOMAIN_HEADING = "## Domain coverage"
 EVIDENCE_HEADING = "## Evidence index"
 FINDING_HEADING = "## Findings"
@@ -448,8 +448,8 @@ def test_security_manifest_recomputes_current_runtime_boundary(
 
 def test_audit_generated_time_cannot_be_future_dated(tmp_path: Path) -> None:
     mutation = _audit_text().replace(
-        "- **Generated at UTC:** `2026-08-11T",
-        "- **Generated at UTC:** `2999-08-11T",
+        "- **Generated at UTC:** `2026-08-12T",
+        "- **Generated at UTC:** `2999-08-12T",
         1,
     )
 

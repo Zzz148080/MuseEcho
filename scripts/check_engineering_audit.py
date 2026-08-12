@@ -306,6 +306,15 @@ FIXED_EVIDENCE_CONTRACTS = {
         "Dockerfile",
         "Controlled current-source derivative is audit-only and is not a release artifact",
     ),
+    "E037": (
+        "CURRENT_COMMAND",
+        "gh run view 31523692229 --repo Zzz148080/MuseEcho --json "
+        "conclusion,jobs,url,headSha; gh run view 31523692229 "
+        "--repo Zzz148080/MuseEcho --log-failed",
+        ".github/workflows/ci.yml",
+        "GitHub Actions run 31523692229 on eec6dd0 completed with quality=failure; "
+        "e2e and distribution were skipped",
+    ),
 }
 
 SECURITY_MANIFEST_CONTRACT = {
@@ -604,7 +613,7 @@ def validate_audit(
     if duplicate_evidence:
         errors.append(f"duplicate evidence ids: {', '.join(duplicate_evidence)}")
 
-    expected_evidence_ids = {f"E{index:03d}" for index in range(1, 37)}
+    expected_evidence_ids = {f"E{index:03d}" for index in range(1, 38)}
     missing_evidence = sorted(expected_evidence_ids - set(evidence_ids))
     extra_evidence = sorted(set(evidence_ids) - expected_evidence_ids)
     if missing_evidence:

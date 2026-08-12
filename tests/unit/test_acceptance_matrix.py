@@ -21,7 +21,7 @@ from scripts.check_engineering_audit import load_audit as load_engineering_audit
 ROOT = Path(__file__).resolve().parents[2]
 SPEC_PATH = ROOT / "SPEC.md"
 AUDIT_PATH = ROOT / "docs" / "audits" / "FUNCTIONAL_AUDIT.md"
-NOW = datetime(2026, 8, 12, tzinfo=UTC)
+NOW = datetime(2026, 8, 13, tzinfo=UTC)
 
 EXPECTED_IDS = (
     "AC-A-1",
@@ -456,6 +456,9 @@ def test_task23_frontend_build_gap_cannot_remain_current_or_support_pass() -> No
 
 def test_task23_current_backend_smoke_static_secret_and_security_contracts_replace_task22() -> None:
     contracts = check_acceptance_matrix.EVIDENCE_CONTRACTS
+    audit = load_audit(SPEC_PATH, AUDIT_PATH)
+    evidence_by_id = {record.evidence_id: record for record in audit.evidence}
+    remote_ci_item = next(item for item in audit.items if item.item_id == "DOD-10")
 
     assert "museecho-app:task23-review1" in contracts["E008"].command
     assert "pytest-tests=649" != contracts["E008"].result
@@ -464,6 +467,12 @@ def test_task23_current_backend_smoke_static_secret_and_security_contracts_repla
     assert contracts["E003"].result == "secret-scan-files=210"
     assert "app-occurrences=181" in contracts["E902"].result
     assert "gateway-occurrences=0" in contracts["E902"].result
+    assert evidence_by_id["E901"].kind == "EXTERNAL_NOT_RUN"
+    assert "GitLab CI" in evidence_by_id["E901"].command
+    assert contracts["E906"].kind == "CURRENT_COMMAND"
+    assert contracts["E906"].supports_pass is False
+    assert "quality=failure" in contracts["E906"].result
+    assert remote_ci_item.evidence_ids == ("E901", "E906")
 
 
 def test_functional_engineering_evidence_matches_current_engineering_audit() -> None:
@@ -521,7 +530,7 @@ def test_task23_report_labels_superseded_statistics_and_attributes_round_four() 
 
 def test_audit_generated_time_and_evidence_time_must_be_real_utc(tmp_path: Path):
     mutation = _audit_text().replace(
-        "- **Generated at UTC:** `2026-08-11T", "- **Generated at UTC:** `2999-08-11T", 1
+        "- **Generated at UTC:** `2026-08-12T", "- **Generated at UTC:** `2999-08-12T", 1
     )
 
     assert "audit generated time is future-dated" in _validation_error(tmp_path, mutation)

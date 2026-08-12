@@ -452,3 +452,22 @@ zero, and trusted no-build smoke passed the refreshed app identity. The locked
 Linux current-source suite then passed `755 passed, 1 skipped in 360.54s` with
 empty cleanup. The branch must be pushed again before remote CI can establish
 the remote GREEN result.
+
+## Remote evidence truth review
+
+The next independent review found three evidence-truth defects rather than a
+new product failure: E010/E012 still described the pre-fix default mypy run,
+GitHub Actions was still called NOT_RUN after run `31523692229` had failed,
+and E902 was timestamped before the regenerated final retained materials.
+Focused RED demonstrated that adding the truthful GitHub failure record was
+rejected by both validators: Engineering hard-coded the range through E036,
+and Functional required every external blocker evidence row to be NOT_RUN.
+
+The validators now bind E037/E906 as fixed executed negative evidence that
+cannot support PASS. External blockers may cite that evidence only when its
+fixed contract explicitly sets `supports_pass=False`; an arbitrary successful
+command remains rejected. The current audit commands record both Windows-host
+and explicit Linux mypy success for 46 source files, strict retained-material
+completion after regeneration, and the actual GitHub failure while preserving
+GitLab as NOT_RUN. The focused audit/security suite passed 162 tests and both
+strict CLIs returned zero. A new pushed GitHub run remains required.

@@ -391,3 +391,19 @@
   audit image and all raw→audit→VEX→identity materials were regenerated
   offline, and trusted no-build smoke passed on the refreshed identity.
   The refreshed locked Linux suite passed 755 tests with one explicit skip.
+
+## 2026-08-12 — TASK 23 / remote evidence truth review
+
+- **Review findings:** the audit still recorded pre-fix default mypy evidence,
+  described GitHub Actions as NOT_RUN after run `31523692229` had failed, and
+  timestamped the strict material check before the final retained materials.
+- **RED→GREEN:** Functional audit gained fixed non-PASS evidence `E906` and
+  Engineering audit gained `E037`; the initial checkers rejected the new
+  record because Engineering stopped at `E036` and Functional required every
+  external-blocker record to be NOT_RUN. The minimal fix accepts only a fixed
+  executed evidence contract with `supports_pass=False`; 162 audit, mutation,
+  and security-policy tests passed, and both strict CLIs returned zero.
+- **Current truth:** GitHub run `31523692229` failed quality on `eec6dd0` and
+  skipped E2E/distribution; GitLab remains NOT_RUN. Windows-host and explicit
+  Linux mypy each pass all 46 source files locally. A pushed rerun is still
+  required before remote CI can be classified green.

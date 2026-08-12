@@ -279,11 +279,12 @@ EVIDENCE_CONTRACTS = {
             r".venv\Scripts\python.exe -m ruff format --check src tests scripts; "
             r".venv\Scripts\python.exe -m ruff check .; "
             r".venv\Scripts\python.exe -m mypy src; "
+            r".venv\Scripts\python.exe -m mypy --platform linux src; "
             r".venv\Scripts\python.exe -m mypy scripts/check_acceptance_matrix.py"
         ),
         path="scripts/check_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-07"),
-        result="ruff-files=93; mypy-src-files=46; mypy-checker-files=1",
+        result=("ruff-files=93; mypy-src-files=46; mypy-linux-src-files=46; mypy-checker-files=1"),
         exit_code_raw="0",
     ),
     "E011": EvidenceContract(
@@ -344,6 +345,22 @@ EVIDENCE_CONTRACTS = {
             "app-occurrences=181; app-distinct-cves=67; gateway-occurrences=0"
         ),
         exit_code_raw="0",
+    ),
+    "E906": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command=(
+            "gh run view 31523692229 --repo Zzz148080/MuseEcho --json "
+            "conclusion,jobs,url,headSha; gh run view 31523692229 "
+            "--repo Zzz148080/MuseEcho --log-failed"
+        ),
+        path=".github/workflows/ci.yml",
+        coverage_ids=("DOD-10",),
+        result=(
+            "run=31523692229; head=eec6dd0ae16b0b25db03e4f2b06f0570ae283268; "
+            "quality=failure; e2e=skipped; distribution=skipped"
+        ),
+        exit_code_raw="0",
+        supports_pass=False,
     ),
 }
 
@@ -958,12 +975,18 @@ def validate_audit(
             evidence = evidence_by_id.get(evidence_id)
             if evidence is None:
                 issues.append(f"{blocker.blocker_id} references unknown evidence {evidence_id}")
-            elif blocker.blocker_class in {"EXTERNAL", "FOLLOW_UP", "MANUAL"} and (
-                evidence.kind != "EXTERNAL_NOT_RUN"
-            ):
-                issues.append(
-                    f"{blocker.blocker_id} pending status must use EXTERNAL_NOT_RUN evidence"
+            elif blocker.blocker_class in {"EXTERNAL", "FOLLOW_UP", "MANUAL"}:
+                contract = EVIDENCE_CONTRACTS.get(evidence_id)
+                is_truthful_pending_evidence = evidence.kind == "EXTERNAL_NOT_RUN" or (
+                    evidence.kind in EXECUTED_EVIDENCE_KINDS
+                    and contract is not None
+                    and not contract.supports_pass
                 )
+                if not is_truthful_pending_evidence:
+                    issues.append(
+                        f"{blocker.blocker_id} pending status must use NOT_RUN "
+                        "or fixed negative evidence"
+                    )
 
     for blocker in audit.blockers:
         if blocker.status == "OPEN" and blocker.blocker_id not in referenced_blockers:
