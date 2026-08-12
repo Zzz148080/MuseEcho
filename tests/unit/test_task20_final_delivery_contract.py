@@ -296,6 +296,25 @@ def test_container_pytest_synthetic_harness_exits_zero_after_expected_failure_mu
     assert "Container pytest synthetic cleanup tests passed." in completed.stdout
 
 
+def test_container_contract_synthetic_harness_exits_zero_after_expected_failure_mutation():
+    shell = shutil.which("pwsh") or shutil.which("powershell.exe")
+    assert shell is not None
+    script = ROOT / "scripts" / "test-container-contract.ps1"
+    command = f"& '{str(script).replace("'", "''")}'; exit $LASTEXITCODE"
+
+    completed = subprocess.run(
+        [shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=30,
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "Container contract synthetic tests passed." in completed.stdout
+
+
 def test_container_contract_synthetic_harness_uses_an_executable_platform_fake_docker():
     script = (ROOT / "scripts" / "test-container-contract.ps1").read_text(encoding="utf-8")
 

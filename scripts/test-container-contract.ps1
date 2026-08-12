@@ -277,6 +277,7 @@ exit 0
     }
 
     Write-Host 'Container contract synthetic tests passed.'
+    $global:LASTEXITCODE = 0
 } finally {
     $env:PATH = $savedPath
     $env:MUSEECHO_FAKE_DOCKER_LOG = $savedDockerLog
