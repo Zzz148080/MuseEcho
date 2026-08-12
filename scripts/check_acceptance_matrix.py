@@ -84,7 +84,6 @@ REQUIRED_OPEN_BLOCKERS = (
     "REMOTE-CI",
     "TASK24-AUDIT",
     "STUDENT-MANUAL",
-    "CURRENT-BROWSER-E2E",
 )
 VALID_VERDICTS = {"PASS", "PARTIAL", "FAIL"}
 VALID_IMPORTANCE = {"IMPORTANT", "STANDARD"}
@@ -163,16 +162,14 @@ EVIDENCE_CONTRACTS = {
         exit_code_raw="0",
     ),
     "E002": EvidenceContract(
-        kind="EXTERNAL_NOT_RUN",
+        kind="CURRENT_COMMAND",
         command=(
-            "NOT RUN: Task 23 review has no exact-lock frontend typecheck/build cache; "
-            "dependency download is prohibited"
+            "gh run view 31630284744 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha"
         ),
         path="frontend",
         coverage_ids=("AC-F-1", "AC-F-4", "DOD-07"),
-        result="NOT_RUN",
-        exit_code_raw="NOT_RUN",
-        supports_pass=False,
+        result="frontend-tests=success; frontend-typecheck=success; frontend-build=success",
+        exit_code_raw="0",
     ),
     "E003": EvidenceContract(
         kind="CURRENT_COMMAND",
@@ -327,7 +324,7 @@ EVIDENCE_CONTRACTS = {
         ),
         path="tests/unit/test_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-15"),
-        result="pytest-tests=41; pass=28; partial=12; fail=0",
+        result="pytest-tests=41; pass=34; partial=6; fail=0",
         exit_code_raw="0",
     ),
     "E902": EvidenceContract(
@@ -341,7 +338,7 @@ EVIDENCE_CONTRACTS = {
         path="docs/audits/ENGINEERING_AUDIT.md",
         coverage_ids=("AC-F-6", "DOD-13"),
         result=(
-            "findings=10; fixed-high=4; fixed-medium=2; blocked-medium=4; open=0; "
+            "findings=10; fixed-high=4; fixed-medium=3; blocked-medium=3; open=0; "
             "app-occurrences=181; app-distinct-cves=67; gateway-occurrences=0"
         ),
         exit_code_raw="0",
@@ -349,18 +346,23 @@ EVIDENCE_CONTRACTS = {
     "E906": EvidenceContract(
         kind="CURRENT_COMMAND",
         command=(
-            "gh run view 31523692229 --repo Zzz148080/MuseEcho --json "
-            "conclusion,jobs,url,headSha; gh run view 31523692229 "
-            "--repo Zzz148080/MuseEcho --log-failed"
+            "gh run view 31630284744 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha"
         ),
         path=".github/workflows/ci.yml",
-        coverage_ids=("DOD-10",),
+        coverage_ids=(
+            "AC-C-3",
+            "AC-F-1",
+            "AC-F-4",
+            "DOD-01",
+            "DOD-03",
+            "DOD-07",
+            "DOD-10",
+        ),
         result=(
-            "run=31523692229; head=eec6dd0ae16b0b25db03e4f2b06f0570ae283268; "
-            "quality=failure; e2e=skipped; distribution=skipped"
+            "run=31630284744; head=2b2730eaf232f8edf3ead77be1830fa50d927a47; "
+            "quality=success; e2e=success; distribution=success"
         ),
         exit_code_raw="0",
-        supports_pass=False,
     ),
 }
 

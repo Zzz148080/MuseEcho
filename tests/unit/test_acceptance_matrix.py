@@ -442,16 +442,16 @@ def test_external_follow_up_and_manual_work_cannot_be_marked_resolved_without_ex
     )
 
 
-def test_task23_frontend_build_gap_cannot_remain_current_or_support_pass() -> None:
+def test_green_github_evidence_closes_frontend_and_browser_gaps() -> None:
     contract = check_acceptance_matrix.EVIDENCE_CONTRACTS["E002"]
     audit = load_audit(SPEC_PATH, AUDIT_PATH)
     item = next(item for item in audit.items if item.item_id == "AC-F-4")
 
-    assert contract.kind == "EXTERNAL_NOT_RUN"
-    assert contract.exit_code_raw == "NOT_RUN"
-    assert contract.supports_pass is False
-    assert item.verdict == "PARTIAL"
-    assert item.disposition == "BLOCKER:CURRENT-BROWSER-E2E"
+    assert contract.kind == "CURRENT_COMMAND"
+    assert contract.exit_code_raw == "0"
+    assert contract.supports_pass is True
+    assert item.verdict == "PASS"
+    assert item.disposition == "-"
 
 
 def test_task23_current_backend_smoke_static_secret_and_security_contracts_replace_task22() -> None:
@@ -470,8 +470,10 @@ def test_task23_current_backend_smoke_static_secret_and_security_contracts_repla
     assert evidence_by_id["E901"].kind == "EXTERNAL_NOT_RUN"
     assert "GitLab CI" in evidence_by_id["E901"].command
     assert contracts["E906"].kind == "CURRENT_COMMAND"
-    assert contracts["E906"].supports_pass is False
-    assert "quality=failure" in contracts["E906"].result
+    assert contracts["E906"].supports_pass is True
+    assert "run=31630284744" in contracts["E906"].result
+    assert "head=2b2730eaf232f8edf3ead77be1830fa50d927a47" in contracts["E906"].result
+    assert "quality=success; e2e=success; distribution=success" in contracts["E906"].result
     assert remote_ci_item.evidence_ids == ("E901", "E906")
 
 
@@ -512,9 +514,9 @@ def test_current_acceptance_evidence_uses_the_executed_locked_python_command(
 
     assert contract.command == expected_command
     assert engineering_e030.command == expected_command
-    assert contract.result == (f"pytest-tests={collected_count}; pass=28; partial=12; fail=0")
+    assert contract.result == (f"pytest-tests={collected_count}; pass=34; partial=6; fail=0")
     assert engineering_e030.result == (
-        f"{collected_count} passed; 40 items validated PASS=28 PARTIAL=12 FAIL=0"
+        f"{collected_count} passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0"
     )
 
 

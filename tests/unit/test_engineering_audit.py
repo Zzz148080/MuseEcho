@@ -302,11 +302,11 @@ def test_accepted_finding_requires_specific_reason_owner_and_review_condition(
 
 def test_blocked_finding_requires_real_external_condition(tmp_path: Path) -> None:
     mutation = _replace_table_cell(
-        _audit_text(), FINDING_HEADING, "ENG-006", "Disposition", "internal follow-up"
+        _audit_text(), FINDING_HEADING, "ENG-007", "Disposition", "internal follow-up"
     )
-    mutation = _replace_table_cell(mutation, FINDING_HEADING, "ENG-006", "Evidence IDs", "E003")
+    mutation = _replace_table_cell(mutation, FINDING_HEADING, "ENG-007", "Evidence IDs", "E003")
 
-    assert "ENG-006 BLOCKED requires a real external condition" in _validation_error(
+    assert "ENG-007 BLOCKED requires a real external condition" in _validation_error(
         tmp_path, mutation
     )
 
@@ -668,7 +668,7 @@ def test_current_acceptance_evidence_is_a_fixed_engineering_contract(tmp_path: P
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md"
     )
-    expected_result = "41 passed; 40 items validated PASS=28 PARTIAL=12 FAIL=0"
+    expected_result = "41 passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0"
 
     assert checker.FIXED_EVIDENCE_CONTRACTS["E030"] == (
         "CURRENT_COMMAND",

@@ -54,7 +54,7 @@ FINDING_CONTRACTS = {
     "ENG-003": ("operations-recovery", "High", "FIXED"),
     "ENG-004": ("reproducible-build-ci-release-identity", "Medium", "FIXED"),
     "ENG-005": ("observability", "Medium", "FIXED"),
-    "ENG-006": ("accessibility", "Medium", "BLOCKED"),
+    "ENG-006": ("accessibility", "Medium", "FIXED"),
     "ENG-007": ("reproducible-build-ci-release-identity", "Medium", "BLOCKED"),
     "ENG-008": ("operations-recovery", "Medium", "BLOCKED"),
     "ENG-009": ("reproducible-build-ci-release-identity", "High", "FIXED"),
@@ -279,7 +279,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md",
         "docs/audits/FUNCTIONAL_AUDIT.md",
-        "41 passed; 40 items validated PASS=28 PARTIAL=12 FAIL=0",
+        "41 passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0",
     ),
     "E033": (
         "RED_COMMAND",
@@ -318,12 +318,10 @@ FIXED_EVIDENCE_CONTRACTS = {
     ),
     "E037": (
         "CURRENT_COMMAND",
-        "gh run view 31523692229 --repo Zzz148080/MuseEcho --json "
-        "conclusion,jobs,url,headSha; gh run view 31523692229 "
-        "--repo Zzz148080/MuseEcho --log-failed",
+        "gh run view 31630284744 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha",
         ".github/workflows/ci.yml",
-        "GitHub Actions run 31523692229 on eec6dd0 completed with quality=failure; "
-        "e2e and distribution were skipped",
+        "GitHub Actions run 31630284744 on 2b2730e completed with quality, e2e, "
+        "and distribution success",
     ),
 }
 

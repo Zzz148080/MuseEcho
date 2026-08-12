@@ -1,13 +1,12 @@
 # MuseEcho V1 Functional Audit
 
-- **Generated at UTC:** `2026-08-12T07:25:00Z`
+- **Generated at UTC:** `2026-08-12T19:15:00Z`
 - **Readiness:** `PARTIALLY_READY`
 - **Scope:** `SPEC.md` AC-A through AC-F plus Definition of Done
 - **Method:** Current commands are preferred. Exact historical commits are used only where the tested implementation has not changed; external, future-task, and student-only work stays explicitly not run.
 
-`PARTIALLY_READY` is mandatory: current real-browser E2E, target-server/public
-deployment evidence, remote CI, Product Audit, and the student's
-own final acceptance do not exist yet.
+`PARTIALLY_READY` is mandatory: GitLab CI, target-server/public deployment,
+Product Audit, and the student's own final acceptance do not exist yet.
 No local functional item is currently classified `FAIL`.
 
 ## Evidence index
@@ -15,7 +14,7 @@ No local functional item is currently classified `FAIL`.
 | Evidence ID | Kind | Command | Path | Coverage | Result | Boundary SHA256 | Observed at UTC | Exit code | Commit | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | E001 | CURRENT_COMMAND | npm.cmd --prefix frontend test -- --run | frontend/src | AC-A-3, AC-B-1, AC-B-2, AC-B-3, AC-C-1, AC-C-2, AC-D-4, AC-F-1, AC-F-4, DOD-01, DOD-03, DOD-05, DOD-06, DOD-07 | vitest-files=12; vitest-tests=66 | - | 2026-08-11T08:59:27Z | 0 | - | Current Vitest run: 12 files and 66 tests passed, including upload, DNA, timeline, chord, explanation, privacy, and source-kind behavior. |
-| E002 | EXTERNAL_NOT_RUN | NOT RUN: Task 23 review has no exact-lock frontend typecheck/build cache; dependency download is prohibited | frontend | AC-F-1, AC-F-4, DOD-07 | NOT_RUN | - | 2026-08-11T13:20:00Z | NOT_RUN | - | Task 22's historical type/build result is retained only as history; Task 23 review did not rerun the gate and does not claim a current pass. |
+| E002 | CURRENT_COMMAND | gh run view 31630284744 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha | frontend | AC-F-1, AC-F-4, DOD-07 | frontend-tests=success; frontend-typecheck=success; frontend-build=success | - | 2026-08-12T19:11:39Z | 0 | - | Exact-head GitHub quality installed the locked Node dependencies and passed frontend tests, typecheck, and production build. |
 | E003 | CURRENT_COMMAND | powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/secret-scan.ps1 | scripts/secret-scan.ps1 | AC-E-4, DOD-09, DOD-14 | secret-scan-files=210 | - | 2026-08-11T13:52:11Z | 0 | - | Fresh fail-closed Secret scan passed for 210 tracked/non-ignored files. |
 | E004 | HISTORICAL_COMMIT | git show 1047ce242884b6ba83a525524e88dcc44ab76a69:AGENT_LOG.md 1047ce242884b6ba83a525524e88dcc44ab76a69:PLAN.md | AGENT_LOG.md | AC-A-4, AC-C-3, AC-F-1, DOD-01, DOD-03, DOD-07 | browser-tests=4; benchmark-seconds=11.201268; boundary-state=DRIFT | cfab670e669fb22fdee8c501680c0cb3628aed5ea5ee8855e8156c11c2f644a1 | 2026-08-11T13:28:00Z | 0 | 1047ce242884b6ba83a525524e88dcc44ab76a69 | Exact Task 19 anchor exposes 4 browser tests and the benchmark, but the 108-file current browser/source/test manifest differs from its 105-file historical manifest; this record cannot support a current PASS. |
 | E005 | CURRENT_COMMAND | .venv\Scripts\python.exe -m pytest tests/unit/test_task20_final_delivery_contract.py -q --basetemp=tmp/task23-review1-delivery | tests/unit/test_task20_final_delivery_contract.py | AC-F-2, AC-F-3, DOD-11, DOD-12 | pytest-tests=8; github=parsed; gitlab=parsed; gitlab-unit-test=present; readme=verified | - | 2026-08-11T13:20:00Z | 0 | - | Current contract parses both CI definitions, proves GitLab unit-test, verifies the clean Docker context, checks the README cold-start/HTTPS/health/cleanup path, and anchors truthful process documents. |
@@ -26,14 +25,14 @@ No local functional item is currently classified `FAIL`.
 | E011 | CURRENT_COMMAND | .venv\Scripts\python.exe scripts/license_audit.py | scripts/license_audit.py | DOD-14 | license-audit=pass | - | 2026-08-11T13:52:11Z | 0 | - | Current license inventory matched the reviewed Python, npm, container, build-tool, Go, and OS-package policy. |
 | E012 | CURRENT_COMMAND | powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-secret-scan.ps1 | scripts/test-secret-scan.ps1 | AC-E-4, DOD-09, DOD-14 | secret-mutations=pass | - | 2026-08-11T13:52:11Z | 0 | - | All synthetic credential, unreadable-file, and missing-file mutations passed. |
 | E013 | CURRENT_COMMAND | powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-secret-scan.ps1 | scripts/test-secret-scan.ps1 | AC-E-4, DOD-09 | red=wrapped-unreadable-filename | - | 2026-08-11T09:22:50Z | 1 | - | RED: scanner correctly failed closed, but PowerShell wrapped tracked-unreadable.txt across whitespace and the harness misclassified its output; production scan policy was not weakened. |
-| E014 | CURRENT_COMMAND | .venv\Scripts\python.exe -m pytest tests/unit/test_acceptance_matrix.py -q --basetemp tmp/task23-e014 -p no:cacheprovider; if ($LASTEXITCODE) { exit $LASTEXITCODE }; .venv\Scripts\python.exe scripts/check_acceptance_matrix.py SPEC.md docs/audits/FUNCTIONAL_AUDIT.md | tests/unit/test_acceptance_matrix.py | AC-F-1, DOD-15 | pytest-tests=41; pass=28; partial=12; fail=0 | - | 2026-08-11T19:18:51Z | 0 | - | The current gate records the actually available locked-Python command; the unavailable brief-level uv wrapper remains separately NOT_RUN. Its test validates this count against the complete collected acceptance file, so later test additions fail closed. |
+| E014 | CURRENT_COMMAND | .venv\Scripts\python.exe -m pytest tests/unit/test_acceptance_matrix.py -q --basetemp tmp/task23-e014 -p no:cacheprovider; if ($LASTEXITCODE) { exit $LASTEXITCODE }; .venv\Scripts\python.exe scripts/check_acceptance_matrix.py SPEC.md docs/audits/FUNCTIONAL_AUDIT.md | tests/unit/test_acceptance_matrix.py | AC-F-1, DOD-15 | pytest-tests=41; pass=34; partial=6; fail=0 | - | 2026-08-12T19:15:00Z | 0 | - | The current gate binds the complete matrix to the final green GitHub evidence while preserving all external and student-only blockers. |
 | E900 | EXTERNAL_NOT_RUN | NOT RUN: Tencent Cloud target-server benchmark and public smoke require account, Lighthouse, DNS, SSH, and OCI authorization | DEPLOYMENT_EVIDENCE.md | AC-A-4, AC-F-5 | NOT_RUN | - | 2026-08-11T09:02:23Z | NOT_RUN | - | No target-server five-minute result, public URL, trusted public TLS smoke, cross-network check, 24-hour observation, or live rollback exists. |
-| E901 | EXTERNAL_NOT_RUN | NOT RUN: GitLab CI has no pipeline result for the Task 23 final commit | .gitlab-ci.yml | DOD-10 | NOT_RUN | - | 2026-08-11T19:35:00Z | NOT_RUN | - | GitHub Actions ran and failed as E906; only GitLab remains not run in this evidence record. |
-| E902 | CURRENT_COMMAND | .venv\Scripts\python.exe scripts/check_engineering_audit.py docs/audits/ENGINEERING_AUDIT.md --materials-dir tmp/task23-engineering --trivy-db-dir ../feat-20-production-delivery/tmp/trivy-cache/db | docs/audits/ENGINEERING_AUDIT.md | AC-F-6, DOD-13 | findings=10; fixed-high=4; fixed-medium=2; blocked-medium=4; open=0; app-occurrences=181; app-distinct-cves=67; gateway-occurrences=0 | - | 2026-08-12T07:18:00Z | 0 | - | Task 23 strict completion recomputed the final regenerated raw/package/VEX/inventory/tar/release/DB/image evidence; no OPEN Critical/High exists and four Medium external/environment/build gaps remain blocked. |
+| E901 | EXTERNAL_NOT_RUN | NOT RUN: GitLab CI has no pipeline result for the Task 23 final commit | .gitlab-ci.yml | DOD-10 | NOT_RUN | - | 2026-08-12T19:11:39Z | NOT_RUN | - | GitHub Actions is green as E906; only GitLab remains not run in this evidence record. |
+| E902 | CURRENT_COMMAND | .venv\Scripts\python.exe scripts/check_engineering_audit.py docs/audits/ENGINEERING_AUDIT.md --materials-dir tmp/task23-engineering --trivy-db-dir ../feat-20-production-delivery/tmp/trivy-cache/db | docs/audits/ENGINEERING_AUDIT.md | AC-F-6, DOD-13 | findings=10; fixed-high=4; fixed-medium=3; blocked-medium=3; open=0; app-occurrences=181; app-distinct-cves=67; gateway-occurrences=0 | - | 2026-08-12T19:15:00Z | 0 | - | Task 23 strict completion retains no OPEN Critical/High; current browser/frontend evidence is closed and three external/build gaps remain blocked. |
 | E903 | EXTERNAL_NOT_RUN | NOT RUN: Task 24 Product Audit starts only after Task 23 | PLAN.md | AC-F-6, DOD-13 | NOT_RUN | - | 2026-08-11T09:02:23Z | NOT_RUN | - | Product Audit and final delivery verification have not run. |
 | E904 | EXTERNAL_NOT_RUN | NOT RUN: the student must personally perform the final acceptance checklist and write REFLECTION.md | SPEC.md | DOD-16 | NOT_RUN | - | 2026-08-11T09:02:23Z | NOT_RUN | - | Student participation is deliberately reserved; this audit neither performs nor claims it. |
-| E905 | EXTERNAL_NOT_RUN | NOT RUN: current Chrome E2E requires the missing locked root Playwright dependency cache; no npm download or outbound-capable browser container is authorized | e2e | AC-C-3, AC-F-1, DOD-01, DOD-03, DOD-07 | NOT_RUN | - | 2026-08-11T12:01:00Z | NOT_RUN | - | Host Chrome exists and the production no-build HTTPS service was reachable, but the four-test Playwright harness could not start without restoring locked dependencies. |
-| E906 | CURRENT_COMMAND | gh run view 31523692229 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha; gh run view 31523692229 --repo Zzz148080/MuseEcho --log-failed | .github/workflows/ci.yml | DOD-10 | run=31523692229; head=eec6dd0ae16b0b25db03e4f2b06f0570ae283268; quality=failure; e2e=skipped; distribution=skipped | - | 2026-08-12T07:24:02Z | 0 | - | The remote inspection command succeeded and proves the GitHub workflow itself failed in Linux mypy; this negative evidence cannot support PASS. Local fixes require a new pushed run. |
+| E905 | CURRENT_COMMAND | gh run view 31630284744 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha | e2e | AC-C-3, AC-F-1, DOD-01, DOD-03, DOD-07 | browser-https-flow=success | - | 2026-08-12T19:11:39Z | 0 | - | Exact-head GitHub E2E installed Chromium and passed the real HTTPS browser flow. |
+| E906 | CURRENT_COMMAND | gh run view 31630284744 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha | .github/workflows/ci.yml | AC-F-1, AC-F-4, DOD-07, DOD-10 | run=31630284744; head=2b2730eaf232f8edf3ead77be1830fa50d927a47; quality=success; e2e=success; distribution=success | - | 2026-08-12T19:11:39Z | 0 | - | Exact-head GitHub quality, real browser E2E, and cold distribution/security jobs all succeeded. |
 
 ## Acceptance matrix
 
@@ -48,7 +47,7 @@ No local functional item is currently classified `FAIL`.
 | AC-B-3 | PASS | IMPORTANT | E001 | Tasks 14, 17 | - | real, demo, and synthetic_test source kinds are parsed and visibly labeled. |
 | AC-C-1 | PASS | IMPORTANT | E001 | Task 17 | - | Current player/timeline tests exercise one duration/currentTime/selection coordinate for waveform, sections, chords, energy, and playhead. |
 | AC-C-2 | PASS | IMPORTANT | E001 | Tasks 17-19 | - | Current interaction tests cover chord seek, pointer/keyboard selection, citation seek, and shared playhead updates. |
-| AC-C-3 | PARTIAL | IMPORTANT | E004, E905 | Task 24 | BLOCKER:CURRENT-BROWSER-E2E | The exact historical responsive browser run has a drifted current source/test boundary; current HTTPS is host-reachable, but the locked Playwright dependency cache is unavailable without a prohibited download. |
+| AC-C-3 | PASS | IMPORTANT | E905 | Task 23 | - | The exact-head real HTTPS browser flow passed in GitHub Actions. |
 | AC-D-1 | PASS | IMPORTANT | E008 | Task 22 | - | Current deterministic theory and no-provider tests operate without an LLM. |
 | AC-D-2 | PASS | IMPORTANT | E008 | Task 22 | - | Current Evidence policy/provider tests revalidate allowed kinds, confidence, values, and time windows before provider input. |
 | AC-D-3 | PASS | IMPORTANT | E008 | Task 22 | - | Current tests cover missing key, timeout, transport/status, oversized, malformed JSON, and invalid citation fallback paths. |
@@ -57,22 +56,22 @@ No local functional item is currently classified `FAIL`.
 | AC-E-2 | PASS | IMPORTANT | E008 | Task 22 | - | Current API/security suite compares unauthorized and nonexistent resources and verifies indistinguishable 404 behavior. |
 | AC-E-3 | PASS | IMPORTANT | E008, E009 | Task 22 | - | Current delete/expiry tests and smoke cover grant revocation, wrapped-key destruction, result cascade, ciphertext cleanup, persistence, and post-delete invisibility. |
 | AC-E-4 | PASS | IMPORTANT | E003, E012 | Task 22 | FIXED:E012 | Fresh Secret scan found no real credential; synthetic fail-closed mutations pass after correcting only PowerShell output normalization in the harness. |
-| AC-F-1 | PARTIAL | IMPORTANT | E001, E002, E004, E008, E009, E010, E014, E905 | Task 22 / Task 24 | BLOCKER:CURRENT-BROWSER-E2E | Current Vitest, locked Linux, trusted no-build Docker, Python lint/type, and audit gates pass; frontend type/build and real-browser E2E are explicitly NOT_RUN under the no-download boundary. |
+| AC-F-1 | PASS | IMPORTANT | E001, E002, E008, E009, E010, E014, E905, E906 | Task 23 | - | Exact-head GitHub quality, frontend build, browser E2E, and distribution complement the current local locked gates. |
 | AC-F-2 | PASS | IMPORTANT | E005 | Task 20 | - | Exact delivery contracts parse both CI definitions and require GitLab job unit-test; this is configuration evidence only, not remote execution. |
 | AC-F-3 | PASS | STANDARD | E005, E009 | Task 20 | - | Current README/Compose contracts and production smoke cover locked setup, secrets, HTTPS startup, health, persistence, and cleanup. |
-| AC-F-4 | PARTIAL | STANDARD | E001, E002 | Tasks 15-18 / environment owner | BLOCKER:CURRENT-BROWSER-E2E | Current UI tests exercise semantic tokens, Warm Editorial components, responsive layout, and accessibility behavior, but Task 23 frontend type/build and browser execution are NOT_RUN under the no-download boundary. |
+| AC-F-4 | PASS | STANDARD | E001, E002, E906 | Tasks 15-18 | - | Current UI tests plus exact-head frontend build and real browser execution pass. |
 | AC-F-5 | PARTIAL | IMPORTANT | E900 | Task 21 / operator | BLOCKER:TC-021 | No public URL or trusted-certificate full product smoke exists. |
 | AC-F-6 | PARTIAL | IMPORTANT | E902, E903 | Task 24 | BLOCKER:TASK24-AUDIT | Engineering Audit passed; Product Audit and final delivery verification remain future work. |
-| DOD-01 | PARTIAL | IMPORTANT | E001, E004, E008, E905 | Task 22 / Task 24 | BLOCKER:CURRENT-BROWSER-E2E | A-D modules pass current backend/UI regression, but the end-to-end browser record does not have an unchanged current boundary. |
+| DOD-01 | PASS | IMPORTANT | E001, E008, E905 | Task 23 | - | A-D modules pass current backend/UI regression and exact-head real browser E2E. |
 | DOD-02 | PASS | IMPORTANT | E008 | Task 22 | - | Real synthetic-fixture WAV/MP3 upload and analysis pass in the current production runtime. |
-| DOD-03 | PARTIAL | IMPORTANT | E001, E004, E905 | Task 22 / Task 24 | BLOCKER:CURRENT-BROWSER-E2E | Current component tests cover the shared timeline, while real-browser interaction remains historical across a drifted source/test boundary. |
+| DOD-03 | PASS | IMPORTANT | E001, E905 | Task 23 | - | Current component tests and exact-head browser interaction cover the shared timeline. |
 | DOD-04 | PASS | IMPORTANT | E008 | Task 22 | - | Deterministic theory has current reproducible parameterized backend coverage. |
 | DOD-05 | PASS | IMPORTANT | E001, E008 | Task 22 | - | Evidence-grounded explanation, citations, and selection have current coverage. |
 | DOD-06 | PASS | IMPORTANT | E001, E008 | Task 22 | - | No-key deterministic fallback has current service/UI coverage and exact E2E evidence. |
-| DOD-07 | PARTIAL | IMPORTANT | E001, E002, E004, E008, E009, E010, E905 | Task 22 / Task 24 | BLOCKER:CURRENT-BROWSER-E2E | Latest applicable Vitest, Python static/type, locked Linux, and trusted no-build Docker evidence succeeds; frontend type/build and current real-browser E2E remain unrun. |
+| DOD-07 | PASS | IMPORTANT | E001, E002, E008, E009, E010, E905, E906 | Task 23 | - | Latest backend/frontend tests, static/type/build, browser E2E, Docker, and distribution gates pass. |
 | DOD-08 | PASS | IMPORTANT | E009 | Task 22 | - | Current production container smoke covered health, upload/analysis, restart persistence, encryption boundary, and cleanup. |
 | DOD-09 | PASS | IMPORTANT | E003, E012 | Task 22 | FIXED:E012 | Current real and synthetic Secret audit gates pass; the fix normalized wrapped diagnostic whitespace without weakening detection. |
-| DOD-10 | PARTIAL | IMPORTANT | E901, E906 | Repository owner | BLOCKER:REMOTE-CI | GitHub Actions run 31523692229 failed at Linux mypy and the local fix awaits a pushed rerun; GitLab CI remains not run. |
+| DOD-10 | PARTIAL | IMPORTANT | E901, E906 | Repository owner | BLOCKER:REMOTE-CI | GitHub Actions is green for the exact Task 23 head; GitLab CI remains not run. |
 | DOD-11 | PASS | STANDARD | E005 | Task 20 | - | Both CI configurations and the GitLab unit-test job have local parsed contract evidence. |
 | DOD-12 | PASS | STANDARD | E005 | Tasks 1-22 | - | A current contract reads SPEC/PLAN/log/handoff/deployment anchors and README truth boundaries instead of relying on historical file statistics. |
 | DOD-13 | PARTIAL | IMPORTANT | E902, E903 | Task 24 | BLOCKER:TASK24-AUDIT | Functional and Engineering audits now exist; Product Audit remains future work. |
@@ -85,10 +84,9 @@ No local functional item is currently classified `FAIL`.
 | Blocker ID | Class | Status | Owner | Evidence IDs | Notes |
 | --- | --- | --- | --- | --- | --- |
 | TC-021 | EXTERNAL | OPEN | Cloud operator | E900 | Supply Tencent Cloud/Lighthouse, domain/DNS, SSH, and digest-qualified registry authorization; then run target benchmark and complete public smoke. |
-| REMOTE-CI | EXTERNAL | OPEN | Repository owner | E901, E906 | Push the local Linux-mypy fix and require a green GitHub rerun; also run GitLab CI for the actual final commit. |
+| REMOTE-CI | EXTERNAL | OPEN | Repository owner | E901 | GitHub is green; run GitLab CI for the actual final commit. |
 | TASK24-AUDIT | FOLLOW_UP | OPEN | Task 24 | E903 | Perform Product Audit and final delivery verification after Task 23. |
 | STUDENT-MANUAL | MANUAL | OPEN | Student | E904 | Complete the explicitly reserved personal acceptance checklist and write REFLECTION.md without agent substitution. |
-| CURRENT-BROWSER-E2E | ENVIRONMENT | OPEN | Task 24 | E002, E905 | Restore the exact locked root/frontend dependency cache or provide a prebuilt no-egress browser environment, then rerun frontend type/build and all four current Chrome tests; otherwise keep dependent items PARTIAL. |
 
 ## Definition of Done trace map
 
