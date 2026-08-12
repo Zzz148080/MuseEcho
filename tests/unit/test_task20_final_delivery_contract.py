@@ -155,15 +155,21 @@ def test_dual_ci_definitions_include_executable_tests_and_gitlab_unit_test_job()
 
     github_jobs = github["jobs"]
     assert {"quality", "e2e", "distribution"}.issubset(github_jobs)
+    quality_checkout = next(
+        step
+        for step in github_jobs["quality"]["steps"]
+        if step.get("uses") == "actions/checkout@v4"
+    )
+    assert quality_checkout["with"]["fetch-depth"] == 0
     quality_commands = "\n".join(
         str(step.get("run", "")) for step in github_jobs["quality"]["steps"]
     )
-    assert "uv run python -m pytest -q --basetemp tmp/pytest-ci" in quality_commands
+    assert "uv run python -m pytest -q --basetemp .pytest-ci" in quality_commands
     assert "npm --prefix frontend test" in quality_commands
 
     unit_test = gitlab["unit-test"]
     assert unit_test["stage"] == "test"
-    assert unit_test["script"] == ["uv run python -m pytest -q --basetemp tmp/pytest-ci"]
+    assert unit_test["script"] == ["uv run python -m pytest -q --basetemp .pytest-ci"]
     assert {"lint", "unit-test", "frontend", "e2e", "secret-scan"}.issubset(gitlab)
 
 

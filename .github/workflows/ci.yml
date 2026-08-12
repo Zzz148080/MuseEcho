@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: 3.12.13
@@ -51,7 +53,7 @@ jobs:
           npm --prefix frontend run typecheck
       - name: Unit and integration tests
         run: |
-          uv run python -m pytest -q --basetemp tmp/pytest-ci
+          uv run python -m pytest -q --basetemp .pytest-ci
           npm --prefix frontend test
           npm --prefix frontend run build
       - name: License policy audit
