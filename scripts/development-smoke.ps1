@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$DockerCommand = 'docker',
-    [string]$CurlCommand = 'curl.exe'
+    [string]$CurlCommand = $(if ($env:OS -eq 'Windows_NT') { 'curl.exe' } else { 'curl' })
 )
 
 $ErrorActionPreference = 'Stop'

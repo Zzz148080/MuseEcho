@@ -11,8 +11,10 @@ $fakeScripts = Join-Path $fakeRepository 'scripts'
 $fakeBin = Join-Path $fixtureRoot 'bin'
 $dockerLog = Join-Path $fixtureRoot 'docker.log'
 $runnerPath = Join-Path $fakeScripts 'development-smoke.ps1'
-$fakeDockerPath = Join-Path $fakeBin 'docker.cmd'
-$fakeCurlPath = Join-Path $fakeBin 'curl.cmd'
+$isWindowsPlatform = $env:OS -eq 'Windows_NT'
+$fakeDockerPath = Join-Path $fakeBin $(if ($isWindowsPlatform) { 'docker.cmd' } else { 'docker' })
+$fakeCurlPath = Join-Path $fakeBin $(if ($isWindowsPlatform) { 'curl.cmd' } else { 'curl' })
+$defaultCurlBootstrap = Join-Path $fixtureRoot 'run-default-curl.ps1'
 $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell.exe' }
 $savedPath = $env:PATH
 $savedLog = $env:MUSEECHO_FAKE_DOCKER_LOG
@@ -21,18 +23,23 @@ $savedMode = $env:MUSEECHO_FAKE_DOCKER_MODE
 function Invoke-SmokeProbe {
     param(
         [Parameter(Mandatory = $true)][string]$Mode,
-        [switch]$SuccessfulCurl
+        [switch]$SuccessfulCurl,
+        [switch]$DefaultCurl
     )
     [System.IO.File]::WriteAllText($dockerLog, '', [Text.UTF8Encoding]::new($false))
     $env:MUSEECHO_FAKE_DOCKER_MODE = $Mode
     $savedErrorPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
-        $arguments = @(
-            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $runnerPath,
-            '-DockerCommand', $fakeDockerPath
-        )
-        if ($SuccessfulCurl) { $arguments += @('-CurlCommand', $fakeCurlPath) }
+        if ($DefaultCurl) {
+            $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $defaultCurlBootstrap)
+        } else {
+            $arguments = @(
+                '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $runnerPath,
+                '-DockerCommand', $fakeDockerPath
+            )
+            if ($SuccessfulCurl) { $arguments += @('-CurlCommand', $fakeCurlPath) }
+        }
         $output = & $shell @arguments 2>&1 | Out-String
         $exitCode = $LASTEXITCODE
     }
@@ -50,8 +57,7 @@ try {
     New-Item -ItemType Directory -Path $fakeScripts, $fakeBin | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'development-smoke.ps1') `
         -Destination $runnerPath
-    [System.IO.File]::WriteAllText(
-        $fakeDockerPath,
+    $fakeDockerContents = if ($isWindowsPlatform) {
         @'
 @echo off
 echo %*>>"%MUSEECHO_FAKE_DOCKER_LOG%"
@@ -59,16 +65,63 @@ for /f %%C in ('find /c /v "" ^< "%MUSEECHO_FAKE_DOCKER_LOG%"') do set CALLCOUNT
 if "%MUSEECHO_FAKE_DOCKER_MODE%"=="up-fail" if "%CALLCOUNT%"=="1" exit /b 23
 if "%MUSEECHO_FAKE_DOCKER_MODE%"=="down-fail" if not "%CALLCOUNT%"=="1" exit /b 29
 exit /b 0
-'@,
-        [Text.UTF8Encoding]::new($false)
-    )
-    [System.IO.File]::WriteAllText(
-        $fakeCurlPath,
-        "@echo off`r`necho %*| findstr /c:`"/api/health`" >nul && echo {`"status`":`"ready`"} && exit /b 0`r`necho ^<div id=`"root`"^> && exit /b 0`r`n",
-        [Text.UTF8Encoding]::new($false)
-    )
+'@
+    } else {
+        @'
+#!/bin/sh
+printf '%s\n' "$*" >> "$MUSEECHO_FAKE_DOCKER_LOG"
+call_count=$(wc -l < "$MUSEECHO_FAKE_DOCKER_LOG")
+if [ "$MUSEECHO_FAKE_DOCKER_MODE" = up-fail ] && [ "$call_count" = 1 ]; then exit 23; fi
+if [ "$MUSEECHO_FAKE_DOCKER_MODE" = down-fail ] && [ "$call_count" != 1 ]; then exit 29; fi
+exit 0
+'@
+    }
+    if (-not $isWindowsPlatform) {
+        $fakeDockerContents = $fakeDockerContents.Replace("`r`n", "`n")
+    }
+    [System.IO.File]::WriteAllText($fakeDockerPath, $fakeDockerContents, [Text.UTF8Encoding]::new($false))
+    if (-not $isWindowsPlatform) {
+        & chmod 700 $fakeDockerPath
+        if ($LASTEXITCODE -ne 0) { throw 'could not make fake Docker executable' }
+    }
+    $fakeCurlContents = if ($isWindowsPlatform) {
+        "@echo off`r`necho %*| findstr /c:`"/api/health`" >nul && echo {`"status`":`"ready`"} && exit /b 0`r`necho ^<div id=`"root`"^> && exit /b 0`r`n"
+    } else {
+        @'
+#!/bin/sh
+case "$*" in
+  */api/health*) echo '{"status":"ready"}' ;;
+  *) echo '<div id="root">' ;;
+esac
+exit 0
+'@
+    }
+    if (-not $isWindowsPlatform) {
+        $fakeCurlContents = $fakeCurlContents.Replace("`r`n", "`n")
+    }
+    [System.IO.File]::WriteAllText($fakeCurlPath, $fakeCurlContents, [Text.UTF8Encoding]::new($false))
+    if (-not $isWindowsPlatform) {
+        & chmod 700 $fakeCurlPath
+        if ($LASTEXITCODE -ne 0) { throw 'could not make fake curl executable' }
+    }
     $env:MUSEECHO_FAKE_DOCKER_LOG = $dockerLog
     $env:PATH = "$fakeBin$([IO.Path]::PathSeparator)$savedPath"
+    $escapedRunnerPath = $runnerPath.Replace("'", "''")
+    $escapedDockerPath = $fakeDockerPath.Replace("'", "''")
+    [System.IO.File]::WriteAllText(
+        $defaultCurlBootstrap,
+        @"
+function Invoke-FakeDefaultCurl {
+    throw 'Linux curl command was not selected'
+}
+Set-Alias -Name curl.exe -Value Invoke-FakeDefaultCurl -Scope Global
+if (Test-Path Alias:curl) { Remove-Item Alias:curl -Force }
+`$env:OS = 'Linux'
+& '$escapedRunnerPath' -DockerCommand '$escapedDockerPath'
+exit `$LASTEXITCODE
+"@,
+        [Text.UTF8Encoding]::new($false)
+    )
 
     $partialUp = Invoke-SmokeProbe -Mode 'up-fail'
     if ($partialUp.ExitCode -eq 0 -or $partialUp.Output -notmatch 'failed to start') {
@@ -79,6 +132,11 @@ exit /b 0
     }
     if ($partialUp.Output -match 'cleanup failed') {
         throw "primary-only failure was incorrectly reported as cleanup failure`n$($partialUp.Output)"
+    }
+
+    $defaultCurl = Invoke-SmokeProbe -Mode 'success' -DefaultCurl
+    if ($defaultCurl.ExitCode -ne 0 -or $defaultCurl.Output -notmatch 'development smoke passed') {
+        throw "development smoke default curl command was not executable`n$($defaultCurl.Output)"
     }
 
     $cleanupOnly = Invoke-SmokeProbe -Mode 'down-fail' -SuccessfulCurl

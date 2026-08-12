@@ -315,6 +315,25 @@ def test_container_contract_synthetic_harness_exits_zero_after_expected_failure_
     assert "Container contract synthetic tests passed." in completed.stdout
 
 
+def test_development_smoke_synthetic_harness_exercises_the_platform_default_curl_command():
+    shell = shutil.which("pwsh") or shutil.which("powershell.exe")
+    assert shell is not None
+    script = ROOT / "scripts" / "test-development-smoke.ps1"
+    command = f"& '{str(script).replace("'", "''")}'; if ($?) {{ exit 0 }} else {{ exit 1 }}"
+
+    completed = subprocess.run(
+        [shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=30,
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "Development smoke synthetic lifecycle tests passed." in completed.stdout
+
+
 def test_container_contract_synthetic_harness_uses_an_executable_platform_fake_docker():
     script = (ROOT / "scripts" / "test-container-contract.ps1").read_text(encoding="utf-8")
 
