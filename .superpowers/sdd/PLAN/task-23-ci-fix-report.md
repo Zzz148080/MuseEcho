@@ -471,7 +471,8 @@ and no whitespace errors.
 
 ### Commit
 
-Recorded with this round's local commit; no push was performed.
+`d2012766e76bd70bd53116977393bc19fef23689` —
+`fix: preserve container contract success exit`. No push was performed.
 
 ### Concerns
 
@@ -727,3 +728,80 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\test-de
 
 Observed exit `0`: lifecycle harness printed its success line; focused
 delivery contract `16 passed in 32.78s`.
+
+## Fix round 9/10 — ANSI SGR-normalized smoke assertions
+
+### Root cause
+
+GitHub Actions run `31603816007`, quality job `94137540206`, again failed only
+the two development-smoke behavioral checks on Ubuntu/pwsh. The captured
+cleanup-only error record carried the required cleanup category, Compose-down
+context, and exact exit code `29`, but PowerShell inserted ANSI SGR bytes
+(`ESC[31;1m` and `ESC[0m`) around and between those tokens. Round 8's matcher
+accepts whitespace and location records but cannot traverse those raw control
+bytes. The existing `(?!\d)` boundary remains necessary to reject `290`.
+
+### TDD RED → GREEN
+
+The regression extends the real copied-smoke lifecycle probe. After that child
+emits its cleanup-only error, the fixture inserts literal ANSI SGR escapes
+around `docker`, `compose down failed with exit`, and `code 29`; the existing
+location-format fixture remains in place. It also applies the same ANSI
+formatting to the `290` rejection probe. This exercises captured output rather
+than grepping implementation text, and diagnostics continue to emit the
+unmodified captured output.
+
+RED on the pre-fix matcher:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\test-development-smoke.ps1'; exit $LASTEXITCODE"
+```
+
+Observed exit `1`: `development smoke did not isolate cleanup-only failure`.
+The diagnostic contained the original ANSI-decorated cleanup error record,
+including `docker compose down failed with exit`, the PowerShell location
+record, and `code 29`; this proves the matcher, not the smoke failure behavior,
+was the failing boundary.
+
+The minimal repair derives `SemanticOutput` from captured output by removing
+only ANSI SGR sequences (`ESC[` followed by decimal/semicolon parameters and
+`m`) and applies the existing cleanup category and exact-code matcher to that
+copy. `Output` remains untouched for failure diagnostics. Cleanup-only,
+combined API-primary-plus-cleanup, exit-failure, and exact-`29`/reject-`290`
+assertions remain fail closed.
+
+GREEN:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\test-development-smoke.ps1'; exit $LASTEXITCODE"
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py -q --basetemp tmp\task23-ci-round9-green-focused
+```
+
+Observed exit `0`: the lifecycle harness printed its success line; the focused
+delivery-contract suite reported `16 passed in 33.24s`.
+
+### Final verification and self-review
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py tests\unit\test_engineering_audit.py -q --basetemp tmp\task23-ci-round9-related
+.venv\Scripts\python.exe -m ruff format --check tests\unit\test_task20_final_delivery_contract.py
+.venv\Scripts\python.exe -m ruff check tests\unit\test_task20_final_delivery_contract.py
+git diff --check
+```
+
+Observed exit `0`: related contracts reported `108 passed in 47.74s`; Ruff
+format/check and diff whitespace validation were clean. PowerShell parser
+validation also reported `0 errors`. No product smoke script, fake Docker
+behavior, or error-reporting diagnostics changed.
+
+### Commit
+
+Recorded with this round's local commit; no push was performed.
+
+### Concerns
+
+The local host runs Windows PowerShell rather than the remote Ubuntu `pwsh`, so
+the remote runner remains the authoritative environment confirmation. Ruff is
+not a PowerShell formatter and reports expected `invalid-syntax` if pointed at
+the `.ps1` fixture; Python Ruff checks were clean and the PowerShell parser plus
+behavioral lifecycle harness were run instead.

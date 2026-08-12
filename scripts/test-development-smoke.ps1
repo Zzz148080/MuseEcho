@@ -20,6 +20,7 @@ $savedPath = $env:PATH
 $savedLog = $env:MUSEECHO_FAKE_DOCKER_LOG
 $savedMode = $env:MUSEECHO_FAKE_DOCKER_MODE
 $cleanupExitCodePattern = 'docker compose down failed with exit(?:\s|At\s+[^\r\n]+|\+\s+[^\r\n]+|~+|\r?\n)+code 29(?!\d)'
+$ansiSgr = [string][char]27
 
 function Invoke-SmokeProbe {
     param(
@@ -27,6 +28,7 @@ function Invoke-SmokeProbe {
         [switch]$SuccessfulCurl,
         [switch]$DefaultCurl,
         [switch]$FormatCleanupFailure,
+        [switch]$AddAnsiCleanupFormatting,
         [int]$FormattedCleanupExitCode = 29
     )
     [System.IO.File]::WriteAllText($dockerLog, '', [Text.UTF8Encoding]::new($false))
@@ -50,6 +52,16 @@ function Invoke-SmokeProbe {
                 "docker compose down failed with exit`nAt /tmp/development-smoke.ps1:84 char:5`n+     throw `$cleanupFailure`ncode $FormattedCleanupExitCode"
             )
         }
+        if ($AddAnsiCleanupFormatting) {
+            $output = $output.Replace(
+                'docker compose down failed with exit',
+                "${ansiSgr}[31;1mdocker${ansiSgr}[0m ${ansiSgr}[31;1mcompose down failed with exit${ansiSgr}[0m"
+            )
+            $output = $output.Replace(
+                'code 29',
+                "${ansiSgr}[31;1mcode 29${ansiSgr}[0m"
+            )
+        }
         $exitCode = $LASTEXITCODE
     }
     finally {
@@ -58,6 +70,7 @@ function Invoke-SmokeProbe {
     return [pscustomobject]@{
         ExitCode = $exitCode
         Output = $output
+        SemanticOutput = [regex]::Replace($output, "$([char]27)\[[0-9;]*m", '')
         DockerLog = [System.IO.File]::ReadAllText($dockerLog)
     }
 }
@@ -148,20 +161,20 @@ exit `$LASTEXITCODE
         throw "development smoke default curl command was not executable`n$($defaultCurl.Output)"
     }
 
-    $cleanupOnly = Invoke-SmokeProbe -Mode 'down-fail' -SuccessfulCurl -FormatCleanupFailure
+    $cleanupOnly = Invoke-SmokeProbe -Mode 'down-fail' -SuccessfulCurl -FormatCleanupFailure -AddAnsiCleanupFormatting
     if ($cleanupOnly.ExitCode -eq 0) {
         throw 'development smoke swallowed its cleanup-only failure'
     }
     if (
-        $cleanupOnly.Output -notmatch 'development smoke cleanup failed' -or
-        $cleanupOnly.Output -notmatch $cleanupExitCodePattern -or
-        $cleanupOnly.Output -match 'HTTPS API health probe failed'
+        $cleanupOnly.SemanticOutput -notmatch 'development smoke cleanup failed' -or
+        $cleanupOnly.SemanticOutput -notmatch $cleanupExitCodePattern -or
+        $cleanupOnly.SemanticOutput -match 'HTTPS API health probe failed'
     ) {
         throw "development smoke did not isolate cleanup-only failure`n$($cleanupOnly.Output)"
     }
 
-    $wrongCleanupExitCode = Invoke-SmokeProbe -Mode 'down-fail' -SuccessfulCurl -FormatCleanupFailure -FormattedCleanupExitCode 290
-    if ($wrongCleanupExitCode.Output -match $cleanupExitCodePattern) {
+    $wrongCleanupExitCode = Invoke-SmokeProbe -Mode 'down-fail' -SuccessfulCurl -FormatCleanupFailure -AddAnsiCleanupFormatting -FormattedCleanupExitCode 290
+    if ($wrongCleanupExitCode.SemanticOutput -match $cleanupExitCodePattern) {
         throw "development smoke accepted cleanup exit code other than 29`n$($wrongCleanupExitCode.Output)"
     }
 
@@ -170,8 +183,8 @@ exit `$LASTEXITCODE
         throw 'development smoke swallowed its cleanup failure'
     }
     if (
-        $combinedFailure.Output -notmatch 'development HTTPS API health probe failed' -or
-        $combinedFailure.Output -notmatch $cleanupExitCodePattern
+        $combinedFailure.SemanticOutput -notmatch 'development HTTPS API health probe failed' -or
+        $combinedFailure.SemanticOutput -notmatch $cleanupExitCodePattern
     ) {
         throw "development smoke did not report both primary and cleanup failures`n$($combinedFailure.Output)"
     }
