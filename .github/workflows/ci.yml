@@ -51,7 +51,7 @@ jobs:
           npm --prefix frontend run typecheck
       - name: Unit and integration tests
         run: |
-          uv run pytest -q --basetemp tmp/pytest-ci
+          uv run python -m pytest -q --basetemp tmp/pytest-ci
           npm --prefix frontend test
           npm --prefix frontend run build
       - name: License policy audit
