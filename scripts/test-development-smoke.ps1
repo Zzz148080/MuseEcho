@@ -14,24 +14,67 @@ $runnerPath = Join-Path $fakeScripts 'development-smoke.ps1'
 $isWindowsPlatform = $env:OS -eq 'Windows_NT'
 $fakeDockerPath = Join-Path $fakeBin $(if ($isWindowsPlatform) { 'docker.cmd' } else { 'docker' })
 $fakeCurlPath = Join-Path $fakeBin $(if ($isWindowsPlatform) { 'curl.cmd' } else { 'curl' })
-$defaultCurlBootstrap = Join-Path $fixtureRoot 'run-default-curl.ps1'
+$childProbePath = Join-Path $fixtureRoot 'run-smoke-probe.ps1'
 $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell.exe' }
 $savedPath = $env:PATH
 $savedLog = $env:MUSEECHO_FAKE_DOCKER_LOG
 $savedMode = $env:MUSEECHO_FAKE_DOCKER_MODE
 $savedCurlMode = $env:MUSEECHO_FAKE_CURL_MODE
-$cleanupExitCodePattern = '(?<!\d)code[ \t]+29(?!\d)'
-$ansiSgr = [string][char]27
+$cleanupExitCodePattern = '(?<!\d)code 29(?!\d)'
+$probeMarkerPrefix = 'MUSEECHO_SMOKE_PROBE:'
+$probeSuccessMarker = "${probeMarkerPrefix}SUCCESS"
+$probeExceptionMarkerPrefix = "${probeMarkerPrefix}EXCEPTION_MESSAGE_BASE64:"
+$strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+
+function ConvertFrom-SmokeProbeOutcome {
+    param(
+        [Parameter(Mandatory = $true)][string]$Output,
+        [Parameter(Mandatory = $true)][int]$ExitCode
+    )
+    $markerLines = @([regex]::Matches($Output, "(?m)^$([regex]::Escape($probeMarkerPrefix)).*$"))
+    if ($markerLines.Count -ne 1) {
+        throw "development smoke probe emitted an invalid marker count`n$Output"
+    }
+    $marker = $markerLines[0].Value.TrimEnd("`r")
+    $exceptionMessage = $null
+    if ($marker -eq $probeSuccessMarker) {
+        if ($ExitCode -ne 0) {
+            throw "development smoke probe reported success with a nonzero exit code`n$Output"
+        }
+    } elseif ($marker.StartsWith($probeExceptionMarkerPrefix, [StringComparison]::Ordinal)) {
+        if ($ExitCode -eq 0) {
+            throw "development smoke probe reported failure with a zero exit code`n$Output"
+        }
+        $encodedMessage = $marker.Substring($probeExceptionMarkerPrefix.Length)
+        if ([string]::IsNullOrEmpty($encodedMessage)) {
+            throw "development smoke probe emitted an empty exception marker`n$Output"
+        }
+        try {
+            $decodedBytes = [Convert]::FromBase64String($encodedMessage)
+            if ([Convert]::ToBase64String($decodedBytes) -cne $encodedMessage) {
+                throw 'non-canonical Base64'
+            }
+            $exceptionMessage = $strictUtf8.GetString($decodedBytes)
+        } catch {
+            throw "development smoke probe emitted a malformed exception marker`n$Output"
+        }
+        if ([string]::IsNullOrEmpty($exceptionMessage)) {
+            throw "development smoke probe emitted an empty exception message`n$Output"
+        }
+    } else {
+        throw "development smoke probe emitted an unknown marker`n$Output"
+    }
+    return [pscustomobject]@{
+        ExceptionMessage = $exceptionMessage
+    }
+}
 
 function Invoke-SmokeProbe {
     param(
         [Parameter(Mandatory = $true)][string]$Mode,
         [switch]$SuccessfulCurl,
         [switch]$FailingCurl,
-        [switch]$DefaultCurl,
-        [switch]$FormatCleanupFailure,
-        [switch]$AddAnsiCleanupFormatting,
-        [int]$FormattedCleanupExitCode = 29
+        [switch]$DefaultCurl
     )
     [System.IO.File]::WriteAllText($dockerLog, '', [Text.UTF8Encoding]::new($false))
     $env:MUSEECHO_FAKE_DOCKER_MODE = $Mode
@@ -42,47 +85,23 @@ function Invoke-SmokeProbe {
     $savedErrorPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
-        if ($DefaultCurl) {
-            $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $defaultCurlBootstrap)
-        } else {
-            $arguments = @(
-                '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $runnerPath,
-                '-DockerCommand', $fakeDockerPath
-            )
-            if ($SuccessfulCurl -or $FailingCurl) { $arguments += @('-CurlCommand', $fakeCurlPath) }
-        }
+        $arguments = @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $childProbePath,
+            '-RunnerPath', $runnerPath, '-DockerCommand', $fakeDockerPath
+        )
+        if ($DefaultCurl) { $arguments += '-DefaultCurl' }
+        else { $arguments += @('-CurlCommand', $fakeCurlPath) }
         $output = & $shell @arguments 2>&1 | Out-String
-        if ($FormatCleanupFailure) {
-            $output = $output.Replace(
-                'docker compose down failed with exit code 29',
-                'docker compose down failed with exit'
-            )
-            $output = [regex]::Replace(
-                $output,
-                'code 29(?!\d)',
-                "`n      | code $FormattedCleanupExitCode"
-            )
-        }
-        if ($AddAnsiCleanupFormatting) {
-            $output = $output.Replace(
-                'docker compose down failed with exit',
-                "${ansiSgr}[31;1mdocker${ansiSgr}[0m ${ansiSgr}[31;1mcompose down failed with exit${ansiSgr}[0m"
-            )
-            $output = [regex]::Replace(
-                $output,
-                'code 29(?!\d)',
-                "${ansiSgr}[31;1mcode 29${ansiSgr}[0m"
-            )
-        }
         $exitCode = $LASTEXITCODE
     }
     finally {
         $ErrorActionPreference = $savedErrorPreference
     }
+    $outcome = ConvertFrom-SmokeProbeOutcome -Output $output -ExitCode $exitCode
     return [pscustomobject]@{
         ExitCode = $exitCode
         Output = $output
-        SemanticOutput = [regex]::Replace($output, "$([char]27)\[[0-9;]*m", '')
+        ExceptionMessage = $outcome.ExceptionMessage
         DockerLog = [System.IO.File]::ReadAllText($dockerLog)
     }
 }
@@ -144,31 +163,69 @@ exit 0
     }
     $env:MUSEECHO_FAKE_DOCKER_LOG = $dockerLog
     $env:PATH = "$fakeBin$([IO.Path]::PathSeparator)$savedPath"
-    $escapedRunnerPath = $runnerPath.Replace("'", "''")
-    $escapedDockerPath = $fakeDockerPath.Replace("'", "''")
     [System.IO.File]::WriteAllText(
-        $defaultCurlBootstrap,
-        @"
-function Invoke-FakeDefaultCurl {
-    throw 'Linux curl command was not selected'
+        $childProbePath,
+        @'
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory = $true)][string]$RunnerPath,
+    [Parameter(Mandatory = $true)][string]$DockerCommand,
+    [string]$CurlCommand,
+    [switch]$DefaultCurl
+)
+
+$ErrorActionPreference = 'Stop'
+$markerPrefix = 'MUSEECHO_SMOKE_PROBE:'
+try {
+    if ($DefaultCurl) {
+        $env:OS = 'Linux'
+        if (Test-Path Alias:curl) { Remove-Item Alias:curl -Force }
+        & $RunnerPath -DockerCommand $DockerCommand
+    } else {
+        & $RunnerPath -DockerCommand $DockerCommand -CurlCommand $CurlCommand
+    }
+    if ($LASTEXITCODE -ne 0) {
+        throw "development smoke exited with code $LASTEXITCODE without a terminating exception"
+    }
+    [Console]::Out.WriteLine("${markerPrefix}SUCCESS")
+    exit 0
+} catch {
+    $encodedMessage = [Convert]::ToBase64String([Text.UTF8Encoding]::new($false).GetBytes($_.Exception.Message))
+    [Console]::Out.WriteLine("${markerPrefix}EXCEPTION_MESSAGE_BASE64:$encodedMessage")
+    exit 1
 }
-Set-Alias -Name curl.exe -Value Invoke-FakeDefaultCurl -Scope Global
-if (Test-Path Alias:curl) { Remove-Item Alias:curl -Force }
-`$env:OS = 'Linux'
-& '$escapedRunnerPath' -DockerCommand '$escapedDockerPath'
-exit `$LASTEXITCODE
-"@,
+'@,
         [Text.UTF8Encoding]::new($false)
     )
 
+    foreach ($invalidProbe in @(
+            [pscustomobject]@{ Name = 'missing'; Output = 'no marker'; ExitCode = 1 },
+            [pscustomobject]@{ Name = 'duplicate'; Output = "$probeSuccessMarker`n$probeSuccessMarker"; ExitCode = 0 },
+            [pscustomobject]@{ Name = 'malformed'; Output = "${probeExceptionMarkerPrefix}%%%"; ExitCode = 1 },
+            [pscustomobject]@{ Name = 'invalid-utf8'; Output = "${probeExceptionMarkerPrefix}/w=="; ExitCode = 1 },
+            [pscustomobject]@{ Name = 'empty-failure-payload'; Output = $probeExceptionMarkerPrefix; ExitCode = 1 },
+            [pscustomobject]@{ Name = 'success-with-payload'; Output = "${probeSuccessMarker}:unexpected"; ExitCode = 0 },
+            [pscustomobject]@{ Name = 'wrong-success-exit'; Output = $probeSuccessMarker; ExitCode = 1 },
+            [pscustomobject]@{ Name = 'wrong-failure-exit'; Output = "${probeExceptionMarkerPrefix}ZmFpbGVk"; ExitCode = 0 }
+        )) {
+        try {
+            ConvertFrom-SmokeProbeOutcome -Output $invalidProbe.Output -ExitCode $invalidProbe.ExitCode | Out-Null
+            throw "development smoke probe accepted $($invalidProbe.Name) marker state"
+        } catch {
+            if ($_.Exception.Message -eq "development smoke probe accepted $($invalidProbe.Name) marker state") {
+                throw
+            }
+        }
+    }
+
     $partialUp = Invoke-SmokeProbe -Mode 'up-fail'
-    if ($partialUp.ExitCode -eq 0 -or $partialUp.Output -notmatch 'failed to start') {
+    if ($partialUp.ExitCode -eq 0 -or $partialUp.ExceptionMessage -notmatch 'failed to start') {
         throw "development smoke did not preserve the partial-up failure`n$($partialUp.Output)"
     }
     if ($partialUp.DockerLog -notmatch '(?m)^compose .* down ') {
         throw "development smoke did not clean up after partial compose up`n$($partialUp.DockerLog)"
     }
-    if ($partialUp.Output -match 'cleanup failed') {
+    if ($partialUp.ExceptionMessage -match 'cleanup failed') {
         throw "primary-only failure was incorrectly reported as cleanup failure`n$($partialUp.Output)"
     }
 
@@ -177,22 +234,22 @@ exit `$LASTEXITCODE
         throw "development smoke default curl command was not executable`n$($defaultCurl.Output)"
     }
 
-    $cleanupOnly = Invoke-SmokeProbe -Mode 'down-fail' -SuccessfulCurl -FormatCleanupFailure -AddAnsiCleanupFormatting
+    $cleanupOnly = Invoke-SmokeProbe -Mode 'down-fail' -SuccessfulCurl
     if ($cleanupOnly.ExitCode -eq 0) {
         throw 'development smoke swallowed its cleanup-only failure'
     }
     if (
-        $cleanupOnly.SemanticOutput -notmatch 'development smoke cleanup failed' -or
-        $cleanupOnly.SemanticOutput -notmatch 'docker compose down failed with exit' -or
-        $cleanupOnly.SemanticOutput -notmatch $cleanupExitCodePattern -or
-        $cleanupOnly.SemanticOutput -match 'HTTPS API health probe failed'
+        $cleanupOnly.ExceptionMessage -notmatch 'development smoke cleanup failed' -or
+        $cleanupOnly.ExceptionMessage -notmatch 'docker compose down failed with exit' -or
+        $cleanupOnly.ExceptionMessage -notmatch $cleanupExitCodePattern -or
+        $cleanupOnly.ExceptionMessage -match 'HTTPS API health probe failed'
     ) {
         throw "development smoke did not isolate cleanup-only failure`n$($cleanupOnly.Output)"
     }
 
-    $wrongCleanupExitCode = Invoke-SmokeProbe -Mode 'down-fail' -SuccessfulCurl -FormatCleanupFailure -AddAnsiCleanupFormatting -FormattedCleanupExitCode 290
-    if ($wrongCleanupExitCode.SemanticOutput -match $cleanupExitCodePattern) {
-        throw "development smoke accepted cleanup exit code other than 29`n$($wrongCleanupExitCode.Output)"
+    $wrongCleanupExitMessage = $cleanupOnly.ExceptionMessage.Replace('code 29', 'code 290')
+    if ($wrongCleanupExitMessage -match $cleanupExitCodePattern) {
+        throw "development smoke accepted cleanup exit code other than 29`n$($cleanupOnly.Output)"
     }
 
     $combinedFailure = Invoke-SmokeProbe -Mode 'down-fail' -FailingCurl
@@ -200,10 +257,10 @@ exit `$LASTEXITCODE
         throw 'development smoke swallowed its cleanup failure'
     }
     if (
-        $combinedFailure.SemanticOutput -notmatch 'development HTTPS API health probe failed' -or
-        $combinedFailure.SemanticOutput -notmatch 'docker compose down failed with exit' -or
-        $combinedFailure.SemanticOutput -notmatch $cleanupExitCodePattern -or
-        $combinedFailure.SemanticOutput -match 'Documented HTTPS same-origin development smoke passed'
+        $combinedFailure.ExceptionMessage -notmatch 'development HTTPS API health probe failed' -or
+        $combinedFailure.ExceptionMessage -notmatch 'docker compose down failed with exit' -or
+        $combinedFailure.ExceptionMessage -notmatch $cleanupExitCodePattern -or
+        $combinedFailure.ExceptionMessage -match 'Documented HTTPS same-origin development smoke passed'
     ) {
         throw "development smoke did not report both primary and cleanup failures`n$($combinedFailure.Output)"
     }

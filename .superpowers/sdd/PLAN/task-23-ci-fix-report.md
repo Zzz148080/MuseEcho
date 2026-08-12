@@ -962,3 +962,85 @@ The local host verifies the Windows batch fixture and PowerShell process
 boundary. Ubuntu `pwsh` remains the remote authority for execution of the Unix
 shell fixture; its behavior is intentionally specified by executable fixture
 content rather than a platform-dependent omitted command.
+
+## Fix round 12/15 — structured child outcome protocol
+
+### Root cause and architecture
+
+GitHub run `31611183962` proved round 11's combined state contract: explicit
+fake curl failure produced the API primary, Compose cleanup failure, exact code
+29, and no product success. The parent still derived those facts from the
+rendered `ErrorRecord`; Ubuntu `pwsh` may insert visual gutters between
+otherwise-adjacent terms. That renderer is not a machine protocol.
+
+Every real copied-product-smoke child now runs through one PowerShell wrapper.
+On success it writes the unique `MUSEECHO_SMOKE_PROBE:SUCCESS` marker and exits
+zero. On a terminating error it catches in the child, UTF-8/Base64 encodes only
+`Exception.Message` after `MUSEECHO_SMOKE_PROBE:EXCEPTION_MESSAGE_BASE64:`, and
+exits nonzero. The parent retains raw `Output` solely for thrown diagnostics,
+requires exactly one marker, binds marker kind to exit status, requires
+canonical valid Base64 and nonempty strict-UTF8 message, and exposes only
+`ExceptionMessage` for failure semantics. Explicit self-checks fail closed for
+missing and duplicate markers, malformed or empty Base64 payloads, unknown or
+success-with-payload marker forms, and both status/payload inconsistencies
+(success marker with nonzero exit; failure payload with zero exit).
+
+The ANSI SGR removal, location/gutter formatting mutations, `SemanticOutput`,
+and bridging regex were removed. The cleanup exact-code assertion remains
+independently bounded by `(?<!\\d)code 29(?!\\d)`. Its explicit 290 rejection is
+now derived from the stable exception message, not a terminal-format mutation.
+
+### Behavioral TDD
+
+RED changed the real lifecycle assertions to the wished-for
+`ExceptionMessage` before the wrapper existed:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\test-development-smoke.ps1'; exit $LASTEXITCODE"
+```
+
+Observed exit `1`: `development smoke did not preserve the partial-up failure`.
+The diagnostics contained PowerShell-rendered ErrorRecord text while the new
+field was absent, demonstrating that the old process boundary supplied only
+`Output`.
+
+GREEN adds the wrapper/decoder protocol and fail-closed invalid-marker probes.
+The same lifecycle command then exited `0` and printed `Development smoke
+synthetic lifecycle tests passed.`
+
+### State table and verification
+
+| Probe | Expected result |
+| --- | --- |
+| `partialUp` | start primary, cleanup performed, no cleanup failure |
+| `defaultCurl` | platform-default fake curl success and product success |
+| `cleanupOnly` | cleanup/Compose exact 29 only; no API primary |
+| `wrongCleanupExitCode` | stable-message 290 mutation rejected |
+| `combinedFailure` | explicit fake curl API primary plus cleanup exact 29; no product success |
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\test-development-smoke.ps1'; exit $LASTEXITCODE"
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py -q --basetemp tmp\task23-ci-round12-focused
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py tests\unit\test_engineering_audit.py -q --basetemp tmp\task23-ci-round12-related
+.venv\Scripts\python.exe -m ruff format --check tests\unit\test_task20_final_delivery_contract.py
+.venv\Scripts\python.exe -m ruff check tests\unit\test_task20_final_delivery_contract.py
+# PowerShell parser and git diff --check
+```
+
+Observed: lifecycle harness plus parser exited `0` (`0 parser errors`); focused
+contracts `16 passed in 26.36s`; related contracts `108 passed in 40.97s`;
+Ruff format/check and diff whitespace validation exited `0`.
+
+### Self-review and concerns
+
+All failing scenario assertions inspect decoded `ExceptionMessage`; raw output
+appears only in diagnostics. The wrapper continues to invoke copied product
+smoke across a real PowerShell child boundary, preserves round-11 explicit curl
+state and environment restoration, and deletes its exact task-temp fixture.
+Windows PowerShell was the local host; Ubuntu `pwsh` remains remote authority,
+but rendering differences are no longer protocol input. No product smoke,
+workflow, runtime version, or unrelated file changed.
+
+### Commit
+
+Recorded with this round's local commit; no push performed.
