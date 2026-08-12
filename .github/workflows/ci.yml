@@ -56,6 +56,9 @@ jobs:
           uv run python -m pytest -q --basetemp .pytest-ci
           npm --prefix frontend test
           npm --prefix frontend run build
+      - name: Clean CI pytest temporary root
+        if: always()
+        run: rm -rf -- .pytest-ci
       - name: License policy audit
         shell: pwsh
         run: uv run python scripts/license_audit.py

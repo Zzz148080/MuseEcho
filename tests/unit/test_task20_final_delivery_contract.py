@@ -173,6 +173,24 @@ def test_dual_ci_definitions_include_executable_tests_and_gitlab_unit_test_job()
     assert {"lint", "unit-test", "frontend", "e2e", "secret-scan"}.issubset(gitlab)
 
 
+def test_github_quality_always_removes_its_exact_pytest_temp_root_before_secret_scan():
+    github = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    steps = github["jobs"]["quality"]["steps"]
+    cleanup_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Clean CI pytest temporary root"
+    )
+    secret_scan_index = next(
+        index for index, step in enumerate(steps) if step.get("name") == "Repository secret scan"
+    )
+    cleanup = steps[cleanup_index]
+
+    assert cleanup_index < secret_scan_index
+    assert cleanup["if"] == "always()"
+    assert cleanup["run"] == "rm -rf -- .pytest-ci"
+
+
 def test_readme_cold_start_contract_covers_locked_setup_https_health_and_cleanup():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
