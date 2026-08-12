@@ -158,7 +158,7 @@ def test_dual_ci_definitions_include_executable_tests_and_gitlab_unit_test_job()
     quality_checkout = next(
         step
         for step in github_jobs["quality"]["steps"]
-        if step.get("uses") == "actions/checkout@v4"
+        if step.get("uses") == "actions/checkout@v7"
     )
     assert quality_checkout["with"]["fetch-depth"] == 0
     quality_commands = "\n".join(
@@ -171,6 +171,31 @@ def test_dual_ci_definitions_include_executable_tests_and_gitlab_unit_test_job()
     assert unit_test["stage"] == "test"
     assert unit_test["script"] == ["uv run python -m pytest -q --basetemp .pytest-ci"]
     assert {"lint", "unit-test", "frontend", "e2e", "secret-scan"}.issubset(gitlab)
+
+
+def test_github_actions_use_node24_capable_majors_without_an_insecure_node_fallback():
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    github = yaml.safe_load(workflow)
+    uses = [
+        step["uses"] for job in github["jobs"].values() for step in job["steps"] if "uses" in step
+    ]
+
+    assert uses.count("actions/checkout@v7") == 3
+    assert uses.count("actions/setup-python@v6") == 2
+    assert uses.count("actions/setup-node@v6") == 2
+    assert not any(
+        item.startswith("actions/checkout@") and item != "actions/checkout@v7" for item in uses
+    )
+    assert not any(
+        item.startswith("actions/setup-python@") and item != "actions/setup-python@v6"
+        for item in uses
+    )
+    assert not any(
+        item.startswith("actions/setup-node@") and item != "actions/setup-node@v6" for item in uses
+    )
+    assert "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION" not in workflow
+    assert workflow.count("python-version: 3.12.13") == 2
+    assert workflow.count("node-version: 22.23.0") == 2
 
 
 def test_github_quality_always_removes_its_exact_pytest_temp_root_before_secret_scan():
@@ -200,6 +225,25 @@ def test_github_quality_always_removes_its_exact_pytest_temp_root_before_secret_
     assert test_step_index < cleanup_index < secret_scan_index
     assert cleanup["if"] == "always()"
     assert cleanup["run"] == "rm -rf -- .pytest-ci"
+
+
+def test_container_pytest_synthetic_harness_exits_zero_after_expected_failure_mutation():
+    shell = shutil.which("pwsh") or shutil.which("powershell.exe")
+    assert shell is not None
+    script = ROOT / "scripts" / "test-container-pytest.ps1"
+    command = f"& '{str(script).replace("'", "''")}'; exit $LASTEXITCODE"
+
+    completed = subprocess.run(
+        [shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=30,
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "Container pytest synthetic cleanup tests passed." in completed.stdout
 
 
 def test_readme_cold_start_contract_covers_locked_setup_https_health_and_cleanup():
