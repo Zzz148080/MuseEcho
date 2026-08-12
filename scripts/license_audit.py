@@ -98,7 +98,10 @@ def audit_repository(repository_root: Path, policy_path: Path) -> list[str]:
             findings.append(f"{relative_path.as_posix()}: cannot read lockfile: {error}")
             continue
         expected_digest = npm_lock_sha256.get(relative_path.as_posix())
-        actual_digest = hashlib.sha256(lock_bytes).hexdigest()
+        canonical_lock_bytes = (
+            lock_bytes if b"\x00" in lock_bytes else lock_bytes.replace(b"\r\n", b"\n")
+        )
+        actual_digest = hashlib.sha256(canonical_lock_bytes).hexdigest()
         if expected_digest != actual_digest:
             findings.append(
                 f"npm inventory mismatch: {relative_path.as_posix()} sha256 "

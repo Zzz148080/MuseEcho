@@ -74,6 +74,26 @@ def test_license_audit_accepts_exact_lock_versions_and_approved_npm_licenses(tmp
     assert audit_repository(tmp_path, policy_path) == []
 
 
+def test_license_audit_canonicalizes_lockfile_line_endings_without_hiding_content_drift(
+    tmp_path: Path,
+) -> None:
+    policy_path = _write_repository(tmp_path)
+    lock_path = tmp_path / "package-lock.json"
+    lock_path.write_bytes(b'{\r\n  "lockfileVersion": 3,\r\n  "packages": {}\r\n}\r\n')
+    policy = json.loads(policy_path.read_text(encoding="utf-8"))
+    policy["npm_lock_sha256"]["package-lock.json"] = sha256(
+        b'{\n  "lockfileVersion": 3,\n  "packages": {}\n}\n'
+    ).hexdigest()
+    policy_path.write_text(json.dumps(policy), encoding="utf-8")
+
+    assert audit_repository(tmp_path, policy_path) == []
+
+    lock_path.write_bytes(b'{\r\n  "lockfileVersion": 4,\r\n  "packages": {}\r\n}\r\n')
+    findings = audit_repository(tmp_path, policy_path)
+    assert len(findings) == 1
+    assert findings[0].startswith("npm inventory mismatch: package-lock.json sha256 ")
+
+
 def test_license_audit_rejects_python_policy_version_drift(tmp_path: Path):
     policy_path = _write_repository(tmp_path)
     policy = json.loads(policy_path.read_text(encoding="utf-8"))
