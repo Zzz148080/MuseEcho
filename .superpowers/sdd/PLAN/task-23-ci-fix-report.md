@@ -884,3 +884,81 @@ Recorded with this round's local commit; no push was performed.
 The local host supplies Windows PowerShell, not Ubuntu `pwsh`; the remote
 runner remains the authoritative confirmation of the precise formatter output.
 No further implementation round is authorized by this task.
+
+## Fix round 11/15 — explicit combined API-failure curl state
+
+### Remote symptom and root cause
+
+GitHub Actions run `31608709397` showed that the remaining combined-failure
+failure was a fixture state error, not another PowerShell rendering variant.
+The product smoke now correctly defaults to `curl` on Linux. Because the
+synthetic fake bin is first on `PATH`, an omitted curl argument resolved the
+successful fake curl. The `combinedFailure` probe therefore had successful API
+health/frontend checks, printed the product success line, and only failed the
+Compose cleanup with exit `29`; the harness nevertheless expected an API
+primary failure. Windows had accidentally hidden this because its prior default
+resolved outside the fake bin.
+
+### Scenario-table self-review
+
+| Probe | Docker state | Curl state | Expected primary | Expected cleanup | Result |
+| --- | --- | --- | --- | --- | --- |
+| `partialUp` | `up-fail` | not reached | Compose start | none | retained |
+| `defaultCurl` | success | platform default resolves fake success | none | none | retained |
+| `cleanupOnly` | `down-fail` | explicit fake success | none | exact 29 | retained |
+| `wrongCleanupExitCode` | `down-fail` | explicit fake success, formatted as 290 | none | 290 rejected | retained |
+| `combinedFailure` | `down-fail` | explicit fake failure | API health | exact 29 | corrected |
+
+The harness saves/restores the new curl-mode environment variable. Every
+success, cleanup-only, API-primary-plus-cleanup, exact-code boundary, and
+formatter-normalization path remains exercised through a copied product smoke
+child; this is not a source-text assertion.
+
+### Behavioral TDD RED -> GREEN
+
+RED changed only `combinedFailure` to request the wished-for `-FailingCurl`
+state, before adding that interface or fake behavior:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\test-development-smoke.ps1'; exit $LASTEXITCODE"
+```
+
+Observed exit `1` with `A parameter cannot be found that matches parameter
+name 'FailingCurl'`. The failure occurred at the real lifecycle process
+boundary and proves the combined test no longer depends on platform command
+resolution.
+
+GREEN adds only an explicit `MUSEECHO_FAKE_CURL_MODE` state to the harness.
+`Invoke-SmokeProbe` rejects conflicting success/failure requests, passes the
+fake curl path explicitly for either requested state, and restores the prior
+environment afterwards. Both fixture forms obey it: Windows batch exits
+stable nonzero `17`; Unix shell prints a diagnostic and exits `17`. The
+combined probe requests failure, requires API-health primary plus Compose-down
+and exact `29`, and rejects the product success line.
+
+### Final verification
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\test-development-smoke.ps1'; exit $LASTEXITCODE"
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py -q --basetemp tmp\task23-ci-round11-focused
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py tests\unit\test_engineering_audit.py -q --basetemp tmp\task23-ci-round11-related
+.venv\Scripts\python.exe -m ruff format --check tests\unit\test_task20_final_delivery_contract.py
+.venv\Scripts\python.exe -m ruff check tests\unit\test_task20_final_delivery_contract.py
+git diff --check
+```
+
+Observed: lifecycle child exit `0` with `Development smoke synthetic lifecycle
+tests passed.`; focused delivery contracts `16 passed in 29.27s`; related
+delivery plus engineering contracts `108 passed in 43.09s`; Ruff format/check,
+PowerShell parser (`0` errors), and diff whitespace validation all exited `0`.
+
+### Commit
+
+Recorded with this round's local commit; no push was performed.
+
+### Concerns
+
+The local host verifies the Windows batch fixture and PowerShell process
+boundary. Ubuntu `pwsh` remains the remote authority for execution of the Unix
+shell fixture; its behavior is intentionally specified by executable fixture
+content rather than a platform-dependent omitted command.

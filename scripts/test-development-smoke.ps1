@@ -19,6 +19,7 @@ $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { '
 $savedPath = $env:PATH
 $savedLog = $env:MUSEECHO_FAKE_DOCKER_LOG
 $savedMode = $env:MUSEECHO_FAKE_DOCKER_MODE
+$savedCurlMode = $env:MUSEECHO_FAKE_CURL_MODE
 $cleanupExitCodePattern = '(?<!\d)code[ \t]+29(?!\d)'
 $ansiSgr = [string][char]27
 
@@ -26,6 +27,7 @@ function Invoke-SmokeProbe {
     param(
         [Parameter(Mandatory = $true)][string]$Mode,
         [switch]$SuccessfulCurl,
+        [switch]$FailingCurl,
         [switch]$DefaultCurl,
         [switch]$FormatCleanupFailure,
         [switch]$AddAnsiCleanupFormatting,
@@ -33,6 +35,10 @@ function Invoke-SmokeProbe {
     )
     [System.IO.File]::WriteAllText($dockerLog, '', [Text.UTF8Encoding]::new($false))
     $env:MUSEECHO_FAKE_DOCKER_MODE = $Mode
+    if ($SuccessfulCurl -and $FailingCurl) {
+        throw 'a curl probe cannot request both success and failure'
+    }
+    $env:MUSEECHO_FAKE_CURL_MODE = if ($FailingCurl) { 'failure' } else { 'success' }
     $savedErrorPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
@@ -43,7 +49,7 @@ function Invoke-SmokeProbe {
                 '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $runnerPath,
                 '-DockerCommand', $fakeDockerPath
             )
-            if ($SuccessfulCurl) { $arguments += @('-CurlCommand', $fakeCurlPath) }
+            if ($SuccessfulCurl -or $FailingCurl) { $arguments += @('-CurlCommand', $fakeCurlPath) }
         }
         $output = & $shell @arguments 2>&1 | Out-String
         if ($FormatCleanupFailure) {
@@ -113,10 +119,14 @@ exit 0
         if ($LASTEXITCODE -ne 0) { throw 'could not make fake Docker executable' }
     }
     $fakeCurlContents = if ($isWindowsPlatform) {
-        "@echo off`r`necho %*| findstr /c:`"/api/health`" >nul && echo {`"status`":`"ready`"} && exit /b 0`r`necho ^<div id=`"root`"^> && exit /b 0`r`n"
+        "@echo off`r`nif `"%MUSEECHO_FAKE_CURL_MODE%`"==`"failure`" exit /b 17`r`necho %*| findstr /c:`"/api/health`" >nul && echo {`"status`":`"ready`"} && exit /b 0`r`necho ^<div id=`"root`"^> && exit /b 0`r`n"
     } else {
         @'
 #!/bin/sh
+if [ "$MUSEECHO_FAKE_CURL_MODE" = "failure" ]; then
+  printf '%s\n' 'fake curl failed' >&2
+  exit 17
+fi
 case "$*" in
   */api/health*) echo '{"status":"ready"}' ;;
   *) echo '<div id="root">' ;;
@@ -185,14 +195,15 @@ exit `$LASTEXITCODE
         throw "development smoke accepted cleanup exit code other than 29`n$($wrongCleanupExitCode.Output)"
     }
 
-    $combinedFailure = Invoke-SmokeProbe -Mode 'down-fail'
+    $combinedFailure = Invoke-SmokeProbe -Mode 'down-fail' -FailingCurl
     if ($combinedFailure.ExitCode -eq 0) {
         throw 'development smoke swallowed its cleanup failure'
     }
     if (
         $combinedFailure.SemanticOutput -notmatch 'development HTTPS API health probe failed' -or
         $combinedFailure.SemanticOutput -notmatch 'docker compose down failed with exit' -or
-        $combinedFailure.SemanticOutput -notmatch $cleanupExitCodePattern
+        $combinedFailure.SemanticOutput -notmatch $cleanupExitCodePattern -or
+        $combinedFailure.SemanticOutput -match 'Documented HTTPS same-origin development smoke passed'
     ) {
         throw "development smoke did not report both primary and cleanup failures`n$($combinedFailure.Output)"
     }
@@ -204,6 +215,7 @@ finally {
     $env:PATH = $savedPath
     $env:MUSEECHO_FAKE_DOCKER_LOG = $savedLog
     $env:MUSEECHO_FAKE_DOCKER_MODE = $savedMode
+    $env:MUSEECHO_FAKE_CURL_MODE = $savedCurlMode
     if (Test-Path -LiteralPath $fixtureRoot) {
         [System.IO.Directory]::Delete($fixtureRoot, $true)
     }
