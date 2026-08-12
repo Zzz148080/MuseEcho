@@ -176,17 +176,28 @@ def test_dual_ci_definitions_include_executable_tests_and_gitlab_unit_test_job()
 def test_github_quality_always_removes_its_exact_pytest_temp_root_before_secret_scan():
     github = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     steps = github["jobs"]["quality"]["steps"]
-    cleanup_index = next(
+    test_step_indexes = [
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Unit and integration tests"
+    ]
+    cleanup_indexes = [
         index
         for index, step in enumerate(steps)
         if step.get("name") == "Clean CI pytest temporary root"
-    )
-    secret_scan_index = next(
+    ]
+    secret_scan_indexes = [
         index for index, step in enumerate(steps) if step.get("name") == "Repository secret scan"
-    )
+    ]
+
+    assert len(test_step_indexes) == len(cleanup_indexes) == len(secret_scan_indexes) == 1
+    test_step_index = test_step_indexes[0]
+    cleanup_index = cleanup_indexes[0]
+    secret_scan_index = secret_scan_indexes[0]
     cleanup = steps[cleanup_index]
 
-    assert cleanup_index < secret_scan_index
+    assert "uv run python -m pytest -q --basetemp .pytest-ci" in steps[test_step_index]["run"]
+    assert test_step_index < cleanup_index < secret_scan_index
     assert cleanup["if"] == "always()"
     assert cleanup["run"] == "rm -rf -- .pytest-ci"
 
