@@ -108,6 +108,16 @@ _TRIVY_PREFIX = (
 # This complete independent inventory prevents an audit author from replacing a
 # real RED/GREEN or security gate with another command while keeping exit codes.
 FIXED_EVIDENCE_CONTRACTS = {
+    "E012": (
+        "CURRENT_COMMAND",
+        ".venv/Scripts/python.exe -m ruff format --check src tests scripts; "
+        ".venv/Scripts/python.exe -m ruff check .; "
+        ".venv/Scripts/python.exe -m mypy src; "
+        ".venv/Scripts/python.exe -m mypy --platform linux src",
+        "scripts/check_engineering_audit.py",
+        "93 files formatted; lint passed; Windows-host and explicit Linux strict "
+        "mypy each passed 46 source files",
+    ),
     "E002": (
         "RED_COMMAND",
         "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "

@@ -685,6 +685,23 @@ def test_current_acceptance_evidence_is_a_fixed_engineering_contract(tmp_path: P
     )
 
 
+@pytest.mark.parametrize(
+    ("column", "value"),
+    (
+        ("Command", "python -c pass"),
+        ("Result", "forged static quality gates passed"),
+    ),
+)
+def test_current_dual_platform_type_evidence_is_a_fixed_engineering_contract(
+    tmp_path: Path, column: str, value: str
+) -> None:
+    mutation = _replace_table_cell(_audit_text(), EVIDENCE_HEADING, "E012", column, value)
+
+    assert "E012 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
+
 def test_checker_cli_help_is_runnable_outside_the_repository(tmp_path: Path) -> None:
     completed = subprocess.run(
         [sys.executable, str(ROOT / "scripts" / "check_engineering_audit.py"), "--help"],
