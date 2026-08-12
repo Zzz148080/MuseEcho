@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import subprocess
+import tomllib
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,17 @@ import yaml
 from scripts.check_acceptance_matrix import load_audit
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_isolated_project_build_backend_is_exactly_constrained_by_the_lock():
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    locked = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
+
+    assert project["build-system"]["requires"] == ["setuptools==80.9.0"]
+    assert project["tool"]["uv"]["build-constraint-dependencies"] == ["setuptools==80.9.0"]
+    assert locked["manifest"]["build-constraints"] == [
+        {"name": "setuptools", "specifier": "==80.9.0"}
+    ]
 
 
 def _needs_artifact(job: dict[str, Any], dependency: str) -> bool:
@@ -47,8 +59,7 @@ def test_app_image_runs_the_installed_first_party_release_distribution():
         text=True,
         timeout=15,
     )
-    if daemon.returncode != 0:
-        pytest.skip("Docker daemon is unavailable for the production packaging boundary")
+    assert daemon.returncode == 0, daemon.stdout + daemon.stderr
 
     image = f"museecho-app:packaging-contract-{os.getpid()}"
     try:
@@ -100,6 +111,68 @@ def test_app_image_runs_the_installed_first_party_release_distribution():
             text=True,
             timeout=30,
         )
+
+
+def test_packaging_boundary_fails_closed_when_a_present_docker_client_is_broken(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(shutil, "which", lambda command: "docker" if command == "docker" else None)
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(
+            args=args[0], returncode=41, stdout="", stderr="synthetic Docker failure"
+        ),
+    )
+
+    with pytest.raises(AssertionError, match="synthetic Docker failure"):
+        test_app_image_runs_the_installed_first_party_release_distribution()
+
+
+def test_app_dev_executes_the_compose_mounted_source_tree(tmp_path: Path):
+    docker = shutil.which("docker")
+    if docker is None:
+        pytest.skip("Docker is unavailable for the development source boundary")
+
+    source = tmp_path / "src"
+    shutil.copytree(ROOT / "src", source)
+    marker = "round14-live-source-marker"
+    (source / "museecho" / "_live_source_probe.py").write_text(
+        f"VALUE = {marker!r}\n", encoding="utf-8"
+    )
+    override = tmp_path / "compose.override.yaml"
+    override.write_text(
+        f"services:\n  app-dev:\n    volumes:\n      - {source.as_posix()}:/app/src:ro\n",
+        encoding="utf-8",
+    )
+
+    completed = subprocess.run(
+        [
+            docker,
+            "compose",
+            "-f",
+            str(ROOT / "compose.yaml"),
+            "-f",
+            str(override),
+            "--profile",
+            "development",
+            "run",
+            "--rm",
+            "--no-deps",
+            "app-dev",
+            "python",
+            "-c",
+            "from museecho._live_source_probe import VALUE; print(VALUE)",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=60,
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert marker in completed.stdout
 
 
 def test_gitlab_secret_scanner_receives_and_requires_the_built_frontend_bundle():

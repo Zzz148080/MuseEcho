@@ -8,6 +8,9 @@ resolution-markers = [
     "python_full_version < '3.13'",
 ]
 
+[manifest]
+build-constraints = [{ name = "setuptools", specifier = "==80.9.0" }]
+
 [[package]]
 name = "alembic"
 version = "1.19.0"

@@ -1043,7 +1043,94 @@ workflow, runtime version, or unrelated file changed.
 
 ### Commit
 
+`8fcb78d980db0507774228020136ef53366bbe6d` — `fix: install first-party release package`.
+
+## Fix round 14/15 — reproducible build backend and development source precedence
+
+### Independent review findings and root causes
+
+Round 13's independent review rejected push because its new isolated PEP 517
+build still declared floating `setuptools>=75.0`; `--frozen` did not constrain
+that separate build environment. It also found that removing production
+`PYTHONPATH=/app/src` made the wheel the sole production source, but left
+`app-dev` watching a bind mount that Python did not import. Finally, the real
+image regression skipped any nonzero Docker daemon probe, including a broken
+Docker-capable CI host.
+
+The three root causes were independent: an unrepresented build dependency, a
+development-only import path omitted while removing the production mask, and
+an over-broad test skip. Production remains wheel-only.
+
+### Three behavioral REDs
+
+The build contract RED observed `build-system.requires ==
+["setuptools>=75.0"]` instead of the exact reviewed version. A simulated
+present Docker client returning exit 41 caused the production packaging test
+to skip instead of fail. After rebuilding the current round-13 image (avoiding
+a stale local image that still carried old `PYTHONPATH`), a real Compose
+`app-dev` run with a temporary mounted module failed with
+`ModuleNotFoundError: museecho._live_source_probe`.
+
+```powershell
+..\..\.venv\Scripts\python.exe -m pytest tests/unit/test_task20_final_delivery_contract.py -q -k "isolated_project_build_backend or packaging_boundary_fails_closed" --basetemp tmp/task23-ci-round14-red-cheap
+..\..\.venv\Scripts\python.exe -m pytest tests/unit/test_task20_final_delivery_contract.py -q -k app_dev_executes_the_compose_mounted_source_tree --basetemp tmp/task23-ci-round14-red-dev-current
+```
+
+Observed: first command exit `1` (`1 failed, 1 skipped`); second exit `1` with
+the mounted module absent from the executed package.
+
+### Minimal implementation and GREEN
+
+- Pinned PEP 518 to `setuptools==80.9.0` and added uv 0.11.29's
+  `build-constraint-dependencies` setting. Regenerated `uv.lock`; its manifest
+  now records the exact build constraint.
+- Added `PYTHONPATH=/app/src` only to `app-dev`; the production image and common
+  environment remain wheel-only.
+- A present Docker client/daemon failure now fails closed. Only absence of the
+  Docker client retains the explicit skip used by the authoritative Linux
+  pytest container without Docker.
+
+The three focused contracts passed (`3 passed`). The complete Task 20 delivery
+contract rebuilt/probed the real image and passed (`20 passed in 139.37s`).
+The rebuilt image retained MuseEcho 0.1.0 raw METADATA SHA-256
+`b0e2c880b90b71427aae1e0ede27d9af1a1991808026978a8e638ba4af955f12`
+and 63 Python distributions, so no license identity changed. Exact release
+license assembly passed: `debian=298, python=63, alpine=32, go=145`.
+
+The existing offline vulnerability auditor was rerun because `pyproject.toml`,
+`uv.lock`, and `compose.yaml` are deliberately in the runtime boundary. It
+reported the same exact raw findings and reviewed one-CVE OpenVEX statements;
+the VEX digest remained `76b539cb...`. Only the derived runtime boundary and
+inventory artifact changed; the new inventory SHA is `0a055ffd...`. The
+normalized manifest/checker binding was recomputed with the checker algorithm,
+not guessed. The final vulnerability/engineering gate reported `123 passed in
+21.45s`.
+
+### Final verification and self-review
+
+```powershell
+..\..\.venv\Scripts\python.exe -m pytest tests/unit/test_image_vulnerability_audit.py tests/unit/test_engineering_audit.py -q --basetemp tmp/task23-ci-round14-derived-terminal
+..\..\.venv\Scripts\python.exe -m ruff format --check tests/unit/test_task20_final_delivery_contract.py scripts/check_engineering_audit.py
+..\..\.venv\Scripts\python.exe -m ruff check tests/unit/test_task20_final_delivery_contract.py scripts/check_engineering_audit.py
+git diff --check
+```
+
+The app build uses isolated PEP 517 with one exact lock-backed backend; no
+build-isolation escape hatch was introduced. Production has neither source
+copy nor source `PYTHONPATH`; development explicitly executes its read-only
+mounted source. No CVE disposition, package finding, runtime version, license
+approval, identity gate, or non-root control was weakened.
+
+### Commit
+
 Recorded with this round's local commit; no push performed.
+
+### Concerns
+
+GitHub Actions remains the authoritative remote confirmation. The real Compose
+test currently proves mounted source precedence at an executed container
+boundary; uvicorn's existing `--reload --reload-dir /app/src` supplies reload
+watching, while remote development smoke exercises the full service lifecycle.
 
 ## Fix round 13/15 — install the first-party release distribution
 
