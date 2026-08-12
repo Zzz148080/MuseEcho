@@ -4694,7 +4694,7 @@
       "museecho@0.1.0": {
         "approved_license": "FIRST-PARTY",
         "declared_license": "",
-        "metadata_sha256": "0fe3edda367a495d7e62662e8c6fb4d31378442739f0163c64985e545b4c7df2"
+        "metadata_sha256": "f47b8e217f2fa30472958405b79c6f971133793e243ee0edbcdb75bbbe3a8973"
       },
       "narwhals@2.24.0": {
         "approved_license": "MIT",

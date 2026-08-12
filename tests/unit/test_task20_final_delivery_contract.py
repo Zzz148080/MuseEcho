@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -8,6 +9,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+import pytest
 import yaml
 
 from scripts.check_acceptance_matrix import load_audit
@@ -27,8 +29,77 @@ def test_docker_context_excludes_generated_python_package_metadata():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
 
     assert "**/*.egg-info" in dockerignore
-    assert "COPY --chown=10001:10001 src/ /app/src/" in dockerfile
+    assert "COPY src/ /app/src/" in dockerfile
+    assert "COPY --chown=10001:10001 src/ /app/src/" not in dockerfile
+    assert "PYTHONPATH=/app/src" not in dockerfile
     assert Path("src/museecho.egg-info").match("**/*.egg-info")
+
+
+def test_app_image_runs_the_installed_first_party_release_distribution():
+    docker = shutil.which("docker")
+    if docker is None:
+        pytest.skip("Docker is unavailable for the production packaging boundary")
+    daemon = subprocess.run(
+        [docker, "version", "--format", "{{.Server.Version}}"],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=15,
+    )
+    if daemon.returncode != 0:
+        pytest.skip("Docker daemon is unavailable for the production packaging boundary")
+
+    image = f"museecho-app:packaging-contract-{os.getpid()}"
+    try:
+        built = subprocess.run(
+            [docker, "build", "--target", "app", "--tag", image, "."],
+            cwd=ROOT,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=600,
+        )
+        assert built.returncode == 0, built.stdout + built.stderr
+
+        probe = subprocess.run(
+            [
+                docker,
+                "run",
+                "--rm",
+                "--network",
+                "none",
+                image,
+                "/app/.venv/bin/python",
+                "-c",
+                (
+                    "import importlib.metadata as m, museecho, os; "
+                    "d=m.distribution('museecho'); "
+                    "assert d.version == '0.1.0'; "
+                    "assert d.files; "
+                    "assert any(str(p).endswith('museecho/cli.py') for p in d.files); "
+                    "assert 'site-packages' in museecho.__file__; "
+                    "assert os.geteuid() == 10001; "
+                    "assert not {'pytest', 'ruff', 'mypy'} & "
+                    "{d.metadata['Name'].lower() for d in m.distributions()}"
+                ),
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=30,
+        )
+        assert probe.returncode == 0, probe.stdout + probe.stderr
+    finally:
+        subprocess.run(
+            [docker, "image", "rm", "--force", image],
+            cwd=ROOT,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=30,
+        )
 
 
 def test_gitlab_secret_scanner_receives_and_requires_the_built_frontend_bundle():

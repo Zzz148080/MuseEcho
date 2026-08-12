@@ -1044,3 +1044,98 @@ workflow, runtime version, or unrelated file changed.
 ### Commit
 
 Recorded with this round's local commit; no push performed.
+
+## Fix round 13/15 — install the first-party release distribution
+
+### Root cause and policy provenance
+
+GitHub Actions run `31613932078` built and smoked the product successfully but
+the exact installed-component audit failed with `missing [museecho@0.1.0]`.
+The Dockerfile had only the dependency-cache phase `uv sync --frozen
+--no-install-project`; it then copied source into the runtime and used
+`PYTHONPATH=/app/src`. Thus imports worked without an installed first-party
+distribution. Task 20 simultaneously taught the inventory to accept first-party
+`PKG-INFO` and reviewed `museecho@0.1.0`, so the implementation and audit
+contract had diverged.
+
+The old policy identity was also traced rather than bypassed. Current reviewed
+metadata text has raw SHA-256 `b0e2c880b90b71427aae1e0ede27d9af1a1991808026978a8e638ba4af955f12`.
+The inventory's canonical object digest with filename `PKG-INFO` is exactly the
+old policy value `0fe3edda...`; that came from generated, ignored egg-info in a
+dirty Task 20 image. A clean non-editable install emits the identical metadata
+as `METADATA`, whose canonical identity is `f47b8e217f2fa30472958405b79c6f971133793e243ee0edbcdb75bbbe3a8973`.
+No declared dependency, approved license, or license text changed.
+
+### Behavioral TDD RED → GREEN
+
+The new regression builds the real final `app` target from the clean Docker
+context, then probes it with Docker networking disabled. It requires the
+installed MuseEcho 0.1.0 distribution, a real packaged `museecho/cli.py`, an
+import path under site-packages, UID 10001, and absence of pytest/Ruff/mypy.
+
+RED before changing the Dockerfile:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/unit/test_task20_final_delivery_contract.py -q --basetemp tmp/task23-ci-round13-red -k installed_first_party_release_distribution
+```
+
+Observed exit `1` after the image built: the no-network container probe raised
+`importlib.metadata.PackageNotFoundError: No package metadata was found for
+museecho` (`1 failed, 16 deselected in 174.51s`).
+
+The minimal production fix preserves the cached dependency phase, copies
+`src/` into the builder, and performs the missing second phase with `uv sync
+--frozen --no-dev --no-editable --compile-bytecode`. The final image now copies
+only that complete virtual environment; the redundant runtime source copy and
+`PYTHONPATH` masking path were removed. GREEN:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/unit/test_task20_final_delivery_contract.py -q --basetemp tmp/task23-ci-round13-green -k installed_first_party_release_distribution
+```
+
+Observed exit `0`, `1 passed, 16 deselected in 98.11s`.
+
+### Exact inventories and security bindings
+
+The rebuilt `museecho-app:round13-license` image generated 63 Python
+components. Its exact MuseEcho entry has `metadata_sha256=f47b8e...`; the dev
+package set was empty. Assembly against the reviewed full release policy and
+existing exact gateway inventories returned exit `0`:
+
+```text
+Release license audit passed: debian=298, python=63, alpine=32, go=145.
+```
+
+The Dockerfile is part of the exact vulnerability runtime boundary, so its
+normalized hash was mechanically changed from `708d11ee...` to `ec787fb...`.
+No CVE/VEX statement, finding, control, package, probe, or evidence-file hash
+changed. The existing vulnerability auditor was rerun in Linux with
+`--network none` against the retained raw scan/package ownership/release
+identity. It passed and regenerated only the derived VEX/inventory boundary
+documents. Their authoritative checker digests are VEX `76b539cb...` and
+inventory `687c3085...`; the policy/runtime/manifest bindings were recomputed
+and the completion checker accepted the retained materials.
+
+### Final verification and self-review
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/unit/test_task20_final_delivery_contract.py tests/unit/test_release_license_inventory.py tests/unit/test_image_vulnerability_audit.py tests/unit/test_engineering_audit.py -q --basetemp tmp/task23-ci-round13-verify
+.\.venv\Scripts\python.exe -m ruff format --check tests/unit/test_task20_final_delivery_contract.py scripts/check_engineering_audit.py
+.\.venv\Scripts\python.exe -m ruff check tests/unit/test_task20_final_delivery_contract.py scripts/check_engineering_audit.py
+git diff --check
+```
+
+Observed exit `0`: `151 passed in 51.53s`; Ruff format/check and whitespace
+validation were clean. The install is non-editable, locked, contains no dev
+tools, keeps the non-root user and runtime command, preserves the dependency
+cache boundary, and makes site-packages the single source of application code.
+
+### Concerns
+
+The authoritative remote confirmation is still the next GitHub distribution
+run, especially its Buildx tar/release-identity and Trivy steps. No push was
+performed in this implementation round.
+
+### Commit
+
+Recorded with this round's local commit; no push performed.

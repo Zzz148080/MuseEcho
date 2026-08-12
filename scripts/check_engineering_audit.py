@@ -62,7 +62,7 @@ FINDING_CONTRACTS = {
 }
 
 SECURITY_MANIFEST_PATH = "docs/audits/evidence/task23-security-manifest.json"
-SECURITY_MANIFEST_SHA256 = "c662ae5b52167dfb2dd74b52fb997e6f302820b45682ee08c3506169f4e83fd9"
+SECURITY_MANIFEST_SHA256 = "033f47fb70fb6248276bb0d85b29ec9f57a43f8bc6a540751e1977314b27db19"
 
 SECURITY_MATERIAL_FILENAMES = (
     "app-raw-review1.json",
@@ -339,7 +339,7 @@ SECURITY_MANIFEST_CONTRACT = {
         ),
         "distinct_cves": 67,
         "high_occurrences": 169,
-        "inventory_sha256": ("2f47a957d0cceac194079d4f07cfa8e3952c12574fd1eee66c29f3c9fbd1e507"),
+        "inventory_sha256": ("687c30855ad6a2c1d53de633d47c60816835ef9bbc9310795174e35c6ef410d6"),
         "occurrences": 181,
         "package_files_sha256": (
             "0568117b227db2891f82aab0022e5b4bc65c1eabfa5e3f5e282aa6bc746ce470"
@@ -356,9 +356,9 @@ SECURITY_MANIFEST_CONTRACT = {
         "formal_dockerfile_build_reason": (
             "locked pip and apt BuildKit layers unavailable under network none"
         ),
-        "policy_sha256": "d01cc0559b7dffe6e2b93617493ae5a93ca99cb2630f6fc01c899a30b8013679",
+        "policy_sha256": "bfeaf94a6f32c8857cf0b60186f635f3ae229289b0f32507d4197354e9086f10",
         "runtime_boundary_sha256": (
-            "92f1f7b034daed01a6edac12de7293b56ea1abfd37b5e9448bb593c4a6079958"
+            "b71a7fbdb4536e391a3aa286180e193d7db636a50367dd24dea195c80badee3b"
         ),
         "task20_base_daemon_image_id": (
             "sha256:96cd900d6c17c360b01665362330aca8ef032b0d4d1f140659a52265ce47f39c"
