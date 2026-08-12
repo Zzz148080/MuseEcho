@@ -19,7 +19,7 @@ $shell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { '
 $savedPath = $env:PATH
 $savedLog = $env:MUSEECHO_FAKE_DOCKER_LOG
 $savedMode = $env:MUSEECHO_FAKE_DOCKER_MODE
-$cleanupExitCodePattern = 'docker compose down failed with exit(?:\s|At\s+[^\r\n]+|\+\s+[^\r\n]+|~+|\r?\n)+code 29(?!\d)'
+$cleanupExitCodePattern = '(?<!\d)code[ \t]+29(?!\d)'
 $ansiSgr = [string][char]27
 
 function Invoke-SmokeProbe {
@@ -49,7 +49,12 @@ function Invoke-SmokeProbe {
         if ($FormatCleanupFailure) {
             $output = $output.Replace(
                 'docker compose down failed with exit code 29',
-                "docker compose down failed with exit`nAt /tmp/development-smoke.ps1:84 char:5`n+     throw `$cleanupFailure`ncode $FormattedCleanupExitCode"
+                'docker compose down failed with exit'
+            )
+            $output = [regex]::Replace(
+                $output,
+                'code 29(?!\d)',
+                "`n      | code $FormattedCleanupExitCode"
             )
         }
         if ($AddAnsiCleanupFormatting) {
@@ -57,8 +62,9 @@ function Invoke-SmokeProbe {
                 'docker compose down failed with exit',
                 "${ansiSgr}[31;1mdocker${ansiSgr}[0m ${ansiSgr}[31;1mcompose down failed with exit${ansiSgr}[0m"
             )
-            $output = $output.Replace(
-                'code 29',
+            $output = [regex]::Replace(
+                $output,
+                'code 29(?!\d)',
                 "${ansiSgr}[31;1mcode 29${ansiSgr}[0m"
             )
         }
@@ -167,6 +173,7 @@ exit `$LASTEXITCODE
     }
     if (
         $cleanupOnly.SemanticOutput -notmatch 'development smoke cleanup failed' -or
+        $cleanupOnly.SemanticOutput -notmatch 'docker compose down failed with exit' -or
         $cleanupOnly.SemanticOutput -notmatch $cleanupExitCodePattern -or
         $cleanupOnly.SemanticOutput -match 'HTTPS API health probe failed'
     ) {
@@ -184,6 +191,7 @@ exit `$LASTEXITCODE
     }
     if (
         $combinedFailure.SemanticOutput -notmatch 'development HTTPS API health probe failed' -or
+        $combinedFailure.SemanticOutput -notmatch 'docker compose down failed with exit' -or
         $combinedFailure.SemanticOutput -notmatch $cleanupExitCodePattern
     ) {
         throw "development smoke did not report both primary and cleanup failures`n$($combinedFailure.Output)"

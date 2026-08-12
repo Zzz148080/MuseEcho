@@ -805,3 +805,82 @@ the remote runner remains the authoritative environment confirmation. Ruff is
 not a PowerShell formatter and reports expected `invalid-syntax` if pointed at
 the `.ps1` fixture; Python Ruff checks were clean and the PowerShell parser plus
 behavioral lifecycle harness were run instead.
+
+## Fix round 10/10 — semantic cleanup facts across pwsh continuation gutters
+
+### Root cause
+
+GitHub Actions run `31606620285`, quality job `94147088414`, still failed the
+two development-smoke behavioral tests after ANSI normalization. The captured
+child output preserved all required cleanup facts, but Linux `pwsh` inserted
+its visual continuation gutter between the Compose failure category and exit
+code: `docker compose down failed with exit`, followed by a newline and
+`      | code 29`. The previous single bridging regex enumerated
+human-oriented rendering fragments and rejected `|`; its architecture coupled
+semantic requirements to presentation details.
+
+### TDD RED → GREEN
+
+The existing real process-boundary fixture now transforms the copied smoke's
+actual cleanup output into the remote gutter shape, and applies the same
+formatter shape to the `290` rejection probe. This is behavioral coverage: the
+harness invokes the copied smoke child, captures its output, then verifies the
+observable cleanup contract rather than searching source text.
+
+RED, before replacing the coupled bridge assertion:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\test-development-smoke.ps1'; exit $LASTEXITCODE"
+```
+
+Observed exit `1`, with `development smoke did not isolate cleanup-only
+failure`. Diagnostics showed the real child error with ANSI-decorated
+`docker compose down failed with exit`, then `      | code 29`; the old matcher
+rejected the gutter despite the cleanup marker, Compose-down category, exact
+code, and absence of the API-health primary failure.
+
+The minimal correction keeps raw `Output` for diagnostics and checks the
+ANSI-stripped `SemanticOutput` as independent facts: cleanup-only marker;
+Compose-down-with-exit category; exact numeric `code 29` with digit
+boundaries; and no API-health primary failure. The combined failure continues
+to require its API-health primary category plus the Compose-down category and
+exact `29`. The `290` probe remains an explicit rejection. No product smoke,
+curl selection, fake-command exit behavior, cleanup mechanics, or process-exit
+handling changed.
+
+GREEN:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\test-development-smoke.ps1'; exit $LASTEXITCODE"
+```
+
+Observed exit `0`: `Development smoke synthetic lifecycle tests passed.` The
+gutter-formatted cleanup-only, combined-failure, and `290` rejection probes all
+completed within this lifecycle harness. PowerShell parser validation reported
+zero errors in the same invocation.
+
+### Final verification and self-review
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py -q --basetemp tmp\task23-ci-round10-focused
+.venv\Scripts\python.exe -m pytest tests\unit\test_task20_final_delivery_contract.py tests\unit\test_engineering_audit.py -q --basetemp tmp\task23-ci-round10-related
+.venv\Scripts\python.exe -m ruff format --check tests\unit\test_task20_final_delivery_contract.py
+.venv\Scripts\python.exe -m ruff check tests\unit\test_task20_final_delivery_contract.py
+git diff --check
+```
+
+Observed exit `0`: focused delivery contracts `16 passed in 34.11s`; related
+delivery plus engineering contracts `108 passed in 47.63s`; Ruff format
+reported `1 file already formatted`; Ruff check reported `All checks passed!`;
+and `git diff --check` was clean. The PowerShell lifecycle harness and parser
+check also exited `0` after the production change.
+
+### Commit
+
+Recorded with this round's local commit; no push was performed.
+
+### Concerns
+
+The local host supplies Windows PowerShell, not Ubuntu `pwsh`; the remote
+runner remains the authoritative confirmation of the precise formatter output.
+No further implementation round is authorized by this task.
