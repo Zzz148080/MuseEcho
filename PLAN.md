@@ -22,8 +22,9 @@
 > **Task 24 current status:** `MUSEECHO V1 PARTIALLY READY`. The Product Audit,
 > fixed 17-section Delivery Report, fail-closed validator, and blank student
 > reflection template are complete, so Task 24 itself is not a blocker. Task 23
-> PR #1 merged at `79d87f4` after GitHub quality, E2E, and distribution passed.
-> GitLab, the Task 24 branch-tip gate, cloud/public/target-server smoke and
+> PR #1 merged at `79d87f4`; Task 24 run `31687703913` also passed GitHub
+> quality, E2E, and distribution at head `de5bc6f`. GitLab,
+> cloud/public/target-server smoke and
 > rollback, formal offline build ENG-010, trusted-certificate controller browser
 > observation, and student gates remain open.
 <!-- TASK24-CURRENT-STATUS:END -->

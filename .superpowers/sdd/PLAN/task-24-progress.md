@@ -13,9 +13,9 @@ RED/GREEN:
   could be swapped across delivery sections or blocker owners.
 - Reviewer RED: 2 failures proved Product Audit Scope/Method/flow/notes and
   delivery conclusion/reason/closure could be rewritten into false PASS claims.
-- GREEN: 23 Task 24 tests; safe Task 24/Functional/README contract tests;
+- GREEN: 24 Task 24 tests; safe Task 24/Functional/README contract tests;
   Functional CLI 34 PASS / 6 PARTIAL / 0 FAIL; Engineering schema 10 findings;
-  delivery CLI 17 sections / 15 evidence / 5 blockers; scoped Ruff and strict
+  delivery CLI 17 sections / 16 evidence / 5 blockers; scoped Ruff and strict
   mypy; synthetic and real Secret scan over 216 files; diff-check.
 
 Current product-audit truth:
@@ -30,11 +30,12 @@ Current product-audit truth:
   contract invoked Compose build; it is not claimed as passed and left no Docker
   resources.
 
-Readiness remains MUSEECHO V1 PARTIALLY READY. Open classes are Task 24
-branch-tip/GitLab CI, cloud/public/target operations, formal offline build
+Readiness remains MUSEECHO V1 PARTIALLY READY. Task 24 GitHub run
+`31687703913` passed quality, E2E, and distribution at implementation head
+`de5bc6f`. Open classes are GitLab CI, cloud/public/target operations, formal offline build
 ENG-010, trusted-certificate controller observation, and student-owned manual
 acceptance/reflection. Next gates: independent review, commit/push, GitHub PR
-checks, merge, and final remote verification.
+evidence commit, latest-tip GitHub checks, merge, and final remote verification.
 
 Implementation commit: `d4b1245e056a5017b9e3d71dbd086f6f28d6f55c`. The remaining work is publish/remote CI,
 merge, and final remote verification; no product implementation is pending.

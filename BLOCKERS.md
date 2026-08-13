@@ -18,8 +18,8 @@ the Task 24 block below. At Task 23 closure, the blocker keys were `GitLab`,
 are complete artifacts, so Task 24 is not a current blocker. Current blockers
 map exactly to `DELIVERY_REPORT.md`:
 
-- `BLK-REMOTE-CI`: Task 23 PR #1 merged with GitHub quality, E2E, and
-  distribution green; GitLab and the Task 24 branch-tip gate remain not run;
+- `BLK-REMOTE-CI`: Task 23 PR #1 merged and Task 24 run `31687703913` passed
+  GitHub quality, E2E, and distribution; GitLab remains not run;
 - `BLK-CLOUD-PUBLIC-TARGET`: target-server performance, Tencent Cloud/public
   trusted TLS, cross-network and 24-hour smoke, backup/restore, and live rollback
   remain absent;

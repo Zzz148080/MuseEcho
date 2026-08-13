@@ -7,7 +7,8 @@ Current delivery status is `MUSEECHO V1 PARTIALLY READY`. Task 24 now provides
 the Product Audit, 17-section delivery report, strict validator, and a blank
 student-owned reflection template; Task 24 itself is no longer a blocker.
 Task 23 PR #1 is merged with GitHub quality, E2E, and distribution green.
-Remaining gates are GitLab plus the Task 24 branch-tip merge gate, Tencent
+Task 24 GitHub quality, E2E, and distribution passed at its recorded
+implementation boundary. Remaining gates are GitLab, Tencent
 Cloud/public/target-server smoke and rollback, formal offline build ENG-010,
 controller browser observation behind trusted TLS, and student acceptance.
 <!-- TASK24-CURRENT-STATUS:END -->

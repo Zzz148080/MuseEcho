@@ -36,7 +36,7 @@ EXPECTED_SECTION_TITLES = (
 EXPECTED_SECTION_IDS = tuple(item[0] for item in EXPECTED_SECTION_TITLES)
 EXPECTED_PRODUCT_AUDIT_IDS = tuple(f"PA-{index:02d}" for index in range(1, 14))
 EXPECTED_STUDENT_CHECK_IDS = tuple(f"STU-{index:02d}" for index in range(1, 7))
-EXPECTED_EVIDENCE_IDS = tuple(f"DEL-{index:03d}" for index in range(1, 11)) + tuple(
+EXPECTED_EVIDENCE_IDS = tuple(f"DEL-{index:03d}" for index in range(1, 12)) + tuple(
     f"DEL-{index:03d}" for index in range(900, 905)
 )
 REQUIRED_BLOCKER_IDS = (
@@ -58,6 +58,7 @@ SECTION_CONTRACTS = {
             "DEL-008",
             "DEL-009",
             "DEL-010",
+            "DEL-011",
             "DEL-900",
             "DEL-901",
             "DEL-902",
@@ -85,6 +86,7 @@ SECTION_CONTRACTS = {
             "DEL-008",
             "DEL-009",
             "DEL-010",
+            "DEL-011",
             "DEL-900",
             "DEL-901",
             "DEL-904",
@@ -95,7 +97,7 @@ SECTION_CONTRACTS = {
     "DR-13": ("VERIFIED", ("DEL-001", "DEL-002", "DEL-003", "DEL-004")),
     "DR-14": (
         "PARTIAL",
-        ("DEL-001", "DEL-002", "DEL-003", "DEL-004", "DEL-900", "DEL-902"),
+        ("DEL-001", "DEL-002", "DEL-003", "DEL-004", "DEL-011", "DEL-900", "DEL-902"),
     ),
     "DR-15": ("PARTIAL", ("DEL-001", "DEL-002", "DEL-901")),
     "DR-16": ("PARTIAL", ("DEL-001", "DEL-002", "DEL-003", "DEL-902")),
@@ -148,7 +150,7 @@ EXPECTED_PRODUCT_METHOD = (
     "implementation boundary only."
 )
 EXPECTED_DELIVERY_NARRATIVE_SHA256 = (
-    "8e09f775ebfb3a9c130b8975d6a524686bf98d09d43c316b286829e61dc2ee1b"
+    "8a0cf0399a6cb3857994f58f0a5f13e446b81f1349128fec9916f50800294ee1"
 )
 EXPECTED_PRODUCT_NARRATIVE_SHA256 = (
     "0a3acbf4202eca3f1b69adb941d8a2e797a06e216e2453c53083b05fdf3a3ee1"
@@ -229,7 +231,7 @@ EVIDENCE_CONTRACTS = {
         "tests/unit/test_delivery_report.py -q --basetemp tmp/task24-green -p no:cacheprovider",
         "tests/unit/test_delivery_report.py",
         "DR-01, DR-10",
-        "pytest-tests=23; delivery-report-mutations=pass",
+        "pytest-tests=24; delivery-report-mutations=pass",
         "0",
         "PASS",
     ),
@@ -239,7 +241,7 @@ EVIDENCE_CONTRACTS = {
         "scripts/check_delivery_report.py DELIVERY_REPORT.md",
         "DELIVERY_REPORT.md",
         "DR-01, DR-10",
-        "delivery-sections=17; evidence=15; blockers=5; readiness=MUSEECHO V1 PARTIALLY READY",
+        "delivery-sections=17; evidence=16; blockers=5; readiness=MUSEECHO V1 PARTIALLY READY",
         "0",
         "PASS",
     ),
@@ -272,13 +274,23 @@ EVIDENCE_CONTRACTS = {
         "0",
         "PASS",
     ),
+    "DEL-011": EvidenceContract(
+        "IMPLEMENTATION_BOUNDARY_COMMAND",
+        "gh run view 31687703913 --repo Zzz148080/MuseEcho --json "
+        "status,conclusion,headSha,jobs,url",
+        ".github/workflows/ci.yml",
+        "DR-01, DR-10, DR-14",
+        "run=31687703913; head=de5bc6f949e6e98cff32f16116708ec7b7409c9d; "
+        "quality=success; e2e=success; distribution=success",
+        "0",
+        "PASS",
+    ),
     "DEL-900": EvidenceContract(
         "EXTERNAL_NOT_RUN",
-        "NOT RUN: GitLab has no Task 24 pipeline; the GitHub branch-tip mergeability gate "
-        "must run externally without pinning a self-invalidating tip SHA here",
+        "NOT RUN: GitLab has no Task 24 pipeline",
         ".gitlab-ci.yml",
         "DR-01, DR-10, DR-14",
-        "gitlab=NOT_RUN; github-branch-tip-gate=EXTERNAL_PENDING",
+        "gitlab=NOT_RUN",
         "NOT_RUN",
         "PENDING",
     ),

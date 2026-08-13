@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from scripts.check_delivery_report import (
+    EXPECTED_EVIDENCE_IDS,
     EXPECTED_PRODUCT_AUDIT_IDS,
     EXPECTED_SECTION_IDS,
     EXPECTED_STUDENT_CHECK_IDS,
@@ -115,8 +116,35 @@ def test_delivery_status_matches_evidence() -> None:
 
 def test_fixed_delivery_product_and_student_id_contracts() -> None:
     assert EXPECTED_SECTION_IDS == tuple(f"DR-{index:02d}" for index in range(1, 18))
+    assert "DEL-011" in EXPECTED_EVIDENCE_IDS
     assert EXPECTED_PRODUCT_AUDIT_IDS == tuple(f"PA-{index:02d}" for index in range(1, 14))
     assert EXPECTED_STUDENT_CHECK_IDS == tuple(f"STU-{index:02d}" for index in range(1, 7))
+
+
+def test_task24_github_boundary_is_fixed_while_gitlab_remains_pending(
+    tmp_path: Path,
+) -> None:
+    report = load_delivery_report(REPORT_PATH)
+    github = next(item for item in report.evidence if item.evidence_id == "DEL-011")
+    gitlab = next(item for item in report.evidence if item.evidence_id == "DEL-900")
+
+    assert github.kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert github.result == (
+        "run=31687703913; head=de5bc6f949e6e98cff32f16116708ec7b7409c9d; "
+        "quality=success; e2e=success; distribution=success"
+    )
+    assert github.exit_code_raw == "0"
+    assert github.status == "PASS"
+    assert gitlab.command == "NOT RUN: GitLab has no Task 24 pipeline"
+    assert gitlab.result == "gitlab=NOT_RUN"
+    assert "Task 24 GitHub branch-tip gate has not run" not in report.raw_text
+
+    forged = _replace_table_cell(
+        _report_text(), "## Evidence index", "DEL-011", "Result", "quality=success"
+    )
+    assert "DEL-011 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, forged
+    )
 
 
 def test_missing_or_duplicate_delivery_section_fails_closed(tmp_path: Path) -> None:

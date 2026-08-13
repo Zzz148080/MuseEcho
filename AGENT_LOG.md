@@ -17,7 +17,8 @@ the Task 24 block below. At Task 23 closure, the blocker keys were `GitLab`,
 `MUSEECHO V1 PARTIALLY READY`. Task 24 now has a machine-readable Product Audit,
 fixed 17-section Delivery Report, fail-closed checker, mutation tests, and blank
 student reflection template. Task 24 itself is closed. Task 23 PR #1 merged with
-GitHub quality, E2E, and distribution green. GitLab, the Task 24 branch-tip gate,
+GitHub quality, E2E, and distribution green. Task 24 run `31687703913` also
+passed all three jobs at implementation head `de5bc6f`. GitLab,
 cloud/public/target-server smoke and rollback, formal offline build ENG-010,
 trusted-certificate controller browser observation, and student acceptance remain
 open. Historical statements below retain their dated boundaries.
@@ -54,7 +55,8 @@ open. Historical statements below retain their dated boundaries.
   blockers; exact section and blocker mappings close that gap. Independent
   review then reproduced two more narrative forgeries against Product Audit
   Scope/Method/flow/notes and delivery conclusion/reason/closure; fixed semantic
-  digests reject both. The final Task 24 suite contains 23 tests.
+  digests reject both. The final Task 24 suite contains 24 tests, including the
+  fail-closed Task 24 GitHub implementation-boundary contract.
 - **Proportional verification:** the safe current set passed 66 tests plus both
   prior audit CLIs and the delivery CLI. Ruff, checker mypy, synthetic and real
   Secret scans (216 files), and diff-check passed. A broader local command was
