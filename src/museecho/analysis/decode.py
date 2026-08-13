@@ -28,6 +28,7 @@ READER_JOIN_TIMEOUT_SECONDS = 5.0
 INPUT_FORMAT_WHITELIST = "wav,mp3"
 INPUT_PROTOCOL_WHITELIST = "file,pipe"
 INPUT_CODEC_WHITELIST = "pcm_u8,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,mp3float,mp3"
+SUPPORTED_INPUT_CODECS = frozenset(INPUT_CODEC_WHITELIST.split(","))
 SUPPORTED_FORMATS = frozenset({"wav", "mp3"})
 
 
@@ -380,12 +381,10 @@ def probe_audio(
         INPUT_PROTOCOL_WHITELIST,
         "-format_whitelist",
         INPUT_FORMAT_WHITELIST,
-        "-codec_whitelist",
-        INPUT_CODEC_WHITELIST,
         "-select_streams",
         "a:0",
         "-show_entries",
-        "format=format_name,duration:stream=codec_type,sample_rate,channels,duration",
+        "format=format_name,duration:stream=codec_name,codec_type,sample_rate,channels,duration",
         "-of",
         "json=compact=1",
         str(input_path),
@@ -430,6 +429,7 @@ def _parse_probe(value: bytes) -> AudioProbe:
             raise ValueError
         duration_value = format_data.get("duration", stream.get("duration"))
         duration_seconds = float(duration_value)
+        codec_name = str(stream["codec_name"])
         sample_rate = int(stream["sample_rate"])
         channels = int(stream["channels"])
     except (KeyError, TypeError, ValueError, json.JSONDecodeError, UnicodeDecodeError):
@@ -437,6 +437,7 @@ def _parse_probe(value: bytes) -> AudioProbe:
     if (
         not math.isfinite(duration_seconds)
         or duration_seconds <= 0
+        or codec_name not in SUPPORTED_INPUT_CODECS
         or not 8_000 <= sample_rate <= 384_000
         or not 1 <= channels <= 32
     ):

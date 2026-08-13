@@ -90,6 +90,16 @@ def test_waveform_buckets_preserve_minimum_and_maximum_peaks():
     assert result.waveform.algorithm
 
 
+def test_waveform_buckets_clamp_decoder_overshoot_to_safe_display_range():
+    samples = [-1.2, 0.2, -0.1, 1.25]
+    config = SignalFeatureConfig(waveform_bucket_count=2, frame_length=4, hop_length=2)
+
+    result = extract_signal_features(samples, 4, config=config)
+
+    assert result.waveform.minimums == pytest.approx((-1.0, -0.1))
+    assert result.waveform.maximums == pytest.approx((0.2, 1.0))
+
+
 def test_segmented_energy_detects_rise_and_fall_near_boundaries():
     samples: list[float] = []
     for amplitude in (0.1, 0.7, 0.25):

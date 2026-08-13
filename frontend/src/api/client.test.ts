@@ -107,6 +107,23 @@ describe('API client', () => {
     )
   })
 
+  it('accepts deterministic theory using a double accidental pitch class', async () => {
+    const result = structuredClone(fixtureResult)
+    const theory = result.chords[1].theory
+    if (!theory) throw new Error('fixture theory missing')
+    theory.pitch_classes = ['A#', 'C##', 'E#']
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(result),
+      }),
+    )
+
+    await expect(getAnalysisResult(analysisId)).resolves.toEqual(result)
+  })
+
   it('rejects result identity or timeline intervals outside the track', async () => {
     const invalid = structuredClone(fixtureResult)
     invalid.chords[1].end_seconds = 13
