@@ -47,31 +47,32 @@ export function RetentionPanel({
   }
 
   return (
-    <section className="retention-panel" aria-labelledby="retention-title">
-      <p className="eyebrow">加密保留与删除</p>
-      <h2 id="retention-title">数据生命周期</h2>
-      <p>{retentionText(expiry, now)}</p>
-      <p>主动删除会先销毁数据密钥，再清除密文、分析结果、解释与访问权，操作不可恢复。</p>
-      <label className="retention-panel__confirmation">
-        <input
-          checked={confirmed}
-          disabled={expired || !Number.isFinite(expiry) || pending}
-          onChange={(event) => setConfirmed(event.currentTarget.checked)}
-          type="checkbox"
-        />
-        <span>我了解删除不可恢复</span>
-      </label>
-      {error ? (
-        <ErrorNotice title="没有删除分析" action={error} />
-      ) : null}
-      <Button
-        disabled={!confirmed || pending || expired || !Number.isFinite(expiry)}
-        onClick={() => void submitDeletion()}
-        variant="danger"
-      >
-        {pending ? '正在删除' : error ? '重新尝试删除' : '永久删除分析'}
-      </Button>
-    </section>
+    <details className="retention-panel" aria-label="管理分析数据">
+      <summary>管理分析数据</summary>
+      <div className="retention-panel__content">
+        <p>{retentionText(expiry, now)}</p>
+        <p>删除后无法恢复。</p>
+        <label className="retention-panel__confirmation">
+          <input
+            checked={confirmed}
+            disabled={expired || !Number.isFinite(expiry) || pending}
+            onChange={(event) => setConfirmed(event.currentTarget.checked)}
+            type="checkbox"
+          />
+          <span>我了解删除不可恢复</span>
+        </label>
+        {error ? (
+          <ErrorNotice title="没有删除分析" action={error} />
+        ) : null}
+        <Button
+          disabled={!confirmed || pending || expired || !Number.isFinite(expiry)}
+          onClick={() => void submitDeletion()}
+          variant="danger"
+        >
+          {pending ? '正在删除' : error ? '重新尝试删除' : '永久删除分析'}
+        </Button>
+      </div>
+    </details>
   )
 }
 

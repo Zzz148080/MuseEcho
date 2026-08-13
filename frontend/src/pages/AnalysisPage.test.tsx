@@ -22,6 +22,13 @@ describe('AnalysisPage', () => {
     ).toBeVisible()
   })
 
+  it('uses listener-facing introduction copy instead of internal unknown markers', () => {
+    render(<AnalysisPage />)
+
+    expect(screen.getByText(/沿着时间线聆听节奏、能量与局部和声/)).toBeVisible()
+    expect(screen.queryByText(/结果会明确标记为 unknown/)).not.toBeInTheDocument()
+  })
+
   it('describes the honest empty workflow without inventing analysis facts', () => {
     render(<AnalysisPage />)
 
@@ -129,8 +136,9 @@ describe('AnalysisPage', () => {
       </QueryClientProvider>,
     )
 
-    expect(await screen.findByRole('heading', { name: '片段问答' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: '数据生命周期' })).toBeVisible()
+    await screen.findByRole('heading', { name: 'Music DNA' })
+    expect(screen.queryByRole('heading', { name: '片段问答' })).not.toBeInTheDocument()
+    await user.click(screen.getByText('管理分析数据', { selector: 'summary' }))
     await user.click(screen.getByRole('checkbox', { name: /了解删除不可恢复/ }))
     await user.click(screen.getByRole('button', { name: '永久删除分析' }))
 
@@ -193,14 +201,11 @@ describe('accessible foundation components', () => {
     expect(globalCss).toMatch(/prefers-reduced-motion:\s*reduce/)
   })
 
-  it('stacks explanation and privacy controls below tablet width', () => {
+  it('keeps the secondary data-management control in the single-column result flow', () => {
     const globalCss = readFileSync('src/styles/global.css', 'utf8')
 
     expect(globalCss).toMatch(
-      /\.analysis-support\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.15fr\)\s+minmax\(0,\s*0\.85fr\)/s,
-    )
-    expect(globalCss).toMatch(
-      /@media\s*\(max-width:\s*899px\)[\s\S]*\.analysis-support\s*{[^}]*grid-template-columns:\s*1fr/s,
+      /\.analysis-support\s*{[^}]*display:\s*block/s,
     )
   })
 

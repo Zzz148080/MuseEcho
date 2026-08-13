@@ -4,13 +4,14 @@ import { fixtureResult } from '../../test/analysisFixture'
 import { MusicDNA } from './MusicDNA'
 
 describe('MusicDNA', () => {
-  it('shows only current analysis facts and their source', () => {
+  it('shows listener-facing facts without internal source or event-count metadata', () => {
     render(<MusicDNA result={fixtureResult} />)
 
     expect(screen.getByText('120 BPM')).toBeVisible()
     expect(screen.getByText(/C 大调/)).toBeVisible()
-    expect(screen.getByText('合成测试数据')).toBeVisible()
     expect(screen.getByText('0:12')).toBeVisible()
+    expect(screen.queryByText('合成测试数据')).not.toBeInTheDocument()
+    expect(screen.queryByText(/和声摘要|结构摘要|可用和弦事件|可用段落/)).not.toBeInTheDocument()
     expect(screen.queryByText(/情绪|风格|核心乐器/)).not.toBeInTheDocument()
   })
 
@@ -33,10 +34,7 @@ describe('MusicDNA', () => {
 
     expect(screen.queryByText('180 BPM')).not.toBeInTheDocument()
     expect(screen.queryByText('4 个')).not.toBeInTheDocument()
-    expect(
-      screen.getAllByText('证据不足').filter(
-        (item) => item.getAttribute('data-confidence') === 'unknown',
-      ),
-    ).toHaveLength(2)
+    expect(screen.getAllByText('暂未判定')).toHaveLength(3)
+    expect(screen.queryByText('证据不足')).not.toBeInTheDocument()
   })
 })

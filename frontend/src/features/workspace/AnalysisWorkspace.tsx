@@ -1,14 +1,10 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { ChordResult, EvidenceResult } from '../../api/types'
+import type { ChordResult } from '../../api/types'
 import { Button } from '../../components/Button'
 import { ErrorNotice } from '../../components/ErrorNotice'
 import { ChordDetails } from '../chords/ChordDetails'
 import { MusicDNA } from '../dna/MusicDNA'
-import {
-  QuestionPanel,
-  type ExplanationTransport,
-} from '../explanations/QuestionPanel'
 import { AudioPlayer } from '../player/AudioPlayer'
 import {
   RetentionPanel,
@@ -23,7 +19,6 @@ import {
 
 export interface AnalysisWorkspaceProps {
   analysisId: string
-  ask?: ExplanationTransport
   expiresAt?: string | null
   loadResult?: ResultLoader
   onDeleted?: () => void
@@ -32,7 +27,6 @@ export interface AnalysisWorkspaceProps {
 
 export function AnalysisWorkspace({
   analysisId,
-  ask,
   expiresAt = null,
   loadResult,
   onDeleted = () => undefined,
@@ -57,7 +51,6 @@ export function AnalysisWorkspace({
   }
   return (
     <LoadedWorkspace
-      ask={ask}
       expiresAt={expiresAt}
       onDeleted={onDeleted}
       removeAnalysis={removeAnalysis}
@@ -67,7 +60,6 @@ export function AnalysisWorkspace({
 }
 
 interface LoadedWorkspaceProps {
-  ask?: ExplanationTransport
   expiresAt: string | null
   onDeleted: () => void
   removeAnalysis?: DeleteTransport
@@ -75,7 +67,6 @@ interface LoadedWorkspaceProps {
 }
 
 function LoadedWorkspace({
-  ask,
   expiresAt,
   onDeleted,
   removeAnalysis,
@@ -84,11 +75,6 @@ function LoadedWorkspace({
   const queryClient = useQueryClient()
   const timeline = useTimeline(result.track.duration_seconds)
   const [selectedChord, setSelectedChord] = useState<ChordResult | null>(null)
-
-  const selectEvidence = (evidence: EvidenceResult) => {
-    timeline.seek(evidence.start_seconds)
-    timeline.select(evidence.start_seconds, evidence.end_seconds)
-  }
 
   const finishDeletion = () => {
     void queryClient.cancelQueries({ queryKey: ['analysis-status', result.analysis_id] })
@@ -111,13 +97,6 @@ function LoadedWorkspace({
       />
       <ChordDetails chord={selectedChord} />
       <div className="analysis-support">
-        <QuestionPanel
-          analysisId={result.analysis_id}
-          ask={ask}
-          evidence={result.evidence}
-          onEvidenceSelect={selectEvidence}
-          selection={timeline.selection}
-        />
         <RetentionPanel
           analysisId={result.analysis_id}
           expiresAt={expiresAt}

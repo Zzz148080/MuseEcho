@@ -6,6 +6,10 @@ import { analysisId } from '../../test/analysisFixture'
 import { RetentionPanel, retentionText } from './RetentionPanel'
 
 describe('RetentionPanel', () => {
+  async function openDataManagement(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByText('管理分析数据', { selector: 'summary' }))
+  }
+
   it('does not present a still-active server retention window as zero minutes', () => {
     const now = Date.parse('2026-08-09T23:59:01Z')
     const expiry = Date.parse('2026-08-10T00:00:00Z')
@@ -27,6 +31,7 @@ describe('RetentionPanel', () => {
       />,
     )
 
+    await openDataManagement(user)
     expect(screen.getByText(/剩余 1 小时 0 分钟/)).toBeVisible()
     const deleteButton = screen.getByRole('button', { name: '永久删除分析' })
     expect(deleteButton).toBeDisabled()
@@ -39,6 +44,7 @@ describe('RetentionPanel', () => {
   })
 
   it('does not send deletion after the server expiry has passed', async () => {
+    const user = userEvent.setup()
     const remove = vi.fn()
     render(
       <RetentionPanel
@@ -50,6 +56,7 @@ describe('RetentionPanel', () => {
       />,
     )
 
+    await openDataManagement(user)
     expect(screen.getByText(/保留期限已到/)).toBeVisible()
     expect(screen.getByRole('button', { name: '永久删除分析' })).toBeDisabled()
     expect(remove).not.toHaveBeenCalled()
@@ -72,6 +79,7 @@ describe('RetentionPanel', () => {
       />,
     )
 
+    await openDataManagement(user)
     await user.click(screen.getByRole('checkbox', { name: /了解删除不可恢复/ }))
     await user.click(screen.getByRole('button', { name: '永久删除分析' }))
 

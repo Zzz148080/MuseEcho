@@ -592,6 +592,15 @@ progress::-moz-progress-bar {
   min-height: 3rem;
 }
 
+.timeline__empty-event {
+  display: flex;
+  align-items: center;
+  height: 3rem;
+  padding-inline: var(--space-3);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .timeline__selection-target {
   display: flex;
   align-items: center;
@@ -788,10 +797,7 @@ progress::-moz-progress-bar {
 }
 
 .analysis-support {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: var(--space-6);
-  align-items: start;
+  display: block;
 }
 
 .question-panel,
@@ -903,7 +909,20 @@ progress::-moz-progress-bar {
 }
 
 .retention-panel {
-  border-top: 3px solid var(--danger);
+  border-top: 1px solid var(--border);
+}
+
+.retention-panel summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.retention-panel__content {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
 .retention-panel__confirmation {

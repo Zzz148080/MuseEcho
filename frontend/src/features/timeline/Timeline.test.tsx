@@ -110,14 +110,53 @@ describe('Timeline', () => {
     expect(screen.getByTestId('playhead')).toHaveAttribute('data-seconds', '8')
   })
 
-  it('exposes waveform, section, chord, energy and event tracks as text-labelled groups', () => {
+  it('keeps visual section boundaries without exposing internal section labels', () => {
     render(<RichHarness />)
 
     for (const name of ['波形', '段落', '和弦', '能量', '重要事件']) {
       expect(screen.getByRole('group', { name: `${name}轨道` })).toBeVisible()
     }
-    expect(screen.getByLabelText(/段落 A/)).toBeVisible()
+    expect(screen.getAllByTestId('section-boundary')).toHaveLength(richResult.sections.length)
+    expect(screen.queryByText('A', { selector: '.timeline__event--section' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /能量上升/ })).toBeVisible()
+  })
+
+  it('hides internal section clusters and unusable chords while retaining usable harmonic candidates', () => {
+    const lowResult = {
+      ...richResult,
+      chords: [
+        ...richResult.chords,
+        {
+          ...richResult.chords[1],
+          id: '00000000-0000-4000-8000-000000000023',
+          symbol: 'unknown',
+          confidence: 0,
+          theory: null,
+        },
+        {
+          ...richResult.chords[1],
+          id: '00000000-0000-4000-8000-000000000024',
+          start_seconds: 9,
+          end_seconds: 10,
+          symbol: 'A#',
+          confidence: 0.94,
+          theory: null,
+        },
+      ],
+    }
+    function FilteredHarness() {
+      const timeline = useTimeline(lowResult.track.duration_seconds)
+      return <Timeline result={lowResult} timeline={timeline} />
+    }
+
+    render(<FilteredHarness />)
+
+    expect(screen.getAllByTestId('section-boundary')).toHaveLength(lowResult.sections.length)
+    expect(screen.queryByLabelText(/段落 A/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /和弦 G/ })).toBeVisible()
+    expect(screen.queryByRole('button', { name: /unknown/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /和弦 A#/ })).not.toBeInTheDocument()
+    expect(screen.queryByText(/时间轴文本事件列表/)).not.toBeInTheDocument()
   })
 
   it('supports keyboard seeking through the shared playhead', async () => {
@@ -169,10 +208,10 @@ describe('Timeline', () => {
 
     expect(screen.getByText(/已选 0:02–0:10/)).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: '清除选区' }))
-    expect(screen.getByText(/尚未选择片段/)).toBeVisible()
+    expect(screen.getByText(/选择片段以回听和比较/, { selector: '.timeline__text-summary' })).toBeVisible()
   })
 
-  it('renders a low-confidence chord as unknown on every event path', () => {
+  it('does not present a low-confidence chord as a harmonic candidate', () => {
     const lowResult = {
       ...richResult,
       chords: [{ ...richResult.chords[1], confidence: 0.2 }],
@@ -183,10 +222,8 @@ describe('Timeline', () => {
     }
     render(<LowHarness />)
 
-    expect(screen.getByRole('button', { name: /和弦 unknown/ })).toBeVisible()
+    expect(screen.getByText('暂无局部和声候选')).toBeVisible()
     expect(screen.queryByRole('button', { name: /和弦 G/ })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByText(/时间轴文本事件列表/))
-    expect(screen.getByText(/跳到 0:08 的unknown/)).toBeVisible()
   })
 
   it('clamps coordinate conversion without creating non-finite positions', () => {
