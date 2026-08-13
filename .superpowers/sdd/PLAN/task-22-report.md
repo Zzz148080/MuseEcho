@@ -448,3 +448,11 @@ was unavailable and downloads were prohibited. Therefore the Task 22 current
 claim above is historical, not current evidence. The authoritative matrix is
 now `28 PASS / 12 PARTIAL / 0 FAIL`, with AC-F-4 changed to PARTIAL and linked
 to the still-open current-browser/frontend environment blocker.
+
+## Superseded by Task 23 final exact-head CI evidence
+
+GitHub Actions run `31630284744` on exact head `2b2730e` subsequently passed
+quality, real HTTPS browser E2E, and distribution. This is not the pre-review
+result: the current final Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL**
+and remains `PARTIALLY_READY`; the earlier `28 PASS / 12 PARTIAL / 0 FAIL`
+status above is superseded historical timeline evidence.

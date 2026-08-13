@@ -1,8 +1,10 @@
 # MuseEcho Agent Log
 
 Task 23 final evidence: GitHub run `31630284744` on exact head `2b2730e` passed
-quality, real HTTPS E2E, and distribution. Functional status is 34/6/0;
-remaining external/future gates keep PARTIALLY_READY.
+quality, real HTTPS E2E, and distribution. Current final Functional Audit status
+is **34 PASS / 6 PARTIAL / 0 FAIL**; remaining external/future gates keep
+PARTIALLY_READY. Earlier `28 PASS / 12 PARTIAL / 0 FAIL` entries are superseded
+historical timeline evidence.
 
 ## 2026-08-11 — TASK 22 / Functional Audit 与验收缺口闭环
 

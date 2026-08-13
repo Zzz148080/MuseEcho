@@ -8,6 +8,12 @@
 
 **技术栈：** Python 3.12、FastAPI、Pydantic、SQLAlchemy 2、Alembic、NumPy、SciPy、librosa、FFmpeg、cryptography、keyring、Typer、pytest、Ruff、mypy；Node 22、React、Vite、TypeScript、TanStack Query、Vitest、Testing Library、Playwright；Docker Compose、Caddy、GitHub Actions、GitLab CI。
 
+> **Task 23 final current status:** Exact-head GitHub Actions run `31630284744`
+> passed quality, real HTTPS E2E, and distribution. The current Functional Audit
+> is **34 PASS / 6 PARTIAL / 0 FAIL** and remains `PARTIALLY_READY`; earlier
+> `28 PASS / 12 PARTIAL / 0 FAIL` entries below are superseded historical
+> timeline evidence.
+
 ## 0. 当前门禁与真实性约束
 
 - `SPEC.md` 已由用户在 2026-08-08 以原话“好，批准书面SPEC，进行下一步”批准。

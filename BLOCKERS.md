@@ -3,6 +3,8 @@
 GitHub final evidence: run `31630284744` on exact head `2b2730e` passed quality,
 real HTTPS E2E, and distribution. Status is 34 PASS / 6 PARTIAL / 0 FAIL and
 PARTIALLY_READY; GitLab, cloud/public, Task 24, and student acceptance remain.
+Earlier `28 PASS / 12 PARTIAL / 0 FAIL` entries below are superseded historical
+timeline evidence, not the current final matrix.
 
 当前没有阻塞本地继续实施或完成 Task 23 的已确认 Blocker。历史审批通道问题 `CS-001` 已在此前通过多次真实提权命令成功执行而关闭。
 

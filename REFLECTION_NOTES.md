@@ -2,6 +2,12 @@
 
 本文件仅积累客观过程材料，不代写学生的 `REFLECTION.md`，也不替学生生成主观结论。
 
+Task 23 final current evidence is GitHub Actions run `31630284744` on exact head
+`2b2730e`: quality, real HTTPS E2E, and distribution passed. The current
+Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and `PARTIALLY_READY`;
+earlier `28 PASS / 12 PARTIAL / 0 FAIL` entries below are superseded historical
+timeline evidence.
+
 ## 2026-08-11 — TASK 22 / 证据驱动验收材料
 
 - 单纯列出文件无法证明验收通过。Task 22 将 24 个 AC 和 16 个 DoD 条目固定为 40 个 ID，并让 checker 拒绝缺失/重复、文件存在型 PASS、无命令/路径/UTC/退出码证据、未来时间和 blocker/READY 矛盾。
