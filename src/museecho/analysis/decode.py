@@ -11,6 +11,12 @@ from pathlib import Path
 from threading import Event, Thread
 from typing import BinaryIO, Callable, Protocol, Sequence, cast
 
+from museecho.audio_formats import (
+    INPUT_CODEC_WHITELIST,
+    INPUT_FORMAT_WHITELIST,
+    INPUT_PROTOCOL_WHITELIST,
+    matching_audio_format,
+)
 from museecho.domain.models import DecodedAudio
 
 DEFAULT_TARGET_SAMPLE_RATE = 22_050
@@ -25,11 +31,6 @@ MAX_DIAGNOSTIC_LENGTH = 512
 READ_CHUNK_BYTES = 64 * 1024
 PROCESS_EXIT_TIMEOUT_SECONDS = 5.0
 READER_JOIN_TIMEOUT_SECONDS = 5.0
-INPUT_FORMAT_WHITELIST = "wav,mp3"
-INPUT_PROTOCOL_WHITELIST = "file,pipe"
-INPUT_CODEC_WHITELIST = "pcm_u8,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,mp3float,mp3"
-SUPPORTED_INPUT_CODECS = frozenset(INPUT_CODEC_WHITELIST.split(","))
-SUPPORTED_FORMATS = frozenset({"wav", "mp3"})
 
 
 @dataclass(frozen=True)
@@ -265,6 +266,7 @@ class AudioProbe:
     duration_seconds: float
     sample_rate: int
     channels: int
+    codec_name: str = ""
 
 
 def decode_audio(
@@ -381,10 +383,13 @@ def probe_audio(
         INPUT_PROTOCOL_WHITELIST,
         "-format_whitelist",
         INPUT_FORMAT_WHITELIST,
-        "-select_streams",
-        "a:0",
+        "-codec_whitelist",
+        INPUT_CODEC_WHITELIST,
         "-show_entries",
-        "format=format_name,duration:stream=codec_name,codec_type,sample_rate,channels,duration",
+        (
+            "format=format_name,duration:"
+            "stream=codec_name,codec_type,sample_rate,channels,duration:stream_disposition"
+        ),
         "-of",
         "json=compact=1",
         str(input_path),
@@ -420,16 +425,28 @@ def _parse_probe(value: bytes) -> AudioProbe:
         payload = json.loads(value)
         streams = payload["streams"]
         format_data = payload["format"]
-        if not isinstance(streams, list) or len(streams) != 1:
+        if not isinstance(streams, list) or not streams:
             raise ValueError
-        stream = streams[0]
         format_name = str(format_data["format_name"])
-        formats = set(format_name.split(","))
-        if not formats.intersection(SUPPORTED_FORMATS):
+        audio_streams = [stream for stream in streams if stream.get("codec_type") == "audio"]
+        if not audio_streams:
             raise ValueError
+        stream = audio_streams[0]
+        codec_name = str(stream["codec_name"])
+        audio_format = matching_audio_format(format_name=format_name, codec_name=codec_name)
+        if audio_format is None:
+            raise ValueError
+        for candidate in audio_streams:
+            if str(candidate["codec_name"]) not in audio_format.allowed_codecs:
+                raise ValueError
+            _validate_audio_stream(candidate)
+        for candidate in streams:
+            if candidate.get("codec_type") == "audio":
+                continue
+            if not _is_allowed_mp3_cover(candidate, format_name=format_name):
+                raise ValueError
         duration_value = format_data.get("duration", stream.get("duration"))
         duration_seconds = float(duration_value)
-        codec_name = str(stream["codec_name"])
         sample_rate = int(stream["sample_rate"])
         channels = int(stream["channels"])
     except (KeyError, TypeError, ValueError, json.JSONDecodeError, UnicodeDecodeError):
@@ -437,12 +454,38 @@ def _parse_probe(value: bytes) -> AudioProbe:
     if (
         not math.isfinite(duration_seconds)
         or duration_seconds <= 0
-        or codec_name not in SUPPORTED_INPUT_CODECS
         or not 8_000 <= sample_rate <= 384_000
         or not 1 <= channels <= 32
     ):
         raise InvalidAudioError("audio probe returned invalid metadata")
-    return AudioProbe(format_name, duration_seconds, sample_rate, channels)
+    return AudioProbe(format_name, duration_seconds, sample_rate, channels, codec_name)
+
+
+def _validate_audio_stream(stream: dict[str, object]) -> None:
+    sample_rate_value = stream["sample_rate"]
+    channels_value = stream["channels"]
+    if (
+        not isinstance(sample_rate_value, (str, int))
+        or isinstance(sample_rate_value, bool)
+        or not isinstance(channels_value, (str, int))
+        or isinstance(channels_value, bool)
+    ):
+        raise ValueError
+    sample_rate = int(sample_rate_value)
+    channels = int(channels_value)
+    if not 8_000 <= sample_rate <= 384_000 or not 1 <= channels <= 32:
+        raise ValueError
+
+
+def _is_allowed_mp3_cover(stream: dict[str, object], *, format_name: str) -> bool:
+    disposition = stream.get("disposition")
+    return (
+        "mp3" in format_name.split(",")
+        and stream.get("codec_type") == "video"
+        and stream.get("codec_name") == "mjpeg"
+        and isinstance(disposition, dict)
+        and disposition.get("attached_pic") == 1
+    )
 
 
 def _validate_input(path: Path) -> Path:

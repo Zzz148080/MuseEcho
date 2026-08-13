@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import io
+import shutil
 import struct
+import subprocess
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -19,6 +21,7 @@ from museecho.application.uploads import (
 )
 from museecho.domain.models import AccessGrant, EncryptedAudioMetadata, IssuedAccess
 from museecho.domain.status import AnalysisJob
+from tests.fixtures.audio_factory import write_sine_wav
 
 
 class MemoryRepository:
@@ -110,7 +113,47 @@ def _client(
 
 def _valid_probe(path: Path) -> AudioProbe:
     assert path.is_file()
-    return AudioProbe("wav", 1.0, 22_050, 1)
+    return AudioProbe("wav", 1.0, 22_050, 1, "pcm_s16le")
+
+
+def _find_tool(name: str) -> str:
+    discovered = shutil.which(name) or shutil.which(f"{name}.exe")
+    if discovered:
+        return discovered
+    pytest.fail(f"{name} is required for real upload integration tests", pytrace=False)
+
+
+def _encode_audio(source: Path, destination: Path, *arguments: str) -> Path:
+    completed = subprocess.run(
+        [
+            _find_tool("ffmpeg"),
+            "-v",
+            "error",
+            "-nostdin",
+            "-i",
+            str(source),
+            *arguments,
+            "-y",
+            str(destination),
+        ],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        check=False,
+        timeout=30,
+    )
+    assert completed.returncode == 0, completed.stderr.decode(errors="replace")
+    return destination
+
+
+def _run_ffmpeg(*arguments: str) -> None:
+    completed = subprocess.run(
+        [_find_tool("ffmpeg"), "-v", "error", "-nostdin", *arguments],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        check=False,
+        timeout=30,
+    )
+    assert completed.returncode == 0, completed.stderr.decode(errors="replace")
 
 
 def _wave_from_format_data(format_data: bytes) -> bytes:
@@ -214,10 +257,152 @@ def test_rejects_oversized_upload_before_validation(tmp_path: Path):
 
 def test_rejects_unsupported_extension_without_storing(tmp_path: Path):
     client, repository, store, queue = _client(tmp_path, _valid_probe)
-    response = client.post("/api/analyses", files={"file": ("track.flac", b"audio", "audio/flac")})
+    response = client.post(
+        "/api/analyses",
+        files={"file": ("track.wma", b"audio", "audio/x-ms-wma")},
+    )
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "unsupported_audio"
+    assert repository.jobs == {}
+    assert store.writes == []
+    assert queue.submitted == []
+
+
+@pytest.mark.parametrize(
+    ("filename", "format_name", "codec_name", "canonical_media_type"),
+    (
+        ("track.wav", "wav", "pcm_s16le", "audio/wav"),
+        ("track.mp3", "mp3", "mp3", "audio/mpeg"),
+        ("track.flac", "flac", "flac", "audio/flac"),
+        ("track.m4a", "mov,mp4,m4a,3gp,3g2,mj2", "aac", "audio/mp4"),
+        ("track.m4a", "mov,mp4,m4a,3gp,3g2,mj2", "alac", "audio/mp4"),
+        ("track.aac", "aac", "aac", "audio/aac"),
+        ("track.ogg", "ogg", "vorbis", "audio/ogg"),
+        ("track.opus", "ogg", "opus", "audio/opus"),
+    ),
+)
+def test_supported_suffix_requires_exact_probe_pairing_and_stores_canonical_media_type(
+    tmp_path: Path,
+    filename: str,
+    format_name: str,
+    codec_name: str,
+    canonical_media_type: str,
+):
+    probe = AudioProbe(format_name, 1.0, 22_050, 1, codec_name)
+    client, repository, store, queue = _client(tmp_path, lambda _: probe)
+
+    response = client.post(
+        "/api/analyses",
+        files={"file": (filename, b"validated audio", "application/octet-stream")},
+    )
+
+    assert response.status_code == 202
+    analysis_id = uuid.UUID(response.json()["analysis_id"])
+    assert analysis_id in repository.jobs
+    assert store.writes == [(analysis_id, b"validated audio", canonical_media_type)]
+    assert queue.submitted == [analysis_id]
+
+
+def test_supported_suffix_rejects_wrong_codec_pairing_before_persistence(tmp_path: Path):
+    probe = AudioProbe("mov,mp4,m4a,3gp,3g2,mj2", 1.0, 22_050, 2, "ac3")
+    client, repository, store, queue = _client(tmp_path, lambda _: probe)
+
+    response = client.post(
+        "/api/analyses",
+        files={"file": ("track.m4a", b"unapproved audio", "audio/mp4")},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_audio"
+    assert repository.jobs == {}
+    assert store.writes == []
+    assert queue.submitted == []
+
+
+def test_real_mislabeled_audio_is_rejected_before_persistence(tmp_path: Path):
+    source = write_sine_wav(tmp_path / "source.wav", duration_seconds=0.1)
+    flac = _encode_audio(source, tmp_path / "source.flac", "-c:a", "flac")
+    client, repository, store, queue = _client(
+        tmp_path / "uploads",
+        FFmpegAudioValidator(
+            ffprobe_executable=_find_tool("ffprobe"),
+            ffmpeg_executable=_find_tool("ffmpeg"),
+        ),
+    )
+
+    response = client.post(
+        "/api/analyses",
+        files={"file": ("renamed.mp3", flac.read_bytes(), "audio/mpeg")},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_audio"
+    assert repository.jobs == {}
+    assert store.writes == []
+    assert queue.submitted == []
+
+
+@pytest.mark.parametrize("unapproved_stream", ("video", "ac3"))
+def test_real_m4a_unapproved_stream_is_rejected_before_persistence(
+    tmp_path: Path, unapproved_stream: str
+):
+    source = write_sine_wav(tmp_path / "source.wav", duration_seconds=0.1)
+    encoded = tmp_path / f"with-{unapproved_stream}.m4a"
+    if unapproved_stream == "video":
+        _run_ffmpeg(
+            "-i",
+            str(source),
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=black:s=32x32:d=0.1",
+            "-map",
+            "0:a:0",
+            "-map",
+            "1:v:0",
+            "-c:a",
+            "aac",
+            "-c:v",
+            "mpeg4",
+            "-shortest",
+            "-f",
+            "mp4",
+            "-y",
+            str(encoded),
+        )
+    else:
+        _run_ffmpeg(
+            "-i",
+            str(source),
+            "-map",
+            "0:a:0",
+            "-map",
+            "0:a:0",
+            "-c:a:0",
+            "aac",
+            "-c:a:1",
+            "ac3",
+            "-f",
+            "mp4",
+            "-y",
+            str(encoded),
+        )
+    client, repository, store, queue = _client(
+        tmp_path / "uploads",
+        FFmpegAudioValidator(
+            ffprobe_executable=_find_tool("ffprobe"),
+            ffmpeg_executable=_find_tool("ffmpeg"),
+        ),
+    )
+
+    response = client.post(
+        "/api/analyses",
+        files={"file": ("track.m4a", encoded.read_bytes(), "audio/mp4")},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_audio"
     assert repository.jobs == {}
     assert store.writes == []
     assert queue.submitted == []
