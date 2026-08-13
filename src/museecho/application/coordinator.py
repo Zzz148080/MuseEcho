@@ -16,6 +16,7 @@ from museecho.analysis.signal_features import extract_signal_features
 from museecho.analysis.structure import segment_structure
 from museecho.analysis.tonality import estimate_tonality
 from museecho.application.evidence import build_evidence
+from museecho.audio_formats import AUDIO_FORMATS
 from museecho.domain.models import (
     AnalysisResult,
     ChordEvent,
@@ -75,12 +76,24 @@ class AnalysisCoordinator:
         metadata = self._repository.get_encrypted_audio(analysis_id)
         if metadata is None or not metadata.wrapped_data_key:
             raise AnalysisInputUnavailableError("encrypted analysis input is unavailable")
+        audio_format = next(
+            (
+                candidate
+                for candidate in AUDIO_FORMATS
+                if candidate.canonical_media_type == metadata.media_type
+            ),
+            None,
+        )
+        if audio_format is None:
+            raise AnalysisInputUnavailableError(
+                "encrypted analysis input has unsupported media type"
+            )
         job.pipeline_version = PIPELINE_VERSION
         self._repository.update(job)
         self._checkpoint(job, AnalysisStage.VALIDATING, stage_started)
 
         stage_started = self._timer()
-        suffix = ".mp3" if metadata.media_type == "audio/mpeg" else ".wav"
+        suffix = audio_format.suffix
         prefix = f"{_TEMP_PREFIX}{uuid.uuid4().hex}-"
         with tempfile.TemporaryDirectory(prefix=prefix, dir=self._temp_root) as raw:
             _write_owner_marker(Path(raw))
