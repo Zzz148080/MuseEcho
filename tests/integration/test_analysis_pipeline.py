@@ -16,6 +16,7 @@ from museecho.application.coordinator import AnalysisCoordinator, AnalysisInputU
 from museecho.application.explanations import ExplanationService
 from museecho.application.queue import SingleWorkerQueue
 from museecho.application.uploads import UploadSubmissionService
+from museecho.audio_formats import AUDIO_FORMATS, AudioFormat
 from museecho.domain.status import AnalysisJob, AnalysisStage, SourceKind
 from museecho.infrastructure.audio_store import ChunkedEncryptedAudioStore
 from museecho.infrastructure.db import create_session_factory
@@ -72,39 +73,16 @@ def _add_real_job(repository: SqliteAnalysisRepository) -> uuid.UUID:
     return analysis_id
 
 
-@pytest.mark.parametrize(
-    ("media_type", "expected_suffix"),
-    (
-        ("audio/wav", ".wav"),
-        ("audio/mpeg", ".mp3"),
-        ("audio/flac", ".flac"),
-        ("audio/mp4", ".m4a"),
-        ("audio/mp4", ".m4a"),
-        ("audio/aac", ".aac"),
-        ("audio/ogg", ".ogg"),
-        ("audio/opus", ".opus"),
-    ),
-    ids=(
-        "wav",
-        "mp3",
-        "flac",
-        "m4a-aac",
-        "m4a-alac",
-        "aac",
-        "ogg-vorbis",
-        "ogg-opus",
-    ),
-)
-def test_coordinator_materializes_encrypted_audio_with_canonical_suffix(
+@pytest.mark.parametrize("audio_format", AUDIO_FORMATS, ids=lambda item: item.suffix[1:])
+def test_coordinator_materializes_encrypted_audio_with_registered_suffix(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    media_type: str,
-    expected_suffix: str,
+    audio_format: AudioFormat,
 ):
     repository, store = _encrypted_pipeline_dependencies(tmp_path)
     analysis_id = _add_real_job(repository)
-    plaintext = f"encrypted source for {media_type}".encode()
-    store.write(analysis_id, io.BytesIO(plaintext), media_type)
+    plaintext = f"encrypted source for {audio_format.canonical_media_type}".encode()
+    store.write(analysis_id, io.BytesIO(plaintext), audio_format.canonical_media_type)
     observed: list[tuple[str, bytes]] = []
 
     def inspect_decoder_input(path: Path, **_: object) -> None:
@@ -120,7 +98,7 @@ def test_coordinator_materializes_encrypted_audio_with_canonical_suffix(
             temp_root=tmp_path / "analysis",
         )(analysis_id)
 
-    assert observed == [(expected_suffix, plaintext)]
+    assert observed == [(audio_format.suffix, plaintext)]
 
 
 def test_coordinator_rejects_unknown_persisted_media_type_before_decoder(
