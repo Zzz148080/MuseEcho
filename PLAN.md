@@ -8,15 +8,15 @@
 
 **技术栈：** Python 3.12、FastAPI、Pydantic、SQLAlchemy 2、Alembic、NumPy、SciPy、librosa、FFmpeg、cryptography、keyring、Typer、pytest、Ruff、mypy；Node 22、React、Vite、TypeScript、TanStack Query、Vitest、Testing Library、Playwright；Docker Compose、Caddy、GitHub Actions、GitLab CI。
 
-<!-- TASK23-CURRENT-STATUS:START -->
-> **Task 23 current status:** The Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL**
-> and remains `PARTIALLY_READY`. Run `31630284744` at `2b2730e` is the
-> last product/CI implementation boundary, not branch-tip evidence. Product,
-> browser, and distribution verification may cite that boundary; the external
-> GitHub PR merge gate must independently require quality, E2E, and distribution
-> success for the branch-tip SHA. GitLab, cloud/public/target, Task 24, formal
-> offline build ENG-010, and student gates remain open.
-<!-- TASK23-CURRENT-STATUS:END -->
+<!-- TASK24-CURRENT-STATUS:START -->
+> **Task 24 current status:** `MUSEECHO V1 PARTIALLY READY`. The Product Audit,
+> fixed 17-section Delivery Report, fail-closed validator, and blank student
+> reflection template are complete, so Task 24 itself is not a blocker. Task 23
+> PR #1 merged at `79d87f4` after GitHub quality, E2E, and distribution passed.
+> GitLab, the Task 24 branch-tip gate, cloud/public/target-server smoke and
+> rollback, formal offline build ENG-010, trusted-certificate controller browser
+> observation, and student gates remain open.
+<!-- TASK24-CURRENT-STATUS:END -->
 
 ## 0. 当前门禁与真实性约束
 
@@ -794,7 +794,7 @@ def test_delivery_status_matches_evidence(report):
 
 **最终命令：** `pwsh -File scripts/verify.ps1; if ($LASTEXITCODE) { exit $LASTEXITCODE }; pwsh -File scripts/container-smoke.ps1; if ($LASTEXITCODE) { exit $LASTEXITCODE }; uv run python scripts/check_delivery_report.py DELIVERY_REPORT.md`
 
-**并行：** 否。**依赖：** T23。**对应验收标准：** AC-A 至 AC-F、完整 DoD、Product Audit、最终 Verification 与学生保留验收。**分支：** `audit/24-product-delivery`。**计划提交：** `docs: publish verified MuseEcho delivery report`。**实际提交：** 待执行。
+**并行：** 否。**依赖：** T23。**对应验收标准：** AC-A 至 AC-F、完整 DoD、Product Audit、最终 Verification 与学生保留验收。**分支：** `audit/24-product-delivery`。**计划提交：** `docs: publish verified MuseEcho delivery report`。**实际状态：** Task 24 文档、validator 与 TDD mutation suite 已实现；Product Audit 的 13 个产品域均机器可读。控制器真实到达健康 HTTPS 边界，但浏览器在渲染前因内部 CA 未受信而停止，因此如实保持 `CERT_TRUST_BLOCKED`；Task 24 本身不再是 blocker。最终结论为 `MUSEECHO V1 PARTIALLY READY`，精确剩余门禁记录在 `DELIVERY_REPORT.md`；实际提交哈希在提交后记录于 Task 24 report，不在提交内自指。
 
 ## 4. 计划验收清单
 
