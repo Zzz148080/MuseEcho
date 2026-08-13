@@ -42,7 +42,7 @@ EXPECTED_DOMAINS = (
 )
 
 SEVERITIES = frozenset({"Critical", "High", "Medium", "Low"})
-STATUSES = frozenset({"OPEN", "FIXED", "ACCEPTED", "BLOCKED"})
+STATUSES = frozenset({"OPEN", "FIXED", "VERIFIED", "ACCEPTED", "BLOCKED"})
 EXECUTED_KINDS = frozenset({"RED_COMMAND", "CURRENT_COMMAND"})
 EVIDENCE_KINDS = EXECUTED_KINDS | {"EXTERNAL_NOT_RUN", "FILE_EXISTENCE"}
 
@@ -54,7 +54,7 @@ FINDING_CONTRACTS = {
     "ENG-003": ("operations-recovery", "High", "FIXED"),
     "ENG-004": ("reproducible-build-ci-release-identity", "Medium", "FIXED"),
     "ENG-005": ("observability", "Medium", "FIXED"),
-    "ENG-006": ("accessibility", "Medium", "FIXED"),
+    "ENG-006": ("accessibility", "Medium", "VERIFIED"),
     "ENG-007": ("reproducible-build-ci-release-identity", "Medium", "BLOCKED"),
     "ENG-008": ("operations-recovery", "Medium", "BLOCKED"),
     "ENG-009": ("reproducible-build-ci-release-identity", "High", "FIXED"),
@@ -96,6 +96,10 @@ FIXED_FINDING_EVIDENCE_IDS = {
     "ENG-010": ("E035", "E036"),
 }
 
+VERIFIED_FINDING_EVIDENCE_IDS = {
+    "ENG-006": ("E015", "E026", "E037"),
+}
+
 SECURITY_DOMAIN_EVIDENCE_IDS = ("E020", "E021", "E022", "E023", "E024", "E025")
 
 _TRIVY_PREFIX = (
@@ -117,6 +121,21 @@ FIXED_EVIDENCE_CONTRACTS = {
         "scripts/check_engineering_audit.py",
         "93 files formatted; lint passed; Windows-host and explicit Linux strict "
         "mypy each passed 46 source files",
+    ),
+    "E015": (
+        "EXTERNAL_NOT_RUN",
+        "NOT RUN: local Task 23 review lacked the locked Node/Playwright cache before "
+        "the remote run",
+        ".superpowers/sdd/PLAN/task-22-report.md",
+        "Historical NOT_RUN retained; superseded by exact-head GitHub quality and E2E "
+        "success in E037",
+    ),
+    "E026": (
+        "EXTERNAL_NOT_RUN",
+        "NOT RUN: local current Chrome E2E lacked the locked Playwright cache before remote CI",
+        "e2e",
+        "Historical local NOT_RUN retained; superseded by exact-head real HTTPS browser "
+        "success in E037",
     ),
     "E002": (
         "RED_COMMAND",
@@ -746,6 +765,11 @@ def validate_audit(
             errors.append(
                 f"{finding.finding_id} evidence coverage does not match its fixed contract"
             )
+        verified_evidence_ids = VERIFIED_FINDING_EVIDENCE_IDS.get(finding.finding_id)
+        if verified_evidence_ids is not None and finding.evidence_ids != verified_evidence_ids:
+            errors.append(
+                f"{finding.finding_id} evidence coverage does not match its verified contract"
+            )
         if finding.domain not in EXPECTED_DOMAINS:
             errors.append(f"{finding.finding_id} has invalid domain")
         if finding.description in {"", "-"}:
@@ -767,6 +791,25 @@ def validate_audit(
             )
             if not has_red or not has_green:
                 errors.append(f"{finding.finding_id} FIXED requires RED and GREEN evidence")
+        if finding.status == "VERIFIED":
+            has_not_run = any(
+                item is not None and item.kind == "EXTERNAL_NOT_RUN" for item in referenced
+            )
+            has_green = any(
+                item is not None and item.kind == "CURRENT_COMMAND" and item.exit_code == 0
+                for item in referenced
+            )
+            if not has_not_run or not has_green:
+                errors.append(
+                    f"{finding.finding_id} VERIFIED requires historical NOT_RUN and current "
+                    "GREEN evidence"
+                )
+            if not finding.disposition.startswith("VERIFIED:"):
+                errors.append(f"{finding.finding_id} VERIFIED requires a verified disposition")
+            if finding.owner in {"", "-"}:
+                errors.append(f"{finding.finding_id} VERIFIED requires an owner")
+            if finding.review_condition in {"", "-"}:
+                errors.append(f"{finding.finding_id} VERIFIED requires a review condition")
         if finding.status == "ACCEPTED":
             if (
                 not finding.disposition.startswith("RISK ACCEPTED:")

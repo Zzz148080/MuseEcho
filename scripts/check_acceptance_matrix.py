@@ -338,7 +338,8 @@ EVIDENCE_CONTRACTS = {
         path="docs/audits/ENGINEERING_AUDIT.md",
         coverage_ids=("AC-F-6", "DOD-13"),
         result=(
-            "findings=10; fixed-high=4; fixed-medium=3; blocked-medium=3; open=0; "
+            "findings=10; fixed-high=4; fixed-medium=2; verified-medium=1; "
+            "blocked-medium=3; open=0; "
             "app-occurrences=181; app-distinct-cves=67; gateway-occurrences=0"
         ),
         exit_code_raw="0",

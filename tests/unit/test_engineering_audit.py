@@ -226,6 +226,53 @@ def test_fixed_finding_requires_real_red_and_green_evidence(tmp_path: Path) -> N
     assert "ENG-001 FIXED requires RED and GREEN evidence" in _validation_error(tmp_path, mutation)
 
 
+def test_verified_evidence_gap_requires_not_run_and_current_green(tmp_path: Path) -> None:
+    mutation = _replace_table_cell(_audit_text(), FINDING_HEADING, "ENG-006", "Status", "VERIFIED")
+    mutation = _replace_table_cell(
+        mutation,
+        FINDING_HEADING,
+        "ENG-006",
+        "Disposition",
+        "VERIFIED: exact-head CI executed the formerly unavailable frontend and browser gates.",
+    )
+    verified = load_audit(_write_audit(tmp_path, mutation))
+
+    validate_audit(verified, repo_root=ROOT, now=NOW)
+
+    without_not_run = _replace_table_cell(
+        mutation, FINDING_HEADING, "ENG-006", "Evidence IDs", "E037"
+    )
+    assert "ENG-006 VERIFIED requires historical NOT_RUN and current GREEN evidence" in (
+        _validation_error(tmp_path, without_not_run)
+    )
+
+
+def test_verified_evidence_gap_cannot_masquerade_as_fixed_without_red(tmp_path: Path) -> None:
+    mutation = _replace_table_cell(_audit_text(), FINDING_HEADING, "ENG-006", "Status", "FIXED")
+
+    assert "ENG-006 FIXED requires RED and GREEN evidence" in _validation_error(tmp_path, mutation)
+
+
+def test_verified_evidence_gap_rejects_unrelated_not_run_record(tmp_path: Path) -> None:
+    mutation = _replace_table_cell(
+        _audit_text(), EVIDENCE_HEADING, "E015", "Command", "NOT RUN: unrelated tool missing"
+    )
+    mutation = _replace_table_cell(
+        mutation, EVIDENCE_HEADING, "E015", "Path", "scripts/check_engineering_audit.py"
+    )
+    mutation = _replace_table_cell(
+        mutation,
+        EVIDENCE_HEADING,
+        "E015",
+        "Result",
+        "Unrelated unavailable command cannot establish the browser evidence gap.",
+    )
+
+    assert "E015 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
+
 @pytest.mark.parametrize(
     ("finding_id", "red_id", "green_id"),
     (

@@ -459,6 +459,9 @@ def test_task23_current_backend_smoke_static_secret_and_security_contracts_repla
     audit = load_audit(SPEC_PATH, AUDIT_PATH)
     evidence_by_id = {record.evidence_id: record for record in audit.evidence}
     remote_ci_item = next(item for item in audit.items if item.item_id == "DOD-10")
+    remote_ci_blocker = next(
+        blocker for blocker in audit.blockers if blocker.blocker_id == "REMOTE-CI"
+    )
 
     assert "museecho-app:task23-review1" in contracts["E008"].command
     assert "pytest-tests=649" != contracts["E008"].result
@@ -474,7 +477,17 @@ def test_task23_current_backend_smoke_static_secret_and_security_contracts_repla
     assert "run=31630284744" in contracts["E906"].result
     assert "head=2b2730eaf232f8edf3ead77be1830fa50d927a47" in contracts["E906"].result
     assert "quality=success; e2e=success; distribution=success" in contracts["E906"].result
+    assert contracts["E906"].coverage_ids == (
+        "AC-C-3",
+        "AC-F-1",
+        "AC-F-4",
+        "DOD-01",
+        "DOD-03",
+        "DOD-07",
+        "DOD-10",
+    )
     assert remote_ci_item.evidence_ids == ("E901", "E906")
+    assert remote_ci_blocker.evidence_ids == ("E901",)
 
 
 def test_functional_engineering_evidence_matches_current_engineering_audit() -> None:
@@ -486,6 +499,7 @@ def test_functional_engineering_evidence_matches_current_engineering_audit() -> 
         f"findings={len(engineering.findings)}; "
         f"fixed-high={counts[('High', 'FIXED')]}; "
         f"fixed-medium={counts[('Medium', 'FIXED')]}; "
+        f"verified-medium={counts[('Medium', 'VERIFIED')]}; "
         f"blocked-medium={counts[('Medium', 'BLOCKED')]}; open={open_count}; "
     )
 
