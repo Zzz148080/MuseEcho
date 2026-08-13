@@ -2,6 +2,17 @@
 
 本文件仅积累客观过程材料，不代写学生的 `REFLECTION.md`，也不替学生生成主观结论。
 
+<!-- TASK23-CURRENT-STATUS:START -->
+## Task 23 compatibility status (superseded by Task 24)
+
+The Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and
+`PARTIALLY_READY`. Task 23 PR #1 merged after GitHub quality, E2E, and
+distribution passed. Its implementation boundary is retained here for the Task
+23 regression contract; the current branch tip and authoritative status are in
+the Task 24 block below. At Task 23 closure, the blocker keys were `GitLab`,
+`TC-021`, `TASK24-AUDIT`, `STUDENT-MANUAL`, and `FORMAL-OFFLINE-BUILD`.
+<!-- TASK23-CURRENT-STATUS:END -->
+
 <!-- TASK24-CURRENT-STATUS:START -->
 ## Task 24 current status
 

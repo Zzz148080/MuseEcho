@@ -8,6 +8,16 @@
 
 **技术栈：** Python 3.12、FastAPI、Pydantic、SQLAlchemy 2、Alembic、NumPy、SciPy、librosa、FFmpeg、cryptography、keyring、Typer、pytest、Ruff、mypy；Node 22、React、Vite、TypeScript、TanStack Query、Vitest、Testing Library、Playwright；Docker Compose、Caddy、GitHub Actions、GitLab CI。
 
+<!-- TASK23-CURRENT-STATUS:START -->
+> **Task 23 compatibility status (superseded by Task 24):** The Functional
+> Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and `PARTIALLY_READY`. Task 23 PR #1
+> merged after GitHub quality, E2E, and distribution passed. Its implementation
+> boundary is retained for the Task 23 regression contract; the current branch
+> tip and authoritative status are in the Task 24 block below. At Task 23
+> closure, the blocker keys were `GitLab`, `TC-021`, `TASK24-AUDIT`,
+> `STUDENT-MANUAL`, and `FORMAL-OFFLINE-BUILD`.
+<!-- TASK23-CURRENT-STATUS:END -->
+
 <!-- TASK24-CURRENT-STATUS:START -->
 > **Task 24 current status:** `MUSEECHO V1 PARTIALLY READY`. The Product Audit,
 > fixed 17-section Delivery Report, fail-closed validator, and blank student
