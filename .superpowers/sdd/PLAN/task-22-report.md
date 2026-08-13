@@ -449,10 +449,15 @@ claim above is historical, not current evidence. The authoritative matrix is
 now `28 PASS / 12 PARTIAL / 0 FAIL`, with AC-F-4 changed to PARTIAL and linked
 to the still-open current-browser/frontend environment blocker.
 
-## Superseded by Task 23 final exact-head CI evidence
+<!-- TASK23-CURRENT-STATUS:START -->
+## Superseded by Task 23 implementation-boundary CI evidence
 
-GitHub Actions run `31630284744` on exact head `2b2730e` subsequently passed
-quality, real HTTPS browser E2E, and distribution. This is not the pre-review
-result: the current final Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL**
-and remains `PARTIALLY_READY`; the earlier `28 PASS / 12 PARTIAL / 0 FAIL`
-status above is superseded historical timeline evidence.
+The current Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and remains
+`PARTIALLY_READY`. GitHub run `31630284744` at `2b2730e` is the last product/CI
+implementation boundary, not branch-tip evidence. It supports product,
+browser, and distribution verification; the external GitHub PR merge gate must
+require quality, E2E, and distribution success for the branch-tip SHA. GitLab,
+cloud/public/target, Task 24, formal offline build ENG-010, and student gates
+remain open. Earlier pre-review and review-round matrix statements in this
+report are superseded historical timeline evidence.
+<!-- TASK23-CURRENT-STATUS:END -->

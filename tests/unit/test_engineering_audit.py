@@ -233,7 +233,8 @@ def test_verified_evidence_gap_requires_not_run_and_current_green(tmp_path: Path
         FINDING_HEADING,
         "ENG-006",
         "Disposition",
-        "VERIFIED: exact-head CI executed the formerly unavailable frontend and browser gates.",
+        "VERIFIED: implementation-boundary CI executed the formerly unavailable "
+        "frontend and browser gates.",
     )
     verified = load_audit(_write_audit(tmp_path, mutation))
 
@@ -244,6 +245,29 @@ def test_verified_evidence_gap_requires_not_run_and_current_green(tmp_path: Path
     )
     assert "ENG-006 VERIFIED requires historical NOT_RUN and current GREEN evidence" in (
         _validation_error(tmp_path, without_not_run)
+    )
+
+
+def test_verified_gap_uses_implementation_boundary_green_not_branch_tip_evidence() -> None:
+    audit = load_audit(AUDIT_PATH)
+    evidence = next(item for item in audit.evidence if item.evidence_id == "E037")
+    finding = next(item for item in audit.findings if item.finding_id == "ENG-006")
+
+    assert evidence.kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert "implementation boundary" in evidence.result.lower()
+    assert "exact-head" not in finding.description.lower()
+    assert "exact head" not in finding.disposition.lower()
+
+
+def test_old_current_command_kind_cannot_recast_e037_as_branch_tip_evidence(
+    tmp_path: Path,
+) -> None:
+    mutation = _replace_table_cell(
+        _audit_text(), EVIDENCE_HEADING, "E037", "Kind", "CURRENT_COMMAND"
+    )
+
+    assert "E037 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
     )
 
 
@@ -739,7 +763,8 @@ def test_current_acceptance_evidence_is_a_fixed_engineering_contract(tmp_path: P
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md"
     )
-    expected_result = "41 passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0"
+    collected_count = 44
+    expected_result = f"{collected_count} passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0"
 
     assert checker.FIXED_EVIDENCE_CONTRACTS["E030"] == (
         "CURRENT_COMMAND",

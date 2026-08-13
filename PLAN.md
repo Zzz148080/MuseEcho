@@ -8,11 +8,15 @@
 
 **技术栈：** Python 3.12、FastAPI、Pydantic、SQLAlchemy 2、Alembic、NumPy、SciPy、librosa、FFmpeg、cryptography、keyring、Typer、pytest、Ruff、mypy；Node 22、React、Vite、TypeScript、TanStack Query、Vitest、Testing Library、Playwright；Docker Compose、Caddy、GitHub Actions、GitLab CI。
 
-> **Task 23 final current status:** Exact-head GitHub Actions run `31630284744`
-> passed quality, real HTTPS E2E, and distribution. The current Functional Audit
-> is **34 PASS / 6 PARTIAL / 0 FAIL** and remains `PARTIALLY_READY`; earlier
-> `28 PASS / 12 PARTIAL / 0 FAIL` entries below are superseded historical
-> timeline evidence.
+<!-- TASK23-CURRENT-STATUS:START -->
+> **Task 23 current status:** The Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL**
+> and remains `PARTIALLY_READY`. Run `31630284744` at `2b2730e` is the
+> last product/CI implementation boundary, not branch-tip evidence. Product,
+> browser, and distribution verification may cite that boundary; the external
+> GitHub PR merge gate must independently require quality, E2E, and distribution
+> success for the branch-tip SHA. GitLab, cloud/public/target, Task 24, formal
+> offline build ENG-010, and student gates remain open.
+<!-- TASK23-CURRENT-STATUS:END -->
 
 ## 0. 当前门禁与真实性约束
 

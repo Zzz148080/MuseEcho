@@ -202,9 +202,11 @@ try {
             [pscustomobject]@{ Name = 'missing'; Output = 'no marker'; ExitCode = 1 },
             [pscustomobject]@{ Name = 'duplicate'; Output = "$probeSuccessMarker`n$probeSuccessMarker"; ExitCode = 0 },
             [pscustomobject]@{ Name = 'malformed'; Output = "${probeExceptionMarkerPrefix}%%%"; ExitCode = 1 },
+            [pscustomobject]@{ Name = 'noncanonical-base64'; Output = "${probeExceptionMarkerPrefix}ZmFp bGVk"; ExitCode = 1 },
             [pscustomobject]@{ Name = 'invalid-utf8'; Output = "${probeExceptionMarkerPrefix}/w=="; ExitCode = 1 },
             [pscustomobject]@{ Name = 'empty-failure-payload'; Output = $probeExceptionMarkerPrefix; ExitCode = 1 },
             [pscustomobject]@{ Name = 'success-with-payload'; Output = "${probeSuccessMarker}:unexpected"; ExitCode = 0 },
+            [pscustomobject]@{ Name = 'arbitrary-kind'; Output = "${probeMarkerPrefix}ARBITRARY_KIND"; ExitCode = 1 },
             [pscustomobject]@{ Name = 'wrong-success-exit'; Output = $probeSuccessMarker; ExitCode = 1 },
             [pscustomobject]@{ Name = 'wrong-failure-exit'; Output = "${probeExceptionMarkerPrefix}ZmFpbGVk"; ExitCode = 0 }
         )) {

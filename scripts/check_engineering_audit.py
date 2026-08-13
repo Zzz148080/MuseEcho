@@ -43,7 +43,7 @@ EXPECTED_DOMAINS = (
 
 SEVERITIES = frozenset({"Critical", "High", "Medium", "Low"})
 STATUSES = frozenset({"OPEN", "FIXED", "VERIFIED", "ACCEPTED", "BLOCKED"})
-EXECUTED_KINDS = frozenset({"RED_COMMAND", "CURRENT_COMMAND"})
+EXECUTED_KINDS = frozenset({"RED_COMMAND", "CURRENT_COMMAND", "IMPLEMENTATION_BOUNDARY_COMMAND"})
 EVIDENCE_KINDS = EXECUTED_KINDS | {"EXTERNAL_NOT_RUN", "FILE_EXISTENCE"}
 
 # These are the real findings discovered during Task 23. Keeping this inventory in
@@ -127,15 +127,13 @@ FIXED_EVIDENCE_CONTRACTS = {
         "NOT RUN: local Task 23 review lacked the locked Node/Playwright cache before "
         "the remote run",
         ".superpowers/sdd/PLAN/task-22-report.md",
-        "Historical NOT_RUN retained; superseded by exact-head GitHub quality and E2E "
-        "success in E037",
+        "Historical NOT_RUN retained; superseded for product implementation coverage by E037",
     ),
     "E026": (
         "EXTERNAL_NOT_RUN",
         "NOT RUN: local current Chrome E2E lacked the locked Playwright cache before remote CI",
         "e2e",
-        "Historical local NOT_RUN retained; superseded by exact-head real HTTPS browser "
-        "success in E037",
+        "Historical local NOT_RUN retained; superseded for product implementation coverage by E037",
     ),
     "E002": (
         "RED_COMMAND",
@@ -298,7 +296,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md",
         "docs/audits/FUNCTIONAL_AUDIT.md",
-        "41 passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0",
+        "44 passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0",
     ),
     "E033": (
         "RED_COMMAND",
@@ -336,11 +334,11 @@ FIXED_EVIDENCE_CONTRACTS = {
         "Controlled current-source derivative is audit-only and is not a release artifact",
     ),
     "E037": (
-        "CURRENT_COMMAND",
+        "IMPLEMENTATION_BOUNDARY_COMMAND",
         "gh run view 31630284744 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha",
         ".github/workflows/ci.yml",
-        "GitHub Actions run 31630284744 on 2b2730e completed with quality, e2e, "
-        "and distribution success",
+        "Last product/CI implementation boundary 31630284744 on 2b2730e completed with "
+        "quality, e2e, and distribution success; it is not branch-tip evidence",
     ),
 }
 
@@ -734,7 +732,14 @@ def validate_audit(
             item = evidence_by_id.get(evidence_id)
             if item is None:
                 errors.append(f"{coverage.domain} references missing evidence {evidence_id}")
-            elif item.kind != "CURRENT_COMMAND" or item.exit_code != 0:
+            elif (
+                item.kind
+                not in {
+                    "CURRENT_COMMAND",
+                    "IMPLEMENTATION_BOUNDARY_COMMAND",
+                }
+                or item.exit_code != 0
+            ):
                 errors.append(f"{coverage.domain} requires successful current command evidence")
         if (
             coverage.domain == "runtime-image-vulnerabilities"
@@ -796,7 +801,9 @@ def validate_audit(
                 item is not None and item.kind == "EXTERNAL_NOT_RUN" for item in referenced
             )
             has_green = any(
-                item is not None and item.kind == "CURRENT_COMMAND" and item.exit_code == 0
+                item is not None
+                and item.kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+                and item.exit_code == 0
                 for item in referenced
             )
             if not has_not_run or not has_green:

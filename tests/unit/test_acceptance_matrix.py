@@ -447,7 +447,7 @@ def test_green_github_evidence_closes_frontend_and_browser_gaps() -> None:
     audit = load_audit(SPEC_PATH, AUDIT_PATH)
     item = next(item for item in audit.items if item.item_id == "AC-F-4")
 
-    assert contract.kind == "CURRENT_COMMAND"
+    assert contract.kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
     assert contract.exit_code_raw == "0"
     assert contract.supports_pass is True
     assert item.verdict == "PASS"
@@ -472,7 +472,7 @@ def test_task23_current_backend_smoke_static_secret_and_security_contracts_repla
     assert "gateway-occurrences=0" in contracts["E902"].result
     assert evidence_by_id["E901"].kind == "EXTERNAL_NOT_RUN"
     assert "GitLab CI" in evidence_by_id["E901"].command
-    assert contracts["E906"].kind == "CURRENT_COMMAND"
+    assert contracts["E906"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
     assert contracts["E906"].supports_pass is True
     assert "run=31630284744" in contracts["E906"].result
     assert "head=2b2730eaf232f8edf3ead77be1830fa50d927a47" in contracts["E906"].result
@@ -488,6 +488,30 @@ def test_task23_current_backend_smoke_static_secret_and_security_contracts_repla
     )
     assert remote_ci_item.evidence_ids == ("E901", "E906")
     assert remote_ci_blocker.evidence_ids == ("E901",)
+
+
+@pytest.mark.parametrize("evidence_id", ("E002", "E906"))
+def test_product_ci_pass_uses_the_last_implementation_boundary_not_the_branch_tip(
+    evidence_id: str,
+) -> None:
+    audit = load_audit(SPEC_PATH, AUDIT_PATH)
+    evidence = next(record for record in audit.evidence if record.evidence_id == evidence_id)
+
+    assert evidence.kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert "implementation boundary" in evidence.summary.lower()
+    assert "exact-head" not in evidence.summary.lower()
+
+
+def test_old_current_command_kind_cannot_recast_implementation_boundary_as_tip_evidence(
+    tmp_path: Path,
+) -> None:
+    mutation = _replace_table_cell(
+        _audit_text(), "## Evidence index", "E906", "Kind", "CURRENT_COMMAND"
+    )
+
+    assert "E906 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
 
 
 def test_functional_engineering_evidence_matches_current_engineering_audit() -> None:

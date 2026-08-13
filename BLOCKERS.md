@@ -1,10 +1,35 @@
 # MuseEcho Blockers
 
-GitHub final evidence: run `31630284744` on exact head `2b2730e` passed quality,
-real HTTPS E2E, and distribution. Status is 34 PASS / 6 PARTIAL / 0 FAIL and
-PARTIALLY_READY; GitLab, cloud/public, Task 24, and student acceptance remain.
-Earlier `28 PASS / 12 PARTIAL / 0 FAIL` entries below are superseded historical
-timeline evidence, not the current final matrix.
+<!-- TASK23-CURRENT-STATUS:START -->
+## Task 23 current status
+
+The Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and
+`PARTIALLY_READY`. GitHub run `31630284744` at `2b2730e` is the last
+product/CI implementation boundary: quality, real HTTPS E2E, and distribution
+passed there. It supports product/browser/distribution verification, but it is
+not current branch tip or mergeability evidence. The external GitHub PR merge
+gate must require quality, E2E, and distribution success for the branch-tip
+SHA without embedding a self-invalidating concrete tip run/SHA here.
+
+Current blockers are:
+
+- `REMOTE-CI`: GitLab CI remains not run, and branch-tip GitHub mergeability is
+  enforced externally as described above;
+- `TC-021`: target-server performance plus Tencent Cloud/public/DNS/TLS,
+  cross-network, 24-hour observation, and live rollback evidence remain absent;
+- `TASK24-AUDIT`: Product Audit and final delivery verification remain pending;
+- `STUDENT-MANUAL`: the student's personal acceptance and `REFLECTION.md`
+  remain reserved for the student;
+- `FORMAL-OFFLINE-BUILD`: ENG-010 remains BLOCKED because the formal Dockerfile
+  lacks the complete locked pip/apt BuildKit cache under `--network none`; the
+  controlled derivative remains audit-only and non-release.
+<!-- TASK23-CURRENT-STATUS:END -->
+
+## Historical and superseded blocker timeline
+
+All “current” statements below describe their dated Task 22/early Task 23
+checkpoint and are retained only as historical evidence. They do not override
+the current-status block above.
 
 当前没有阻塞本地继续实施或完成 Task 23 的已确认 Blocker。历史审批通道问题 `CS-001` 已在此前通过多次真实提权命令成功执行而关闭。
 

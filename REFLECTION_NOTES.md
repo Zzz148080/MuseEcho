@@ -2,11 +2,17 @@
 
 本文件仅积累客观过程材料，不代写学生的 `REFLECTION.md`，也不替学生生成主观结论。
 
-Task 23 final current evidence is GitHub Actions run `31630284744` on exact head
-`2b2730e`: quality, real HTTPS E2E, and distribution passed. The current
-Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and `PARTIALLY_READY`;
-earlier `28 PASS / 12 PARTIAL / 0 FAIL` entries below are superseded historical
-timeline evidence.
+<!-- TASK23-CURRENT-STATUS:START -->
+## Task 23 current status
+
+The Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and
+`PARTIALLY_READY`. GitHub run `31630284744` at `2b2730e` is the last product/CI
+implementation boundary, not branch-tip evidence. It supports the recorded
+product/browser/distribution verification; the external GitHub PR merge gate
+must require quality, E2E, and distribution success for the branch-tip SHA.
+GitLab, cloud/public/target, Task 24, formal offline build ENG-010, and student
+gates remain open. Older statements below are historical timeline evidence.
+<!-- TASK23-CURRENT-STATUS:END -->
 
 ## 2026-08-11 — TASK 22 / 证据驱动验收材料
 

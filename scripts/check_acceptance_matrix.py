@@ -89,11 +89,16 @@ VALID_VERDICTS = {"PASS", "PARTIAL", "FAIL"}
 VALID_IMPORTANCE = {"IMPORTANT", "STANDARD"}
 VALID_EVIDENCE_KINDS = {
     "CURRENT_COMMAND",
+    "IMPLEMENTATION_BOUNDARY_COMMAND",
     "HISTORICAL_COMMIT",
     "EXTERNAL_NOT_RUN",
     "FILE_EXISTENCE",
 }
-EXECUTED_EVIDENCE_KINDS = {"CURRENT_COMMAND", "HISTORICAL_COMMIT"}
+EXECUTED_EVIDENCE_KINDS = {
+    "CURRENT_COMMAND",
+    "IMPLEMENTATION_BOUNDARY_COMMAND",
+    "HISTORICAL_COMMIT",
+}
 FILE_ONLY_COMMAND = re.compile(
     r"^\s*(?:Test-Path\b|Get-Item\b|Get-ChildItem\b|ls\b|dir\b|test\s+-[efd]\b|git\s+ls-files\b)",
     re.IGNORECASE,
@@ -162,7 +167,7 @@ EVIDENCE_CONTRACTS = {
         exit_code_raw="0",
     ),
     "E002": EvidenceContract(
-        kind="CURRENT_COMMAND",
+        kind="IMPLEMENTATION_BOUNDARY_COMMAND",
         command=(
             "gh run view 31630284744 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha"
         ),
@@ -324,7 +329,7 @@ EVIDENCE_CONTRACTS = {
         ),
         path="tests/unit/test_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-15"),
-        result="pytest-tests=41; pass=34; partial=6; fail=0",
+        result="pytest-tests=44; pass=34; partial=6; fail=0",
         exit_code_raw="0",
     ),
     "E902": EvidenceContract(
@@ -345,7 +350,7 @@ EVIDENCE_CONTRACTS = {
         exit_code_raw="0",
     ),
     "E906": EvidenceContract(
-        kind="CURRENT_COMMAND",
+        kind="IMPLEMENTATION_BOUNDARY_COMMAND",
         command=(
             "gh run view 31630284744 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha"
         ),

@@ -19,6 +19,17 @@ import yaml
 from scripts.check_acceptance_matrix import load_audit
 
 ROOT = Path(__file__).resolve().parents[2]
+CURRENT_STATUS_START = "<!-- TASK23-CURRENT-STATUS:START -->"
+CURRENT_STATUS_END = "<!-- TASK23-CURRENT-STATUS:END -->"
+
+
+def _current_status_block(document: str, *, name: str) -> str:
+    assert document.count(CURRENT_STATUS_START) == 1, f"{name} lacks one current-status start"
+    assert document.count(CURRENT_STATUS_END) == 1, f"{name} lacks one current-status end"
+    before_end, separator, after_end = document.partition(CURRENT_STATUS_END)
+    assert separator and CURRENT_STATUS_START in before_end, f"{name} has invalid status markers"
+    assert CURRENT_STATUS_START not in after_end, f"{name} has nested status markers"
+    return before_end.rsplit(CURRENT_STATUS_START, maxsplit=1)[1]
 
 
 def test_isolated_project_build_backend_is_exactly_constrained_by_the_lock():
@@ -684,14 +695,35 @@ def test_process_documents_anchor_evidence_and_share_current_audit_status():
     assert "No public URL is claimed." in deployment
     assert "## Pending real-server evidence" in deployment
 
-    for name, document in (
-        ("REFLECTION_NOTES.md", reflection_notes),
-        ("AGENT_LOG.md", agent_log),
-        ("BLOCKERS.md", blockers),
-        ("PLAN.md", plan),
-        ("task-22-report.md", task22_report),
+    current_blocks = {
+        name: _current_status_block(document, name=name)
+        for name, document in (
+            ("REFLECTION_NOTES.md", reflection_notes),
+            ("AGENT_LOG.md", agent_log),
+            ("BLOCKERS.md", blockers),
+            ("PLAN.md", plan),
+            ("task-22-report.md", task22_report),
+        )
+    }
+    for name, current_block in current_blocks.items():
+        assert current_status in current_block, (
+            f"{name} lacks current audit status {current_status}"
+        )
+        assert "28 PASS / 12 PARTIAL / 0 FAIL" not in current_block
+        assert "CURRENT-BROWSER-E2E" not in current_block
+        assert not re.search(r"GitHub.{0,80}(?:pending|待推送|待.*结果)", current_block, re.I)
+
+    blockers_current = current_blocks["BLOCKERS.md"]
+    for required in (
+        "GitLab",
+        "TC-021",
+        "TASK24-AUDIT",
+        "STUDENT-MANUAL",
+        "FORMAL-OFFLINE-BUILD",
     ):
-        assert current_status in document, f"{name} lacks current audit status {current_status}"
+        assert required in blockers_current
+    assert "implementation boundary" in blockers_current.lower()
+    assert "branch tip" in blockers_current.lower()
 
     assert "保持 6 个 PARTIAL" not in reflection_notes
     pre_review_report = task22_report.split("## Review fix round 1/5", maxsplit=1)[0]
@@ -699,8 +731,14 @@ def test_process_documents_anchor_evidence_and_share_current_audit_status():
     assert "pristine final run" not in pre_review_report
     legacy_statuses = ("PASS=34 PARTIAL=6 FAIL=0", "34 PASS / 6 PARTIAL / 0 FAIL")
     assert any(status in task22_report for status in legacy_statuses)
+    historical_report = re.sub(
+        rf"{re.escape(CURRENT_STATUS_START)}.*?{re.escape(CURRENT_STATUS_END)}",
+        "",
+        task22_report,
+        flags=re.DOTALL,
+    )
     for legacy_status in legacy_statuses:
-        for match in re.finditer(re.escape(legacy_status), task22_report):
-            context = task22_report[max(0, match.start() - 240) : match.end() + 240].lower()
+        for match in re.finditer(re.escape(legacy_status), historical_report):
+            context = historical_report[max(0, match.start() - 240) : match.end() + 240].lower()
             assert "pre-review" in context
             assert "superseded" in context
