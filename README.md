@@ -1,5 +1,18 @@
 # MuseEcho
 
+<!-- TASK24-CURRENT-STATUS:START -->
+## Task 24 current status
+
+Current delivery status is `MUSEECHO V1 PARTIALLY READY`. Task 24 now provides
+the Product Audit, 17-section delivery report, strict validator, and a blank
+student-owned reflection template; Task 24 itself is no longer a blocker.
+Task 23 PR #1 is merged with GitHub quality, E2E, and distribution green.
+Task 24 GitHub quality, E2E, and distribution passed at its recorded
+implementation boundary. Remaining gates are GitLab, Tencent
+Cloud/public/target-server smoke and rollback, formal offline build ENG-010,
+controller browser observation behind trusted TLS, and student acceptance.
+<!-- TASK24-CURRENT-STATUS:END -->
+
 MuseEcho V1 是一款 Evidence First（证据优先）的交互式音乐理解应用。它用确定性的
 DSP/MIR 管线分析用户上传的 WAV/MP3，生成节拍、能量、调性、结构、和弦、波形和确定性
 乐理证据；可选 LLM 只能解释已经通过置信度门的结构化证据，不能生成或改写音乐事实。
@@ -50,6 +63,9 @@ DSP/MIR 管线分析用户上传的 WAV/MP3，生成节拍、能量、调性、�
 - `migrations/`：Alembic 迁移。
 - `scripts/`：统一验证、Secret 审计、容器 smoke 与性能基准。
 - `docs/`：设计与验证资料；`SPEC.md`、`PLAN.md` 是批准的产品和实施基线。
+- `DELIVERY_REPORT.md`：Task 24 的固定 17 节交付结论、证据、精确阻因和学生保留检查表。
+- `docs/audits/PRODUCT_AUDIT.md`：机器可读的产品审计矩阵；控制器已真实到达健康 HTTPS 边界，但因内部 CA 未受信而保持 `CERT_TRUST_BLOCKED`。
+- `REFLECTION.md`：仅供学生本人填写的空白模板，Agent 不代写或勾选。
 
 ## 环境要求
 
@@ -112,6 +128,7 @@ npm.cmd --prefix frontend run typecheck
 npm.cmd --prefix frontend run build
 npm.cmd run typecheck
 npm.cmd run e2e
+uv run python scripts/check_delivery_report.py DELIVERY_REPORT.md
 ```
 
 ## Docker

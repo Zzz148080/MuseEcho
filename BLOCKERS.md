@@ -1,29 +1,37 @@
 # MuseEcho Blockers
 
 <!-- TASK23-CURRENT-STATUS:START -->
-## Task 23 current status
+## Task 23 compatibility status (superseded by Task 24)
 
 The Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and
-`PARTIALLY_READY`. GitHub run `31630284744` at `2b2730e` is the last
-product/CI implementation boundary: quality, real HTTPS E2E, and distribution
-passed there. It supports product/browser/distribution verification, but it is
-not current branch tip or mergeability evidence. The external GitHub PR merge
-gate must require quality, E2E, and distribution success for the branch-tip
-SHA without embedding a self-invalidating concrete tip run/SHA here.
-
-Current blockers are:
-
-- `REMOTE-CI`: GitLab CI remains not run, and branch-tip GitHub mergeability is
-  enforced externally as described above;
-- `TC-021`: target-server performance plus Tencent Cloud/public/DNS/TLS,
-  cross-network, 24-hour observation, and live rollback evidence remain absent;
-- `TASK24-AUDIT`: Product Audit and final delivery verification remain pending;
-- `STUDENT-MANUAL`: the student's personal acceptance and `REFLECTION.md`
-  remain reserved for the student;
-- `FORMAL-OFFLINE-BUILD`: ENG-010 remains BLOCKED because the formal Dockerfile
-  lacks the complete locked pip/apt BuildKit cache under `--network none`; the
-  controlled derivative remains audit-only and non-release.
+`PARTIALLY_READY`. Task 23 PR #1 merged after GitHub quality, E2E, and
+distribution passed. Its implementation boundary is retained here for the Task
+23 regression contract; the current branch tip and authoritative status are in
+the Task 24 block below. At Task 23 closure, the blocker keys were `GitLab`,
+`TC-021`, `TASK24-AUDIT`, `STUDENT-MANUAL`, and `FORMAL-OFFLINE-BUILD`.
 <!-- TASK23-CURRENT-STATUS:END -->
+
+<!-- TASK24-CURRENT-STATUS:START -->
+## Task 24 current status
+
+`MUSEECHO V1 PARTIALLY READY`. Product Audit and final delivery verification
+are complete artifacts, so Task 24 is not a current blocker. Current blockers
+map exactly to `DELIVERY_REPORT.md`:
+
+- `BLK-REMOTE-CI`: Task 23 PR #1 merged and Task 24 run `31687703913` passed
+  GitHub quality, E2E, and distribution; GitLab remains not run;
+- `BLK-CLOUD-PUBLIC-TARGET`: target-server performance, Tencent Cloud/public
+  trusted TLS, cross-network and 24-hour smoke, backup/restore, and live rollback
+  remain absent;
+- `BLK-FORMAL-OFFLINE-BUILD`: ENG-010 remains blocked pending a formal
+  current-source Dockerfile rebuild with the complete locked cache under
+  `--network none` plus regenerated release/security evidence;
+- `BLK-CONTROLLER-BROWSER`: the controller reached a healthy local HTTPS
+  service, but the in-app browser rejected the internal Caddy CA before render;
+  PA-01 through PA-13 remain `CERT_TRUST_BLOCKED` pending trusted TLS;
+- `BLK-STUDENT-MANUAL`: personal README cold start, real music acceptance,
+  PR/CI/Secret review, and `REFLECTION.md` remain reserved for the student.
+<!-- TASK24-CURRENT-STATUS:END -->
 
 ## Historical and superseded blocker timeline
 
