@@ -796,6 +796,8 @@ def test_delivery_status_matches_evidence(report):
 
 **并行：** 否。**依赖：** T23。**对应验收标准：** AC-A 至 AC-F、完整 DoD、Product Audit、最终 Verification 与学生保留验收。**分支：** `audit/24-product-delivery`。**计划提交：** `docs: publish verified MuseEcho delivery report`。**实际状态：** Task 24 文档、validator 与 TDD mutation suite 已实现；Product Audit 的 13 个产品域均机器可读。控制器真实到达健康 HTTPS 边界，但浏览器在渲染前因内部 CA 未受信而停止，因此如实保持 `CERT_TRUST_BLOCKED`；Task 24 本身不再是 blocker。最终结论为 `MUSEECHO V1 PARTIALLY READY`，精确剩余门禁记录在 `DELIVERY_REPORT.md`；实际提交哈希在提交后记录于 Task 24 report，不在提交内自指。
 
+**Task 24 implementation commit:** `d4b1245e056a5017b9e3d71dbd086f6f28d6f55c` (`docs: publish verified MuseEcho delivery report`).
+
 ## 4. 计划验收清单
 
 - [x] 覆盖 SPEC 的上传、任务、DSP/MIR、Music DNA、同步地图、乐理、Evidence Q&A、隐私、Secret、Docker、双 CI、腾讯云部署与三轮审计。

@@ -35,3 +35,6 @@ branch-tip/GitLab CI, cloud/public/target operations, formal offline build
 ENG-010, trusted-certificate controller observation, and student-owned manual
 acceptance/reflection. Next gates: independent review, commit/push, GitHub PR
 checks, merge, and final remote verification.
+
+Implementation commit: `d4b1245e056a5017b9e3d71dbd086f6f28d6f55c`. The remaining work is publish/remote CI,
+merge, and final remote verification; no product implementation is pending.

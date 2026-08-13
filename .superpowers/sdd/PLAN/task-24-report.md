@@ -8,6 +8,9 @@ reflection template. The truthful final readiness is `MUSEECHO V1 PARTIALLY
 READY`; Task 24 itself is complete, while five external/manual/release classes
 remain open in `DELIVERY_REPORT.md`.
 
+Implementation commit: `d4b1245e056a5017b9e3d71dbd086f6f28d6f55c` (`docs: publish verified MuseEcho delivery
+report`).
+
 ## TDD history
 
 - Initial RED: the locked sibling Python collected
