@@ -118,8 +118,8 @@
     "MIT-0"
   ],
   "npm_lock_sha256": {
-    "package-lock.json": "24bb00a163d21af45b232bdb297d0a76eb5b07916b034deebc9a2194499873a8",
-    "frontend/package-lock.json": "2eb4398ae7ce83ae6fd2b14de0b960f7bb1c06bad5b72fa260583c4d0219910b"
+    "package-lock.json": "bf9f2afb5f2d6e82df67764052601ae3f149fd52aff0e14d847d3064d9b30824",
+    "frontend/package-lock.json": "c8bd8d1251a9d53c226a3e0c20fa7d3423402e8ef1741402f5d92d241fc381f8"
   },
   "distribution": {
     "container_images": {

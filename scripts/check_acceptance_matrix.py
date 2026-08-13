@@ -82,20 +82,23 @@ DOD_FRAGMENTS = (
 REQUIRED_OPEN_BLOCKERS = (
     "TC-021",
     "REMOTE-CI",
-    "TASK23-AUDIT",
     "TASK24-AUDIT",
     "STUDENT-MANUAL",
-    "CURRENT-BROWSER-E2E",
 )
 VALID_VERDICTS = {"PASS", "PARTIAL", "FAIL"}
 VALID_IMPORTANCE = {"IMPORTANT", "STANDARD"}
 VALID_EVIDENCE_KINDS = {
     "CURRENT_COMMAND",
+    "IMPLEMENTATION_BOUNDARY_COMMAND",
     "HISTORICAL_COMMIT",
     "EXTERNAL_NOT_RUN",
     "FILE_EXISTENCE",
 }
-EXECUTED_EVIDENCE_KINDS = {"CURRENT_COMMAND", "HISTORICAL_COMMIT"}
+EXECUTED_EVIDENCE_KINDS = {
+    "CURRENT_COMMAND",
+    "IMPLEMENTATION_BOUNDARY_COMMAND",
+    "HISTORICAL_COMMIT",
+}
 FILE_ONLY_COMMAND = re.compile(
     r"^\s*(?:Test-Path\b|Get-Item\b|Get-ChildItem\b|ls\b|dir\b|test\s+-[efd]\b|git\s+ls-files\b)",
     re.IGNORECASE,
@@ -164,14 +167,13 @@ EVIDENCE_CONTRACTS = {
         exit_code_raw="0",
     ),
     "E002": EvidenceContract(
-        kind="CURRENT_COMMAND",
+        kind="IMPLEMENTATION_BOUNDARY_COMMAND",
         command=(
-            "npm.cmd --prefix frontend run typecheck; npm.cmd --prefix frontend run build; "
-            "npm.cmd run typecheck"
+            "gh run view 31630284744 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha"
         ),
         path="frontend",
         coverage_ids=("AC-F-1", "AC-F-4", "DOD-07"),
-        result="frontend-typecheck=0; frontend-build=0; e2e-typecheck=0",
+        result="frontend-tests=success; frontend-typecheck=success; frontend-build=success",
         exit_code_raw="0",
     ),
     "E003": EvidenceContract(
@@ -179,7 +181,7 @@ EVIDENCE_CONTRACTS = {
         command=("powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/secret-scan.ps1"),
         path="scripts/secret-scan.ps1",
         coverage_ids=("AC-E-4", "DOD-09", "DOD-14"),
-        result="secret-scan-files=202",
+        result="secret-scan-files=210",
         exit_code_raw="0",
     ),
     "E004": EvidenceContract(
@@ -200,12 +202,12 @@ EVIDENCE_CONTRACTS = {
         command=(
             r".venv\Scripts\python.exe -m pytest "
             "tests/unit/test_task20_final_delivery_contract.py -q "
-            "--basetemp=tmp/task22-delivery-contract"
+            "--basetemp=tmp/task23-review1-delivery"
         ),
         path="tests/unit/test_task20_final_delivery_contract.py",
         coverage_ids=("AC-F-2", "AC-F-3", "DOD-11", "DOD-12"),
         result=(
-            "pytest-tests=7; github=parsed; gitlab=parsed; gitlab-unit-test=present; "
+            "pytest-tests=8; github=parsed; gitlab=parsed; gitlab-unit-test=present; "
             "readme=verified"
         ),
         exit_code_raw="0",
@@ -226,7 +228,7 @@ EVIDENCE_CONTRACTS = {
         kind="CURRENT_COMMAND",
         command=(
             "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
-            "scripts/container-pytest.ps1 -Image museecho-app:task20-final"
+            "scripts/container-pytest.ps1 -Image museecho-app:task23-review1"
         ),
         path="tests",
         coverage_ids=(
@@ -251,17 +253,26 @@ EVIDENCE_CONTRACTS = {
             "DOD-14",
             "DOD-15",
         ),
-        result="pytest-tests=649",
+        result="pytest-tests=755; skipped=1",
         exit_code_raw="0",
     ),
     "E009": EvidenceContract(
         kind="CURRENT_COMMAND",
         command=(
-            "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/container-smoke.ps1"
+            "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
+            "scripts/container-smoke.ps1 -NoBuild -ReleaseManifest "
+            "docs/audits/evidence/task23-security-manifest.json -ExpectedAppDaemonImageId "
+            "sha256:b0231299644d58f7845e3c137faeca6f0f8cc7df2f3dbbcb656c75060128a724 "
+            "-ExpectedAppConfigImageId "
+            "sha256:89c7b7ad0a9d1708ce0cf277389c1fca7e13e05bb3937b602a6e2533cf9729ac "
+            "-ExpectedGatewayDaemonImageId "
+            "sha256:2235e208dd7d8568c735ba19f1969644384626296eaff5cabb41acfaed86c547 "
+            "-ExpectedGatewayConfigImageId "
+            "sha256:8cc0429e45fd48c911a92fd8504c1f3c14daccb0fee8a24529d72af51b0b4053"
         ),
         path="scripts/container-smoke.ps1",
         coverage_ids=("AC-E-1", "AC-E-3", "AC-F-1", "AC-F-3", "DOD-07", "DOD-08"),
-        result="smoke=real-wav+restart+ciphertext+image-history+cleanup",
+        result="no-build=trusted-identity+real-wav+restart+ciphertext+image-history+cleanup",
         exit_code_raw="0",
     ),
     "E010": EvidenceContract(
@@ -270,11 +281,12 @@ EVIDENCE_CONTRACTS = {
             r".venv\Scripts\python.exe -m ruff format --check src tests scripts; "
             r".venv\Scripts\python.exe -m ruff check .; "
             r".venv\Scripts\python.exe -m mypy src; "
+            r".venv\Scripts\python.exe -m mypy --platform linux src; "
             r".venv\Scripts\python.exe -m mypy scripts/check_acceptance_matrix.py"
         ),
         path="scripts/check_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-07"),
-        result="ruff-files=89; mypy-src-files=45; mypy-checker-files=1",
+        result=("ruff-files=93; mypy-src-files=46; mypy-linux-src-files=46; mypy-checker-files=1"),
         exit_code_raw="0",
     ),
     "E011": EvidenceContract(
@@ -309,13 +321,53 @@ EVIDENCE_CONTRACTS = {
     "E014": EvidenceContract(
         kind="CURRENT_COMMAND",
         command=(
-            "uv run pytest tests/unit/test_acceptance_matrix.py -q && "
-            "uv run python scripts/check_acceptance_matrix.py SPEC.md "
-            "docs/audits/FUNCTIONAL_AUDIT.md"
+            ".venv\\Scripts\\python.exe -m pytest tests/unit/test_acceptance_matrix.py -q "
+            "--basetemp tmp/task23-e014 -p no:cacheprovider; "
+            "if ($LASTEXITCODE) { exit $LASTEXITCODE }; "
+            ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
+            "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md"
         ),
         path="tests/unit/test_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-15"),
-        result="pytest-tests=35; pass=29; partial=11; fail=0",
+        result="pytest-tests=44; pass=34; partial=6; fail=0",
+        exit_code_raw="0",
+    ),
+    "E902": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command=(
+            r".venv\Scripts\python.exe scripts/check_engineering_audit.py "
+            "docs/audits/ENGINEERING_AUDIT.md "
+            "--materials-dir tmp/task23-engineering "
+            "--trivy-db-dir ../feat-20-production-delivery/tmp/trivy-cache/db"
+        ),
+        path="docs/audits/ENGINEERING_AUDIT.md",
+        coverage_ids=("AC-F-6", "DOD-13"),
+        result=(
+            "findings=10; fixed-high=4; fixed-medium=2; verified-medium=1; "
+            "blocked-medium=3; open=0; "
+            "app-occurrences=181; app-distinct-cves=67; gateway-occurrences=0"
+        ),
+        exit_code_raw="0",
+    ),
+    "E906": EvidenceContract(
+        kind="IMPLEMENTATION_BOUNDARY_COMMAND",
+        command=(
+            "gh run view 31630284744 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha"
+        ),
+        path=".github/workflows/ci.yml",
+        coverage_ids=(
+            "AC-C-3",
+            "AC-F-1",
+            "AC-F-4",
+            "DOD-01",
+            "DOD-03",
+            "DOD-07",
+            "DOD-10",
+        ),
+        result=(
+            "run=31630284744; head=2b2730eaf232f8edf3ead77be1830fa50d927a47; "
+            "quality=success; e2e=success; distribution=success"
+        ),
         exit_code_raw="0",
     ),
 }
@@ -606,6 +658,8 @@ def _is_boundary_file(relative_path: Path) -> bool:
 def _digest_boundary_entries(entries: Iterable[tuple[str, bytes]]) -> str:
     digest = hashlib.sha256()
     for relative_path, content in sorted(entries):
+        if b"\0" not in content:
+            content = content.replace(b"\r\n", b"\n")
         digest.update(relative_path.encode("utf-8"))
         digest.update(b"\0")
         digest.update(hashlib.sha256(content).hexdigest().encode("ascii"))
@@ -929,12 +983,18 @@ def validate_audit(
             evidence = evidence_by_id.get(evidence_id)
             if evidence is None:
                 issues.append(f"{blocker.blocker_id} references unknown evidence {evidence_id}")
-            elif blocker.blocker_class in {"EXTERNAL", "FOLLOW_UP", "MANUAL"} and (
-                evidence.kind != "EXTERNAL_NOT_RUN"
-            ):
-                issues.append(
-                    f"{blocker.blocker_id} pending status must use EXTERNAL_NOT_RUN evidence"
+            elif blocker.blocker_class in {"EXTERNAL", "FOLLOW_UP", "MANUAL"}:
+                contract = EVIDENCE_CONTRACTS.get(evidence_id)
+                is_truthful_pending_evidence = evidence.kind == "EXTERNAL_NOT_RUN" or (
+                    evidence.kind in EXECUTED_EVIDENCE_KINDS
+                    and contract is not None
+                    and not contract.supports_pass
                 )
+                if not is_truthful_pending_evidence:
+                    issues.append(
+                        f"{blocker.blocker_id} pending status must use NOT_RUN "
+                        "or fixed negative evidence"
+                    )
 
     for blocker in audit.blockers:
         if blocker.status == "OPEN" and blocker.blocker_id not in referenced_blockers:

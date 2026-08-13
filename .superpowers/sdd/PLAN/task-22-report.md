@@ -440,3 +440,24 @@ Review fix round 2 is
 `86be4968ed3b6abf14c3d058f22409a923e33f1f` —
 `docs: keep functional audit statistics current`. Its hash is backfilled in the
 following documentation-only commit.
+
+## Superseded by Task 23 review round 1
+
+Task 23 did not rerun frontend typecheck/build because the exact locked cache
+was unavailable and downloads were prohibited. Therefore the Task 22 current
+claim above is historical, not current evidence. The authoritative matrix is
+now `28 PASS / 12 PARTIAL / 0 FAIL`, with AC-F-4 changed to PARTIAL and linked
+to the still-open current-browser/frontend environment blocker.
+
+<!-- TASK23-CURRENT-STATUS:START -->
+## Superseded by Task 23 implementation-boundary CI evidence
+
+The current Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and remains
+`PARTIALLY_READY`. GitHub run `31630284744` at `2b2730e` is the last product/CI
+implementation boundary, not branch-tip evidence. It supports product,
+browser, and distribution verification; the external GitHub PR merge gate must
+require quality, E2E, and distribution success for the branch-tip SHA. GitLab,
+cloud/public/target, Task 24, formal offline build ENG-010, and student gates
+remain open. Earlier pre-review and review-round matrix statements in this
+report are superseded historical timeline evidence.
+<!-- TASK23-CURRENT-STATUS:END -->

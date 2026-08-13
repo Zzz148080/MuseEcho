@@ -2,12 +2,24 @@
 
 本文件仅积累客观过程材料，不代写学生的 `REFLECTION.md`，也不替学生生成主观结论。
 
+<!-- TASK23-CURRENT-STATUS:START -->
+## Task 23 current status
+
+The Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and
+`PARTIALLY_READY`. GitHub run `31630284744` at `2b2730e` is the last product/CI
+implementation boundary, not branch-tip evidence. It supports the recorded
+product/browser/distribution verification; the external GitHub PR merge gate
+must require quality, E2E, and distribution success for the branch-tip SHA.
+GitLab, cloud/public/target, Task 24, formal offline build ENG-010, and student
+gates remain open. Older statements below are historical timeline evidence.
+<!-- TASK23-CURRENT-STATUS:END -->
+
 ## 2026-08-11 — TASK 22 / 证据驱动验收材料
 
 - 单纯列出文件无法证明验收通过。Task 22 将 24 个 AC 和 16 个 DoD 条目固定为 40 个 ID，并让 checker 拒绝缺失/重复、文件存在型 PASS、无命令/路径/UTC/退出码证据、未来时间和 blocker/READY 矛盾。
 - 当前锁定 Linux 运行时没有 Git。checker 首版把“精确历史提交可验证”误实现为“任何环境都必须现场启动 Git”，导致 612 个既有测试通过而 23 个新测试同因 `FileNotFoundError` 失败。修复后的边界是 exact 40 位 commit 与 command/path 绑定；有 Git 时额外验证对象，没有 Git 时仍能运行离线矩阵门。
 - PowerShell 会把子进程 ErrorRecord 按显示宽度换行。Secret scanner 已正确 fail-closed，但 synthetic harness 把格式化文本当原始字符串匹配而误报；对诊断输出先规范空白即可保持完整文件名断言，不需要降低扫描标准。
-- 本地两核五分钟基准、内部 CA smoke 和配置文件存在不能替代目标服务器、公网受信 TLS 或远程 CI。审查修复轮 1 后的当前矩阵为 `29 PASS / 11 PARTIAL / 0 FAIL`，且学生人工验收继续保留为人工待办。
+- 本地两核五分钟基准、内部 CA smoke 和配置文件存在不能替代目标服务器、公网受信 TLS 或远程 CI。Task 23 复审后的当前矩阵为 `28 PASS / 12 PARTIAL / 0 FAIL`；frontend type/build 在本轮未运行即不得沿用 Task 22 PASS，且学生人工验收继续保留为人工待办。
 - 容器 smoke 的强制 build 在缓存失效时执行了锁定 `npm ci`。虽然锁文件和依赖版本没有变化，这仍是一次与 Task 22 禁止下载约束不一致的过程事件，必须保留在报告而不能用“可复现构建”掩盖。
 - exit 0 只是进程结果，不是功能证据。审查 mutation 证明把当前 evidence 的命令和结果一起改成无意义成功仍可绕过初版 checker；代码内逐 evidence 固定 command、coverage、可量化 result 后，审计文本本身不能同步改写策略。
 - 无 Git 可移植性不能以放弃真实性为代价。历史 E2E 现在同时绑定 PLAN 中的完整 commit 锚点、历史内容摘要和当前 source/test SHA-256 manifest；有 Git 时再用单次 archive 校验历史 manifest。这样 Git-less runtime 能拒绝 audit-only 伪造，同时不要求生产镜像安装 Git。
@@ -29,3 +41,15 @@
 - Fly.io 的大陆访问和付款问题使初始部署建议失效。AutoDL 又因个人公网端口和第三方访问条款不满足课程公网 WebUI。最终选定腾讯云香港 Lighthouse。
 - 此阶段尚未执行 TDD、subagent、worktree、CI 或 code review；不得提前评价它们的效果。
 - 现有工作区没有 Git 历史，必须从设计文档开始建立真实的细粒度历史。
+
+## 2026-08-11 — TASK 23 / 工程审计过程材料
+
+- 多文件 CLI 的“exit 0”不能证明每个输入都被消费。Bash `-n` 只解析第一个脚本的行为说明，mutation 必须放在最后一个输入才能暴露这种 coverage gap；修复应逐文件建立独立进程边界。
+- cleanup 不是附属成功路径。部分启动后必须进入 cleanup，且 primary failure 与 cleanup failure 是两个独立事实；只保留任一都会让运维诊断失真。
+- “no-build”不仅是不运行 build，还要在启动前确认 exact local image identity，并让 Compose 显式 `up --no-build`。这使离线审计不会因 cache miss 意外进入依赖下载。
+- 完整 runtime manifest 揭示了 gitignored egg-info 被 Docker context 带入 Task20 镜像/策略。`.gitignore` 不等于 `.dockerignore`；干净 checkout 可复现性必须从真实 Docker context 和镜像内容验证，而不是从 tracked 文件列表推断。
+- VEX 可以在 raw 181/67 不变时得到 residual zero，但前提是每个 CVE 的 package/file/reachability 证据、完整 source/runtime hash 与 exact image identity 均未漂移。本轮 observability 变更不增加 decoder、FFmpeg、动态 SQL、subprocess 或外部执行路径，因此保留原 67 条 statement；先观察到的 boundary drift 被明确当作 RED，而非自动刷新掩盖。
+- 大型安全证据不必全量进入 Git，但 compact manifest 必须是确定性的、由 checker 固定并包含足够交叉字段。单独的“文件存在”或 Markdown 中的“0 findings”仍不构成验证。
+- 宿主缺 ffmpeg 导致 benchmark 失败时，应在实际锁定 Linux 镜像中复验；本轮同一五分钟测试在镜像内 51.24 秒通过。相同原则适用于缺 `pwsh`、`uv`、`@types/node` 或 Playwright cache：记录精确环境限制，不下载修环境，也不把历史成功伪装成本轮执行。
+- 复审还说明“证据内部自洽”并不等于证据独立。FIXED finding 必须绑定它自己的 RED/GREEN 命令、路径、结果和覆盖；no-build 必须绑定信任身份并检查实际运行容器；历史 frontend build 也不能在本轮未执行时继续支持 PASS。
+- Task 23 第二轮复审进一步证明 compact manifest 自身固定仍不足以构成 completion：默认 checker 必须实际读取并复算 retained raw/package/VEX/inventory/tar/release/DB/image；无材料的便携校验只能显式称为 `--schema-only`。正式离线 Dockerfile 构建失败也必须成为独立 BLOCKED finding，而不能只藏在报告 concern 中。

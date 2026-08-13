@@ -1,6 +1,14 @@
 [CmdletBinding()]
 param(
-    [string]$TaskTempParent = [System.IO.Path]::GetTempPath()
+    [string]$TaskTempParent = [System.IO.Path]::GetTempPath(),
+    [switch]$NoBuild,
+    [string]$DockerCommand = 'docker',
+    [string]$CurlCommand = 'curl.exe',
+    [string]$ReleaseManifest = '',
+    [string]$ExpectedAppDaemonImageId = '',
+    [string]$ExpectedAppConfigImageId = '',
+    [string]$ExpectedGatewayDaemonImageId = '',
+    [string]$ExpectedGatewayConfigImageId = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,10 +48,115 @@ function Get-FreeTcpPort {
 
 function Invoke-DockerCompose {
     param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
-    & docker compose @composeFiles --profile production @Arguments
+    & $DockerCommand compose @composeFiles --profile production @Arguments
     if ($LASTEXITCODE -ne 0) {
         throw "docker compose smoke override $($Arguments -join ' ') failed"
     }
+}
+
+function Assert-ImageId {
+    param(
+        [Parameter(Mandatory = $true)][string]$Value,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+    if ($Value -notmatch '^sha256:[0-9a-f]{64}$') {
+        throw "$Label must be a lowercase sha256 image identity"
+    }
+}
+
+function Read-TrustedReleaseIdentity {
+    if (-not $ReleaseManifest -or -not (Test-Path -LiteralPath $ReleaseManifest -PathType Leaf)) {
+        throw 'no-build smoke requires a trusted release manifest'
+    }
+    $expected = [ordered]@{
+        AppDaemon = $ExpectedAppDaemonImageId
+        AppConfig = $ExpectedAppConfigImageId
+        GatewayDaemon = $ExpectedGatewayDaemonImageId
+        GatewayConfig = $ExpectedGatewayConfigImageId
+    }
+    foreach ($entry in $expected.GetEnumerator()) {
+        Assert-ImageId -Value $entry.Value -Label "expected $($entry.Key)"
+    }
+    if (
+        $ExpectedAppDaemonImageId -eq $ExpectedGatewayDaemonImageId -or
+        $ExpectedAppConfigImageId -eq $ExpectedGatewayConfigImageId -or
+        $ExpectedAppDaemonImageId -eq $ExpectedGatewayConfigImageId -or
+        $ExpectedAppConfigImageId -eq $ExpectedGatewayDaemonImageId
+    ) {
+        throw 'app and gateway must not share image identities'
+    }
+    try {
+        $manifest = Get-Content -Raw -LiteralPath $ReleaseManifest | ConvertFrom-Json
+    } catch {
+        throw 'trusted release manifest is not valid JSON'
+    }
+    if (
+        $manifest.schema_version -ne 1 -or
+        $manifest.app.daemon_image_id -ne $ExpectedAppDaemonImageId -or
+        $manifest.app.config_image_id -ne $ExpectedAppConfigImageId -or
+        $manifest.gateway.daemon_image_id -ne $ExpectedGatewayDaemonImageId -or
+        $manifest.gateway.config_image_id -ne $ExpectedGatewayConfigImageId
+    ) {
+        throw 'trusted release identity mismatch'
+    }
+}
+
+function Get-ExistingImageId {
+    param(
+        [Parameter(Mandatory = $true)][string]$Image,
+        [Parameter(Mandatory = $true)][string]$Expected,
+        [Parameter(Mandatory = $true)][string]$Service
+    )
+    $output = @(& $DockerCommand image inspect --format '{{.Id}}' $Image)
+    $inspectExit = $LASTEXITCODE
+    $imageId = ($output -join '').Trim()
+    if ($inspectExit -ne 0 -or $imageId -notmatch '^sha256:[0-9a-f]{64}$') {
+        throw "no-build smoke requires an existing sha256 image identity for $Image"
+    }
+    if ($imageId -ne $Expected) {
+        throw "$Service daemon image identity mismatch: $imageId, expected $Expected"
+    }
+    return $imageId
+}
+
+function Assert-ComposeImageConfiguration {
+    $output = @(& $DockerCommand compose @composeFiles --profile production config --format json)
+    if ($LASTEXITCODE -ne 0) { throw 'docker compose config identity inspection failed' }
+    try {
+        $config = ($output -join "`n") | ConvertFrom-Json
+    } catch {
+        throw 'docker compose config identity output was not valid JSON'
+    }
+    if (
+        $config.services.app.image -ne 'museecho-app:local' -or
+        $config.services.gateway.image -ne 'museecho-gateway:local'
+    ) {
+        throw 'docker compose services do not reference the verified local image tags'
+    }
+}
+
+function Assert-RunningImageIdentity {
+    param(
+        [Parameter(Mandatory = $true)][string]$Service,
+        [Parameter(Mandatory = $true)][string]$Expected
+    )
+    $containerOutput = @(
+        & $DockerCommand compose @composeFiles --profile production ps --quiet $Service
+    )
+    $containerId = ($containerOutput -join '').Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $containerId) {
+        throw "no-build smoke could not identify the running $Service container"
+    }
+    $imageOutput = @(& $DockerCommand container inspect --format '{{.Image}}' $containerId)
+    $imageId = ($imageOutput -join '').Trim()
+    if ($LASTEXITCODE -ne 0 -or $imageId -ne $Expected) {
+        throw "running $Service image identity mismatch: $imageId, expected $Expected"
+    }
+}
+
+function Assert-RunningReleaseIdentity {
+    Assert-RunningImageIdentity -Service 'app' -Expected $ExpectedAppDaemonImageId
+    Assert-RunningImageIdentity -Service 'gateway' -Expected $ExpectedGatewayDaemonImageId
 }
 
 function Write-SmokeWave {
@@ -114,16 +227,29 @@ try {
     $locationPushed = $true
     $composeCleanupRequired = $true
     Invoke-DockerCompose config --quiet
-    Invoke-DockerCompose build
-    Invoke-DockerCompose up --detach --wait
+    if ($NoBuild) {
+        Read-TrustedReleaseIdentity
+        Assert-ComposeImageConfiguration
+        $appImageId = Get-ExistingImageId -Image 'museecho-app:local' `
+            -Expected $ExpectedAppDaemonImageId -Service 'app'
+        $gatewayImageId = Get-ExistingImageId -Image 'museecho-gateway:local' `
+            -Expected $ExpectedGatewayDaemonImageId -Service 'gateway'
+        Write-Host "No-build smoke app identity: $appImageId"
+        Write-Host "No-build smoke gateway identity: $gatewayImageId"
+        Invoke-DockerCompose up --no-build --detach --wait
+        Assert-RunningReleaseIdentity
+    } else {
+        Invoke-DockerCompose build
+        Invoke-DockerCompose up --detach --wait
+    }
 
-    & curl.exe --fail --silent --show-error --insecure `
+    & $CurlCommand --fail --silent --show-error --insecure `
         --output $healthResponsePath "$httpsBaseUrl/api/health"
     if ($LASTEXITCODE -ne 0) { throw 'container health request failed' }
     $health = Get-Content -Raw -LiteralPath $healthResponsePath | ConvertFrom-Json
     if ($health.status -ne 'ready') { throw 'container health response was not ready' }
 
-    & curl.exe --fail --silent --show-error --insecure --cookie-jar $cookiePath `
+    & $CurlCommand --fail --silent --show-error --insecure --cookie-jar $cookiePath `
         --form "file=@$audioPath;type=audio/wav" `
         --output $createResponsePath "$httpsBaseUrl/api/analyses"
     if ($LASTEXITCODE -ne 0) { throw 'container upload failed' }
@@ -134,7 +260,7 @@ try {
     $deadline = [DateTime]::UtcNow.AddMinutes(2)
     do {
         Start-Sleep -Milliseconds 500
-        & curl.exe --fail --silent --show-error --insecure --cookie $cookiePath `
+        & $CurlCommand --fail --silent --show-error --insecure --cookie $cookiePath `
             --output $statusResponsePath $statusUri
         if ($LASTEXITCODE -ne 0) { throw 'container status request failed' }
         $status = Get-Content -Raw -LiteralPath $statusResponsePath | ConvertFrom-Json
@@ -143,19 +269,24 @@ try {
     if ($status.stage -ne 'complete') { throw 'container analysis timed out' }
 
     Invoke-DockerCompose restart app
-    Invoke-DockerCompose up --detach --wait
-    & curl.exe --fail --silent --show-error --insecure --cookie $cookiePath `
+    if ($NoBuild) {
+        Invoke-DockerCompose up --no-build --detach --wait
+        Assert-RunningReleaseIdentity
+    } else {
+        Invoke-DockerCompose up --detach --wait
+    }
+    & $CurlCommand --fail --silent --show-error --insecure --cookie $cookiePath `
         --output $statusResponsePath $statusUri
     if ($LASTEXITCODE -ne 0) { throw 'persisted status was unavailable after restart' }
     $persisted = Get-Content -Raw -LiteralPath $statusResponsePath | ConvertFrom-Json
     if ($persisted.stage -ne 'complete') { throw 'analysis did not persist across restart' }
 
-    & docker compose @composeFiles --profile production exec --no-TTY app python -c `
+    & $DockerCommand compose @composeFiles --profile production exec --no-TTY app python -c `
         "import pathlib,sys; files=(p for p in pathlib.Path('/data').rglob('*') if p.is_file()); bad=[str(p) for p in files if p.suffix.lower() in {'.wav','.mp3'} or p.open('rb').read(12).startswith((b'RIFF',b'ID3'))]; print(*bad,sep='\n'); sys.exit(bool(bad))"
     if ($LASTEXITCODE -ne 0) { throw 'plaintext audio remained in the persistent volume' }
 
     $keyText = Get-Content -Raw -LiteralPath $audioKeyPath
-    $imageHistory = & docker history --no-trunc museecho-app:local
+    $imageHistory = & $DockerCommand history --no-trunc museecho-app:local
     if ($LASTEXITCODE -ne 0) { throw 'container image history audit failed' }
     if (($imageHistory -join "`n").Contains($keyText)) {
         throw 'audio key appeared in container image history'
@@ -166,7 +297,7 @@ try {
         $savedErrorPreference = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
         try {
-            & docker compose @composeFiles --profile production down `
+            & $DockerCommand compose @composeFiles --profile production down `
                 --volumes --remove-orphans 2>&1 | Out-Null
             $composeDownExit = $LASTEXITCODE
         } finally {

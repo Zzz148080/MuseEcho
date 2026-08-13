@@ -56,7 +56,7 @@ class _ProcessTree:
 
     def terminate(self) -> None:
         if self._windows_job is not None:
-            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            kernel32 = getattr(ctypes, "WinDLL")("kernel32", use_last_error=True)
             kernel32.TerminateJobObject(ctypes.c_void_p(self._windows_job), 1)
             return
         if os.name == "posix":
@@ -85,7 +85,7 @@ class _ProcessTree:
     def close(self) -> None:
         if self._windows_job is None:
             return
-        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32 = getattr(ctypes, "WinDLL")("kernel32", use_last_error=True)
         kernel32.CloseHandle(ctypes.c_void_p(self._windows_job))
         self._windows_job = None
 
@@ -147,7 +147,7 @@ def _spawn_process(arguments: Sequence[str]) -> subprocess.Popen[bytes]:
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+                creationflags=cast(int, getattr(subprocess, "CREATE_NEW_PROCESS_GROUP")),
             )
         return subprocess.Popen(
             list(arguments),
@@ -161,7 +161,7 @@ def _spawn_process(arguments: Sequence[str]) -> subprocess.Popen[bytes]:
 
 
 def _assign_windows_job(process: subprocess.Popen[bytes]) -> int | None:
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32 = getattr(ctypes, "WinDLL")("kernel32", use_last_error=True)
     kernel32.CreateJobObjectW.restype = ctypes.c_void_p
     job_handle = kernel32.CreateJobObjectW(None, None)
     if not job_handle:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import io
 import json
+import sys
 import tarfile
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from scripts.verify_release_identity import (
     audit_release_identity,
     build_release_identity,
     image_id_from_tar,
+    main,
 )
 
 APP_ID = "sha256:" + "a" * 64
@@ -98,6 +100,26 @@ def test_release_identity_rejects_incomplete_comparison_inputs(comparison, expec
     findings = audit_release_identity(_manifest(), **comparison)
 
     assert findings == [f"{expected}: missing [gateway]; unexpected []"]
+
+
+def test_verify_cli_rejects_manifest_only_empty_verification(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    manifest_path = tmp_path / "release-images.json"
+    manifest_path.write_text(json.dumps(_manifest()), encoding="utf-8")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "verify_release_identity.py",
+            "verify",
+            "--manifest",
+            str(manifest_path),
+        ],
+    )
+
+    assert main() == 1
+    assert "at least one complete comparison inventory" in capsys.readouterr().err
 
 
 def test_release_identity_is_derived_from_the_exact_config_inside_saved_tar(tmp_path: Path):

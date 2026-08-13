@@ -37,7 +37,7 @@ unit-test:
   extends: .python-job
   stage: test
   script:
-    - uv run pytest -q --basetemp tmp/pytest-ci
+    - uv run python -m pytest -q --basetemp .pytest-ci
 
 frontend:
   image: node:22.23.0-bookworm-slim@sha256:d9f850096136edbc402debdd8729579a288aac64574ada0ff4db26b6ae58b0b2

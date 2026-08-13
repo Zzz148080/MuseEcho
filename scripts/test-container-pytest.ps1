@@ -81,6 +81,7 @@ exit 99
     }
 
     Write-Host 'Container pytest synthetic cleanup tests passed.'
+    $global:LASTEXITCODE = 0
 } finally {
     if (Test-Path -LiteralPath $fixtureRoot) {
         [System.IO.Directory]::Delete($fixtureRoot, $true)

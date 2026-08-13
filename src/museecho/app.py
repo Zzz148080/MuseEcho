@@ -1,4 +1,4 @@
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Mapping
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
@@ -13,6 +13,7 @@ from museecho.application.explanations import ExplanationService
 from museecho.application.lifecycle import AnalysisLifecycleService
 from museecho.application.uploads import UploadSubmissionService
 from museecho.domain.ports import AccessService, AnalysisRepository, EncryptedAudioStore
+from museecho.observability import RequestObservabilityMiddleware
 
 
 def create_app(
@@ -25,8 +26,11 @@ def create_app(
     trusted_origins: Collection[str] = (),
     lifespan: Lifespan[FastAPI] | None = None,
     readiness_check: Callable[[], bool] | None = None,
+    metrics_snapshot: Callable[[], Mapping[str, object]] | None = None,
 ) -> FastAPI:
     app = FastAPI(title="MuseEcho", lifespan=lifespan)
+    app.add_middleware(RequestObservabilityMiddleware)
+
     if upload_service is not None:
         install_analyses_api(app, upload_service)
     if repository is not None and access_service is not None:
@@ -49,8 +53,15 @@ def create_app(
 
     @app.get("/api/health")
     def health() -> JSONResponse:
-        if readiness_check is not None and not readiness_check():
-            return JSONResponse(status_code=503, content={"status": "degraded"})
-        return JSONResponse(content={"status": "ready"})
+        ready = readiness_check is None or readiness_check()
+        status_value = "ready" if ready else "degraded"
+        content: dict[str, object] = {
+            "status": status_value,
+            "liveness": "alive",
+            "readiness": status_value,
+        }
+        if metrics_snapshot is not None:
+            content["metrics"] = dict(metrics_snapshot())
+        return JSONResponse(status_code=200 if ready else 503, content=content)
 
     return app

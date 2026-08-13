@@ -8,6 +8,16 @@
 
 **技术栈：** Python 3.12、FastAPI、Pydantic、SQLAlchemy 2、Alembic、NumPy、SciPy、librosa、FFmpeg、cryptography、keyring、Typer、pytest、Ruff、mypy；Node 22、React、Vite、TypeScript、TanStack Query、Vitest、Testing Library、Playwright；Docker Compose、Caddy、GitHub Actions、GitLab CI。
 
+<!-- TASK23-CURRENT-STATUS:START -->
+> **Task 23 current status:** The Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL**
+> and remains `PARTIALLY_READY`. Run `31630284744` at `2b2730e` is the
+> last product/CI implementation boundary, not branch-tip evidence. Product,
+> browser, and distribution verification may cite that boundary; the external
+> GitHub PR merge gate must independently require quality, E2E, and distribution
+> success for the branch-tip SHA. GitLab, cloud/public/target, Task 24, formal
+> offline build ENG-010, and student gates remain open.
+<!-- TASK23-CURRENT-STATUS:END -->
+
 ## 0. 当前门禁与真实性约束
 
 - `SPEC.md` 已由用户在 2026-08-08 以原话“好，批准书面SPEC，进行下一步”批准。
@@ -743,7 +753,21 @@ def test_engineering_audit_has_no_open_critical_or_high(audit):
 
 **最终命令：** `pwsh -File scripts/verify.ps1; if ($LASTEXITCODE) { exit $LASTEXITCODE }; uv run python scripts/check_engineering_audit.py docs/audits/ENGINEERING_AUDIT.md`
 
-**并行：** 否。**依赖：** T22。**对应验收标准：** AC-E、AC-F 与 DoD 中无 Critical/High、全验证、Secret 和构建要求。**分支：** `audit/23-engineering`。**计划提交：** `audit: close engineering risks`。**实际提交：** 待执行。
+**并行：** 否。**依赖：** T22。**对应验收标准：** AC-E、AC-F 与 DoD 中无 Critical/High、全验证、Secret 和构建要求。**分支：** `audit/23-engineering`。**计划提交：** `audit: close engineering risks`。**实际提交：** `31b2351fcf308b4aeb3ce8b1931afafe3350522d`、`07cf82687df5fa4adba9448c1fbaf1a81871a29e`、严格材料门 `a240f64bcd57a34818356805b9a177086668752c`、最终证据绑定 `f697d13`、合并结果污染修复 `acb2cb09e7c62e104ef64331f105514d6ce3016a`。10 个 finding 为 4 High FIXED、2 Medium FIXED、4 Medium BLOCKED、0 OPEN。**实际状态：** Task 23 严格 completion checker 会读取并复算 retained raw/package/VEX/inventory/tar/release/DB/image 材料；Functional Audit 为 `28 PASS / 12 PARTIAL / 0 FAIL`，锁定 Linux 最终为 `755 passed, 1 skipped`，分支已推送并建立 GitHub 草稿 PR #1。首轮 GitHub Actions 在 `eec6dd0` 上真实失败于 Linux mypy；平台兼容修复已本地 RED→GREEN，待推送后由新远端运行复验。Task 24、正式离线 Dockerfile 重建、GitLab CI、公网/目标机、当前浏览器 E2E 与学生人工验收仍待外部或后续阶段。
+
+**Task 23 review round 1:** Review fixes harden independent RED/GREEN evidence,
+the complete offline security manifest, trusted no-build runtime identities,
+safe 500/background-failure observability, waiting-only queue metrics, and
+cleanup-only reporting. Functional truth is now `28 PASS / 12 PARTIAL / 0 FAIL`;
+frontend type/build remains NOT_RUN, and the locked Linux/current security
+chains must be green before the review follow-up is closed.
+
+**Review closure:** The follow-up remained open through the two truthful
+locked-Linux failures. It closed only after the fresh offline security chain,
+trusted no-build smoke, `728 passed` locked Linux run, static/type,
+Secret/license, lifecycle synthetics, and both audit CLIs were green. External,
+browser/frontend-build, remote-CI, and Task 24 work remains open. Review commit:
+`07cf82687df5fa4adba9448c1fbaf1a81871a29e` (`fix: harden engineering audit evidence`).
 
 ### 任务 24：Product Audit、最终验证与交付报告
 

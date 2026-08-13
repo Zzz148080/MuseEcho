@@ -1,5 +1,37 @@
 # MuseEcho Agent Log
 
+<!-- TASK23-CURRENT-STATUS:START -->
+## Task 23 current status
+
+The Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and
+`PARTIALLY_READY`. GitHub run `31630284744` at `2b2730e` is the last product/CI
+implementation boundary, not branch-tip evidence; it supports the recorded
+product/browser/distribution verification. The external GitHub PR merge gate
+must require quality, E2E, and distribution success for the branch-tip SHA.
+GitLab, cloud/public/target, Task 24, formal offline build ENG-010, and student
+gates remain open. Older status statements below are dated historical timeline
+evidence.
+<!-- TASK23-CURRENT-STATUS:END -->
+
+## 2026-08-13 — TASK 23 / final review fix wave round 19/20
+
+- **Evidence boundary:** run `31630284744@2b2730e` is now the last product/CI
+  implementation boundary, not current branch-tip or mergeability evidence.
+  E905 remains NOT_RUN; E002/E906/E037 may support implementation-sensitive
+  PASS/VERIFIED, while FIXED still requires genuine RED plus GREEN.
+- **Process truth and smoke hardening:** five active documents expose one
+  delimited current-status block, older matrix/browser claims remain historical,
+  and development-smoke negative fixtures reject noncanonical Base64 plus an
+  arbitrary marker kind.
+- **Verification:** the expected RED was 7 failures and the focused GREEN was
+  `162 passed`; direct smoke, both audit CLIs, Ruff, acceptance-checker mypy,
+  PowerShell parsing, and diff-check passed. The Engineering checker mypy target
+  remains blocked before checking by the existing duplicate-module discovery
+  for `image_vulnerability_audit.py`; no unrelated typing cleanup was included.
+- **Boundary:** status remains `PARTIALLY_READY`; GitLab/branch-tip PR gates,
+  TC-021, Task 24, student acceptance, and formal offline build ENG-010 remain
+  open. No push was performed.
+
 ## 2026-08-11 — TASK 22 / Functional Audit 与验收缺口闭环
 
 - **范围与结论：** 按 `SPEC.md` AC-A 至 AC-F 的 24 项和 Definition of Done 的 16 项建立 40 项机器可解析矩阵；审查修复轮 1 后为 `29 PASS / 11 PARTIAL / 0 FAIL`、`PARTIALLY_READY`。当前浏览器 E2E、目标服务器性能、公网 URL/完整 smoke、远程双 CI、Task 23/24 和学生人工验收均保持真实未运行，任何一项都阻止 `READY`。
@@ -333,3 +365,77 @@
 - **MP3 边界：** 仅支持可由非零 bitrate index 计算帧大小的常规 MPEG Layer III。锁定 FFmpeg 5.1.9 拒绝了尝试的 free-format 真实流，所以移除未完成的 free-format 接受/fixture/正向集成实验，新增工具启动前的负向拒绝测试；不声明所有 MP3 子类型受支持。
 - **GitLab 证据顺序：** 同一不可变 app tar 现在要求 raw 无 suppression 扫描 → package/probe inventory → 精确 audit/OpenVEX → VEX gate；raw/audit artifacts 设为 `when: always`，且 contract tests 拒绝顺序、identity 或证据漂移。
 - **验证与状态：** cached-only final Docker build 的 base/uv/apt/FFmpeg/venv 层全为 CACHED，最终锁定 Linux 为 `583 passed`，production smoke、Ruff/mypy、前端 66 tests/type/build 通过；hash 已刷新。仓库 `tmp/trivy-cache/db/trivy.db` 通过显式 read/write mount 供 Trivy 0.70.0 在 `--network none`、offline/no-update 下使用；final app `sha256:5c12e66ae1b5b63f40c32d2e4ddc8a96157abc8f8952d87ff0fd4982b18934ed`、gateway `sha256:ef3c87c9657ca052c02af74271219b36b260a712d0567ed8560410ec37e36317` 的 raw app 为 181（169 HIGH/12 CRITICAL、67 CVE、fixed 0）、gateway 0，精确 audit 为 181 tuple/38 packages/67 statements/residual 0，app VEX 与 gateway raw gate 均 exit 0、可见 0。远端 CI 未运行。
+
+## 2026-08-11 — TASK 23 / Engineering Audit 与高风险缺陷闭环
+
+- **Checker TDD：** `tests/unit/test_engineering_audit.py` 首次因 `scripts.check_engineering_audit` 不存在而 RED；最终 27 个 schema、固定域、重复/删除/降级、时间、RED+GREEN、ACCEPTED/BLOCKED、虚假 scan/release 与 compact security manifest mutation 全部通过。审计固定 15 个域与 9 个真实 finding，结论为 4 High FIXED、2 Medium FIXED、3 Medium BLOCKED、0 OPEN。
+- **六组缺陷闭环：** 逐文件 Bash parse、空 release comparison、development partial-start/down 双失败、container smoke no-build identity、production observability、dirty-context egg-info 可复现性均先复现失败再最小修复。`verify.ps1` 纳入三个新增 PowerShell lifecycle/shell 合约。
+- **安全链：** 正式 Dockerfile 在 `--network none` 下因 pip/apt BuildKit layer 缺失而 fail-closed；未开放网络。使用明确标记为非发布的 Task20-final runtime 派生审计镜像，删除旧 egg-info 后仅覆盖 current `src/`。Trivy 0.70.0 使用只读 Task20 DB 子目录与 tmpfs fanal cache，fresh app raw 为 181 occurrences / 67 CVE（169 High、12 Critical），gateway 为 0；exact package/runtime policy audit、67-statement OpenVEX gate、gateway unsuppressed gate、tar/config/raw release identity 均 exit 0。提交 compact deterministic manifest，不提交 1.8MB raw 或大 tar/DB。
+- **回归：** 锁定 Linux current-source runtime 为 `681 passed in 248.21s`；风险聚焦为 `82 passed, 1 skipped`；Linux 五分钟预算为 `1 passed in 51.24s`；当前 frontend Vitest 为 12 files / 66 tests；Secret real/synthetic、license、Ruff/mypy、Functional Audit、production no-build smoke 与 cleanup 均通过。
+- **诚实边界：** 宿主缺 `pwsh`、`uv`、ffmpeg/ffprobe；前端精确 lock 的保留缓存缺 `@types/node` 且 root Playwright junction 目标已消失，禁止 `npm ci` 后本轮 type/build 与 current Chrome E2E 未运行。GitHub/GitLab remote CI、腾讯云/DNS/SSH/公网 TLS/24h/rollback 与学生验收均未运行。BuildKit 在一次 `--pull=false` frontend cache probe 中仍做了 registry metadata/auth resolution，但 `--network none` 阻止 npm 包获取；发现后未再 build。
+- **状态：** Task 23 Engineering Audit 完成，实现从 `31b2351fcf308b4aeb3ce8b1931afafe3350522d` 延续至最终复审修复 `f697d13`；`TASK23-AUDIT` 从 Functional Audit blocker 中移除，Task 24 和外部/环境 blocker 保持开放。分支已非 force 推送并建立 GitHub 草稿 PR #1；未执行云部署，未代写学生 `REFLECTION.md`。
+
+## 2026-08-11 — TASK 23 / review fix round 1
+
+- **RED→GREEN:** Audit evidence isolation produced 40 expected failures before 43 focused mutations passed. Trusted no-build identity, safe 500/background failure observability, waiting-only queue metrics, cleanup-only reporting, Functional truth, and direct Linux checker execution each retained a focused failing reproduction before repair.
+- **Current evidence:** The non-release current-source derivative is app daemon/config `b0231299…` / `89c7b7ad…`. Fixed-DB offline evidence remains 181 app occurrences / 67 CVEs / 0 VEX residual and 0 gateway occurrences. The trusted no-build smoke passed both startup identity checks and exact cleanup.
+- **Truth boundary:** Functional Audit is `28 PASS / 12 PARTIAL / 0 FAIL`; Task 23 frontend type/build and current Chrome E2E are NOT_RUN, not inherited from historical Task 22 evidence. Engineering findings remain 4 High FIXED, 2 Medium FIXED, 3 Medium BLOCKED, and 0 OPEN.
+- **Full-suite checkpoint:** The first review run was 721 passed / 6 expected stale-audit failures. After audit repair, the next run was 727 passed / 1 stale cross-document statistics failure; final green evidence is recorded only after that contract and every process document agree.
+- **Review closure:** Final locked Linux was `728 passed in 342.25s`; final focused review was 139 passed; trusted no-build, static/type, Secret/license, lifecycle/shell contracts, Functional `28/12/0`, and Engineering 9-finding checker all passed. The exact wrapper remained exit 1 because host `pwsh` and `uv` are absent; no dependency/tool download was used to hide the boundary.
+- **Review commit:** `07cf82687df5fa4adba9448c1fbaf1a81871a29e` (`fix: harden engineering audit evidence`); hash backfill is documentation-only. No push or external write was performed.
+
+## 2026-08-12 — TASK 23 / review fix round 2
+
+- **RED→GREEN:** 默认 Engineering completion CLI 指向空 evidence/DB 目录时旧实现仍 exit 0；修复后缺任一 retained material、摘要/JSON/scan 结构、计数/tuple、DB 时间、本地镜像、release identity、policy/runtime/VEX/inventory 漂移均失败关闭。完整 checker 文件为 89 passed，实际 retained-material strict CLI exit 0。
+- **审计真值：** 新增 `ENG-010 Medium BLOCKED` 记录正式 current-source Dockerfile 在离线 BuildKit cache 不完整时真实 exit 1，并明确 derivative 不可发布。当前共 10 findings：4 High FIXED、2 Medium FIXED、4 Medium BLOCKED、0 OPEN；Functional Audit 保持 28/12/0。
+- **远端发布：** 用户明确要求发布 Task 20 起的本地分支；已在认证的 `Zzz148080/MuseEcho` 上无强推创建 `feat/20-production-delivery`、`ops/21-tencent-delivery`、`audit/22-functional`。Task 23/24 仅在各自最终复审通过后发布。
+- **复审轮 2 提交：** `a240f64bcd57a34818356805b9a177086668752c`（strict retained-material completion 与 `ENG-010`）；哈希回填为纯文档提交。
+
+## 2026-08-12 — TASK 23 / review fix round 3
+
+- **跨审计 RED→GREEN：** Functional E902 与 acceptance contract 仍接受旧 `9 findings / 3 blocked`；新增测试从真实 Engineering Audit 推导统计并先失败。E902 改为实际 strict-material 命令与 `10/4` 后，Functional、Engineering 与交付契约 134 tests、两个 CLI 均通过；Task 23 顶部统计表同步为 4 Medium BLOCKED。
+- **复审轮 3 提交：** `93baab9f6f20d6e34dc393a837a6d6cb2a5fddaf`（跨审计统计与严格材料命令一致性）。
+
+## 2026-08-12 — TASK 23 / review fix round 4
+
+- **CURRENT evidence RED→GREEN：** 独立复审实测 acceptance 单文件已为 37 tests，而 E014 仍固定 36；同步 E014/contract 为 37，并让跨审计测试从 Engineering findings 推导 OPEN 总数，不再硬编码 `open=0`。修正 Generated 时间边界后，acceptance 37 tests 与跨审计/交付联合 134 tests 均通过；Functional 仍为 `28/12/0`，Engineering 严格材料门仍为 10 findings。
+
+## 2026-08-12 — TASK 23 / review fix round 5
+
+- **真实命令与历史边界 RED→GREEN：** E014 曾把宿主不可用的 `uv run` 命令记为 current exit 0，E030 仍记录 36 tests，初始 9 findings/`29/11` 表格也未标注 superseded。三个聚焦测试先失败；现固定实际 `.venv\Scripts\python.exe` 命令、E030 结果与历史标签。新增两个跨审计测试后单文件实际为 39 tests，精确命令已返回 `39 passed`。
+- **网页交付：** 独立最终复审为 0 Critical / 0 Important / 0 Minor；`audit/23-engineering` 已推送至 `origin`，GitHub 草稿 PR #1 为 `https://github.com/Zzz148080/MuseEcho/pull/1`。
+- **合并结果 RED→GREEN：** main checkout 的既有 `src/museecho.egg-info` 曾被 runtime boundary builder 重新纳入，导致 7 个审计失败；跟踪确认该目录已由 `.dockerignore` 排除。新 dirty-checkout RED 先失败，边界 builder 对任意 `.egg-info` 路径组件排除后 GREEN；聚焦 168 tests 与锁定 Linux `753 passed, 1 skipped` 通过。修复提交 `acb2cb09e7c62e104ef64331f105514d6ce3016a`。
+
+## 2026-08-12 — TASK 23 / merged checkout line endings
+
+- **RED→GREEN:** `main` and the reviewed worktree had identical Git trees but
+  legal CRLF/LF working-tree differences produced different Functional Audit
+  boundary digests. A focused test failed first; text boundary bytes now use a
+  canonical LF form while NUL-containing binary content remains byte-exact.
+  The acceptance file passes 41 tests and the Functional CLI passes at
+  28/12/0; E014/E030 are bound to the collected file count.
+
+- **Remote CI RED→GREEN local fix:** GitHub Actions quality exposed four Linux
+  mypy errors for Windows-only `ctypes.WinDLL` and
+  `subprocess.CREATE_NEW_PROCESS_GROUP`. `mypy --platform linux` reproduced
+  the exact RED locally; platform-safe `getattr` boundaries make Linux and
+  Windows mypy green without changing runtime behavior. The current-source
+  audit image and all raw→audit→VEX→identity materials were regenerated
+  offline, and trusted no-build smoke passed on the refreshed identity.
+  The refreshed locked Linux suite passed 755 tests with one explicit skip.
+
+## 2026-08-12 — TASK 23 / remote evidence truth review
+
+- **Review findings:** the audit still recorded pre-fix default mypy evidence,
+  described GitHub Actions as NOT_RUN after run `31523692229` had failed, and
+  timestamped the strict material check before the final retained materials.
+- **RED→GREEN:** Functional audit gained fixed non-PASS evidence `E906` and
+  Engineering audit gained `E037`; the initial checkers rejected the new
+  record because Engineering stopped at `E036` and Functional required every
+  external-blocker record to be NOT_RUN. The minimal fix accepts only a fixed
+  executed evidence contract with `supports_pass=False`; 162 audit, mutation,
+  and security-policy tests passed, and both strict CLIs returned zero.
+- **Current truth:** GitHub run `31523692229` failed quality on `eec6dd0` and
+  skipped E2E/distribution; GitLab remains NOT_RUN. Windows-host and explicit
+  Linux mypy each pass all 46 source files locally. A pushed rerun is still
+  required before remote CI can be classified green.

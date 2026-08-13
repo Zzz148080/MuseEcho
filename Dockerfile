@@ -38,11 +38,14 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-install-project --compile-bytecode \
     && find .venv -type f -name '*.pyc' -delete \
     && find .venv -type d -name __pycache__ -empty -delete
+COPY src/ /app/src/
+RUN uv sync --frozen --no-dev --no-editable --compile-bytecode \
+    && find .venv -type f -name '*.pyc' -delete \
+    && find .venv -type d -name __pycache__ -empty -delete
 
 FROM python:3.12.13-slim-bookworm@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2 AS app
 ARG DEBIAN_SNAPSHOT=20260805T000000Z
 ENV PATH=/app/.venv/bin:$PATH \
-    PYTHONPATH=/app/src \
     PYTHONUNBUFFERED=1 \
     NUMBA_CACHE_DIR=/tmp/numba \
     MUSEECHO_DATA_ROOT=/data \
@@ -92,7 +95,6 @@ RUN --mount=type=cache,target=/var/cache/museecho-apt,sharing=locked \
     chown --recursive 10001:10001 /app /data
 WORKDIR /app
 COPY --from=python-builder --chown=10001:10001 /app/.venv /app/.venv
-COPY --chown=10001:10001 src/ /app/src/
 USER 10001:10001
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=6 \

@@ -1,0 +1,52 @@
+{
+  "app": {
+    "audit_exit": 0,
+    "config_image_id": "sha256:89c7b7ad0a9d1708ce0cf277389c1fca7e13e05bb3937b602a6e2533cf9729ac",
+    "critical_occurrences": 12,
+    "daemon_image_id": "sha256:b0231299644d58f7845e3c137faeca6f0f8cc7df2f3dbbcb656c75060128a724",
+    "distinct_cves": 67,
+    "high_occurrences": 169,
+    "inventory_sha256": "0a055ffd0b2fc5a3de2b34df18d17d67b38d55bca168f5d052e4cec382aa448e",
+    "occurrences": 181,
+    "package_files_sha256": "0568117b227db2891f82aab0022e5b4bc65c1eabfa5e3f5e282aa6bc746ce470",
+    "raw_sha256": "3706685719c8295bbcaf746b9eb6816181aa1b63dcee80fb54855c8760377c0f",
+    "tar_sha256": "c45998dfa5bc6c733799b036f07d64ebce081f23a4cd7497bcb323f72bb7e25e",
+    "tuple_sha256": "4ab629f0f3b74d2357fcf19d195831c37adbee645d881e9a3fb4605224de35ba",
+    "vex_gate_exit": 0,
+    "vex_sha256": "76b539cb0b71dbb6339150f322eaf049207d862d66a209fdb97bf64245c7afaa"
+  },
+  "boundary": {
+    "build_kind": "controlled_current_source_derivation_from_task20_final",
+    "formal_dockerfile_build_exit": 1,
+    "formal_dockerfile_build_reason": "locked pip and apt BuildKit layers unavailable under network none",
+    "policy_sha256": "f0210dd1e4c441c51dc183ef31764872ad75ed88973249ab8b4cfc4d52916d91",
+    "runtime_boundary_sha256": "74c3ee936529f49df7a220aa6bcecb089278fd4b26d5a797792a3a08c5d43fa4",
+    "task20_base_daemon_image_id": "sha256:96cd900d6c17c360b01665362330aca8ef032b0d4d1f140659a52265ce47f39c"
+  },
+  "gateway": {
+    "config_image_id": "sha256:8cc0429e45fd48c911a92fd8504c1f3c14daccb0fee8a24529d72af51b0b4053",
+    "daemon_image_id": "sha256:2235e208dd7d8568c735ba19f1969644384626296eaff5cabb41acfaed86c547",
+    "distinct_cves": 0,
+    "gate_exit": 0,
+    "occurrences": 0,
+    "raw_sha256": "64513e95a8ac9e5b9bcdf9a274a5e3108f08dbb6dbdb2ad97601c8eed7bbfd7d",
+    "tar_sha256": "dd5dba88b52d3765c43ca1570d30307deb7a8c274f873cfd6258c4efa4fc820b"
+  },
+  "observed_at_utc": {
+    "app_audit": "2026-08-11T19:08:00Z",
+    "app_raw": "2026-08-11T19:07:10Z",
+    "app_vex_gate": "2026-08-11T19:11:58Z",
+    "gateway_gate": "2026-08-11T19:12:21Z",
+    "gateway_raw": "2026-08-11T13:12:55Z",
+    "release_verify": "2026-08-11T19:08:20Z"
+  },
+  "release_identity_sha256": "c41563ea754d1f892d7dc596646d040582f6503f457f273cecc11f291558933a",
+  "release_verify_exit": 0,
+  "schema_version": 1,
+  "trivy": {
+    "db_sha256": "fbd7a1751c20449fc014ce29514c745d16d196d2c67ad6fb88315ac7357d62bf",
+    "db_updated_at": "2026-08-09T12:54:52.355618652Z",
+    "image_digest": "sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e",
+    "version": "0.70.0"
+  }
+}

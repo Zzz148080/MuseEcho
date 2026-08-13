@@ -163,6 +163,92 @@ def test_handler_failure_marks_job_failed_with_safe_code():
     assert failed.error_code == "decode_failed"
 
 
+def test_failure_observer_receives_safe_job_stage_and_error_code_not_exception_text():
+    job = AnalysisJob()
+    repository = MemoryQueueRepository([job])
+    observed: list[tuple[uuid.UUID, AnalysisStage, str]] = []
+
+    class CodedFailure(RuntimeError):
+        code = "decode_failed"
+
+    def handler(_: uuid.UUID) -> None:
+        raise CodedFailure("private-song.wav bearer-token complete-question")
+
+    queue = SingleWorkerQueue(
+        repository,
+        handler,
+        failure_observer=lambda analysis_id, stage, code: observed.append(
+            (analysis_id, stage, code)
+        ),
+    )
+    queue.start(recover=False)
+    try:
+        queue.submit(job.id)
+        assert queue.wait_for_idle(timeout=2)
+    finally:
+        queue.stop()
+
+    assert observed == [(job.id, AnalysisStage.QUEUED, "decode_failed")]
+    assert queue.metrics() == (0, 0)
+
+
+def test_queue_metrics_exclude_active_job_from_waiting_count():
+    first = AnalysisJob()
+    second = AnalysisJob()
+    repository = MemoryQueueRepository([first, second])
+    first_started = threading.Event()
+    release_first = threading.Event()
+
+    def handler(analysis_id: uuid.UUID) -> None:
+        if analysis_id == first.id:
+            first_started.set()
+            assert release_first.wait(timeout=2)
+
+    queue = SingleWorkerQueue(repository, handler)
+    queue.start(recover=False)
+    try:
+        queue.submit(first.id)
+        assert first_started.wait(timeout=2)
+        assert queue.metrics() == (0, 1)
+        queue.submit(second.id)
+        assert queue.metrics() == (1, 1)
+        release_first.set()
+        assert queue.wait_for_idle(timeout=2)
+    finally:
+        release_first.set()
+        queue.stop()
+
+    assert queue.metrics() == (0, 0)
+
+
+def test_queue_metrics_keep_repository_retry_waiting_but_not_active():
+    job = AnalysisJob()
+    failed_read = threading.Event()
+
+    class TransientReadRepository(MemoryQueueRepository):
+        get_calls = 0
+
+        def get(self, analysis_id: uuid.UUID) -> AnalysisJob | None:
+            self.get_calls += 1
+            if self.get_calls == 2:
+                failed_read.set()
+                raise RuntimeError("database unavailable")
+            return super().get(analysis_id)
+
+    repository = TransientReadRepository([job])
+    queue = SingleWorkerQueue(repository, lambda _analysis_id: None)
+    queue.start(recover=False)
+    try:
+        queue.submit(job.id)
+        assert failed_read.wait(timeout=2)
+        assert queue.metrics() == (1, 0)
+        assert queue.wait_for_idle(timeout=2)
+    finally:
+        queue.stop()
+
+    assert queue.metrics() == (0, 0)
+
+
 def test_stage_pipeline_advances_only_after_real_work_finishes():
     job = AnalysisJob()
     repository = MemoryQueueRepository([job])

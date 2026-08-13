@@ -1,23 +1,27 @@
 from __future__ import annotations
 
+import hashlib
 import subprocess
 import sys
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
+import scripts.check_acceptance_matrix as check_acceptance_matrix
 from scripts.check_acceptance_matrix import (
     EXPECTED_ITEM_IDS,
     AuditValidationError,
     load_audit,
     validate_audit,
 )
+from scripts.check_engineering_audit import load_audit as load_engineering_audit
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC_PATH = ROOT / "SPEC.md"
 AUDIT_PATH = ROOT / "docs" / "audits" / "FUNCTIONAL_AUDIT.md"
-NOW = datetime(2026, 8, 12, tzinfo=UTC)
+NOW = datetime(2026, 8, 13, tzinfo=UTC)
 
 EXPECTED_IDS = (
     "AC-A-1",
@@ -311,6 +315,37 @@ def test_historical_evidence_requires_current_boundary_hash(tmp_path: Path, repl
     assert "E004 current boundary SHA256" in _validation_error(tmp_path, mutation)
 
 
+def test_current_boundary_is_stable_across_text_checkout_line_endings(tmp_path: Path):
+    source = tmp_path / "src" / "museecho" / "app.py"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"first\nsecond\n")
+    lf_boundary = check_acceptance_matrix._current_boundary_sha256(tmp_path)
+
+    source.write_bytes(b"first\r\nsecond\r\n")
+    crlf_boundary = check_acceptance_matrix._current_boundary_sha256(tmp_path)
+
+    assert crlf_boundary == lf_boundary
+
+
+def test_boundary_keeps_binary_line_endings_exact():
+    relative_path = "tests/api/fixture.bin"
+    crlf_content = b"\0first\r\nsecond\r\n"
+    lf_boundary = check_acceptance_matrix._digest_boundary_entries(
+        [(relative_path, b"\0first\nsecond\n")]
+    )
+    crlf_boundary = check_acceptance_matrix._digest_boundary_entries(
+        [(relative_path, crlf_content)]
+    )
+    expected = hashlib.sha256()
+    expected.update(relative_path.encode("utf-8"))
+    expected.update(b"\0")
+    expected.update(hashlib.sha256(crlf_content).hexdigest().encode("ascii"))
+    expected.update(b"\n")
+
+    assert crlf_boundary != lf_boundary
+    assert crlf_boundary == expected.hexdigest()
+
+
 def test_drifted_historical_browser_boundary_cannot_make_current_item_pass(tmp_path: Path):
     mutation = _replace_table_cell(
         _audit_text(), "## Acceptance matrix", "AC-C-3", "Evidence IDs", "E004"
@@ -394,9 +429,7 @@ def test_external_not_run_evidence_cannot_make_an_item_pass(tmp_path: Path):
     )
 
 
-@pytest.mark.parametrize(
-    "blocker_id", ("TC-021", "REMOTE-CI", "TASK23-AUDIT", "TASK24-AUDIT", "STUDENT-MANUAL")
-)
+@pytest.mark.parametrize("blocker_id", ("TC-021", "REMOTE-CI", "TASK24-AUDIT", "STUDENT-MANUAL"))
 def test_external_follow_up_and_manual_work_cannot_be_marked_resolved_without_execution(
     tmp_path: Path, blocker_id: str
 ):
@@ -409,9 +442,135 @@ def test_external_follow_up_and_manual_work_cannot_be_marked_resolved_without_ex
     )
 
 
+def test_green_github_evidence_closes_frontend_and_browser_gaps() -> None:
+    contract = check_acceptance_matrix.EVIDENCE_CONTRACTS["E002"]
+    audit = load_audit(SPEC_PATH, AUDIT_PATH)
+    item = next(item for item in audit.items if item.item_id == "AC-F-4")
+
+    assert contract.kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert contract.exit_code_raw == "0"
+    assert contract.supports_pass is True
+    assert item.verdict == "PASS"
+    assert item.disposition == "-"
+
+
+def test_task23_current_backend_smoke_static_secret_and_security_contracts_replace_task22() -> None:
+    contracts = check_acceptance_matrix.EVIDENCE_CONTRACTS
+    audit = load_audit(SPEC_PATH, AUDIT_PATH)
+    evidence_by_id = {record.evidence_id: record for record in audit.evidence}
+    remote_ci_item = next(item for item in audit.items if item.item_id == "DOD-10")
+    remote_ci_blocker = next(
+        blocker for blocker in audit.blockers if blocker.blocker_id == "REMOTE-CI"
+    )
+
+    assert "museecho-app:task23-review1" in contracts["E008"].command
+    assert "pytest-tests=649" != contracts["E008"].result
+    assert "-NoBuild -ReleaseManifest" in contracts["E009"].command
+    assert "mypy-src-files=46" in contracts["E010"].result
+    assert contracts["E003"].result == "secret-scan-files=210"
+    assert "app-occurrences=181" in contracts["E902"].result
+    assert "gateway-occurrences=0" in contracts["E902"].result
+    assert evidence_by_id["E901"].kind == "EXTERNAL_NOT_RUN"
+    assert "GitLab CI" in evidence_by_id["E901"].command
+    assert contracts["E906"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert contracts["E906"].supports_pass is True
+    assert "run=31630284744" in contracts["E906"].result
+    assert "head=2b2730eaf232f8edf3ead77be1830fa50d927a47" in contracts["E906"].result
+    assert "quality=success; e2e=success; distribution=success" in contracts["E906"].result
+    assert contracts["E906"].coverage_ids == (
+        "AC-C-3",
+        "AC-F-1",
+        "AC-F-4",
+        "DOD-01",
+        "DOD-03",
+        "DOD-07",
+        "DOD-10",
+    )
+    assert remote_ci_item.evidence_ids == ("E901", "E906")
+    assert remote_ci_blocker.evidence_ids == ("E901",)
+
+
+@pytest.mark.parametrize("evidence_id", ("E002", "E906"))
+def test_product_ci_pass_uses_the_last_implementation_boundary_not_the_branch_tip(
+    evidence_id: str,
+) -> None:
+    audit = load_audit(SPEC_PATH, AUDIT_PATH)
+    evidence = next(record for record in audit.evidence if record.evidence_id == evidence_id)
+
+    assert evidence.kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert "implementation boundary" in evidence.summary.lower()
+    assert "exact-head" not in evidence.summary.lower()
+
+
+def test_old_current_command_kind_cannot_recast_implementation_boundary_as_tip_evidence(
+    tmp_path: Path,
+) -> None:
+    mutation = _replace_table_cell(
+        _audit_text(), "## Evidence index", "E906", "Kind", "CURRENT_COMMAND"
+    )
+
+    assert "E906 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
+
+def test_functional_engineering_evidence_matches_current_engineering_audit() -> None:
+    contract = check_acceptance_matrix.EVIDENCE_CONTRACTS["E902"]
+    engineering = load_engineering_audit(ROOT / "docs" / "audits" / "ENGINEERING_AUDIT.md")
+    counts = Counter((finding.severity, finding.status) for finding in engineering.findings)
+    open_count = sum(count for (_severity, status), count in counts.items() if status == "OPEN")
+    expected_prefix = (
+        f"findings={len(engineering.findings)}; "
+        f"fixed-high={counts[('High', 'FIXED')]}; "
+        f"fixed-medium={counts[('Medium', 'FIXED')]}; "
+        f"verified-medium={counts[('Medium', 'VERIFIED')]}; "
+        f"blocked-medium={counts[('Medium', 'BLOCKED')]}; open={open_count}; "
+    )
+
+    assert contract.result.startswith(expected_prefix)
+
+
+def test_current_acceptance_evidence_uses_the_executed_locked_python_command(
+    request: pytest.FixtureRequest,
+) -> None:
+    expected_command = (
+        ".venv\\Scripts\\python.exe -m pytest tests/unit/test_acceptance_matrix.py -q "
+        "--basetemp tmp/task23-e014 -p no:cacheprovider; "
+        "if ($LASTEXITCODE) { exit $LASTEXITCODE }; "
+        ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
+        "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md"
+    )
+    contract = check_acceptance_matrix.EVIDENCE_CONTRACTS["E014"]
+    engineering = load_engineering_audit(ROOT / "docs" / "audits" / "ENGINEERING_AUDIT.md")
+    engineering_e030 = next(
+        evidence for evidence in engineering.evidence if evidence.evidence_id == "E030"
+    )
+    acceptance_path = Path(__file__).resolve()
+    collected_count = sum(
+        Path(str(item.path)).resolve() == acceptance_path for item in request.session.items
+    )
+
+    assert contract.command == expected_command
+    assert engineering_e030.command == expected_command
+    assert contract.result == (f"pytest-tests={collected_count}; pass=34; partial=6; fail=0")
+    assert engineering_e030.result == (
+        f"{collected_count} passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0"
+    )
+
+
+def test_task23_report_labels_superseded_statistics_and_attributes_round_four() -> None:
+    report = (ROOT / ".superpowers" / "sdd" / "PLAN" / "task-23-report.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "## 初始实现验证（已由后续复审轮取代）" in report
+    assert "初始实现 focused GREEN（已由后续复审轮取代）" in report
+    assert "Round-4 implementation is committed as `f75c808" in report
+
+
 def test_audit_generated_time_and_evidence_time_must_be_real_utc(tmp_path: Path):
     mutation = _audit_text().replace(
-        "- **Generated at UTC:** `2026-08-11T", "- **Generated at UTC:** `2999-08-11T", 1
+        "- **Generated at UTC:** `2026-08-12T", "- **Generated at UTC:** `2999-08-12T", 1
     )
 
     assert "audit generated time is future-dated" in _validation_error(tmp_path, mutation)
