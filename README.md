@@ -14,17 +14,22 @@ controller browser observation behind trusted TLS, and student acceptance.
 <!-- TASK24-CURRENT-STATUS:END -->
 
 MuseEcho V1 是一款 Evidence First（证据优先）的交互式音乐理解应用。它用确定性的
-DSP/MIR 管线分析用户上传的 WAV/MP3，生成节拍、能量、调性、结构、和弦、波形和确定性
+DSP/MIR 管线分析用户上传的 WAV、MP3、FLAC、M4A、AAC、OGG 或 OPUS，生成节拍、能量、调性、结构、和弦、波形和确定性
 乐理证据；可选 LLM 只能解释已经通过置信度门的结构化证据，不能生成或改写音乐事实。
 
 ## 核心功能
 
-- 最大 30 MiB、最长 10 分钟的 WAV/MP3 上传、格式探测和受限解码。
+- 最大 30 MiB、最长 10 分钟的 WAV/MP3/FLAC/M4A/AAC/OGG/OPUS 上传、格式探测和受限解码。
 - 单工作线程的可恢复分析队列，失败返回稳定错误码。
 - 节拍/能量、调性、结构与大小三和弦分析；低置信结果统一为 `unknown`。
 - 时间轴、波形、证据面板、确定性乐理说明和可选证据约束式 LLM 解释。
 - 24 小时 capability cookie、CSRF/同源保护、加密音频存储和到期密码学删除。
 - 中文桌面/移动界面、真实 HTTPS E2E、300 秒性能基准。
+
+浏览器选择器仅列出 `.wav,.mp3,.flac,.m4a,.aac,.ogg,.opus` 这七个精确后缀。M4A
+仅支持 AAC/ALAC；OGG/Ogg 系列仅支持 Vorbis/Opus（`.ogg` 对应 Vorbis，`.opus`
+对应 Opus）。浏览器的 MIME 类型或文件名后缀预检不能代替服务器对容器、编解码器和
+实际内容的验证。DRM 或专有加密下载明确不受支持。
 
 ## 架构
 
@@ -248,10 +253,11 @@ Compose、命令行、截图、日志、Git 历史或前端变量。`scripts/sec
 - 访问 token 只存 Argon2id 哈希，cookie 为 Secure/HttpOnly/SameSite；写操作还需同源与
   CSRF token。
 - 上传体、解码时间、时长、响应大小、LLM 超时和引用集合均有硬限制。
-- 上传解码只接受 MP3，或 RIFF/WAVE 中的无压缩 PCM：无符号 8 位、little-endian 有符号
-  16/24/32 位、IEEE float 32/64 位（含匹配的 WAVE_FORMAT_EXTENSIBLE 子格式）。压缩或
-  歧义 RIFF codec 会在启动媒体工具前失败关闭；`ffprobe` 与 `ffmpeg` 均在输入前应用完全
-  相同的 `wav,mp3` format、`file,pipe` protocol 和上述 PCM/MP3 decoder allowlist。
+- 上传解码只接受严格容器/编解码器配对：WAV 中的受限 PCM/IEEE float、常规 MP3、FLAC、
+  M4A 中的 AAC/ALAC、ADTS AAC、Ogg/Vorbis 和 Ogg/Opus。浏览器 MIME 或后缀只是预检，
+  服务器会独立核对签名、容器、全部媒体流与 codec；DRM 和专有加密下载均失败关闭。
+  `ffprobe` 与 `ffmpeg` 共用从格式注册表派生的精确 format/codec allowlist 和 `file,pipe`
+  protocol allowlist。
 - WAVEFORMATEXTENSIBLE 仅在 `cbSize >= 22`、声明扩展字节有界、`0 < valid_bits <=
   container_bits`、GUID/速率/通道/block-align/byte-rate 全部一致时接受。MP3 仅支持可由非零
   bitrate index 计算帧大小的常规 MPEG Layer III；V1 明确拒绝 free-format (`0000`) MP3，因为
@@ -287,7 +293,9 @@ SHA-256 inventory，以及固定容器、构建工具、Go replacement 和 OS �
 
 ## 已知限制
 
-- V1 仅接受 WAV/MP3，最长 10 分钟；仅输出大小三和弦，其他和声保守为 `unknown`。
+- V1 仅接受 `.wav,.mp3,.flac,.m4a,.aac,.ogg,.opus` 七个后缀与其严格内容配对，
+  最长 10 分钟；`.mp4`、`.oga`、DRM 和专有加密下载不支持；仅输出大小三和弦，
+  其他和声保守为 `unknown`。
 - 结构标签是可解释的相似段落标识，不等同于曲式学人工定论。
 - 分析队列是单进程单工作线程，不是多租户横向扩展系统。
 - 当前锁定的 Debian/FFmpeg 运行时在原始 Trivy 0.70.0 扫描中仍有 181 个无修复版本的

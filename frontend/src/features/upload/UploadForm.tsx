@@ -5,7 +5,15 @@ import { Button } from '../../components/Button'
 import { ErrorNotice } from '../../components/ErrorNotice'
 
 const MAX_UPLOAD_BYTES = 30 * 1024 * 1024
-const supportedExtensions = new Set(['wav', 'mp3'])
+const supportedExtensions = new Set([
+  'wav',
+  'mp3',
+  'flac',
+  'm4a',
+  'aac',
+  'ogg',
+  'opus',
+])
 
 export interface UploadFormProps {
   onAccepted?: (accepted: UploadAccepted) => void
@@ -84,10 +92,12 @@ export function UploadForm({
           音频文件
         </label>
         <p className="field-help" id={helpId}>
-          支持 WAV 或 MP3，文件最大 30 MB，音频最长 10 分钟。客户端预检仅用于尽早提示，最终以后端验证为准。
+          支持 WAV、MP3、FLAC、M4A、AAC、OGG 和 OPUS，文件最大 30 MB，音频最长
+          10 分钟。M4A 仅支持 AAC/ALAC，OGG 仅支持 Vorbis/Opus。浏览器文件名后缀或
+          MIME 类型预检不能代替后端内容验证；不支持 DRM 或专有加密下载。
         </p>
         <input
-          accept=".wav,.mp3,audio/wav,audio/mpeg"
+          accept=".wav,.mp3,.flac,.m4a,.aac,.ogg,.opus"
           aria-describedby={helpId}
           disabled={uploading}
           id={fileInputId}
@@ -162,7 +172,9 @@ export function UploadForm({
 
 function validateFile(file: File): string | null {
   const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
-  if (!supportedExtensions.has(extension)) return '仅支持 WAV 或 MP3 音频文件。'
+  if (!supportedExtensions.has(extension)) {
+    return '不支持的音频格式。请选择 WAV、MP3、FLAC、M4A、AAC、OGG 或 OPUS 文件。'
+  }
   if (file.size > MAX_UPLOAD_BYTES) return '音频文件不能超过 30 MB。'
   if (file.size === 0) return '音频文件不能为空。'
   return null
@@ -201,7 +213,8 @@ function uploadErrorPresentation(reason: unknown): UploadErrorPresentation {
 
   const nonRetryable: Record<string, string> = {
     upload_too_large: '音频文件不能超过 30 MB。',
-    unsupported_audio: '仅支持 WAV 或 MP3 音频文件。',
+    unsupported_audio:
+      '不支持的音频格式。请选择 WAV、MP3、FLAC、M4A、AAC、OGG 或 OPUS 文件。',
     invalid_audio: '无法读取这个音频。',
     audio_too_long: '音频时长不能超过 10 分钟。',
     upload_aborted: '上传已中止。',
