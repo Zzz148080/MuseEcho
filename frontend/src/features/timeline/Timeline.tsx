@@ -19,8 +19,7 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
   const usableChords = result.chords.filter(
     (chord) =>
       chord.symbol !== 'unknown' &&
-      isUsableConfidence(chord.confidence) &&
-      chord.end_seconds - chord.start_seconds >= 2,
+      isUsableConfidence(chord.confidence),
   )
   const selectionStyle = timeline.selection
     ? eventPosition(
@@ -129,16 +128,21 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
           <span className="timeline__track-label">段落</span>
           <div className="timeline__events">
             {result.sections.map((section) => (
-              <span
-                aria-hidden="true"
+              <button
+                aria-label={`选择片段 ${formatTime(section.start_seconds)} 至 ${formatTime(section.end_seconds)}`}
                 className="timeline__event timeline__event--section"
                 data-testid="section-boundary"
                 key={section.id}
+                onClick={() => {
+                  timeline.seek(section.start_seconds)
+                  timeline.select(section.start_seconds, section.end_seconds)
+                }}
                 style={eventPosition(
                   section.start_seconds,
                   section.end_seconds,
                   timeline.duration,
                 )}
+                type="button"
               />
             ))}
           </div>

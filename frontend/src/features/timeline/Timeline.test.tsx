@@ -121,7 +121,20 @@ describe('Timeline', () => {
     expect(screen.getByRole('button', { name: /能量上升/ })).toBeVisible()
   })
 
-  it('hides internal section clusters and unusable chords while retaining usable harmonic candidates', () => {
+  it('turns a visual section boundary into its exact listening selection', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<RichHarness />)
+    const section = richResult.sections[0]
+    const media = container.querySelector('audio')
+
+    await user.click(screen.getAllByTestId('section-boundary')[0])
+
+    expect(media?.currentTime).toBe(section.start_seconds)
+    expect(screen.getByTestId('selection')).toHaveAttribute('data-start', String(section.start_seconds))
+    expect(screen.getByTestId('selection')).toHaveAttribute('data-end', String(section.end_seconds))
+  })
+
+  it('keeps a backend-accepted short harmonic candidate visible and interactive', async () => {
     const lowResult = {
       ...richResult,
       chords: [
@@ -146,16 +159,25 @@ describe('Timeline', () => {
     }
     function FilteredHarness() {
       const timeline = useTimeline(lowResult.track.duration_seconds)
-      return <Timeline result={lowResult} timeline={timeline} />
+      return (
+        <>
+          <audio ref={timeline.mediaRef} />
+          <Timeline result={lowResult} timeline={timeline} />
+        </>
+      )
     }
 
-    render(<FilteredHarness />)
+    const user = userEvent.setup()
+    const { container } = render(<FilteredHarness />)
+    const media = container.querySelector('audio')
 
     expect(screen.getAllByTestId('section-boundary')).toHaveLength(lowResult.sections.length)
     expect(screen.queryByLabelText(/段落 A/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /和弦 G/ })).toBeVisible()
     expect(screen.queryByRole('button', { name: /unknown/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /和弦 A#/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /和弦 A#/ }))
+    expect(media?.currentTime).toBe(9)
+    expect(screen.getByTestId('playhead')).toHaveAttribute('data-seconds', '9')
     expect(screen.queryByText(/时间轴文本事件列表/)).not.toBeInTheDocument()
   })
 

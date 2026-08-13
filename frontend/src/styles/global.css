@@ -649,6 +649,7 @@ progress::-moz-progress-bar {
 .timeline__event--section {
   color: var(--fg);
   background: color-mix(in srgb, var(--success) 22%, var(--surface));
+  cursor: pointer;
   font-weight: 700;
 }
 
