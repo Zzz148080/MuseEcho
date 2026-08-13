@@ -273,6 +273,30 @@ def test_verified_evidence_gap_rejects_unrelated_not_run_record(tmp_path: Path) 
     )
 
 
+def test_verified_evidence_gap_rejects_unrelated_current_green_record(tmp_path: Path) -> None:
+    mutation = _replace_table_cell(
+        _audit_text(),
+        EVIDENCE_HEADING,
+        "E037",
+        "Command",
+        "gh run view 99999999999 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha",
+    )
+    mutation = _replace_table_cell(
+        mutation, EVIDENCE_HEADING, "E037", "Path", "frontend/package.json"
+    )
+    mutation = _replace_table_cell(
+        mutation,
+        EVIDENCE_HEADING,
+        "E037",
+        "Result",
+        "Unrelated successful frontend package metadata inspection completed.",
+    )
+
+    assert "E037 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
+
 @pytest.mark.parametrize(
     ("finding_id", "red_id", "green_id"),
     (
