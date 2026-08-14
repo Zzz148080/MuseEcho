@@ -193,3 +193,48 @@ count.
 
 No product runtime, result-page, timeline, analysis algorithm, CVE disposition, retained raw
 finding, or container/image identity changed in this review fix.
+
+## Review fix round 2 (2026-08-14)
+
+The scoped re-review found that the round-1 exact container-control tuple was syntactically
+fail-closed but semantically wrong: `compose.yaml:17` names the optional provider-secret
+environment variable and does not enforce container hardening. Because both policy and checker
+shared that tuple, all 24 container-bound VEX statements passed the exact-contract test while
+citing a false control.
+
+### Strict TDD RED/GREEN
+
+Before changing the checker or policy, a focused mutation test supplied the hand-inspected
+hardening tuple `compose.yaml:18`, `compose.yaml:22`, and `compose.yaml:24`, then changed only the
+read-only anchor from line 18 to the provider-secret line 17 and required that mutation to fail
+the fixed contract. RED failed at the first assertion because
+the checker rejected the correct tuple and still required the provider-secret anchor.
+
+Minimal GREEN changed the fixed contract and all 24 affected policy statements to:
+
+- `compose.yaml:18`: `read_only: true`;
+- `compose.yaml:22`: `no-new-privileges:true`;
+- `compose.yaml:24`: `ALL` under `cap_drop`.
+
+The focused test then passed and proved that substituting only the provider-secret anchor produces
+`audio boundary controls do not match the fixed contract`.
+
+### Regenerated evidence and verification
+
+- Normalized policy SHA256:
+  `3be55b3898d232bf3018cd59a6cb17253d5cd6e6fd6dccebad15bc260dc3f2b9`.
+- Regenerated OpenVEX SHA256:
+  `ed4df519b5bc2df00bec0326a13a8f34b5ded840e5d31f01e0f4fe09fab3e2bc`.
+- Normalized security-manifest SHA256:
+  `91f675aff5af8d45a805eab730e0f9f2227e0c2be3be7fbd5d82213f871fda44`.
+- Each digest matched the manifest and fail-closed engineering checker constant.
+- Focused image-security, engineering-audit, and acceptance-audit suite:
+  `176 passed, 1 skipped in 41.40s`.
+- Functional checker: `40 acceptance items validated: PASS=34 PARTIAL=6 FAIL=0`.
+- Engineering checker tracked schema/fixed-contract validation (`--schema-only`) retained the
+  same 10 finding dispositions.
+- Focused Ruff formatting and lint passed.
+
+No runtime Compose setting, product source, CVE disposition, raw finding, or image identity was
+changed. This round corrects only the VEX control references, their generated hashes, the
+fail-closed checker contract, its regression test, and this retained report.
