@@ -21,7 +21,7 @@ from scripts.check_engineering_audit import load_audit as load_engineering_audit
 ROOT = Path(__file__).resolve().parents[2]
 SPEC_PATH = ROOT / "SPEC.md"
 AUDIT_PATH = ROOT / "docs" / "audits" / "FUNCTIONAL_AUDIT.md"
-NOW = datetime(2026, 8, 13, tzinfo=UTC)
+NOW = datetime(2026, 8, 15, tzinfo=UTC)
 
 EXPECTED_IDS = (
     "AC-A-1",
@@ -249,6 +249,25 @@ def test_current_command_result_contract_cannot_be_rewritten_coherently(tmp_path
     assert "E008 does not match its fixed evidence contract" in _validation_error(
         tmp_path, mutation
     )
+
+
+def test_current_frontend_evidence_accepts_78_and_rejects_stale_66(tmp_path: Path):
+    current = _audit_text()
+    retained = current.replace("vitest-tests=66", "vitest-tests=78").replace(
+        "12 files and 66 tests passed", "12 files and 78 tests passed"
+    )
+    audit = load_audit(SPEC_PATH, _write_audit(tmp_path, retained))
+
+    validate_audit(audit, repo_root=ROOT, now=NOW)
+
+    stale = _replace_table_cell(
+        retained,
+        "## Evidence index",
+        "E001",
+        "Result",
+        "vitest-files=12; vitest-tests=66",
+    )
+    assert "E001 does not match its fixed evidence contract" in _validation_error(tmp_path, stale)
 
 
 def test_exact_historical_evidence_is_structurally_verifiable_without_git(monkeypatch):
@@ -569,9 +588,11 @@ def test_task23_report_labels_superseded_statistics_and_attributes_round_four() 
 
 
 def test_audit_generated_time_and_evidence_time_must_be_real_utc(tmp_path: Path):
-    mutation = _audit_text().replace(
-        "- **Generated at UTC:** `2026-08-12T", "- **Generated at UTC:** `2999-08-12T", 1
+    text = _audit_text()
+    generated_line = next(
+        line for line in text.splitlines() if line.startswith("- **Generated at UTC:**")
     )
+    mutation = text.replace(generated_line, "- **Generated at UTC:** `2999-08-12T19:15:00Z`", 1)
 
     assert "audit generated time is future-dated" in _validation_error(tmp_path, mutation)
 

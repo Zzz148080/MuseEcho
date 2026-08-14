@@ -62,7 +62,7 @@ FINDING_CONTRACTS = {
 }
 
 SECURITY_MANIFEST_PATH = "docs/audits/evidence/task23-security-manifest.json"
-SECURITY_MANIFEST_SHA256 = "9fc5264d01d2faa1770accbb7ed79c66e78e77381cc4668471f28785055ebda5"
+SECURITY_MANIFEST_SHA256 = "6eff68880817e770a81113099a1bf5231cc95d5f7e78ec3c18a2779dc422726d"
 
 SECURITY_MATERIAL_FILENAMES = (
     "app-raw-review1.json",
@@ -296,7 +296,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md",
         "docs/audits/FUNCTIONAL_AUDIT.md",
-        "44 passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0",
+        "45 passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0",
     ),
     "E033": (
         "RED_COMMAND",
@@ -363,7 +363,7 @@ SECURITY_MANIFEST_CONTRACT = {
         "tar_sha256": "c45998dfa5bc6c733799b036f07d64ebce081f23a4cd7497bcb323f72bb7e25e",
         "tuple_sha256": "4ab629f0f3b74d2357fcf19d195831c37adbee645d881e9a3fb4605224de35ba",
         "vex_gate_exit": 0,
-        "vex_sha256": "76b539cb0b71dbb6339150f322eaf049207d862d66a209fdb97bf64245c7afaa",
+        "vex_sha256": "94dcfb9fd7bc0e84a4d3013f8527c936f53ccdc53a45dd2aea142e5d1dd02628",
     },
     "boundary": {
         "build_kind": "controlled_current_source_derivation_from_task20_final",
@@ -371,7 +371,7 @@ SECURITY_MANIFEST_CONTRACT = {
         "formal_dockerfile_build_reason": (
             "locked pip and apt BuildKit layers unavailable under network none"
         ),
-        "policy_sha256": "9ac0d25720809364c7274d9dda80f7f06278b5749ff7a44bb1ccbe63341f5a71",
+        "policy_sha256": "3ff04baf16ed17b26a4ebb0e10258a4f7a40b8ede94ec9e7e66bd45b0fe1374a",
         "runtime_boundary_sha256": (
             "7eb6b16e276d8b15a6bfa693015a083a0324a0be0ad1ed967a07962e4f88ce68"
         ),

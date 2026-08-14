@@ -163,7 +163,7 @@ EVIDENCE_CONTRACTS = {
             "DOD-06",
             "DOD-07",
         ),
-        result="vitest-files=12; vitest-tests=66",
+        result="vitest-files=12; vitest-tests=78",
         exit_code_raw="0",
     ),
     "E002": EvidenceContract(
@@ -329,7 +329,7 @@ EVIDENCE_CONTRACTS = {
         ),
         path="tests/unit/test_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-15"),
-        result="pytest-tests=44; pass=34; partial=6; fail=0",
+        result="pytest-tests=45; pass=34; partial=6; fail=0",
         exit_code_raw="0",
     ),
     "E902": EvidenceContract(

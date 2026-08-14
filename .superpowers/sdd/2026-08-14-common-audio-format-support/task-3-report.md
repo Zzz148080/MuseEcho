@@ -119,3 +119,77 @@ Supported public suffix/content pairings:
 Deliberately unsupported: `.mp4`, `.oga`, video/container variants, wrong suffix/container/codec
 pairings, extra disallowed streams, free-format MP3, malformed or ambiguous signatures, DRM, and
 proprietary encrypted downloads.
+
+## Review fix round 1 (2026-08-14)
+
+The final review correctly identified two retained-evidence defects that were not caught by the
+first release refresh:
+
+- 66 media-bound VEX statements still described the old WAV/MP3 or PCM/MP3 reachability model
+  and cited line numbers from the old upload/decode implementation;
+- Functional Audit E001 and its fail-closed acceptance contract still claimed the superseded
+  66-test frontend suite, despite the retained Task 3 run containing 78 tests.
+
+This round deliberately supersedes the earlier report sentence saying no VEX statement changed.
+The raw Trivy findings, package inventory, reviewed CVE inventory, image identities, and product
+statuses remain unchanged, but the 66 affected VEX impact statements and their control anchors
+were re-reviewed and updated because their security rationale had become semantically stale.
+
+### Strict TDD RED
+
+Two focused mutation contracts were added before checker or evidence changes:
+
+- substituting the old six upload/decode line anchors into a committed media CVE must produce
+  `audio boundary controls do not match the fixed contract`;
+- restoring a WAV/MP3-only or PCM/MP3-only impact statement must produce
+  `contains stale WAV/MP3-only rationale`;
+- Functional Audit E001 must accept `vitest-files=12; vitest-tests=78` and reject a coherent
+  mutation back to 66 as a fixed evidence-contract mismatch.
+
+The RED run failed all three parameterized cases: stale anchors were accepted, stale rationale
+was accepted, and the truthful 78-test record was rejected by the old 66-test contract.
+
+### Minimal GREEN and retained-evidence consistency
+
+The image policy checker now binds the exact current media control contract for the 42
+audio-bound CVEs and the corresponding media-plus-container contract for 24 additional CVEs.
+The fixed anchors cover the registry, registry-derived demuxer/codec/protocol allowlists,
+per-format signature dispatch, suffix/container/codec pairing, FFprobe/FFmpeg protocol and codec
+allowlists, validation of every stream, and the MP3-only attached-MJPEG exception. Each pinned
+line was manually inspected after formatting. The checker also requires the current
+registry-derived rationale marker and explicitly rejects the two stale fixed phrases.
+
+All affected policy statements now rely on the current registry-derived boundary instead of the
+old two-format gate. FFmpeg-family statements enumerate PCM WAV, MP3, FLAC, AAC, ALAC, Vorbis,
+and Opus; they additionally state that MJPEG is admitted only as MP3 `attached_pic` metadata,
+never selected for decoding, and that all streams are validated before the selected audio stream
+is decoded to raw mono PCM. Other media/library statements identify their own unreachable
+primitive and bind that assessment to the same precise registry-derived controls.
+
+The canonical policy, OpenVEX digest, security manifest, and fail-closed engineering checker
+contract were refreshed after the semantic correction. The app runtime-boundary digest and
+reviewed image identities did not change. Functional Audit E001 and the companion Engineering
+Audit frontend record now truthfully retain the fresh 12-file/78-test result. Adding the new
+acceptance mutation test increased the focused acceptance module from 44 to 45 tests, so E014,
+E030, and their fixed contracts were updated consistently rather than leaving a second stale
+count.
+
+### Final round-1 verification
+
+- Focused mutation/audit suite:
+  `tests/unit/test_image_vulnerability_audit.py`,
+  `tests/unit/test_acceptance_matrix.py`, and
+  `tests/unit/test_engineering_audit.py` passed `175 passed, 1 skipped in 38.26s`.
+- Functional checker: `40 acceptance items validated: PASS=34 PARTIAL=6 FAIL=0`.
+- Engineering checker tracked schema/fixed-contract validation (`--schema-only`): 10 findings
+  validated with
+  `FIXED/High=4`, `FIXED/Medium=2`, `VERIFIED/Medium=1`, and the three declared external/build
+  `BLOCKED/Medium` findings unchanged.
+- Current frontend evidence rerun: `12 passed` files and `78 passed` tests, including the exact
+  suffix chooser plus `.mp4`/`.oga` rejection tests.
+- Focused Ruff formatting and lint passed for all changed Python checker/test files.
+- `git diff --check` passed; the only output was Git's existing Windows LF-to-CRLF checkout
+  warning, not a whitespace error.
+
+No product runtime, result-page, timeline, analysis algorithm, CVE disposition, retained raw
+finding, or container/image identity changed in this review fix.

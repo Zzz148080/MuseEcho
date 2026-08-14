@@ -24,7 +24,7 @@ from scripts.image_vulnerability_audit import (
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_PATH = ROOT / "docs" / "audits" / "ENGINEERING_AUDIT.md"
-NOW = datetime(2026, 8, 13, tzinfo=UTC)
+NOW = datetime(2026, 8, 15, tzinfo=UTC)
 DOMAIN_HEADING = "## Domain coverage"
 EVIDENCE_HEADING = "## Evidence index"
 FINDING_HEADING = "## Findings"
@@ -542,11 +542,11 @@ def test_security_manifest_recomputes_current_runtime_boundary(
 
 
 def test_audit_generated_time_cannot_be_future_dated(tmp_path: Path) -> None:
-    mutation = _audit_text().replace(
-        "- **Generated at UTC:** `2026-08-12T",
-        "- **Generated at UTC:** `2999-08-12T",
-        1,
+    text = _audit_text()
+    generated_line = next(
+        line for line in text.splitlines() if line.startswith("- **Generated at UTC:**")
     )
+    mutation = text.replace(generated_line, "- **Generated at UTC:** `2999-08-12T19:15:00Z`", 1)
 
     assert "audit generated time is future-dated" in _validation_error(tmp_path, mutation)
 
@@ -763,7 +763,7 @@ def test_current_acceptance_evidence_is_a_fixed_engineering_contract(tmp_path: P
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md"
     )
-    collected_count = 44
+    collected_count = 45
     expected_result = f"{collected_count} passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0"
 
     assert checker.FIXED_EVIDENCE_CONTRACTS["E030"] == (
