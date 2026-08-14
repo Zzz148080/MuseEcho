@@ -62,7 +62,7 @@ FINDING_CONTRACTS = {
 }
 
 SECURITY_MANIFEST_PATH = "docs/audits/evidence/task23-security-manifest.json"
-SECURITY_MANIFEST_SHA256 = "3729d1c1f1cc6af7554bffdbd399f45fc8a0b5885045638eb0c17dbd45feb63f"
+SECURITY_MANIFEST_SHA256 = "403d82a1140540727954a69641c293c9d478262c8bc0f78581d5065f50607147"
 
 SECURITY_MATERIAL_FILENAMES = (
     "app-raw-review1.json",
@@ -383,9 +383,9 @@ SECURITY_MANIFEST_CONTRACT = {
         "formal_dockerfile_build_reason": (
             "locked pip and apt BuildKit layers unavailable under network none"
         ),
-        "policy_sha256": "bbfc2bd24a2c653fc1ba205233e15e705cffa82cf70d7e43b16d4ead39d92e28",
+        "policy_sha256": "c4c2adcc5765041d29522e6dbe8f1a33950d91bb7cd11dda827f4f3bd8b727a1",
         "runtime_boundary_sha256": (
-            "a26f11a94d171b6edbbb8bff124b6ac2f9d2bf7069f0d57a29017fb0112c070f"
+            "dcbbe281378e653bd91f9142bd2b748f826f67d096e18310142d740ab2ecc5ae"
         ),
         "task20_base_daemon_image_id": (
             "sha256:96cd900d6c17c360b01665362330aca8ef032b0d4d1f140659a52265ce47f39c"

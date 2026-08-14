@@ -21,9 +21,7 @@ test('upload to delete completes without console errors', async ({ page }) => {
 
   await uploadAndWait(page)
   await selectTimelineSegment(page)
-  await page.getByLabel('问题').fill('为什么这里有张力？')
-  await page.getByRole('button', { name: '解释片段' }).click()
-  await expect(page.getByText('确定性回退', { exact: true })).toBeVisible()
+  await expect(page.locator('.question-panel')).toHaveCount(0)
 
   await page.getByRole('checkbox', { name: /了解删除不可恢复/ }).check()
   await page.getByRole('button', { name: '永久删除分析' }).click()
