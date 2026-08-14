@@ -472,6 +472,19 @@ progress::-moz-progress-bar {
   accent-color: var(--accent);
 }
 
+.audio-player__hint,
+.audio-player__status,
+.music-dna__note {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.audio-player__status {
+  color: var(--accent);
+}
+
 .dna-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1074,6 +1087,14 @@ progress::-moz-progress-bar {
 
 .confidence-badge[data-confidence='medium']::before {
   background: linear-gradient(90deg, currentColor 50%, transparent 50%);
+}
+
+.confidence-badge[data-confidence='low'] {
+  color: var(--accent);
+}
+
+.confidence-badge[data-confidence='low']::before {
+  background: linear-gradient(90deg, currentColor 25%, transparent 25%);
 }
 
 .confidence-badge[data-confidence='unknown'] {

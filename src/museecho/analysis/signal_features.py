@@ -13,7 +13,7 @@ from museecho.analysis.waveform import WaveformSeries, extract_waveform, wavefor
 
 @dataclass(frozen=True)
 class SignalFeatureConfig:
-    version: str = "signal-v1"
+    version: str = "signal-v3"
     waveform_bucket_count: int = 1_000
     frame_length: int = 2_048
     hop_length: int = 512

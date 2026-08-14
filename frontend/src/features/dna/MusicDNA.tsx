@@ -53,10 +53,13 @@ export function MusicDNA({ result }: MusicDNAProps) {
           }
         />
         <Fact
-          label="平均能量"
+          label="平均音频强度"
           value={energyMean === null ? null : `${Math.round(energyMean * 100)}%`}
         />
       </dl>
+      <p className="music-dna__note">
+        音频强度表示波形的相对强弱和动态变化，不代表情绪或氛围判断。
+      </p>
     </section>
   )
 }

@@ -436,7 +436,7 @@ def test_decode_uses_bounded_mono_float_pipeline(tmp_path: Path):
     )
     assert decode_arguments[decode_arguments.index("-codec_whitelist") + 1] == (
         "pcm_u8,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,"
-        "mp3float,mp3,flac,aac,alac,vorbis,opus,mjpeg"
+        "mp3float,mp3,flac,aac,alac,vorbis,opus,mjpeg,png"
     )
     assert decode_arguments.index("-protocol_whitelist") < decode_arguments.index("-i")
     assert decode_arguments.index("-format_whitelist") < decode_arguments.index("-i")
@@ -445,14 +445,27 @@ def test_decode_uses_bounded_mono_float_pipeline(tmp_path: Path):
     assert stderr_limit == 64 * 1024
 
 
-def test_probe_accepts_only_mp3_attached_mjpeg_cover_art(tmp_path: Path):
-    input_path = write_corrupt_audio(tmp_path / "placeholder.mp3")
+@pytest.mark.parametrize(
+    ("suffix", "format_name", "audio_codec", "cover_codec"),
+    (
+        (".mp3", "mp3", "mp3", "mjpeg"),
+        (".flac", "flac", "flac", "png"),
+    ),
+)
+def test_probe_accepts_supported_attached_cover_art(
+    tmp_path: Path,
+    suffix: str,
+    format_name: str,
+    audio_codec: str,
+    cover_codec: str,
+):
+    input_path = write_corrupt_audio(tmp_path / f"placeholder{suffix}")
     payload = _probe_streams_json(
-        format_name="mp3",
+        format_name=format_name,
         streams=[
             {
                 "codec_type": "audio",
-                "codec_name": "mp3",
+                "codec_name": audio_codec,
                 "sample_rate": "44100",
                 "channels": 2,
                 "duration": "1.0",
@@ -460,7 +473,7 @@ def test_probe_accepts_only_mp3_attached_mjpeg_cover_art(tmp_path: Path):
             },
             {
                 "codec_type": "video",
-                "codec_name": "mjpeg",
+                "codec_name": cover_codec,
                 "disposition": {"attached_pic": 1},
             },
         ],
@@ -468,8 +481,8 @@ def test_probe_accepts_only_mp3_attached_mjpeg_cover_art(tmp_path: Path):
 
     probe = probe_audio(input_path, runner=ScriptedRunner(CommandResult(0, payload, b"")))
 
-    assert probe.format_name == "mp3"
-    assert probe.codec_name == "mp3"
+    assert probe.format_name == format_name
+    assert probe.codec_name == audio_codec
 
 
 @pytest.mark.parametrize(

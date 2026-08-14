@@ -113,12 +113,12 @@ describe('Timeline', () => {
   it('keeps visual section boundaries without exposing internal section labels', () => {
     render(<RichHarness />)
 
-    for (const name of ['波形', '段落', '和弦', '能量', '重要事件']) {
+    for (const name of ['波形', '段落', '和弦', '动态强弱', '重要事件']) {
       expect(screen.getByRole('group', { name: `${name}轨道` })).toBeVisible()
     }
     expect(screen.getAllByTestId('section-boundary')).toHaveLength(richResult.sections.length)
     expect(screen.queryByText('A', { selector: '.timeline__event--section' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /能量上升/ })).toBeVisible()
+    expect(screen.getByRole('button', { name: /音频强度上升/ })).toBeVisible()
   })
 
   it('turns a visual section boundary into its exact listening selection', async () => {

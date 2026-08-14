@@ -15,7 +15,7 @@ const stageLabels: Record<AnalysisStage, string> = {
   queued: '等待分析',
   validating: '验证音频',
   decoding: '解码音频',
-  rhythm: '分析节奏与能量',
+  rhythm: '分析节奏与动态',
   tonality: '分析调性',
   structure: '分析段落结构',
   chords: '分析和弦',

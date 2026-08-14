@@ -71,7 +71,7 @@ export function AnalysisPage({
             </h1>
           </div>
           <p className="intro-copy">
-            沿着时间线聆听节奏、能量与局部和声，发现歌曲的变化。
+            沿着时间线聆听节奏、动态强弱与局部和声，发现歌曲的变化。
           </p>
         </section>
 

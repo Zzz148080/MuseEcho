@@ -4,7 +4,7 @@ import { formatTime } from '../timeline/Timeline'
 const kindLabels: Record<string, string> = {
   chord: '和弦',
   deterministic_theory: '确定性乐理',
-  energy: '能量',
+  energy: '动态强弱',
   rhythm: '节奏',
   section: '结构段落',
   tonality: '调性',

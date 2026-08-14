@@ -25,7 +25,7 @@ describe('AnalysisPage', () => {
   it('uses listener-facing introduction copy instead of internal unknown markers', () => {
     render(<AnalysisPage />)
 
-    expect(screen.getByText(/沿着时间线聆听节奏、能量与局部和声/)).toBeVisible()
+    expect(screen.getByText(/沿着时间线聆听节奏、动态强弱与局部和声/)).toBeVisible()
     expect(screen.queryByText(/结果会明确标记为 unknown/)).not.toBeInTheDocument()
   })
 

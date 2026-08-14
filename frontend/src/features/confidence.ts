@@ -1,10 +1,11 @@
 import type { ConfidenceLevel } from '../components/ConfidenceBadge'
 
 export function confidenceLevel(confidence: number | null): ConfidenceLevel {
-  if (confidence === null || !Number.isFinite(confidence) || confidence < 0.6) {
+  if (confidence === null || !Number.isFinite(confidence) || confidence < 0.5) {
     return 'unknown'
   }
-  return confidence >= 0.85 ? 'high' : 'medium'
+  if (confidence >= 0.85) return 'high'
+  return confidence >= 0.7 ? 'medium' : 'low'
 }
 
 export function isUsableConfidence(confidence: number | null): boolean {

@@ -92,7 +92,7 @@ INPUT_FORMATS = _ordered_unique(
 )
 INPUT_CODECS = _ordered_unique(
     tuple(codec for audio_format in AUDIO_FORMATS for codec in audio_format.allowed_codecs)
-    + ("mjpeg",)
+    + ("mjpeg", "png")
 )
 INPUT_FORMAT_WHITELIST = ",".join(INPUT_FORMATS)
 INPUT_CODEC_WHITELIST = ",".join(INPUT_CODECS)

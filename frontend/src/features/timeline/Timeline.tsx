@@ -176,8 +176,8 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
           </div>
         </div>
 
-        <div className="timeline__track" role="group" aria-label="能量轨道">
-          <span className="timeline__track-label">能量</span>
+        <div className="timeline__track" role="group" aria-label="动态强弱轨道">
+          <span className="timeline__track-label">动态强弱</span>
           <svg
             aria-hidden="true"
             className="timeline__graph timeline__graph--energy"
@@ -193,7 +193,7 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
           <div className="timeline__events">
             {summary?.energy_changes.filter((event) => isUsableConfidence(event.confidence)).map((event, index) => (
               <button
-                aria-label={`能量${event.direction === 'rise' ? '上升' : '下降'} ${formatTime(event.timestamp_seconds)}`}
+                aria-label={`音频强度${event.direction === 'rise' ? '上升' : '下降'} ${formatTime(event.timestamp_seconds)}`}
                 className="timeline__marker"
                 key={`${event.timestamp_seconds}-${index}`}
                 onClick={() => timeline.seek(event.timestamp_seconds)}
@@ -278,7 +278,7 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
 }
 
 function confidenceLabel(confidence: number): string {
-  const labels = { high: '高置信', medium: '中置信', unknown: '证据不足' }
+  const labels = { high: '高置信', medium: '中置信', low: '低置信', unknown: '证据不足' }
   return labels[confidenceLevel(confidence)]
 }
 

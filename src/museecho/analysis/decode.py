@@ -15,6 +15,7 @@ from museecho.audio_formats import (
     INPUT_CODEC_WHITELIST,
     INPUT_FORMAT_WHITELIST,
     INPUT_PROTOCOL_WHITELIST,
+    AudioFormat,
     matching_audio_format,
 )
 from museecho.domain.models import DecodedAudio
@@ -443,7 +444,7 @@ def _parse_probe(value: bytes) -> AudioProbe:
         for candidate in streams:
             if candidate.get("codec_type") == "audio":
                 continue
-            if not _is_allowed_mp3_cover(candidate, format_name=format_name):
+            if not _is_allowed_attached_cover(candidate, audio_format=audio_format):
                 raise ValueError
         duration_value = format_data.get("duration", stream.get("duration"))
         duration_seconds = float(duration_value)
@@ -477,12 +478,17 @@ def _validate_audio_stream(stream: dict[str, object]) -> None:
         raise ValueError
 
 
-def _is_allowed_mp3_cover(stream: dict[str, object], *, format_name: str) -> bool:
+def _is_allowed_attached_cover(
+    stream: dict[str, object], *, audio_format: AudioFormat
+) -> bool:
     disposition = stream.get("disposition")
+    allowed_cover_codecs = {
+        ".mp3": {"mjpeg"},
+        ".flac": {"mjpeg", "png"},
+    }
     return (
-        "mp3" in format_name.split(",")
-        and stream.get("codec_type") == "video"
-        and stream.get("codec_name") == "mjpeg"
+        stream.get("codec_type") == "video"
+        and stream.get("codec_name") in allowed_cover_codecs.get(audio_format.suffix, set())
         and isinstance(disposition, dict)
         and disposition.get("attached_pic") == 1
     )
