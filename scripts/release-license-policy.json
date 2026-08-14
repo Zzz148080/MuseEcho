@@ -246,7 +246,7 @@
   "binaries": {
     "caddy": {
       "approved_license": "Apache-2.0",
-      "sha256": "6f325f26cf3177a8ba89ad5e3cf1dbb89e2666f8397e7e2f24c74f124f444891"
+      "sha256": "a6a989828ff0454faefed1c600407aed8d42a36f386eb7e8df89089291c8fd89"
     }
   },
   "components": {

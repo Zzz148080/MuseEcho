@@ -23,6 +23,7 @@ test('upload to delete completes without console errors', async ({ page }) => {
   await selectTimelineSegment(page)
   await expect(page.locator('.question-panel')).toHaveCount(0)
 
+  await page.locator('.retention-panel summary').click()
   await page.getByRole('checkbox', { name: /了解删除不可恢复/ }).check()
   await page.getByRole('button', { name: '永久删除分析' }).click()
   await expect(page.getByRole('heading', { name: '分析已永久删除' })).toBeVisible()
