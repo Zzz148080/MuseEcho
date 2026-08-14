@@ -598,6 +598,58 @@ def test_ffmpeg_validator_requires_probe_and_successful_decode(tmp_path: Path, m
     assert calls == ["probe", "decode"]
 
 
+def test_ffmpeg_validator_accepts_zero_padded_pcm_format(tmp_path: Path, monkeypatch):
+    from museecho.application import uploads
+    from museecho.domain.models import DecodedAudio
+
+    canonical_format = _minimal_wave()[20:36]
+    source = tmp_path / "zero-padded.wav"
+    source.write_bytes(_wave_from_format_data(canonical_format + b"\x00\x00" + bytes(22)))
+    calls: list[str] = []
+    probe = AudioProbe("wav", 1.0, 8_000, 1)
+    monkeypatch.setattr(
+        uploads,
+        "probe_audio",
+        lambda *_args, **_kwargs: calls.append("probe") or probe,
+    )
+    monkeypatch.setattr(
+        uploads,
+        "decode_audio",
+        lambda *_args, **_kwargs: (
+            calls.append("decode") or DecodedAudio(b"\x00\x00\x00\x00", 8_000, 1)
+        ),
+    )
+
+    assert FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(".wav")) == probe
+    assert calls == ["probe", "decode"]
+
+
+def test_ffmpeg_validator_rejects_nonzero_zero_padded_pcm_format_before_audio_tools(
+    tmp_path: Path, monkeypatch
+):
+    from museecho.application import uploads
+
+    canonical_format = _minimal_wave()[20:36]
+    source = tmp_path / "nonzero-padded.wav"
+    source.write_bytes(_wave_from_format_data(canonical_format + b"\x00\x00" + bytes(21) + b"\x01"))
+    calls: list[str] = []
+    monkeypatch.setattr(
+        uploads,
+        "probe_audio",
+        lambda *_args, **_kwargs: calls.append("probe"),
+    )
+    monkeypatch.setattr(
+        uploads,
+        "decode_audio",
+        lambda *_args, **_kwargs: calls.append("decode"),
+    )
+
+    with pytest.raises(InvalidAudioError, match="signature"):
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(".wav"))
+
+    assert calls == []
+
+
 @pytest.mark.parametrize("subformat_tag", (0x0001, 0x0003))
 def test_ffmpeg_validator_accepts_extensible_valid_precision_and_extension_padding(
     tmp_path: Path, monkeypatch, subformat_tag: int

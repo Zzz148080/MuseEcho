@@ -375,8 +375,10 @@ def _validate_pcm_wave_format(format_data: bytes) -> None:
         format_tag = struct.unpack_from("<I", subformat)[0]
         if not 0 < valid_bits <= bits_per_sample:
             raise InvalidAudioError("audio file signature is invalid")
-    elif len(format_data) not in (16, 18) or (
-        len(format_data) == 18 and struct.unpack_from("<H", format_data, 16)[0] != 0
+    elif len(format_data) != 16 and (
+        len(format_data) < 18
+        or struct.unpack_from("<H", format_data, 16)[0] != 0
+        or any(format_data[18:])
     ):
         raise InvalidAudioError("audio file signature is invalid")
 
