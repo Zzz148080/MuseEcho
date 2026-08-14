@@ -62,7 +62,7 @@ FINDING_CONTRACTS = {
 }
 
 SECURITY_MANIFEST_PATH = "docs/audits/evidence/task23-security-manifest.json"
-SECURITY_MANIFEST_SHA256 = "5eb0ee8221c1ab208aaa121b9366f18c0d5ee77a0b29b4701fad18eb4d09378f"
+SECURITY_MANIFEST_SHA256 = "59e1478af5930ed515d572ad39924e6ed0820160cc291b5920939cae7682d77f"
 
 SECURITY_MATERIAL_FILENAMES = (
     "app-raw-review1.json",
@@ -129,8 +129,9 @@ FIXED_EVIDENCE_CONTRACTS = {
         r".venv\Scripts\python.exe -m pytest "
         "tests/unit/test_task20_final_delivery_contract.py -q",
         "tests",
-        "839 passed, 7 skipped in the locked Linux current-source verification runtime; "
-        "20 passed on the PowerShell host, including the four PowerShell-only harnesses; "
+        "841 passed, 7 skipped in the locked Linux current-source verification runtime, "
+        "including the 100 MiB upload-limit regressions; 20 passed on the PowerShell host, "
+        "including the four PowerShell-only harnesses; "
         "container and task-temp cleanup completed",
     ),
     "E015": (
@@ -383,7 +384,7 @@ SECURITY_MANIFEST_CONTRACT = {
         "formal_dockerfile_build_reason": (
             "locked pip and apt BuildKit layers unavailable under network none"
         ),
-        "policy_sha256": "89f745b0d7e33c52631635bb689b9eea76bb1e09bcb87f77bfe31a487d98154d",
+        "policy_sha256": "2ccccb86f5efe5f40f3af16dcd210abe85977bb3213ccb29235758966164a004",
         "runtime_boundary_sha256": (
             "4dc93b5c783978818ff5f3bc03b663897f310589dc451c297db7952dedc5bb2a"
         ),

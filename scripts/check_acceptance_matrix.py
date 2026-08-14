@@ -260,7 +260,7 @@ EVIDENCE_CONTRACTS = {
             "DOD-14",
             "DOD-15",
         ),
-        result="container-pytest=839; container-skipped=7; powershell-host-pytest=20",
+        result="container-pytest=841; container-skipped=7; powershell-host-pytest=20",
         exit_code_raw="0",
     ),
     "E009": EvidenceContract(

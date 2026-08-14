@@ -62,6 +62,49 @@ class RecordingStore:
         self.deleted.append(metadata.analysis_id)
 
 
+class GeneratedByteStream:
+    def __init__(self, size: int) -> None:
+        self.remaining = size
+        self.largest_chunk = 0
+
+    def read(self, size: int = -1) -> bytes:
+        if size <= 0:
+            raise AssertionError("generated stream requires bounded reads")
+        chunk_size = min(size, self.remaining)
+        self.remaining -= chunk_size
+        self.largest_chunk = max(self.largest_chunk, chunk_size)
+        return b"x" * chunk_size
+
+
+class CountingStore:
+    def __init__(self) -> None:
+        self.writes: list[tuple[uuid.UUID, int, str]] = []
+        self.deleted: list[uuid.UUID] = []
+        self.largest_chunk = 0
+
+    def write(
+        self, analysis_id: uuid.UUID, source: io.BufferedIOBase, media_type: str
+    ) -> EncryptedAudioMetadata:
+        plaintext_size = 0
+        while chunk := source.read(64 * 1024):
+            self.largest_chunk = max(self.largest_chunk, len(chunk))
+            plaintext_size += len(chunk)
+        self.writes.append((analysis_id, plaintext_size, media_type))
+        return EncryptedAudioMetadata(
+            analysis_id=analysis_id,
+            cipher_path=f"{analysis_id}.meaf",
+            wrapped_data_key=b"wrapped",
+            chunk_size=1024,
+            chunk_count=1,
+            plaintext_size=plaintext_size,
+            media_type=media_type,
+            sha256="0" * 64,
+        )
+
+    def delete(self, metadata: EncryptedAudioMetadata) -> None:
+        self.deleted.append(metadata.analysis_id)
+
+
 class RecordingAccessService:
     def issue(self, analysis_id: uuid.UUID, expires_at: datetime) -> IssuedAccess:
         now = datetime.now(timezone.utc)
@@ -1000,31 +1043,61 @@ def test_resource_limits_can_be_lowered_but_not_raised(tmp_path: Path):
         )
 
 
-def test_default_upload_limit_accepts_more_than_thirty_mib(tmp_path: Path):
+def test_default_upload_limit_accepts_exact_boundary_and_rejects_first_byte_above(
+    tmp_path: Path,
+):
     repository = MemoryRepository()
-    store = RecordingStore()
+    store = CountingStore()
     queue = RecordingQueue()
+    validated_sizes: list[int] = []
+
+    def validator(path: Path, audio_format: Any) -> AudioProbe:
+        validated_sizes.append(path.stat().st_size)
+        return _valid_probe(path, audio_format)
+
     service = UploadSubmissionService(
         repository=repository,
         audio_store=store,
         access_service=RecordingAccessService(),
         queue=queue,
         temp_root=tmp_path,
-        validator=_valid_probe,
+        validator=validator,
     )
-    payload_size = 30 * 1024 * 1024 + 1
+    exact_limit = 100 * 1024 * 1024
+    accepted_source = GeneratedByteStream(exact_limit)
 
     submitted = service.submit(
-        io.BytesIO(b"x" * payload_size),
-        filename="large.wav",
+        accepted_source,
+        filename="exact-limit.wav",
         media_type="audio/wav",
     )
 
     assert submitted.job.id in repository.jobs
-    assert [
-        (analysis_id, len(payload), media_type) for analysis_id, payload, media_type in store.writes
-    ] == [(submitted.job.id, payload_size, "audio/wav")]
+    assert store.writes == [(submitted.job.id, exact_limit, "audio/wav")]
     assert queue.submitted == [submitted.job.id]
+    assert validated_sizes == [exact_limit]
+    assert accepted_source.largest_chunk <= 64 * 1024
+    assert store.largest_chunk <= 64 * 1024
+    assert list(tmp_path.iterdir()) == []
+
+    persisted_jobs = repository.jobs.copy()
+    persisted_writes = store.writes.copy()
+    queued_jobs = queue.submitted.copy()
+    rejected_source = GeneratedByteStream(exact_limit + 1)
+
+    with pytest.raises(upload_module.UploadTooLargeError):
+        service.submit(
+            rejected_source,
+            filename="over-limit.wav",
+            media_type="audio/wav",
+        )
+
+    assert repository.jobs == persisted_jobs
+    assert store.writes == persisted_writes
+    assert queue.submitted == queued_jobs
+    assert validated_sizes == [exact_limit]
+    assert rejected_source.largest_chunk <= 64 * 1024
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_default_request_limit_accepts_100_mib_file_boundary_and_rejects_next_byte():
