@@ -62,7 +62,7 @@ FINDING_CONTRACTS = {
 }
 
 SECURITY_MANIFEST_PATH = "docs/audits/evidence/task23-security-manifest.json"
-SECURITY_MANIFEST_SHA256 = "91f675aff5af8d45a805eab730e0f9f2227e0c2be3be7fbd5d82213f871fda44"
+SECURITY_MANIFEST_SHA256 = "3729d1c1f1cc6af7554bffdbd399f45fc8a0b5885045638eb0c17dbd45feb63f"
 
 SECURITY_MATERIAL_FILENAMES = (
     "app-raw-review1.json",
@@ -119,8 +119,19 @@ FIXED_EVIDENCE_CONTRACTS = {
         ".venv/Scripts/python.exe -m mypy src; "
         ".venv/Scripts/python.exe -m mypy --platform linux src",
         "scripts/check_engineering_audit.py",
-        "93 files formatted; lint passed; Windows-host and explicit Linux strict "
-        "mypy each passed 46 source files",
+        "96 files formatted; lint passed; Windows-host and explicit Linux strict "
+        "mypy each passed 47 source files",
+    ),
+    "E013": (
+        "CURRENT_COMMAND",
+        "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
+        "scripts/container-pytest.ps1 -Image museecho-task3-verification-env:latest; "
+        r".venv\Scripts\python.exe -m pytest "
+        "tests/unit/test_task20_final_delivery_contract.py -q",
+        "tests",
+        "839 passed, 7 skipped in the locked Linux current-source verification runtime; "
+        "20 passed on the PowerShell host, including the four PowerShell-only harnesses; "
+        "container and task-temp cleanup completed",
     ),
     "E015": (
         "EXTERNAL_NOT_RUN",
@@ -244,7 +255,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         "Gateway raw occurrences=0 and distinct-cves=0; exact config and raw SHA fixed",
     ),
     "E022": (
-        "CURRENT_COMMAND",
+        "IMPLEMENTATION_BOUNDARY_COMMAND",
         "docker run --rm --network none --read-only --cap-drop ALL "
         "--security-opt no-new-privileges --workdir /workspace "
         "--mount type=bind,source=REPOSITORY,target=/workspace,readonly "
@@ -258,8 +269,9 @@ FIXED_EVIDENCE_CONTRACTS = {
         "--vex-output /evidence/app-openvex-review1.json "
         "--inventory-output /evidence/app-inventory-review1.json",
         SECURITY_MANIFEST_PATH,
-        "Exact raw tuple, package ownership, current clean runtime boundary, 67 reviewed "
-        "statements, and release identity passed",
+        "Pre-feature Task 23 image raw tuple, package ownership, 67 reviewed statements, "
+        "and release identity passed; current source policy is bound separately and this "
+        "record is not a current runtime-image scan",
     ),
     "E023": (
         "CURRENT_COMMAND",
@@ -296,7 +308,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md",
         "docs/audits/FUNCTIONAL_AUDIT.md",
-        "45 passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0",
+        "47 passed; 40 items validated PASS=31 PARTIAL=9 FAIL=0",
     ),
     "E033": (
         "RED_COMMAND",
@@ -363,7 +375,7 @@ SECURITY_MANIFEST_CONTRACT = {
         "tar_sha256": "c45998dfa5bc6c733799b036f07d64ebce081f23a4cd7497bcb323f72bb7e25e",
         "tuple_sha256": "4ab629f0f3b74d2357fcf19d195831c37adbee645d881e9a3fb4605224de35ba",
         "vex_gate_exit": 0,
-        "vex_sha256": "ed4df519b5bc2df00bec0326a13a8f34b5ded840e5d31f01e0f4fe09fab3e2bc",
+        "vex_sha256": "5a99f65ff2876867117e257903df87a63c0821c614ea82a88d61ccbef833f372",
     },
     "boundary": {
         "build_kind": "controlled_current_source_derivation_from_task20_final",
@@ -371,9 +383,9 @@ SECURITY_MANIFEST_CONTRACT = {
         "formal_dockerfile_build_reason": (
             "locked pip and apt BuildKit layers unavailable under network none"
         ),
-        "policy_sha256": "3be55b3898d232bf3018cd59a6cb17253d5cd6e6fd6dccebad15bc260dc3f2b9",
+        "policy_sha256": "bbfc2bd24a2c653fc1ba205233e15e705cffa82cf70d7e43b16d4ead39d92e28",
         "runtime_boundary_sha256": (
-            "7eb6b16e276d8b15a6bfa693015a083a0324a0be0ad1ed967a07962e4f88ce68"
+            "a26f11a94d171b6edbbb8bff124b6ac2f9d2bf7069f0d57a29017fb0112c070f"
         ),
         "task20_base_daemon_image_id": (
             "sha256:96cd900d6c17c360b01665362330aca8ef032b0d4d1f140659a52265ce47f39c"

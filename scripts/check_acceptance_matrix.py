@@ -81,6 +81,7 @@ DOD_FRAGMENTS = (
 )
 REQUIRED_OPEN_BLOCKERS = (
     "TC-021",
+    "CURRENT-BRANCH-DISTRIBUTION",
     "REMOTE-CI",
     "TASK24-AUDIT",
     "STUDENT-MANUAL",
@@ -145,7 +146,11 @@ class EvidenceContract:
 EVIDENCE_CONTRACTS = {
     "E001": EvidenceContract(
         kind="CURRENT_COMMAND",
-        command="npm.cmd --prefix frontend test -- --run",
+        command=(
+            "npm.cmd --prefix frontend test -- --run; "
+            "npm.cmd --prefix frontend run typecheck; "
+            "npm.cmd --prefix frontend run build"
+        ),
         path="frontend/src",
         coverage_ids=(
             "AC-A-3",
@@ -163,7 +168,7 @@ EVIDENCE_CONTRACTS = {
             "DOD-06",
             "DOD-07",
         ),
-        result="vitest-files=12; vitest-tests=78",
+        result="vitest-files=12; vitest-tests=78; typecheck=pass; build-modules=95",
         exit_code_raw="0",
     ),
     "E002": EvidenceContract(
@@ -228,7 +233,9 @@ EVIDENCE_CONTRACTS = {
         kind="CURRENT_COMMAND",
         command=(
             "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
-            "scripts/container-pytest.ps1 -Image museecho-app:task23-review1"
+            "scripts/container-pytest.ps1 -Image museecho-task3-verification-env:latest; "
+            r".venv\Scripts\python.exe -m pytest "
+            "tests/unit/test_task20_final_delivery_contract.py -q"
         ),
         path="tests",
         coverage_ids=(
@@ -253,11 +260,11 @@ EVIDENCE_CONTRACTS = {
             "DOD-14",
             "DOD-15",
         ),
-        result="pytest-tests=755; skipped=1",
+        result="container-pytest=839; container-skipped=7; powershell-host-pytest=20",
         exit_code_raw="0",
     ),
     "E009": EvidenceContract(
-        kind="CURRENT_COMMAND",
+        kind="IMPLEMENTATION_BOUNDARY_COMMAND",
         command=(
             "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
             "scripts/container-smoke.ps1 -NoBuild -ReleaseManifest "
@@ -274,6 +281,7 @@ EVIDENCE_CONTRACTS = {
         coverage_ids=("AC-E-1", "AC-E-3", "AC-F-1", "AC-F-3", "DOD-07", "DOD-08"),
         result="no-build=trusted-identity+real-wav+restart+ciphertext+image-history+cleanup",
         exit_code_raw="0",
+        supports_pass=False,
     ),
     "E010": EvidenceContract(
         kind="CURRENT_COMMAND",
@@ -286,7 +294,7 @@ EVIDENCE_CONTRACTS = {
         ),
         path="scripts/check_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-07"),
-        result=("ruff-files=93; mypy-src-files=46; mypy-linux-src-files=46; mypy-checker-files=1"),
+        result=("ruff-files=96; mypy-src-files=47; mypy-linux-src-files=47; mypy-checker-files=1"),
         exit_code_raw="0",
     ),
     "E011": EvidenceContract(
@@ -329,7 +337,7 @@ EVIDENCE_CONTRACTS = {
         ),
         path="tests/unit/test_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-15"),
-        result="pytest-tests=45; pass=34; partial=6; fail=0",
+        result="pytest-tests=47; pass=31; partial=9; fail=0",
         exit_code_raw="0",
     ),
     "E902": EvidenceContract(
@@ -894,7 +902,7 @@ def validate_audit(
             ):
                 issues.append(f"{blocker_id} cannot be RESOLVED with NOT_RUN evidence")
             else:
-                issues.append(f"{blocker_id} must remain OPEN in the Task 22 audit")
+                issues.append(f"{blocker_id} must remain OPEN in the tracked audit")
 
     referenced_blockers: set[str] = set()
     referenced_evidence: set[str] = set()

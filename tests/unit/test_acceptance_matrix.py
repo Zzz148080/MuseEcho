@@ -448,7 +448,16 @@ def test_external_not_run_evidence_cannot_make_an_item_pass(tmp_path: Path):
     )
 
 
-@pytest.mark.parametrize("blocker_id", ("TC-021", "REMOTE-CI", "TASK24-AUDIT", "STUDENT-MANUAL"))
+@pytest.mark.parametrize(
+    "blocker_id",
+    (
+        "TC-021",
+        "CURRENT-BRANCH-DISTRIBUTION",
+        "REMOTE-CI",
+        "TASK24-AUDIT",
+        "STUDENT-MANUAL",
+    ),
+)
 def test_external_follow_up_and_manual_work_cannot_be_marked_resolved_without_execution(
     tmp_path: Path, blocker_id: str
 ):
@@ -456,9 +465,12 @@ def test_external_follow_up_and_manual_work_cannot_be_marked_resolved_without_ex
         _audit_text(), "## Open blockers", blocker_id, "Status", "RESOLVED"
     )
 
-    assert f"{blocker_id} cannot be RESOLVED with NOT_RUN evidence" in _validation_error(
-        tmp_path, mutation
+    expected = (
+        f"{blocker_id} must remain OPEN in the tracked audit"
+        if blocker_id == "CURRENT-BRANCH-DISTRIBUTION"
+        else f"{blocker_id} cannot be RESOLVED with NOT_RUN evidence"
     )
+    assert expected in _validation_error(tmp_path, mutation)
 
 
 def test_green_github_evidence_closes_frontend_and_browser_gaps() -> None:
@@ -473,7 +485,7 @@ def test_green_github_evidence_closes_frontend_and_browser_gaps() -> None:
     assert item.disposition == "-"
 
 
-def test_task23_current_backend_smoke_static_secret_and_security_contracts_replace_task22() -> None:
+def test_current_branch_evidence_does_not_recast_pre_feature_smoke_as_current() -> None:
     contracts = check_acceptance_matrix.EVIDENCE_CONTRACTS
     audit = load_audit(SPEC_PATH, AUDIT_PATH)
     evidence_by_id = {record.evidence_id: record for record in audit.evidence}
@@ -482,10 +494,13 @@ def test_task23_current_backend_smoke_static_secret_and_security_contracts_repla
         blocker for blocker in audit.blockers if blocker.blocker_id == "REMOTE-CI"
     )
 
-    assert "museecho-app:task23-review1" in contracts["E008"].command
+    assert "museecho-task3-verification-env:latest" in contracts["E008"].command
     assert "pytest-tests=649" != contracts["E008"].result
+    assert contracts["E009"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert contracts["E009"].supports_pass is False
     assert "-NoBuild -ReleaseManifest" in contracts["E009"].command
-    assert "mypy-src-files=46" in contracts["E010"].result
+    assert "mypy-src-files=47" in contracts["E010"].result
+    assert all("E009" not in item.evidence_ids for item in audit.items if item.verdict == "PASS")
     assert contracts["E003"].result == "secret-scan-files=210"
     assert "app-occurrences=181" in contracts["E902"].result
     assert "gateway-occurrences=0" in contracts["E902"].result
@@ -507,6 +522,18 @@ def test_task23_current_backend_smoke_static_secret_and_security_contracts_repla
     )
     assert remote_ci_item.evidence_ids == ("E901", "E906")
     assert remote_ci_blocker.evidence_ids == ("E901",)
+
+
+def test_pre_feature_smoke_cannot_be_recast_as_current_branch_evidence(
+    tmp_path: Path,
+) -> None:
+    mutation = _replace_table_cell(
+        _audit_text(), "## Evidence index", "E009", "Kind", "CURRENT_COMMAND"
+    )
+
+    assert "E009 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
 
 
 @pytest.mark.parametrize("evidence_id", ("E002", "E906"))
@@ -571,9 +598,9 @@ def test_current_acceptance_evidence_uses_the_executed_locked_python_command(
 
     assert contract.command == expected_command
     assert engineering_e030.command == expected_command
-    assert contract.result == (f"pytest-tests={collected_count}; pass=34; partial=6; fail=0")
+    assert contract.result == (f"pytest-tests={collected_count}; pass=31; partial=9; fail=0")
     assert engineering_e030.result == (
-        f"{collected_count} passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0"
+        f"{collected_count} passed; 40 items validated PASS=31 PARTIAL=9 FAIL=0"
     )
 
 

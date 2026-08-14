@@ -763,8 +763,8 @@ def test_current_acceptance_evidence_is_a_fixed_engineering_contract(tmp_path: P
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md"
     )
-    collected_count = 45
-    expected_result = f"{collected_count} passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0"
+    collected_count = 47
+    expected_result = f"{collected_count} passed; 40 items validated PASS=31 PARTIAL=9 FAIL=0"
 
     assert checker.FIXED_EVIDENCE_CONTRACTS["E030"] == (
         "CURRENT_COMMAND",
@@ -794,6 +794,27 @@ def test_current_dual_platform_type_evidence_is_a_fixed_engineering_contract(
     mutation = _replace_table_cell(_audit_text(), EVIDENCE_HEADING, "E012", column, value)
 
     assert "E012 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
+
+def test_current_engineering_gates_do_not_recast_pre_feature_image_evidence() -> None:
+    contracts = checker.FIXED_EVIDENCE_CONTRACTS
+
+    assert "mypy each passed 47 source files" in contracts["E012"][3]
+    assert "museecho-task3-verification-env:latest" in contracts["E013"][1]
+    assert contracts["E022"][0] == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert "pre-feature task 23 image" in contracts["E022"][3].lower()
+
+
+def test_pre_feature_image_audit_cannot_be_recast_as_current_runtime_evidence(
+    tmp_path: Path,
+) -> None:
+    mutation = _replace_table_cell(
+        _audit_text(), EVIDENCE_HEADING, "E022", "Kind", "CURRENT_COMMAND"
+    )
+
+    assert "E022 does not match its fixed evidence contract" in _validation_error(
         tmp_path, mutation
     )
 

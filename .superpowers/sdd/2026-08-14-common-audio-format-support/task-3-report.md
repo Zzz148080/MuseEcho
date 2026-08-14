@@ -238,3 +238,111 @@ The focused test then passed and proved that substituting only the provider-secr
 No runtime Compose setting, product source, CVE disposition, raw finding, or image identity was
 changed. This round corrects only the VEX control references, their generated hashes, the
 fail-closed checker contract, its regression test, and this retained report.
+
+## Final whole-branch review fix wave (2026-08-14)
+
+The final reviewer identified two remaining correctness issues:
+
+- Functional E008/E009/E010 and Engineering E012/E013/E022 mixed current-source claims with
+  pre-feature Task 23 image/static evidence. In particular, the old production smoke and image
+  scan could still be read as support for the changed decoder/upload/frontend branch.
+- `AudioFormat.validator_kind` documented signature behavior but upload validation still chose
+  validators through a hard-coded suffix chain, so the registry was not the owner of that
+  behavior.
+
+The approved design uses a `ValidatorKind` `StrEnum` and a total kind-to-handler map. The registry
+stores only enum values, not callables, and import-time equality plus a public test seam requires
+the handler keys to equal the kinds used by every registered format.
+
+### Strict TDD RED
+
+Five focused tests were written before implementation and failed as intended:
+
+- every registered format required an available signature-validator kind, but the API did not
+  exist;
+- Functional E008/E009/E010 still required the old image/count/kind contract;
+- a mutation changing E009 back to `CURRENT_COMMAND` was accepted;
+- Engineering E012/E013/E022 still required the old count/image/kind contract;
+- a mutation changing E022 back to `CURRENT_COMMAND` was accepted.
+
+The initial RED result was five failures. After the registry refactor, its focused GREEN covered
+all seven formats and every signature family. A first complete Linux run then exposed call-site
+regressions that narrower host tests could not execute: nine ambiguous MP3-signature cases passed
+an unrelated `.bin` suffix to the new API, the integration suite still used the former one-argument
+private API, and one concurrency test still used the former validator signature. That run also
+exposed one frozen `34/6` process-document contract and four PowerShell-only harnesses in the
+minimal Linux verification image. It failed truthfully as `31 failed, 812 passed, 3 skipped`.
+
+The call sites now pass the registry entry explicitly. The PowerShell harness tests skip only on a
+host without PowerShell and pass separately on the Windows/PowerShell host; no PowerShell runtime
+was added to the production-like Linux image. Current-status blocks in PLAN/log/blocker/reflection
+documents and the frozen delivery contract now agree with the audited `31 PASS / 9 PARTIAL /
+0 FAIL` result.
+
+### Registry-owned validation
+
+`src/museecho/audio_formats.py` now defines `ValidatorKind` and assigns one kind to every exact
+suffix registry entry. `src/museecho/application/uploads.py` owns an immutable exhaustive handler
+map and dispatches only through `audio_format.validator_kind`. Both Ogg variants intentionally map
+to the shared Ogg parser while retaining distinct registry kinds, and every other kind maps to its
+own WAV, MP3, FLAC, ISO-BMFF, or ADTS parser. The upload service passes the already-resolved registry
+entry to validation and then uses the same entry for demuxer/codec pairing.
+
+### Audit truth and fail-closed mutations
+
+- Functional E008 and Engineering E013 now bind fresh current-source execution in the retained
+  FFmpeg-capable Linux verification image plus the separate PowerShell-host delivery-contract run.
+- Functional E009 is `IMPLEMENTATION_BOUNDARY_COMMAND`, is explicitly non-supporting for PASS,
+  and is covered by a mutation that rejects restoring `CURRENT_COMMAND`.
+- Engineering E022 is likewise an implementation-boundary record for the pre-feature Task 23
+  image and has a mutation that rejects restoring current-image language.
+- Functional E010 and Engineering E012 bind the fresh 96-file Ruff and 47-file host/Linux mypy
+  counts.
+- Only the exact rows that depended on current distribution/production execution were downgraded:
+  AC-F-1, DOD-07, and DOD-08 are `PARTIAL` behind
+  `CURRENT-BRANCH-DISTRIBUTION`. Other PASS rows rely only on fresh current-source tests or a
+  precisely scoped parsed contract.
+- The generated audit status and all tracked current-status blocks now state
+  `31 PASS / 9 PARTIAL / 0 FAIL`.
+
+### Boundary refresh
+
+The two security-policy test evidence hashes were refreshed after adapting the validator call
+sites. The reviewed CVE statements and source controls did not change, so regenerating the
+canonical OpenVEX structure produced the same VEX digest. The runtime source boundary also stayed
+unchanged after final formatting.
+
+- normalized policy SHA256:
+  `bbfc2bd24a2c653fc1ba205233e15e705cffa82cf70d7e43b16d4ead39d92e28`;
+- OpenVEX SHA256:
+  `5a99f65ff2876867117e257903df87a63c0821c614ea82a88d61ccbef833f372`;
+- runtime-boundary SHA256:
+  `a26f11a94d171b6edbbb8bff124b6ac2f9d2bf7069f0d57a29017fb0112c070f`;
+- normalized security-manifest SHA256:
+  `3729d1c1f1cc6af7554bffdbd399f45fc8a0b5885045638eb0c17dbd45feb63f`;
+- current browser/source/test boundary SHA256:
+  `379190a08d81c07d086d0b6e3fd220c8aaf31fd4299d5569ece910d50992ad0c`.
+
+### Final verification
+
+- Final read-only current-source Linux container suite:
+  `839 passed, 7 skipped in 589.82s`; container and task-temp cleanup succeeded. Four skips are
+  the PowerShell-only harnesses; the other three are retained environment/tool skips.
+- Current PowerShell-host delivery-contract suite: `20 passed in 169.70s`, including all four
+  Linux-skipped PowerShell harnesses.
+- Focused registry/ambiguous-signature/concurrency suite: `11 passed`.
+- Focused acceptance, engineering, and image-policy suite:
+  `180 passed, 1 skipped in 45.56s`.
+- Frontend: 12 files and 78 tests passed; typecheck passed; the production build transformed
+  95 modules.
+- Static/type gates: 96 files formatted; Ruff lint passed; strict mypy passed 47 source files on
+  the host and explicit Linux target; the acceptance checker passed as one typed source file.
+- Functional checker: `40 acceptance items validated: PASS=31 PARTIAL=9 FAIL=0`.
+- Engineering checker `--schema-only`: all 10 declared finding dispositions and fixed contracts
+  validated. This mode does not claim that absent external retained raw scan materials were
+  recomputed in this fix wave; the committed manifest/policy/current-boundary contracts and their
+  focused mutation tests were validated.
+- `git diff --check` passed; its only output was existing Windows LF-to-CRLF checkout warnings.
+
+No result page, shared timeline, analysis algorithm, accepted suffix, CVE disposition, raw image
+finding, production image identity, or Compose runtime setting changed in this wave.

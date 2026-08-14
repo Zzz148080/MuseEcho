@@ -26,6 +26,7 @@ from museecho.analysis.decode import (
     probe_audio,
 )
 from museecho.application.uploads import _validate_audio_signature
+from museecho.audio_formats import audio_format_for_suffix
 from tests.fixtures.audio_factory import (
     encode_mp3,
     write_chord_progression_wav,
@@ -78,7 +79,7 @@ def test_real_mp3_decodes_to_controlled_mono_pcm(tmp_path: Path):
         ffmpeg_executable=_find_tool("ffmpeg"),
     )
 
-    _validate_audio_signature(mp3_path)
+    _validate_audio_signature(mp3_path, audio_format_for_suffix(mp3_path.suffix))
     decoded = _decode(mp3_path, target_sample_rate=16_000)
 
     assert decoded.sample_rate == 16_000
@@ -124,7 +125,7 @@ def test_real_common_audio_formats_validate_and_decode(
     )
     assert completed.returncode == 0, completed.stderr.decode(errors="replace")
 
-    _validate_audio_signature(encoded)
+    _validate_audio_signature(encoded, audio_format_for_suffix(encoded.suffix))
     decoded = _decode(encoded)
 
     assert decoded.sample_rate == 22_050
@@ -193,7 +194,7 @@ def test_real_mp3_with_attached_cover_art_decodes_to_controlled_mono_pcm(tmp_pat
     )
     assert mux.returncode == 0, mux.stderr.decode(errors="replace")
 
-    _validate_audio_signature(attached)
+    _validate_audio_signature(attached, audio_format_for_suffix(attached.suffix))
     decoded = _decode(attached)
 
     assert decoded.sample_rate == 22_050
@@ -235,7 +236,7 @@ def test_real_uncompressed_pcm_wav_widths_remain_supported(tmp_path: Path, codec
     )
     assert completed.returncode == 0, completed.stderr.decode(errors="replace")
 
-    _validate_audio_signature(encoded)
+    _validate_audio_signature(encoded, audio_format_for_suffix(encoded.suffix))
     decoded = _decode(encoded)
 
     assert decoded.duration_seconds == pytest.approx(0.1, abs=0.03)

@@ -13,8 +13,10 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from museecho import audio_formats
 from museecho.analysis.decode import AudioDurationLimitError, AudioProbe, InvalidAudioError
 from museecho.api.analyses import install_analyses_api
+from museecho.application import uploads as upload_module
 from museecho.application.uploads import (
     FFmpegAudioValidator,
     UploadSubmissionService,
@@ -111,7 +113,7 @@ def _client(
     return TestClient(app, base_url="https://museecho.test"), repository, store, queue
 
 
-def _valid_probe(path: Path) -> AudioProbe:
+def _valid_probe(path: Path, _audio_format: Any) -> AudioProbe:
     assert path.is_file()
     return AudioProbe("wav", 1.0, 22_050, 1, "pcm_s16le")
 
@@ -179,6 +181,12 @@ def _minimal_wave(*, format_tag: int = 1, bits_per_sample: int = 16) -> bytes:
     return _wave_from_format_data(format_chunk)
 
 
+def test_every_registered_audio_format_has_a_signature_validator() -> None:
+    assert upload_module.registered_signature_validator_kinds() == frozenset(
+        audio_format.validator_kind for audio_format in audio_formats.AUDIO_FORMATS
+    )
+
+
 def _extensible_wave(
     *,
     extension_size: int | None = None,
@@ -236,10 +244,10 @@ def test_rejects_mp3_name_with_non_audio_bytes(tmp_path: Path):
 def test_rejects_oversized_upload_before_validation(tmp_path: Path):
     validated = False
 
-    def validator(path: Path) -> AudioProbe:
+    def validator(path: Path, audio_format: Any) -> AudioProbe:
         nonlocal validated
         validated = True
-        return _valid_probe(path)
+        return _valid_probe(path, audio_format)
 
     client, repository, store, queue = _client(tmp_path, validator, max_bytes=8)
     response = client.post(
@@ -290,7 +298,7 @@ def test_supported_suffix_requires_exact_probe_pairing_and_stores_canonical_medi
     canonical_media_type: str,
 ):
     probe = AudioProbe(format_name, 1.0, 22_050, 1, codec_name)
-    client, repository, store, queue = _client(tmp_path, lambda _: probe)
+    client, repository, store, queue = _client(tmp_path, lambda _, __: probe)
 
     response = client.post(
         "/api/analyses",
@@ -306,7 +314,7 @@ def test_supported_suffix_requires_exact_probe_pairing_and_stores_canonical_medi
 
 def test_supported_suffix_rejects_wrong_codec_pairing_before_persistence(tmp_path: Path):
     probe = AudioProbe("mov,mp4,m4a,3gp,3g2,mj2", 1.0, 22_050, 2, "ac3")
-    client, repository, store, queue = _client(tmp_path, lambda _: probe)
+    client, repository, store, queue = _client(tmp_path, lambda _, __: probe)
 
     response = client.post(
         "/api/analyses",
@@ -410,7 +418,7 @@ def test_real_m4a_unapproved_stream_is_rejected_before_persistence(
 
 def test_rejects_extension_that_does_not_match_detected_format(tmp_path: Path):
     client, repository, store, queue = _client(
-        tmp_path, lambda _: AudioProbe("wav", 1.0, 22_050, 1)
+        tmp_path, lambda _, __: AudioProbe("wav", 1.0, 22_050, 1)
     )
     response = client.post(
         "/api/analyses", files={"file": ("renamed.mp3", b"RIFFdata", "audio/mpeg")}
@@ -424,7 +432,7 @@ def test_rejects_extension_that_does_not_match_detected_format(tmp_path: Path):
 
 
 def test_rejects_audio_over_duration_limit(tmp_path: Path):
-    def reject(_: Path) -> AudioProbe:
+    def reject(_: Path, _audio_format: Any) -> AudioProbe:
         raise AudioDurationLimitError("audio duration exceeds the supported limit")
 
     client, _, store, queue = _client(tmp_path, reject)
@@ -456,9 +464,9 @@ def test_valid_upload_returns_202_random_id_and_capability_cookies(tmp_path: Pat
 def test_repeated_uploads_are_isolated_jobs(tmp_path: Path):
     observed_paths: list[Path] = []
 
-    def validator(path: Path) -> AudioProbe:
+    def validator(path: Path, audio_format: Any) -> AudioProbe:
         observed_paths.append(path)
-        return _valid_probe(path)
+        return _valid_probe(path, audio_format)
 
     client, repository, store, queue = _client(tmp_path, validator)
     first = client.post("/api/analyses", files={"file": ("same.wav", b"first", "audio/wav")})
@@ -541,7 +549,7 @@ def test_ffmpeg_validator_requires_probe_and_successful_decode(tmp_path: Path, m
     monkeypatch.setattr(uploads, "probe_audio", fake_probe)
     monkeypatch.setattr(uploads, "decode_audio", fake_decode)
 
-    result = FFmpegAudioValidator()(source)
+    result = FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(source.suffix))
 
     assert result == probe
     assert calls == ["probe", "decode"]
@@ -578,7 +586,10 @@ def test_ffmpeg_validator_accepts_extensible_valid_precision_and_extension_paddi
         ),
     )
 
-    assert FFmpegAudioValidator()(source) == probe
+    assert (
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(source.suffix))
+        == probe
+    )
     assert calls == ["probe", "decode"]
 
 
@@ -602,7 +613,7 @@ def test_ffmpeg_validator_rejects_free_format_layer_three_before_audio_tools(
     )
 
     with pytest.raises(InvalidAudioError, match="signature"):
-        FFmpegAudioValidator()(source)
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(source.suffix))
 
     assert calls == []
 
@@ -645,7 +656,7 @@ def test_ffmpeg_validator_rejects_ambiguous_signatures_before_audio_tools(
     monkeypatch.setattr(uploads, "decode_audio", fake_decode)
 
     with pytest.raises(InvalidAudioError, match="signature"):
-        FFmpegAudioValidator()(source)
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(".mp3"))
 
     assert calls == []
 
@@ -671,7 +682,7 @@ def test_ffmpeg_validator_rejects_extensible_precision_outside_container_before_
     )
 
     with pytest.raises(InvalidAudioError, match="signature"):
-        FFmpegAudioValidator()(source)
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(source.suffix))
 
     assert calls == []
 
@@ -696,7 +707,7 @@ def test_ffmpeg_validator_rejects_short_extensible_format_before_audio_tools(
     )
 
     with pytest.raises(InvalidAudioError, match="signature"):
-        FFmpegAudioValidator()(source)
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(source.suffix))
 
     assert calls == []
 
@@ -728,7 +739,7 @@ def test_ffmpeg_validator_rejects_inconsistent_wave_format_lengths_before_audio_
     )
 
     with pytest.raises(InvalidAudioError, match="signature"):
-        FFmpegAudioValidator()(source)
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(source.suffix))
 
     assert calls == []
 
@@ -760,7 +771,7 @@ def test_ffmpeg_validator_rejects_compressed_or_ambiguous_wave_before_audio_tool
     )
 
     with pytest.raises(InvalidAudioError, match="signature"):
-        FFmpegAudioValidator()(source)
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(source.suffix))
 
     assert calls == []
 
@@ -768,10 +779,10 @@ def test_ffmpeg_validator_rejects_compressed_or_ambiguous_wave_before_audio_tool
 def test_request_body_limit_runs_before_multipart_parsing(tmp_path: Path):
     validated = False
 
-    def validator(path: Path) -> AudioProbe:
+    def validator(path: Path, audio_format: Any) -> AudioProbe:
         nonlocal validated
         validated = True
-        return _valid_probe(path)
+        return _valid_probe(path, audio_format)
 
     client, repository, store, queue = _client(
         tmp_path,
@@ -796,10 +807,10 @@ def test_request_body_limit_runs_before_multipart_parsing(tmp_path: Path):
 def test_chunked_request_without_content_length_is_still_capped(tmp_path: Path):
     validated = False
 
-    def validator(path: Path) -> AudioProbe:
+    def validator(path: Path, audio_format: Any) -> AudioProbe:
         nonlocal validated
         validated = True
-        return _valid_probe(path)
+        return _valid_probe(path, audio_format)
 
     client, repository, store, queue = _client(
         tmp_path,
@@ -905,7 +916,7 @@ def test_validation_is_serialized_across_service_instances(tmp_path: Path, monke
 
     def validate(validator: FFmpegAudioValidator, path: Path) -> None:
         try:
-            validator(path)
+            validator(path, audio_formats.audio_format_for_suffix(path.suffix))
         except BaseException as exc:
             failures.append(exc)
 

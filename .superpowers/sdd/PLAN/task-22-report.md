@@ -452,7 +452,7 @@ to the still-open current-browser/frontend environment blocker.
 <!-- TASK23-CURRENT-STATUS:START -->
 ## Superseded by Task 23 implementation-boundary CI evidence
 
-The current Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and remains
+The current Functional Audit is **31 PASS / 9 PARTIAL / 0 FAIL** and remains
 `PARTIALLY_READY`. GitHub run `31630284744` at `2b2730e` is the last product/CI
 implementation boundary, not branch-tip evidence. It supports product,
 browser, and distribution verification; the external GitHub PR merge gate must

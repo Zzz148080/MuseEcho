@@ -10,7 +10,7 @@
 
 <!-- TASK23-CURRENT-STATUS:START -->
 > **Task 23 compatibility status (superseded by Task 24):** The Functional
-> Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and `PARTIALLY_READY`. Task 23 PR #1
+> Audit is **31 PASS / 9 PARTIAL / 0 FAIL** and `PARTIALLY_READY`. Task 23 PR #1
 > merged after GitHub quality, E2E, and distribution passed. Its implementation
 > boundary is retained for the Task 23 regression contract; the current branch
 > tip and authoritative status are in the Task 24 block below. At Task 23

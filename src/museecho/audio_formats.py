@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from types import MappingProxyType
-from typing import Literal
 
-ValidatorKind = Literal[
-    "wave",
-    "mp3",
-    "flac",
-    "iso_bmff",
-    "adts",
-    "ogg_vorbis",
-    "ogg_opus",
-]
+
+class ValidatorKind(StrEnum):
+    WAVE = "wave"
+    MP3 = "mp3"
+    FLAC = "flac"
+    ISO_BMFF = "iso_bmff"
+    ADTS = "adts"
+    OGG_VORBIS = "ogg_vorbis"
+    OGG_OPUS = "ogg_opus"
+
 
 PCM_CODECS = (
     "pcm_u8",
@@ -34,25 +35,25 @@ class AudioFormat:
 
 
 AUDIO_FORMATS = (
-    AudioFormat(".wav", "audio/wav", ("wav",), PCM_CODECS, "wave"),
+    AudioFormat(".wav", "audio/wav", ("wav",), PCM_CODECS, ValidatorKind.WAVE),
     AudioFormat(
         ".mp3",
         "audio/mpeg",
         ("mp3",),
         ("mp3float", "mp3"),
-        "mp3",
+        ValidatorKind.MP3,
     ),
-    AudioFormat(".flac", "audio/flac", ("flac",), ("flac",), "flac"),
+    AudioFormat(".flac", "audio/flac", ("flac",), ("flac",), ValidatorKind.FLAC),
     AudioFormat(
         ".m4a",
         "audio/mp4",
         ("mov", "mp4", "m4a", "3gp", "3g2", "mj2"),
         ("aac", "alac"),
-        "iso_bmff",
+        ValidatorKind.ISO_BMFF,
     ),
-    AudioFormat(".aac", "audio/aac", ("aac",), ("aac",), "adts"),
-    AudioFormat(".ogg", "audio/ogg", ("ogg",), ("vorbis",), "ogg_vorbis"),
-    AudioFormat(".opus", "audio/opus", ("ogg",), ("opus",), "ogg_opus"),
+    AudioFormat(".aac", "audio/aac", ("aac",), ("aac",), ValidatorKind.ADTS),
+    AudioFormat(".ogg", "audio/ogg", ("ogg",), ("vorbis",), ValidatorKind.OGG_VORBIS),
+    AudioFormat(".opus", "audio/opus", ("ogg",), ("opus",), ValidatorKind.OGG_OPUS),
 )
 
 AUDIO_FORMATS_BY_SUFFIX = MappingProxyType({item.suffix: item for item in AUDIO_FORMATS})
@@ -105,6 +106,7 @@ __all__ = [
     "INPUT_CODEC_WHITELIST",
     "INPUT_FORMAT_WHITELIST",
     "INPUT_PROTOCOL_WHITELIST",
+    "ValidatorKind",
     "audio_format_for_suffix",
     "matching_audio_format",
     "probe_matches_audio_format",

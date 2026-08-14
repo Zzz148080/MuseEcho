@@ -13,10 +13,17 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import MappingProxyType
 from typing import BinaryIO, ParamSpec, Protocol, TypeVar
 
 from museecho.analysis.decode import AudioProbe, InvalidAudioError, decode_audio, probe_audio
-from museecho.audio_formats import AudioFormat, audio_format_for_suffix, probe_matches_audio_format
+from museecho.audio_formats import (
+    AUDIO_FORMATS,
+    AudioFormat,
+    ValidatorKind,
+    audio_format_for_suffix,
+    probe_matches_audio_format,
+)
 from museecho.domain.models import EncryptedAudioMetadata, IssuedAccess
 from museecho.domain.status import AnalysisJob
 
@@ -131,8 +138,8 @@ class FFmpegAudioValidator:
         self._ffmpeg_executable = ffmpeg_executable
 
     @_serialized_validation
-    def __call__(self, path: Path) -> AudioProbe:
-        _validate_audio_signature(path)
+    def __call__(self, path: Path, audio_format: AudioFormat) -> AudioProbe:
+        _validate_audio_signature(path, audio_format)
         probe = probe_audio(
             path,
             max_duration_seconds=self._max_duration_seconds,
@@ -147,50 +154,68 @@ class FFmpegAudioValidator:
         return probe
 
 
-def _validate_audio_signature(path: Path) -> None:
+def _validate_audio_signature(path: Path, audio_format: AudioFormat) -> None:
     try:
         with path.open("rb") as source:
             header = source.read(12)
-            if len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WAVE":
-                _validate_wave_format(source, header)
-                return
-            if header[:4] == b"fLaC":
-                _validate_flac_signature(source)
-                return
-            if len(header) >= 12 and header[4:8] == b"ftyp":
-                _validate_iso_bmff_signature(source, header)
-                return
-            if len(header) >= 7 and header[0] == 0xFF and header[1] & 0xF6 == 0xF0:
-                _validate_adts_signature(source)
-                return
-            if header[:4] == b"OggS":
-                _validate_ogg_signature(source)
-                return
-            if header[:3] == b"ID3":
-                if len(header) < 10 or header[3] not in (2, 3, 4) or header[4] == 0xFF:
-                    raise InvalidAudioError("audio file signature is invalid")
-                allowed_flags = {2: 0xC0, 3: 0xE0, 4: 0xF0}[header[3]]
-                if header[5] & ~allowed_flags or any(value & 0x80 for value in header[6:10]):
-                    raise InvalidAudioError("audio file signature is invalid")
-                tag_size = 0
-                for value in header[6:10]:
-                    tag_size = (tag_size << 7) | value
-                frame_offset = 10 + tag_size
-                if header[3] == 4 and header[5] & 0x10:
-                    source.seek(frame_offset)
-                    footer = source.read(10)
-                    if footer[:3] != b"3DI" or footer[3:] != header[3:10]:
-                        raise InvalidAudioError("audio file signature is invalid")
-                    frame_offset += 10
-            else:
-                frame_offset = 0
-            source.seek(0, os.SEEK_END)
-            file_size = source.tell()
-            _validate_layer_three_frames(source, frame_offset, file_size)
+            _SIGNATURE_VALIDATORS[audio_format.validator_kind](source, header)
     except InvalidAudioError:
         raise
     except OSError:
         raise InvalidAudioError("audio file signature could not be read") from None
+
+
+def _validate_wave_signature(source: BinaryIO, header: bytes) -> None:
+    if len(header) < 12 or header[:4] != b"RIFF" or header[8:12] != b"WAVE":
+        raise InvalidAudioError("audio file signature is invalid")
+    _validate_wave_format(source, header)
+
+
+def _validate_flac_header(source: BinaryIO, header: bytes) -> None:
+    if header[:4] != b"fLaC":
+        raise InvalidAudioError("audio file signature is invalid")
+    _validate_flac_signature(source)
+
+
+def _validate_iso_bmff_header(source: BinaryIO, header: bytes) -> None:
+    if len(header) < 12 or header[4:8] != b"ftyp":
+        raise InvalidAudioError("audio file signature is invalid")
+    _validate_iso_bmff_signature(source, header)
+
+
+def _validate_adts_header(source: BinaryIO, header: bytes) -> None:
+    if len(header) < 7 or header[0] != 0xFF or header[1] & 0xF6 != 0xF0:
+        raise InvalidAudioError("audio file signature is invalid")
+    _validate_adts_signature(source)
+
+
+def _validate_ogg_header(source: BinaryIO, header: bytes) -> None:
+    if header[:4] != b"OggS":
+        raise InvalidAudioError("audio file signature is invalid")
+    _validate_ogg_signature(source)
+
+
+def _validate_mp3_signature(source: BinaryIO, header: bytes) -> None:
+    if header[:3] == b"ID3":
+        if len(header) < 10 or header[3] not in (2, 3, 4) or header[4] == 0xFF:
+            raise InvalidAudioError("audio file signature is invalid")
+        allowed_flags = {2: 0xC0, 3: 0xE0, 4: 0xF0}[header[3]]
+        if header[5] & ~allowed_flags or any(value & 0x80 for value in header[6:10]):
+            raise InvalidAudioError("audio file signature is invalid")
+        tag_size = 0
+        for value in header[6:10]:
+            tag_size = (tag_size << 7) | value
+        frame_offset = 10 + tag_size
+        if header[3] == 4 and header[5] & 0x10:
+            source.seek(frame_offset)
+            footer = source.read(10)
+            if footer[:3] != b"3DI" or footer[3:] != header[3:10]:
+                raise InvalidAudioError("audio file signature is invalid")
+            frame_offset += 10
+    else:
+        frame_offset = 0
+    source.seek(0, os.SEEK_END)
+    _validate_layer_three_frames(source, frame_offset, source.tell())
 
 
 def _validate_flac_signature(source: BinaryIO) -> None:
@@ -436,6 +461,29 @@ def _validate_layer_three_frames(source: BinaryIO, frame_offset: int, file_size:
         raise InvalidAudioError("audio file signature is invalid")
 
 
+_SIGNATURE_VALIDATORS = MappingProxyType(
+    {
+        ValidatorKind.WAVE: _validate_wave_signature,
+        ValidatorKind.MP3: _validate_mp3_signature,
+        ValidatorKind.FLAC: _validate_flac_header,
+        ValidatorKind.ISO_BMFF: _validate_iso_bmff_header,
+        ValidatorKind.ADTS: _validate_adts_header,
+        ValidatorKind.OGG_VORBIS: _validate_ogg_header,
+        ValidatorKind.OGG_OPUS: _validate_ogg_header,
+    }
+)
+
+
+def registered_signature_validator_kinds() -> frozenset[ValidatorKind]:
+    return frozenset(_SIGNATURE_VALIDATORS)
+
+
+if registered_signature_validator_kinds() != frozenset(
+    audio_format.validator_kind for audio_format in AUDIO_FORMATS
+):
+    raise RuntimeError("audio format registry has incomplete signature validator coverage")
+
+
 class UploadSubmissionService:
     def __init__(
         self,
@@ -445,7 +493,7 @@ class UploadSubmissionService:
         access_service: UploadAccessService,
         queue: AnalysisQueue,
         temp_root: Path,
-        validator: Callable[[Path], AudioProbe] | None = None,
+        validator: Callable[[Path, AudioFormat], AudioProbe] | None = None,
         max_bytes: int = DEFAULT_MAX_UPLOAD_BYTES,
         access_ttl: timedelta = timedelta(hours=24),
         clock: Callable[[], datetime] | None = None,
@@ -474,7 +522,7 @@ class UploadSubmissionService:
             _write_upload_owner_marker(isolated_directory)
             isolated_path = isolated_directory / uuid.uuid4().hex
             _copy_bounded(source, isolated_path, self._max_bytes)
-            probe = self._validator(isolated_path)
+            probe = self._validator(isolated_path, expected_format)
             if not probe_matches_audio_format(
                 expected_format,
                 format_name=probe.format_name,

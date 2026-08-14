@@ -23,6 +23,13 @@ CURRENT_STATUS_START = "<!-- TASK23-CURRENT-STATUS:START -->"
 CURRENT_STATUS_END = "<!-- TASK23-CURRENT-STATUS:END -->"
 
 
+def _require_powershell() -> str:
+    shell = shutil.which("pwsh") or shutil.which("powershell.exe")
+    if shell is None:
+        pytest.skip("PowerShell synthetic harness requires a PowerShell host")
+    return shell
+
+
 def _current_status_block(document: str, *, name: str) -> str:
     assert document.count(CURRENT_STATUS_START) == 1, f"{name} lacks one current-status start"
     assert document.count(CURRENT_STATUS_END) == 1, f"{name} lacks one current-status end"
@@ -569,8 +576,7 @@ def test_github_quality_always_removes_its_exact_pytest_temp_root_before_secret_
 
 
 def test_container_pytest_synthetic_harness_exits_zero_after_expected_failure_mutation():
-    shell = shutil.which("pwsh") or shutil.which("powershell.exe")
-    assert shell is not None
+    shell = _require_powershell()
     script = ROOT / "scripts" / "test-container-pytest.ps1"
     command = f"& '{str(script).replace("'", "''")}'; exit $LASTEXITCODE"
 
@@ -588,8 +594,7 @@ def test_container_pytest_synthetic_harness_exits_zero_after_expected_failure_mu
 
 
 def test_container_contract_synthetic_harness_exits_zero_after_expected_failure_mutation():
-    shell = shutil.which("pwsh") or shutil.which("powershell.exe")
-    assert shell is not None
+    shell = _require_powershell()
     script = ROOT / "scripts" / "test-container-contract.ps1"
     command = f"& '{str(script).replace("'", "''")}'; exit $LASTEXITCODE"
 
@@ -607,8 +612,7 @@ def test_container_contract_synthetic_harness_exits_zero_after_expected_failure_
 
 
 def test_development_smoke_synthetic_harness_exercises_the_platform_default_curl_command():
-    shell = shutil.which("pwsh") or shutil.which("powershell.exe")
-    assert shell is not None
+    shell = _require_powershell()
     script = ROOT / "scripts" / "test-development-smoke.ps1"
     command = f"& '{str(script).replace("'", "''")}'; if ($?) {{ exit 0 }} else {{ exit 1 }}"
 
@@ -626,8 +630,7 @@ def test_development_smoke_synthetic_harness_exercises_the_platform_default_curl
 
 
 def test_development_smoke_synthetic_harness_exits_zero_after_expected_failures():
-    shell = shutil.which("pwsh") or shutil.which("powershell.exe")
-    assert shell is not None
+    shell = _require_powershell()
     script = ROOT / "scripts" / "test-development-smoke.ps1"
     command = f"& '{str(script).replace("'", "''")}'; exit $LASTEXITCODE"
 
@@ -685,7 +688,7 @@ def test_process_documents_anchor_evidence_and_share_current_audit_status():
     deployment = (ROOT / "DEPLOYMENT_EVIDENCE.md").read_text(encoding="utf-8")
     audit = load_audit(ROOT / "SPEC.md", ROOT / "docs/audits/FUNCTIONAL_AUDIT.md")
     counts = Counter(item.verdict for item in audit.items)
-    assert (counts["PASS"], counts["PARTIAL"], counts["FAIL"]) == (34, 6, 0)
+    assert (counts["PASS"], counts["PARTIAL"], counts["FAIL"]) == (31, 9, 0)
     current_status = f"{counts['PASS']} PASS / {counts['PARTIAL']} PARTIAL / {counts['FAIL']} FAIL"
 
     assert "1047ce242884b6ba83a525524e88dcc44ab76a69" in plan
