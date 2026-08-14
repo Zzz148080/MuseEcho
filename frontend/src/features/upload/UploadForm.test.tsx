@@ -67,16 +67,25 @@ describe('UploadForm', () => {
     expect(onUpload).toHaveBeenCalledTimes(1)
   })
 
-  it('preflights the 30 MB limit before calling the server', async () => {
+  it('accepts exactly 100 MB and rejects the first byte above it', async () => {
     const user = userEvent.setup({ applyAccept: false })
     const onUpload = vi.fn().mockResolvedValue(accepted)
     render(<UploadForm onUpload={onUpload} />)
 
+    const boundary = new File(['audio'], 'boundary.mp3', {
+      type: 'audio/mpeg',
+    })
+    Object.defineProperty(boundary, 'size', { value: 100 * 1024 * 1024 })
+    expect(validateFile(boundary)).toBeNull()
+
     const oversized = new File(['audio'], 'track.mp3', { type: 'audio/mpeg' })
-    Object.defineProperty(oversized, 'size', { value: 30 * 1024 * 1024 + 1 })
+    Object.defineProperty(oversized, 'size', {
+      value: 100 * 1024 * 1024 + 1,
+    })
     await user.upload(screen.getByLabelText(/音频文件/), oversized)
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/不能超过 30 MB/)
+    expect(screen.getByRole('alert')).toHaveTextContent(/不能超过 100 MB/)
+    expect(onUpload).not.toHaveBeenCalled()
   })
 
   it('shows only progress reported by the upload transport', async () => {

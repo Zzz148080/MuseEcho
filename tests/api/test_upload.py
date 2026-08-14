@@ -89,7 +89,7 @@ def _client(
     tmp_path: Path,
     validator: Any,
     *,
-    max_bytes: int = 30 * 1024 * 1024,
+    max_bytes: int = upload_module.DEFAULT_MAX_UPLOAD_BYTES,
     max_body_bytes: int | None = None,
 ) -> tuple[TestClient, MemoryRepository, RecordingStore, RecordingQueue]:
     repository = MemoryRepository()
@@ -998,3 +998,76 @@ def test_resource_limits_can_be_lowered_but_not_raised(tmp_path: Path):
             passthrough,
             max_body_bytes=DEFAULT_MAX_UPLOAD_REQUEST_BYTES + 1,
         )
+
+
+def test_default_upload_limit_accepts_more_than_thirty_mib(tmp_path: Path):
+    repository = MemoryRepository()
+    store = RecordingStore()
+    queue = RecordingQueue()
+    service = UploadSubmissionService(
+        repository=repository,
+        audio_store=store,
+        access_service=RecordingAccessService(),
+        queue=queue,
+        temp_root=tmp_path,
+        validator=_valid_probe,
+    )
+    payload_size = 30 * 1024 * 1024 + 1
+
+    submitted = service.submit(
+        io.BytesIO(b"x" * payload_size),
+        filename="large.wav",
+        media_type="audio/wav",
+    )
+
+    assert submitted.job.id in repository.jobs
+    assert [
+        (analysis_id, len(payload), media_type) for analysis_id, payload, media_type in store.writes
+    ] == [(submitted.job.id, payload_size, "audio/wav")]
+    assert queue.submitted == [submitted.job.id]
+
+
+def test_default_request_limit_accepts_100_mib_file_boundary_and_rejects_next_byte():
+    import asyncio
+
+    from starlette.types import Message
+
+    from museecho.api.analyses import UploadBodyLimitMiddleware
+
+    allowed_request_bytes = 100 * 1024 * 1024 + 64 * 1024
+    downstream_calls = 0
+
+    async def downstream(_scope, _receive, send):
+        nonlocal downstream_calls
+        downstream_calls += 1
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    async def receive() -> Message:
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def exercise(content_length: int) -> list[Message]:
+        sent: list[Message] = []
+
+        async def send(message: Message) -> None:
+            sent.append(message)
+
+        scope = {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/analyses",
+            "headers": [(b"content-length", str(content_length).encode("ascii"))],
+        }
+        await UploadBodyLimitMiddleware(downstream)(scope, receive, send)
+        return sent
+
+    accepted = asyncio.run(exercise(allowed_request_bytes))
+    rejected = asyncio.run(exercise(allowed_request_bytes + 1))
+
+    assert downstream_calls == 1
+    assert [
+        message["status"] for message in accepted if message["type"] == "http.response.start"
+    ] == [204]
+    assert [
+        message["status"] for message in rejected if message["type"] == "http.response.start"
+    ] == [413]

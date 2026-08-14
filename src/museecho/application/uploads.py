@@ -27,7 +27,7 @@ from museecho.audio_formats import (
 from museecho.domain.models import EncryptedAudioMetadata, IssuedAccess
 from museecho.domain.status import AnalysisJob
 
-DEFAULT_MAX_UPLOAD_BYTES = 30 * 1024 * 1024
+DEFAULT_MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 DEFAULT_MAX_DURATION_SECONDS = 600.0
 COPY_CHUNK_BYTES = 64 * 1024
 _UPLOAD_TEMP_PREFIX = "museecho-upload-"
