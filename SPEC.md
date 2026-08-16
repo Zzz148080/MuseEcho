@@ -544,3 +544,19 @@ GitHub Actions 运行 backend tests、frontend tests、integration tests、lint�
 - 修正实现提交 `07d135e` 已通过 39 个 Python 测试、Ruff、mypy、全新 Alembic 迁移与漂移检查，以及 Node 22 容器内的前端测试、类型检查和生产构建。
 - 用户明确要求将该修正分支合并到 `main`；合并提交为 `a2d7af5`。因此 Tasks 1–2 构成正式实施基线，后续从任务 3 开始，不重新伪造其 RED/GREEN 历史。
 - 用户原话“合并到主分支，最后审查修订SPEC和PLAN，批准生成HUMAN_APPROVAL.md”构成本轮最终实施授权；批准文件必须引用本次 SPEC/PLAN 修订提交，并且不代表 Tasks 3–24、CI、腾讯云部署或最终产品验收已经完成。
+
+## 25. 当前实现、架构与最终验证边界
+
+- 2026-08-08 至 2026-08-13 按批准基线完成 Tasks 3–24：capability 访问、分块 AEAD、单队列
+  DSP/MIR、Evidence-first 解释、React/Vite 工作区、Caddy/FastAPI 同源 HTTPS、SQLite、Docker/CI、
+  运维手册及 Functional/Engineering/Product 三轮 Audit。
+- Task 24 后维护把当前输入契约收敛为七种格式和 100 MiB，补充 Broadcast WAV、按需解密单
+  Range 播放、FLAC attached-picture 校验与保守节奏估计；这些改动没有把系统改造成多用户、
+  多 worker 或云托管服务。当前 GitHub-facing 架构仍是 Caddy + React 静态前端、FastAPI 模块化
+  单体、单工作线程 DSP/MIR、SQLite 结构化结果与最多 24 小时的分块 AEAD 音频。
+- PR #3 GitHub run `31966788273` 在 exact final product/CI implementation SHA
+  `0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过 quality、真实 HTTPS E2E 和 distribution。
+  该证据关闭 GitHub required gate；GitLab 仅保留 supplemental 配置且未运行。
+- 当前结论仍为 `MUSEECHO V1 PARTIALLY READY`：正式 current-source offline Dockerfile rebuild
+  ENG-010、公开 registry/Release、腾讯云/可信公网 TLS/目标机验证、本地人工产品复核和学生本人
+  最终验收均未被这次 GitHub 成功替代。

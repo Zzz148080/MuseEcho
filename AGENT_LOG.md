@@ -16,15 +16,20 @@ the Task 24 block below. At Task 23 closure, the blocker keys were `GitLab`,
 
 `MUSEECHO V1 PARTIALLY READY`. Task 24 now has a machine-readable Product Audit,
 fixed 17-section Delivery Report, fail-closed checker, and mutation tests. Task
-24 itself is closed. Task 23 PR #1 merged with GitHub quality, E2E, and
-distribution green. Task 24 run `31687703913` also passed all three jobs at
-implementation head `de5bc6f`. Per `COURSE_REQUIREMENT_UPDATE.md`, GitLab and
-Tencent Cloud/public deployment are deferred follow-up work. Final GitHub
-evidence, formal offline build ENG-010, local product review, and student
-acceptance remain open. Historical statements below retain their dated boundaries.
+24 itself is closed. The current Functional Audit is **36 PASS / 4 PARTIAL / 0 FAIL**.
+PR #3 run `31966788273` passed quality (5m43s), E2E (3m10s), and
+distribution (7m30s) on final product/CI implementation SHA
+`0674f74f4097e46cee98c4715a62ad5aa55101cf`. Per
+`COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent Cloud/public deployment are
+deferred follow-up work. Formal offline build ENG-010, local product review, and
+student acceptance remain open. Historical statements below retain dated boundaries.
 <!-- TASK24-CURRENT-STATUS:END -->
 
-## 2026-08-16 — Task 24 后音频维护记录（课程交付整理）
+## Current post-Task-24 maintenance summary
+
+The dated implementation log begins below at 2026-08-08 and runs oldest to
+newest. These retained Task 21–24 summaries are grouped here as current delivery
+context, not as a second reverse-chronological history.
 
 - **范围与提交：** Task 24 的实现边界之后，`6554167` 将受支持输入扩展为
   WAV、MP3、FLAC、M4A、AAC、OGG、OPUS，`99c9169` 将浏览器上传契约对齐；`df41f14` 与
@@ -35,17 +40,17 @@ acceptance remain open. Historical statements below retain their dated boundarie
   构建或学生人工验收。100 MiB 历史当前源码验证见 `FUNCTIONAL_AUDIT.md` E008（锁定 Linux
   当前源码 841 passed、7 skipped；PowerShell 交付合约 20 passed）；它早于随后 `7f8412b`
   的 FLAC/播放/节奏修复，不能证明该提交已获最终完整验证。
-- **当前验证状态：** 最终分支 GitHub `quality` 运行 `31813100956` 目前只报告
-  `src/museecho/analysis/decode.py`、`src/museecho/analysis/rhythm.py` 和
-  `tests/api/test_analysis_api.py` 的 Ruff format 失败。完成该独立格式修复并重新取得最终 SHA
-  的 GitHub 质量、E2E 与分发结果前，项目仍为 `MUSEECHO V1 PARTIALLY READY`。
+- **最终验证状态：** 早期 run `31813100956` 的三处 Ruff format 失败已修复；随后历史证据、
+  pre-push Docker 与 current-image 漏洞策略漂移均关闭。PR #3 run `31966788273` 在 exact SHA
+  `0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过 quality、E2E、distribution。项目仍为
+  `MUSEECHO V1 PARTIALLY READY`，因为 offline build、人工产品复核和学生验收没有被 CI 替代。
 - **Task 4 预推送合约闭环：** 当前课程 DoD 仅要求 GitHub CI；GitLab 配置仍作为
   可选后续材料保留，不再作为当前课程门禁。Functional Audit E004 现只绑定精确历史
   commit/tree 及其源码/测试 boundary digest，不再与可变当前工作树比较；缺失 Git 或
   不匹配历史对象时失败关闭。已删除的 `TASK20_HANDOFF.md` 不再是交付合约依赖，当前边界由
   `PLAN.md`、`AGENT_LOG.md`、`DELIVERY_REPORT.md`、课程核对表及现有报告共同保留。
 
-## 2026-08-13 — TASK 24 / Product Audit and delivery report
+### Retained TASK 24 / Product Audit and delivery report summary
 
 - **TDD:** the requested `uv run` command could not start because `uv` is absent
   from this PowerShell PATH and this worktree has no `.venv`. Using the existing
@@ -87,7 +92,7 @@ acceptance remain open. Historical statements below retain their dated boundarie
   remains the full locked dependency/build boundary for this documentation-only
   Task 24 change.
 
-## 2026-08-13 — TASK 23 / final review fix wave round 19/20
+### Retained TASK 23 / final review fix wave round 19/20 summary
 
 - **Evidence boundary:** run `31630284744@2b2730e` is now the last product/CI
   implementation boundary, not current branch-tip or mergeability evidence.
@@ -106,7 +111,7 @@ acceptance remain open. Historical statements below retain their dated boundarie
   TC-021, Task 24, student acceptance, and formal offline build ENG-010 remain
   open. No push was performed.
 
-## 2026-08-11 — TASK 22 / Functional Audit 与验收缺口闭环
+### Retained TASK 22 / Functional Audit 与验收缺口闭环 summary
 
 - **范围与结论：** 按 `SPEC.md` AC-A 至 AC-F 的 24 项和 Definition of Done 的 16 项建立 40 项机器可解析矩阵；审查修复轮 1 后为 `29 PASS / 11 PARTIAL / 0 FAIL`、`PARTIALLY_READY`。当前浏览器 E2E、目标服务器性能、公网 URL/完整 smoke、远程双 CI、Task 23/24 和学生人工验收均保持真实未运行，任何一项都阻止 `READY`。
 - **TDD checker：** 首个 RED 为 `scripts.check_acceptance_matrix` 不存在。初版 26 个测试覆盖结构与状态真实性；审查修复轮新增 9 个 mutation，先共同证明无意义成功命令、伪造历史 commit、结果文本同步改写、coverage 漂移、边界 hash 缺失/漂移和 CI/README 空证据均可被旧 checker 接受，再以代码内固定的逐 evidence command/coverage/result contract 和浏览器边界 manifest 使 9 项全部转绿。最终 focused suite 为 35 tests。
@@ -118,14 +123,14 @@ acceptance remain open. Historical statements below retain their dated boundarie
 - **约束 concern：** `scripts/container-smoke.ps1` 没有 no-build 入口；其 gateway 缓存失效后执行锁文件限定的 `npm ci`，下载 167 个包（39 秒，0 vulnerabilities）。manifest/lock 与基线 diff 为零，未安装宿主工具，只更新正常 `museecho-app:local`/`museecho-gateway:local` smoke 标签，但该网络获取仍违反 Task 22 的禁止下载约束，已明确保留在审计报告；后续门全部使用缓存、`--network none`/`--pull=never` 或标记未运行。
 - **停放边界：** Task 21 的 `tests/deploy/test_shell_line_endings.ps1` 多文件 `bash -n` harness 缺陷只记录给 Task 23，不写成功能缺陷已关闭，也不改变 AC verdict。
 
-## 2026-08-11 — TASK 21 / Tencent Cloud delivery scripts (local-only)
+### Retained TASK 21 / Tencent Cloud delivery scripts (local-only) summary
 
 - **授权边界：** 未提供腾讯云账号、Lighthouse、域名/DNS、SSH 或 registry 发布授权；未执行任何云、DNS、SSH 或公网变更，也不声称远端 CI 或公网 URL。
 - **RED→GREEN：** 先新增 `tests/deploy/test_tencent_cloud.sh`；初次 WSL 运行因 Task 21 脚本与证据文件尚不存在而失败。随后实现安装、digest-only 部署、自动/手动回滚、备份和真实状态证据文件。第二个 RED 发现生成的 release Compose 无条件设置 provider key 路径，导致 KEK-only `docker compose config` 缺少 image interpolation并且不能验证默认启动；release env 现同时持有非秘密镜像/域名/provider 设置，provider 三项默认均为空，测试转绿。
 - **本地验证：** WSL2 `bash tests/deploy/test_tencent_cloud.sh` 与 `bash deploy/tencent-cloud/install.sh --check-only` 均 exit 0；覆盖 check-only 无写入、owned paths/firewall/systemd、tag 拒绝/Secret 不泄露、health rollback、KEK-only provider、备份排除及 SHA-256 元数据、证据真实性。
 - **ShellCheck：** WSL 未安装 ShellCheck。尝试查询单一可固定的官方 ShellCheck container manifest 超时，未下载或运行任何容器；保留 `bash -n`（由合约测试执行）并如实记录未运行 ShellCheck。
 
-## 2026-08-11 — TASK 21 / review fix round 1
+### Retained TASK 21 / review fix round 1 summary
 
 - **RED→GREEN：** 独立复审确认 failed release 在 health 前被写入 `.verified`、恢复旧 release 未 health-check、WAL SQLite 直接复制、UFW 只追加 allow、以及 provider 三项可部分写入。新增 WSL 合约测试先得到 12 个预期失败断言：失败发行物仍 eligible、恢复未复验/未 fail-closed、WAL 中已提交行不能从归档恢复、8080 ALLOW 仍写入、partial provider 仍 pull/switch。修复后同一套 11 个 delivery contracts 全部通过。
 - **修复：** `.verified` 仅在 restart+health 成功后写入；恢复 prior release 也重新 health-check，失败时清除 `current` 并 stop service。备份改用 Python 标准库 SQLite online backup 与 `PRAGMA integrity_check`，得到独立 snapshot。实际 install 在任何目录写入前要求 UFW active/default deny-or-reject 并拒绝 22/80/443 外的 inbound ALLOW。provider 配置现在必须三项全空或全设。
@@ -513,3 +518,31 @@ acceptance remain open. Historical statements below retain their dated boundarie
   skipped E2E/distribution; GitLab remains NOT_RUN. Windows-host and explicit
   Linux mypy each pass all 46 source files locally. A pushed rerun is still
   required before remote CI can be classified green.
+
+## 2026-08-13 — TASK 23/24 final review and Product Audit
+
+- Task 23's later review waves fixed Linux typing, historical/current evidence identity, and
+  checkout-line-ending drift before Task 24 published the 13-domain Product Audit, fixed
+  17-section Delivery Report, fail-closed validator, and student-reserved checklist.
+- Task 24 controller evidence stopped at the internal-CA browser boundary; this remains
+  `CERT_TRUST_BLOCKED` and was not rewritten as a manual product PASS.
+
+## 2026-08-14 — Task 24 后产品维护
+
+- Trusted result presentation, common audio formats, exact 100 MiB upload, bounded Broadcast
+  WAV padding, on-demand single-Range playback, FLAC attached-picture validation, and conservative
+  rhythm v3 were implemented through the commits and plans listed in PLAN section 3.1.
+- Historical Task 24 CI evidence remained historical; each later implementation required its own
+  current verification rather than inheriting an older green run.
+
+## 2026-08-16 — Final CI closure and delivery reconciliation
+
+- Linux formatting, historical audit identity, pre-push Docker contracts, and the current-image
+  cJSON vulnerability-policy drift were closed in order, ending at product/CI implementation SHA
+  `0674f74f4097e46cee98c4715a62ad5aa55101cf`.
+- PR #3 GitHub run `31966788273` passed quality in 5m43s, E2E in 3m10s, and distribution in
+  7m30s on that exact SHA. GitLab was not run and remains supplemental; no Release or cloud
+  deployment is claimed.
+- Final reconciliation updated tracked delivery/audit records and validator contracts, while
+  student reflection and acceptance text remained untouched. Ignored `tmp/` cleanup is local-only
+  and is not represented as a tracked GitHub deletion.

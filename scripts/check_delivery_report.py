@@ -36,7 +36,7 @@ EXPECTED_SECTION_TITLES = (
 EXPECTED_SECTION_IDS = tuple(item[0] for item in EXPECTED_SECTION_TITLES)
 EXPECTED_PRODUCT_AUDIT_IDS = tuple(f"PA-{index:02d}" for index in range(1, 14))
 EXPECTED_STUDENT_CHECK_IDS = tuple(f"STU-{index:02d}" for index in range(1, 7))
-EXPECTED_EVIDENCE_IDS = tuple(f"DEL-{index:03d}" for index in range(1, 12)) + tuple(
+EXPECTED_EVIDENCE_IDS = tuple(f"DEL-{index:03d}" for index in range(1, 13)) + tuple(
     f"DEL-{index:03d}" for index in range(900, 905)
 )
 REQUIRED_BLOCKER_IDS = (
@@ -57,6 +57,7 @@ SECTION_CONTRACTS = {
             "DEL-009",
             "DEL-010",
             "DEL-011",
+            "DEL-012",
             "DEL-900",
             "DEL-901",
             "DEL-902",
@@ -85,6 +86,7 @@ SECTION_CONTRACTS = {
             "DEL-009",
             "DEL-010",
             "DEL-011",
+            "DEL-012",
             "DEL-900",
             "DEL-901",
             "DEL-904",
@@ -92,10 +94,19 @@ SECTION_CONTRACTS = {
     ),
     "DR-11": ("PARTIAL", ("DEL-001", "DEL-003", "DEL-004", "DEL-901", "DEL-902")),
     "DR-12": ("VERIFIED", ("DEL-001",)),
-    "DR-13": ("VERIFIED", ("DEL-001", "DEL-002", "DEL-003", "DEL-004")),
+    "DR-13": ("VERIFIED", ("DEL-001", "DEL-002", "DEL-003", "DEL-004", "DEL-012")),
     "DR-14": (
         "PARTIAL",
-        ("DEL-001", "DEL-002", "DEL-003", "DEL-004", "DEL-011", "DEL-900", "DEL-902"),
+        (
+            "DEL-001",
+            "DEL-002",
+            "DEL-003",
+            "DEL-004",
+            "DEL-011",
+            "DEL-012",
+            "DEL-900",
+            "DEL-902",
+        ),
     ),
     "DR-15": ("PARTIAL", ("DEL-001", "DEL-002", "DEL-901")),
     "DR-16": ("PARTIAL", ("DEL-001", "DEL-002", "DEL-003", "DEL-902")),
@@ -146,15 +157,15 @@ EXPECTED_PRODUCT_METHOD = (
     "implementation boundary only."
 )
 EXPECTED_DELIVERY_NARRATIVE_SHA256 = (
-    "a4815204a1730de314c8f7416508c5e74495ad6cb9825ce0da4b0cbaba146baf"
+    "8c0200afe51917f0cd800d7c47522230b371277a9bc2136fd13bff94e18a580e"
 )
 EXPECTED_PRODUCT_NARRATIVE_SHA256 = (
     "0a3acbf4202eca3f1b69adb941d8a2e797a06e216e2453c53083b05fdf3a3ee1"
 )
-FINAL_PR_SHA_LIVE_CHECKS_BOUNDARY = "final PR SHA is verified only by live GitHub checks after push"
+FINAL_IMPLEMENTATION_SHA_BOUNDARY = "0674f74f4097e46cee98c4715a62ad5aa55101cf"
 EXPECTED_DEL_011_SUMMARY = (
     "Historical Task 24 implementation evidence only; it cannot verify the final PR SHA, "
-    "which is verified only by live GitHub checks after push."
+    "which is recorded separately by DEL-012."
 )
 
 
@@ -189,7 +200,7 @@ EVIDENCE_CONTRACTS = {
         "scripts/check_acceptance_matrix.py SPEC.md docs/audits/FUNCTIONAL_AUDIT.md",
         "docs/audits/FUNCTIONAL_AUDIT.md",
         "DR-01, DR-03, DR-10, DR-13, DR-14, DR-15, DR-16",
-        "acceptance-items=40; pass=34; partial=6; fail=0; readiness=PARTIALLY_READY",
+        "acceptance-items=40; pass=36; partial=4; fail=0; readiness=PARTIALLY_READY",
         "0",
         "PASS",
     ),
@@ -242,7 +253,7 @@ EVIDENCE_CONTRACTS = {
         "scripts/check_delivery_report.py DELIVERY_REPORT.md",
         "DELIVERY_REPORT.md",
         "DR-01, DR-10",
-        "delivery-sections=17; evidence=16; blockers=3; readiness=MUSEECHO V1 PARTIALLY READY",
+        "delivery-sections=17; evidence=17; blockers=3; readiness=MUSEECHO V1 PARTIALLY READY",
         "0",
         "PASS",
     ),
@@ -283,6 +294,18 @@ EVIDENCE_CONTRACTS = {
         "DR-01, DR-10, DR-14",
         "run=31687703913; head=de5bc6f949e6e98cff32f16116708ec7b7409c9d; "
         "quality=success; e2e=success; distribution=success",
+        "0",
+        "PASS",
+    ),
+    "DEL-012": EvidenceContract(
+        "IMPLEMENTATION_BOUNDARY_COMMAND",
+        "gh run view 31966788273 --repo Zzz148080/MuseEcho --json "
+        "status,conclusion,headBranch,headSha,jobs,url",
+        ".github/workflows/ci.yml",
+        "DR-01, DR-10, DR-13, DR-14",
+        "run=31966788273; head=0674f74f4097e46cee98c4715a62ad5aa55101cf; "
+        "branch=codex/expand-common-audio-formats; quality=success (5m43s); "
+        "e2e=success (3m10s); distribution=success (7m30s)",
         "0",
         "PASS",
     ),
@@ -760,8 +783,8 @@ def validate_course_status_documents(repo_root: Path) -> tuple[str, ...]:
         errors.append("PLAN.md current status must describe the student-authored reflection draft")
     for name, text in text_by_name.items():
         normalized_text = re.sub(r"\s+", " ", text.replace(">", " "))
-        if FINAL_PR_SHA_LIVE_CHECKS_BOUNDARY not in normalized_text:
-            errors.append(f"{name} must reserve final PR SHA verification for live GitHub checks")
+        if FINAL_IMPLEMENTATION_SHA_BOUNDARY not in normalized_text:
+            errors.append(f"{name} must retain the verified implementation SHA boundary")
     return tuple(errors)
 
 

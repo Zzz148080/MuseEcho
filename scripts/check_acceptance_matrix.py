@@ -81,9 +81,7 @@ DOD_FRAGMENTS = (
 )
 REQUIRED_OPEN_BLOCKERS = (
     "TC-021",
-    "CURRENT-BRANCH-DISTRIBUTION",
-    "REMOTE-CI",
-    "TASK24-AUDIT",
+    "FORMAL-OFFLINE-BUILD",
     "STUDENT-MANUAL",
 )
 VALID_VERDICTS = {"PASS", "PARTIAL", "FAIL"}
@@ -338,8 +336,45 @@ EVIDENCE_CONTRACTS = {
         ),
         path="tests/unit/test_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-15"),
-        result="pytest-tests=49; pass=31; partial=9; fail=0",
+        result="pytest-tests=47; pass=36; partial=4; fail=0",
         exit_code_raw="0",
+    ),
+    "E901": EvidenceContract(
+        kind="IMPLEMENTATION_BOUNDARY_COMMAND",
+        command=(
+            "gh run view 31966788273 --repo Zzz148080/MuseEcho --json "
+            "status,conclusion,headBranch,headSha,jobs,url"
+        ),
+        path=".github/workflows/ci.yml",
+        coverage_ids=("AC-F-1", "DOD-07", "DOD-08", "DOD-10"),
+        result=(
+            "run=31966788273; head=0674f74f4097e46cee98c4715a62ad5aa55101cf; "
+            "branch=codex/expand-common-audio-formats; quality=success; e2e=success; "
+            "distribution=success"
+        ),
+        exit_code_raw="0",
+    ),
+    "E903": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command="python scripts/check_delivery_report.py DELIVERY_REPORT.md",
+        path="docs/audits/PRODUCT_AUDIT.md",
+        coverage_ids=("AC-F-6", "DOD-13"),
+        result=("product-items=13; delivery-sections=17; blockers=3; readiness=PARTIALLY_READY"),
+        exit_code_raw="0",
+    ),
+    "E907": EvidenceContract(
+        kind="IMPLEMENTATION_BOUNDARY_COMMAND",
+        command=(
+            "docker build --pull=false --network none --tag museecho-app:task23-formal-offline ."
+        ),
+        path="Dockerfile",
+        coverage_ids=("DOD-08",),
+        result=(
+            "formal-offline-build=failed; reason=locked-pip-and-apt-buildkit-cache-unavailable; "
+            "release-identity=NOT_RUN"
+        ),
+        exit_code_raw="1",
+        supports_pass=False,
     ),
     "E902": EvidenceContract(
         kind="CURRENT_COMMAND",

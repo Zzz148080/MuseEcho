@@ -21,7 +21,7 @@ from scripts.check_delivery_report import (
 
 ROOT = Path(__file__).resolve().parents[2]
 REPORT_PATH = ROOT / "DELIVERY_REPORT.md"
-NOW = datetime(2026, 8, 14, tzinfo=UTC)
+NOW = datetime(2026, 8, 17, tzinfo=UTC)
 
 
 def _report_text() -> str:
@@ -118,7 +118,7 @@ def test_delivery_status_matches_evidence() -> None:
 
 def test_fixed_delivery_product_and_student_id_contracts() -> None:
     assert EXPECTED_SECTION_IDS == tuple(f"DR-{index:02d}" for index in range(1, 18))
-    assert "DEL-011" in EXPECTED_EVIDENCE_IDS
+    assert "DEL-012" in EXPECTED_EVIDENCE_IDS
     assert EXPECTED_PRODUCT_AUDIT_IDS == tuple(f"PA-{index:02d}" for index in range(1, 14))
     assert EXPECTED_STUDENT_CHECK_IDS == tuple(f"STU-{index:02d}" for index in range(1, 7))
 
@@ -128,6 +128,7 @@ def test_task24_github_boundary_is_fixed_while_external_work_remains_deferred(
 ) -> None:
     report = load_delivery_report(REPORT_PATH)
     github = next(item for item in report.evidence if item.evidence_id == "DEL-011")
+    final_ci = next(item for item in report.evidence if item.evidence_id == "DEL-012")
     gitlab = next(item for item in report.evidence if item.evidence_id == "DEL-900")
     cloud = next(item for item in report.evidence if item.evidence_id == "DEL-901")
 
@@ -140,8 +141,14 @@ def test_task24_github_boundary_is_fixed_while_external_work_remains_deferred(
     assert github.status == "PASS"
     assert github.summary == (
         "Historical Task 24 implementation evidence only; it cannot verify the final PR SHA, "
-        "which is verified only by live GitHub checks after push."
+        "which is recorded separately by DEL-012."
     )
+    assert final_ci.result == (
+        "run=31966788273; head=0674f74f4097e46cee98c4715a62ad5aa55101cf; "
+        "branch=codex/expand-common-audio-formats; quality=success (5m43s); "
+        "e2e=success (3m10s); distribution=success (7m30s)"
+    )
+    assert final_ci.status == "PASS"
     assert gitlab.command == "NOT RUN: GitLab has no Task 24 pipeline"
     assert gitlab.result == "gitlab=NOT_RUN"
     assert gitlab.exit_code_raw == "NOT_RUN"
@@ -496,7 +503,7 @@ def _validate_with_course_document_mutation(tmp_path: Path, name: str, old: str,
     path = repository_copy / name
     original = path.read_text(encoding="utf-8")
     assert old in original
-    path.write_text(original.replace(old, new, 1), encoding="utf-8")
+    path.write_text(original.replace(old, new), encoding="utf-8")
     validate_delivery_report(report, repo_root=repository_copy, now=NOW)
 
 
@@ -514,19 +521,19 @@ def test_course_status_documents_reject_stale_draft_and_final_ci_claims(
     for name in ("PLAN.md", "README.md", "COURSE_DELIVERY_CHECKLIST.md"):
         with pytest.raises(
             DeliveryValidationError,
-            match=f"{name} must reserve final PR SHA verification for live GitHub checks",
+            match=f"{name} must retain the verified implementation SHA boundary",
         ):
             _validate_with_course_document_mutation(
                 tmp_path,
                 name,
-                "final PR SHA",
-                "DEL-011 final branch-tip",
+                "0674f74f4097e46cee98c4715a62ad5aa55101cf",
+                "unverified-final-sha",
             )
 
 
 def test_checker_cli_accepts_the_committed_delivery_report(tmp_path: Path) -> None:
     expected = (
-        "delivery-sections=17; evidence=16; blockers=3; readiness=MUSEECHO V1 PARTIALLY READY"
+        "delivery-sections=17; evidence=17; blockers=3; readiness=MUSEECHO V1 PARTIALLY READY"
     )
     report = load_delivery_report(REPORT_PATH)
     evidence = next(item for item in report.evidence if item.evidence_id == "DEL-007")

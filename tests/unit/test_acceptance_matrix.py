@@ -22,7 +22,7 @@ from scripts.check_engineering_audit import load_audit as load_engineering_audit
 ROOT = Path(__file__).resolve().parents[2]
 SPEC_PATH = ROOT / "SPEC.md"
 AUDIT_PATH = ROOT / "docs" / "audits" / "FUNCTIONAL_AUDIT.md"
-NOW = datetime(2026, 8, 15, tzinfo=UTC)
+NOW = datetime(2026, 8, 17, tzinfo=UTC)
 HISTORICAL_EVIDENCE_COMMIT = "1047ce242884b6ba83a525524e88dcc44ab76a69"
 
 EXPECTED_IDS = (
@@ -514,9 +514,7 @@ def test_external_not_run_evidence_cannot_make_an_item_pass(tmp_path: Path):
     "blocker_id",
     (
         "TC-021",
-        "CURRENT-BRANCH-DISTRIBUTION",
-        "REMOTE-CI",
-        "TASK24-AUDIT",
+        "FORMAL-OFFLINE-BUILD",
         "STUDENT-MANUAL",
     ),
 )
@@ -529,7 +527,7 @@ def test_external_follow_up_and_manual_work_cannot_be_marked_resolved_without_ex
 
     expected = (
         f"{blocker_id} must remain OPEN in the tracked audit"
-        if blocker_id == "CURRENT-BRANCH-DISTRIBUTION"
+        if blocker_id == "FORMAL-OFFLINE-BUILD"
         else f"{blocker_id} cannot be RESOLVED with NOT_RUN evidence"
     )
     assert expected in _validation_error(tmp_path, mutation)
@@ -547,14 +545,12 @@ def test_green_github_evidence_closes_frontend_and_browser_gaps() -> None:
     assert item.disposition == "-"
 
 
-def test_current_branch_evidence_does_not_recast_pre_feature_smoke_as_current() -> None:
+def test_final_ci_closes_remote_and_current_distribution_gaps_without_recasting_smoke() -> None:
     contracts = check_acceptance_matrix.EVIDENCE_CONTRACTS
     audit = load_audit(SPEC_PATH, AUDIT_PATH)
     evidence_by_id = {record.evidence_id: record for record in audit.evidence}
     remote_ci_item = next(item for item in audit.items if item.item_id == "DOD-10")
-    remote_ci_blocker = next(
-        blocker for blocker in audit.blockers if blocker.blocker_id == "REMOTE-CI"
-    )
+    audit_item = next(item for item in audit.items if item.item_id == "DOD-13")
 
     assert "museecho-task3-verification-env:latest" in contracts["E008"].command
     assert "pytest-tests=649" != contracts["E008"].result
@@ -569,9 +565,14 @@ def test_current_branch_evidence_does_not_recast_pre_feature_smoke_as_current() 
     assert contracts["E003"].result == "secret-scan-files=210"
     assert "app-occurrences=181" in contracts["E902"].result
     assert "gateway-occurrences=0" in contracts["E902"].result
-    assert evidence_by_id["E901"].kind == "EXTERNAL_NOT_RUN"
-    assert "final branch GitHub CI" in evidence_by_id["E901"].command
+    assert evidence_by_id["E901"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert "31966788273" in evidence_by_id["E901"].command
     assert evidence_by_id["E901"].path == ".github/workflows/ci.yml"
+    assert contracts["E901"].result == (
+        "run=31966788273; head=0674f74f4097e46cee98c4715a62ad5aa55101cf; "
+        "branch=codex/expand-common-audio-formats; quality=success; e2e=success; "
+        "distribution=success"
+    )
     assert contracts["E906"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
     assert contracts["E906"].supports_pass is True
     assert "run=31630284744" in contracts["E906"].result
@@ -586,8 +587,10 @@ def test_current_branch_evidence_does_not_recast_pre_feature_smoke_as_current() 
         "DOD-07",
         "DOD-10",
     )
-    assert remote_ci_item.evidence_ids == ("E901", "E906")
-    assert remote_ci_blocker.evidence_ids == ("E901",)
+    assert remote_ci_item.verdict == "PASS"
+    assert remote_ci_item.evidence_ids == ("E901",)
+    assert audit_item.verdict == "PASS"
+    assert audit_item.evidence_ids == ("E903",)
 
 
 def test_pre_feature_smoke_cannot_be_recast_as_current_branch_evidence(
@@ -665,9 +668,9 @@ def test_current_acceptance_evidence_uses_the_executed_locked_python_command(
 
     assert contract.command == expected_command
     assert engineering_e030.command == expected_command
-    assert contract.result == (f"pytest-tests={collected_count}; pass=31; partial=9; fail=0")
+    assert contract.result == (f"pytest-tests={collected_count}; pass=36; partial=4; fail=0")
     assert engineering_e030.result == (
-        f"{collected_count} passed; 40 items validated PASS=31 PARTIAL=9 FAIL=0"
+        f"{collected_count} passed; 40 items validated PASS=36 PARTIAL=4 FAIL=0"
     )
 
 

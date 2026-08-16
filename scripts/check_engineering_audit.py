@@ -315,7 +315,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md",
         "docs/audits/FUNCTIONAL_AUDIT.md",
-        "49 passed; 40 items validated PASS=31 PARTIAL=9 FAIL=0",
+        "47 passed; 40 items validated PASS=36 PARTIAL=4 FAIL=0",
     ),
     "E033": (
         "RED_COMMAND",
@@ -358,6 +358,15 @@ FIXED_EVIDENCE_CONTRACTS = {
         ".github/workflows/ci.yml",
         "Last product/CI implementation boundary 31630284744 on 2b2730e completed with "
         "quality, e2e, and distribution success; it is not branch-tip evidence",
+    ),
+    "E038": (
+        "IMPLEMENTATION_BOUNDARY_COMMAND",
+        "gh run view 31966788273 --repo Zzz148080/MuseEcho --json "
+        "status,conclusion,headBranch,headSha,jobs,url",
+        ".github/workflows/ci.yml",
+        "Final product/CI implementation SHA 0674f74f4097e46cee98c4715a62ad5aa55101cf "
+        "on codex/expand-common-audio-formats passed quality (5m43s), e2e (3m10s), "
+        "and distribution (7m30s) in run 31966788273",
     ),
 }
 
@@ -657,7 +666,7 @@ def validate_audit(
     if duplicate_evidence:
         errors.append(f"duplicate evidence ids: {', '.join(duplicate_evidence)}")
 
-    expected_evidence_ids = {f"E{index:03d}" for index in range(1, 38)}
+    expected_evidence_ids = {f"E{index:03d}" for index in range(1, 39)}
     missing_evidence = sorted(expected_evidence_ids - set(evidence_ids))
     extra_evidence = sorted(set(evidence_ids) - expected_evidence_ids)
     if missing_evidence:

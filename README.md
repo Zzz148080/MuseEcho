@@ -8,14 +8,29 @@ the Product Audit, 17-section delivery report, and strict validator; Task 24
 itself is no longer a blocker. `REFLECTION.md` is now under the student's
 personal revision and has not been used to claim final student acceptance.
 Task 23 PR #1 is merged with GitHub quality, E2E, and distribution green.
-Task 24 GitHub quality, E2E, and distribution passed at its recorded
-implementation boundary. Per `COURSE_REQUIREMENT_UPDATE.md`, GitLab and
-Tencent Cloud/public deployment are deferred follow-up work, not course
-submission gates. The final PR SHA is verified only by live GitHub checks after
-push; `DEL-011` in `DELIVERY_REPORT.md` is historical Task 24 implementation
-evidence. Remaining course gates are formal offline build ENG-010, local product
-review, and student acceptance.
+The current Functional Audit is **36 PASS / 4 PARTIAL / 0 FAIL**. PR #3 run
+`31966788273` passed GitHub quality (5m43s), E2E (3m10s), and distribution
+(7m30s) on exact final product/CI implementation SHA
+`0674f74f4097e46cee98c4715a62ad5aa55101cf`. Per
+`COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent Cloud/public deployment are
+deferred follow-up work, not course submission gates. Remaining gates are
+formal offline build ENG-010, local product review, and student acceptance;
+no Release publication or cloud deployment is claimed.
 <!-- TASK24-CURRENT-STATUS:END -->
+
+## Project timeline and verified GitHub boundary
+
+- 2026-08-08 至 2026-08-13：从批准的 SPEC/PLAN、cold-start 修复和 Tasks 3–24 逐步完成
+  能力访问、加密生命周期、DSP/MIR、Evidence-first 解释、React 工作区、Docker/CI、部署手册及
+  三轮审计；Task 23 PR #1 和 Task 24 implementation boundary 的历史证据继续保留。
+- 2026-08-14 至 2026-08-16：在 Task 24 后按细粒度提交完成可信结果呈现、七种常见音频格式、
+  100 MiB 上限、Broadcast WAV、按需解密 Range 播放、FLAC attached-picture 与节奏修复，随后闭合
+  Linux formatter、历史证据、pre-push Docker 和 current-image 漏洞策略漂移。
+- 2026-08-16：PR #3 的最终产品/CI 实现 SHA
+  `0674f74f4097e46cee98c4715a62ad5aa55101cf` 由 GitHub run
+  [`31966788273`](https://github.com/Zzz148080/MuseEcho/actions/runs/31966788273)
+  同时通过 quality、E2E、distribution。后续文档 reconciliation 不改变产品架构或把未发生的
+  GitLab、Release、云部署、学生验收写成完成。
 
 MuseEcho V1 是一款 Evidence First（证据优先）的交互式音乐理解应用。它用确定性的
 DSP/MIR 管线分析用户上传的 WAV、MP3、FLAC、M4A、AAC、OGG 或 OPUS，生成节拍、能量、调性、结构、和弦、波形和确定性

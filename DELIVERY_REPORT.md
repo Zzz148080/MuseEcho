@@ -1,6 +1,6 @@
 # MuseEcho V1 Delivery Report
 
-- **Generated at UTC:** `2026-08-13T09:59:08Z`
+- **Generated at UTC:** `2026-08-16T19:37:07Z`
 - **Readiness:** `MUSEECHO V1 PARTIALLY READY`
 - **Scope:** `Task 24 product audit, final verification, and student handoff`
 
@@ -8,19 +8,22 @@
 ## Task 24 current status
 
 `MUSEECHO V1 PARTIALLY READY`. The Task 24 Product Audit artifact and delivery
-validator are complete, so Task 24 itself is not a blocker. GitHub run
-`31687703913` passed quality, E2E, and distribution for Task 24 implementation
-head `de5bc6f`. Per `COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent
-Cloud/public deployment are deferred follow-up work. Remaining course gates are
-final GitHub evidence, formal offline build ENG-010, local product review, and
-the student's personal acceptance/reflection.
+validator are complete, so Task 24 itself is not a blocker. PR #3 GitHub run
+`31966788273` passed quality (5m43s), E2E (3m10s), and distribution (7m30s)
+on exact final product/CI implementation SHA
+`0674f74f4097e46cee98c4715a62ad5aa55101cf`. This reconciliation changes
+tracked records only and does not recast its later documentation commit as a
+second product run. Per `COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent
+Cloud/public deployment are deferred follow-up work. Remaining gates are formal
+offline build ENG-010, local product review, and the student's personal
+acceptance/reflection.
 <!-- TASK24-CURRENT-STATUS:END -->
 
 ## DR-01 — 交付结论与状态摘要
 
 - **Status:** `PARTIAL`
 - **Conclusion:** 本地实现和三轮审计材料可交付复核，但外部、正式发行、当前控制器浏览器和学生保留门禁尚未完成，因此不得声明 READY。
-- **Evidence IDs:** DEL-002, DEL-003, DEL-004, DEL-006, DEL-007, DEL-008, DEL-009, DEL-010, DEL-011, DEL-900, DEL-901, DEL-902, DEL-903, DEL-904
+- **Evidence IDs:** DEL-002, DEL-003, DEL-004, DEL-006, DEL-007, DEL-008, DEL-009, DEL-010, DEL-011, DEL-012, DEL-900, DEL-901, DEL-902, DEL-903, DEL-904
 
 ## DR-02 — 项目介绍
 
@@ -73,8 +76,8 @@ the student's personal acceptance/reflection.
 ## DR-10 — 测试
 
 - **Status:** `PARTIAL`
-- **Conclusion:** Functional、Engineering、Task 24 focused、validator、lint、type 与 diff 门有可追溯命令；Task 24 实现边界的 GitHub quality、E2E、distribution 已通过。GitLab 和目标机验证转为后续计划；控制器浏览器审查仍待执行。
-- **Evidence IDs:** DEL-002, DEL-003, DEL-004, DEL-005, DEL-006, DEL-007, DEL-008, DEL-009, DEL-010, DEL-011, DEL-900, DEL-901, DEL-904
+- **Conclusion:** Functional、Engineering、Task 24 focused、validator、lint、type 与 diff 门有可追溯命令；最终产品/CI 实现 SHA 的 GitHub quality、E2E、distribution 已通过。GitLab 和目标机验证转为后续计划；控制器浏览器审查仍待执行。
+- **Evidence IDs:** DEL-002, DEL-003, DEL-004, DEL-005, DEL-006, DEL-007, DEL-008, DEL-009, DEL-010, DEL-011, DEL-012, DEL-900, DEL-901, DEL-904
 
 ## DR-11 — Docker
 
@@ -91,14 +94,14 @@ the student's personal acceptance/reflection.
 ## DR-13 — 安全
 
 - **Status:** `VERIFIED`
-- **Conclusion:** Functional 与 Engineering 审计均无 FAIL 或开放 Critical/High，既有分发边界通过质量、安全和 E2E 门；原始镜像发现未被隐藏。
-- **Evidence IDs:** DEL-001, DEL-002, DEL-003, DEL-004
+- **Conclusion:** Functional 与 Engineering 审计均无 FAIL 或开放 Critical/High；最终产品/CI 实现 SHA 通过质量、安全、真实浏览器 E2E 和分发门，原始镜像发现未被隐藏。
+- **Evidence IDs:** DEL-001, DEL-002, DEL-003, DEL-004, DEL-012
 
 ## DR-14 — 分发
 
 - **Status:** `PARTIAL`
-- **Conclusion:** 双 CI 配置、Task 23 分发边界和 Task 24 GitHub distribution 均已验证；GitLab 未运行但不作为本次课程门禁，正式离线发行物仍受 ENG-010 阻塞。
-- **Evidence IDs:** DEL-001, DEL-002, DEL-003, DEL-004, DEL-011, DEL-900, DEL-902
+- **Conclusion:** GitHub required/GitLab supplemental 配置、历史边界和最终产品/CI 实现 SHA 的 distribution 均已验证；GitLab 未运行且不作为本次课程门禁，正式离线发行物仍受 ENG-010 阻塞。
+- **Evidence IDs:** DEL-001, DEL-002, DEL-003, DEL-004, DEL-011, DEL-012, DEL-900, DEL-902
 
 ## DR-15 — 部署
 
@@ -123,16 +126,17 @@ the student's personal acceptance/reflection.
 | Evidence ID | Kind | Command | Path | Coverage | Result | Observed at UTC | Exit code | Status | Summary |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | DEL-001 | CURRENT_COMMAND | ..\audit-23-engineering\.venv\Scripts\python.exe -m pytest tests/unit/test_task20_final_delivery_contract.py::test_readme_cold_start_contract_covers_locked_setup_https_health_and_cleanup -q --basetemp tmp/task24-readme -p no:cacheprovider | tests/unit/test_task20_final_delivery_contract.py | DR-02, DR-04, DR-05, DR-06, DR-07, DR-08, DR-09, DR-11, DR-12, DR-13, DR-14, DR-15, DR-16, DR-17 | pytest-tests=1; readme-cold-start-contract=pass | 2026-08-13T09:20:52Z | 0 | PASS | Focused executable README cold-start contract passed. |
-| DEL-002 | CURRENT_COMMAND | ..\audit-23-engineering\.venv\Scripts\python.exe scripts/check_acceptance_matrix.py SPEC.md docs/audits/FUNCTIONAL_AUDIT.md | docs/audits/FUNCTIONAL_AUDIT.md | DR-01, DR-03, DR-10, DR-13, DR-14, DR-15, DR-16 | acceptance-items=40; pass=34; partial=6; fail=0; readiness=PARTIALLY_READY | 2026-08-13T09:20:52Z | 0 | PASS | Functional Audit validator passes while retaining six precise non-PASS items. |
+| DEL-002 | CURRENT_COMMAND | ..\audit-23-engineering\.venv\Scripts\python.exe scripts/check_acceptance_matrix.py SPEC.md docs/audits/FUNCTIONAL_AUDIT.md | docs/audits/FUNCTIONAL_AUDIT.md | DR-01, DR-03, DR-10, DR-13, DR-14, DR-15, DR-16 | acceptance-items=40; pass=36; partial=4; fail=0; readiness=PARTIALLY_READY | 2026-08-16T19:37:07Z | 0 | PASS | Functional Audit validator passes while retaining four precise non-PASS items. |
 | DEL-003 | CURRENT_COMMAND | ..\audit-23-engineering\.venv\Scripts\python.exe scripts/check_engineering_audit.py docs/audits/ENGINEERING_AUDIT.md --schema-only | docs/audits/ENGINEERING_AUDIT.md | DR-01, DR-10, DR-11, DR-13, DR-14, DR-16 | findings=10; fixed-high=4; fixed-medium=2; verified-medium=1; blocked-medium=3; open=0; schema-only=true | 2026-08-13T09:20:52Z | 0 | PASS | Engineering schema gate preserves four fixed High and three blocked Medium evidence/environment gaps. |
 | DEL-004 | IMPLEMENTATION_BOUNDARY_COMMAND | gh pr view 1 --repo Zzz148080/MuseEcho --json state,headRefOid,mergeCommit,statusCheckRollup,url | .github/workflows/ci.yml | DR-03, DR-10, DR-11, DR-13, DR-14 | pr=1; state=MERGED; head=73869619bedf1298114d9755811f3f6e9f505de3; merge=79d87f4170f004f22d9e2c21151f59b757e272a3; quality=success; e2e=success; distribution=success | 2026-08-13T07:32:26Z | 0 | PASS | Task 23 PR #1 is merged and its exact quality, E2E, and distribution checks are green; Task 24 still requires its own branch-tip gate. |
 | DEL-005 | RED_COMMAND | ..\audit-23-engineering\.venv\Scripts\python.exe -m pytest tests/unit/test_delivery_report.py -q --basetemp tmp/task24-red -p no:cacheprovider | tests/unit/test_delivery_report.py | DR-10 | red=ModuleNotFoundError:scripts.check_delivery_report | 2026-08-13T07:55:00Z | 1 | EXPECTED_FAIL | Required TDD RED failed at collection because the delivery checker did not exist. |
 | DEL-006 | CURRENT_COMMAND | ..\audit-23-engineering\.venv\Scripts\python.exe -m pytest tests/unit/test_delivery_report.py -q --basetemp tmp/task24-green -p no:cacheprovider | tests/unit/test_delivery_report.py | DR-01, DR-10 | pytest-tests=24; delivery-report-mutations=pass | 2026-08-13T09:59:08Z | 0 | PASS | Focused parser, CLI, state, fixed narrative/section/blocker/Product Audit evidence, reflection, remote-boundary evidence, and mutation tests pass. |
-| DEL-007 | CURRENT_COMMAND | ..\audit-23-engineering\.venv\Scripts\python.exe scripts/check_delivery_report.py DELIVERY_REPORT.md | DELIVERY_REPORT.md | DR-01, DR-10 | delivery-sections=17; evidence=16; blockers=3; readiness=MUSEECHO V1 PARTIALLY READY | 2026-08-13T09:59:08Z | 0 | PASS | Direct fail-closed delivery validator accepts the fixed report contract. |
+| DEL-007 | CURRENT_COMMAND | ..\audit-23-engineering\.venv\Scripts\python.exe scripts/check_delivery_report.py DELIVERY_REPORT.md | DELIVERY_REPORT.md | DR-01, DR-10 | delivery-sections=17; evidence=17; blockers=3; readiness=MUSEECHO V1 PARTIALLY READY | 2026-08-16T19:37:07Z | 0 | PASS | Direct fail-closed delivery validator accepts the fixed report contract. |
 | DEL-008 | CURRENT_COMMAND | ..\audit-23-engineering\.venv\Scripts\python.exe -m ruff check scripts/check_delivery_report.py tests/unit/test_delivery_report.py | scripts/check_delivery_report.py | DR-10 | ruff-files=2; lint=pass | 2026-08-13T09:59:08Z | 0 | PASS | Affected Python lint passes. |
 | DEL-009 | CURRENT_COMMAND | ..\audit-23-engineering\.venv\Scripts\python.exe -m mypy scripts/check_delivery_report.py | scripts/check_delivery_report.py | DR-10 | mypy-files=1; strict=pass | 2026-08-13T09:59:08Z | 0 | PASS | Affected checker strict typing passes. |
 | DEL-010 | CURRENT_COMMAND | git diff --check | DELIVERY_REPORT.md | DR-01, DR-10 | diff-check=pass | 2026-08-13T09:59:08Z | 0 | PASS | Tracked patch has no whitespace errors. |
-| DEL-011 | IMPLEMENTATION_BOUNDARY_COMMAND | gh run view 31687703913 --repo Zzz148080/MuseEcho --json status,conclusion,headSha,jobs,url | .github/workflows/ci.yml | DR-01, DR-10, DR-14 | run=31687703913; head=de5bc6f949e6e98cff32f16116708ec7b7409c9d; quality=success; e2e=success; distribution=success | 2026-08-13T09:53:16Z | 0 | PASS | Historical Task 24 implementation evidence only; it cannot verify the final PR SHA, which is verified only by live GitHub checks after push. |
+| DEL-011 | IMPLEMENTATION_BOUNDARY_COMMAND | gh run view 31687703913 --repo Zzz148080/MuseEcho --json status,conclusion,headSha,jobs,url | .github/workflows/ci.yml | DR-01, DR-10, DR-14 | run=31687703913; head=de5bc6f949e6e98cff32f16116708ec7b7409c9d; quality=success; e2e=success; distribution=success | 2026-08-13T09:53:16Z | 0 | PASS | Historical Task 24 implementation evidence only; it cannot verify the final PR SHA, which is recorded separately by DEL-012. |
+| DEL-012 | IMPLEMENTATION_BOUNDARY_COMMAND | gh run view 31966788273 --repo Zzz148080/MuseEcho --json status,conclusion,headBranch,headSha,jobs,url | .github/workflows/ci.yml | DR-01, DR-10, DR-13, DR-14 | run=31966788273; head=0674f74f4097e46cee98c4715a62ad5aa55101cf; branch=codex/expand-common-audio-formats; quality=success (5m43s); e2e=success (3m10s); distribution=success (7m30s) | 2026-08-16T19:37:07Z | 0 | PASS | PR #3 final product/CI implementation evidence: all required GitHub jobs passed on the exact SHA; no GitLab, Release publication, cloud deployment, or student acceptance is implied. |
 | DEL-900 | EXTERNAL_NOT_RUN | NOT RUN: GitLab has no Task 24 pipeline | .gitlab-ci.yml | DR-01, DR-10, DR-14 | gitlab=NOT_RUN | 2026-08-13T09:53:16Z | NOT_RUN | DEFERRED | Historical Task 24 evidence: GitLab was not run; it is now deferred from this course submission by `COURSE_REQUIREMENT_UPDATE.md`. |
 | DEL-901 | EXTERNAL_NOT_RUN | NOT RUN: Tencent Cloud, public trusted TLS, target-server benchmark, cross-network smoke, 24-hour observation, backup restore, and live rollback require authorization | DEPLOYMENT_EVIDENCE.md | DR-01, DR-09, DR-11, DR-15 | cloud=NOT_RUN; public-smoke=NOT_RUN; target-server=NOT_RUN; rollback=NOT_RUN | 2026-08-13T08:01:12Z | NOT_RUN | DEFERRED | No public URL, server benchmark, or live rollback is claimed; these are now deferred deployment work. |
 | DEL-902 | EXTERNAL_NOT_RUN | NOT RUN: formal current-source Dockerfile offline build requires the complete locked pip and apt BuildKit cache under network none | Dockerfile | DR-01, DR-11, DR-14, DR-16 | ENG-010=BLOCKED; formal-offline-build=NOT_RUN; derivative=NON_RELEASE | 2026-08-13T08:01:12Z | NOT_RUN | PENDING | Controlled derivative remains audit-only and cannot be promoted. |

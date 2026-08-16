@@ -17,7 +17,10 @@ the Task 24 block below. At Task 23 closure, the blocker keys were `GitLab`,
 `MUSEECHO V1 PARTIALLY READY`. Product Audit and final delivery verification
 are complete artifacts, so Task 24 is not a current blocker. Per
 `COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent Cloud/public deployment are
-future work, not current course blockers. Current blockers are:
+future work, not current course blockers. The current Functional Audit is
+**36 PASS / 4 PARTIAL / 0 FAIL**, and PR #3 run `31966788273` passed all required
+GitHub jobs on exact implementation SHA
+`0674f74f4097e46cee98c4715a62ad5aa55101cf`. Current blockers are:
 
 - `BLK-FORMAL-OFFLINE-BUILD`: ENG-010 remains blocked pending a formal
   current-source Dockerfile rebuild with the complete locked cache under

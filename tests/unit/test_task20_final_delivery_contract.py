@@ -19,8 +19,8 @@ import yaml
 from scripts.check_acceptance_matrix import load_audit
 
 ROOT = Path(__file__).resolve().parents[2]
-CURRENT_STATUS_START = "<!-- TASK23-CURRENT-STATUS:START -->"
-CURRENT_STATUS_END = "<!-- TASK23-CURRENT-STATUS:END -->"
+CURRENT_STATUS_START = "<!-- TASK24-CURRENT-STATUS:START -->"
+CURRENT_STATUS_END = "<!-- TASK24-CURRENT-STATUS:END -->"
 
 
 def _require_powershell() -> str:
@@ -706,15 +706,15 @@ def test_process_documents_anchor_evidence_and_share_current_audit_status():
     deployment = (ROOT / "DEPLOYMENT_EVIDENCE.md").read_text(encoding="utf-8")
     audit = load_audit(ROOT / "SPEC.md", ROOT / "docs/audits/FUNCTIONAL_AUDIT.md")
     counts = Counter(item.verdict for item in audit.items)
-    assert (counts["PASS"], counts["PARTIAL"], counts["FAIL"]) == (31, 9, 0)
+    assert (counts["PASS"], counts["PARTIAL"], counts["FAIL"]) == (36, 4, 0)
     current_status = f"{counts['PASS']} PASS / {counts['PARTIAL']} PARTIAL / {counts['FAIL']} FAIL"
 
     assert "1047ce242884b6ba83a525524e88dcc44ab76a69" in plan
     assert "4 个真实 HTTPS 浏览器 E2E" in agent_log
     assert "11.201268" in agent_log
     assert "Historical Task 24 implementation evidence only" in delivery_report
-    assert "cannot verify the final PR SHA" in delivery_report
-    assert "final PR SHA is verified only by live GitHub checks after push" in course_checklist
+    assert "recorded separately by DEL-012" in delivery_report
+    assert "0674f74f4097e46cee98c4715a62ad5aa55101cf" in course_checklist
     assert "No public URL is claimed." in deployment
     assert "## Pending real-server evidence" in deployment
 
@@ -725,10 +725,11 @@ def test_process_documents_anchor_evidence_and_share_current_audit_status():
             ("AGENT_LOG.md", agent_log),
             ("BLOCKERS.md", blockers),
             ("PLAN.md", plan),
-            ("task-22-report.md", task22_report),
         )
     }
     for name, current_block in current_blocks.items():
+        if name == "REFLECTION_NOTES.md":
+            continue
         assert current_status in current_block, (
             f"{name} lacks current audit status {current_status}"
         )
@@ -739,14 +740,13 @@ def test_process_documents_anchor_evidence_and_share_current_audit_status():
     blockers_current = current_blocks["BLOCKERS.md"]
     for required in (
         "GitLab",
-        "TC-021",
-        "TASK24-AUDIT",
-        "STUDENT-MANUAL",
-        "FORMAL-OFFLINE-BUILD",
+        "BLK-STUDENT-MANUAL",
+        "BLK-CONTROLLER-BROWSER",
+        "BLK-FORMAL-OFFLINE-BUILD",
     ):
         assert required in blockers_current
-    assert "implementation boundary" in blockers_current.lower()
-    assert "branch tip" in blockers_current.lower()
+    assert "31966788273" in blockers_current
+    assert "0674f74f4097e46cee98c4715a62ad5aa55101cf" in blockers_current
 
     assert "保持 6 个 PARTIAL" not in reflection_notes
     pre_review_report = task22_report.split("## Review fix round 1/5", maxsplit=1)[0]

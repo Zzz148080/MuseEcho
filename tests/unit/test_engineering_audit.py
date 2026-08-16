@@ -26,7 +26,7 @@ from scripts.image_vulnerability_audit import (
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_PATH = ROOT / "docs" / "audits" / "ENGINEERING_AUDIT.md"
-NOW = datetime(2026, 8, 15, tzinfo=UTC)
+NOW = datetime(2026, 8, 17, tzinfo=UTC)
 DOMAIN_HEADING = "## Domain coverage"
 EVIDENCE_HEADING = "## Evidence index"
 FINDING_HEADING = "## Findings"
@@ -843,14 +843,24 @@ def test_current_acceptance_evidence_is_a_fixed_engineering_contract(tmp_path: P
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md"
     )
-    collected_count = 49
-    expected_result = f"{collected_count} passed; 40 items validated PASS=31 PARTIAL=9 FAIL=0"
+    collected_count = 47
+    expected_result = f"{collected_count} passed; 40 items validated PASS=36 PARTIAL=4 FAIL=0"
 
     assert checker.FIXED_EVIDENCE_CONTRACTS["E030"] == (
         "CURRENT_COMMAND",
         expected_command,
         "docs/audits/FUNCTIONAL_AUDIT.md",
         expected_result,
+    )
+
+    assert checker.FIXED_EVIDENCE_CONTRACTS["E038"] == (
+        "IMPLEMENTATION_BOUNDARY_COMMAND",
+        "gh run view 31966788273 --repo Zzz148080/MuseEcho --json "
+        "status,conclusion,headBranch,headSha,jobs,url",
+        ".github/workflows/ci.yml",
+        "Final product/CI implementation SHA 0674f74f4097e46cee98c4715a62ad5aa55101cf "
+        "on codex/expand-common-audio-formats passed quality (5m43s), e2e (3m10s), "
+        "and distribution (7m30s) in run 31966788273",
     )
 
     mutation = _replace_table_cell(

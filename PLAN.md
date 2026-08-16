@@ -21,13 +21,16 @@
 <!-- TASK24-CURRENT-STATUS:START -->
 > **Task 24 current status:** `MUSEECHO V1 PARTIALLY READY`. The Product Audit,
 > fixed 17-section Delivery Report, fail-closed validator, and student-authored
-> reflection draft are present, so Task 24 itself is not a blocker. Task 23
-> PR #1 merged at `79d87f4`; Task 24 run `31687703913` also passed GitHub
-> quality, E2E, and distribution at head `de5bc6f`. Per
+> reflection draft are present, so Task 24 itself is not a blocker. The current
+> Functional Audit is **36 PASS / 4 PARTIAL / 0 FAIL**. Task 23 PR #1 merged at
+> `79d87f4`; PR #3 run `31966788273` passed GitHub quality (5m43s), E2E
+> (3m10s), and distribution (7m30s) on exact final product/CI implementation SHA
+> `0674f74f4097e46cee98c4715a62ad5aa55101cf`. Per
 > `COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent Cloud/public deployment
-> are deferred follow-up work. The final PR SHA is verified only by live GitHub
-> checks after push; `DEL-011` is historical Task 24 implementation evidence.
-> Formal offline build ENG-010, local product review, and student gates remain open.
+> are deferred follow-up work. `DEL-011` remains historical Task 24 evidence;
+> `DEL-012` records the final implementation run. Formal offline build ENG-010,
+> local product review, and student gates remain open; no GitLab, Release,
+> cloud-deployment, or student-acceptance completion is claimed.
 <!-- TASK24-CURRENT-STATUS:END -->
 
 ## 0. 当前门禁与真实性约束
@@ -825,12 +828,12 @@ def test_delivery_status_matches_evidence(report):
 | 按需解密播放与 Range 支持 | 当前 API/播放器实现及对应单元测试 | `7f8412b` | `/api/analyses/{id}/audio` 维持单 Range 语义，并以 1 MiB 分块流式读取；播放器补充就绪、跳转、等待、停滞和错误状态，不把 Range 支持扩展为多 Range。 |
 | FLAC 解码与节奏估计修复 | `tests/integration/test_decode.py`、`tests/unit/analysis/test_signal_features.py` | `7f8412b` | FLAC 仅允许受控 attached-picture（MJPEG/PNG）并保持全部流校验；节奏算法升至 `librosa-onset-beat-periodicity-v3`，对弱八分与长曲目歧义尝试保守半速节拍，仍可回退 `unknown`。 |
 
-**未闭环条件：** 上述维护提交尚未自动解除公开 registry、正式离线构建或学生人工验收门禁。
-GitLab、腾讯云/可信 TLS 与目标机验证已按 `COURSE_REQUIREMENT_UPDATE.md` 转为后续计划。最终状态
-继续以 `DELIVERY_REPORT.md` 为 `PARTIALLY READY`，直到最终 SHA 的 GitHub PR/CI、发行和必要人工
-验收证据全部真实完成。现有 Task 24+ 提交不是最终远端验证：最终分支的 GitHub `quality` 在运行
-`31813100956` 中仅报告 `decode.py`、`rhythm.py` 与 `test_analysis_api.py` 的 Ruff format 失败；在该
-格式修复和后续完整 CI 前，不把这些维护工作写成最终 CI 通过。
+**最终维护闭环：** 结果呈现、常见格式、100 MiB、Broadcast WAV、流式播放、FLAC/节奏修复、
+Linux 格式修复、历史证据绑定与 current-image 分发策略依次完成。PR #3 GitHub run
+`31966788273` 在 exact SHA `0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过 quality、E2E 和
+distribution；这是最终产品/CI 实现边界，不把随后仅修改交付记录的 reconciliation commit 伪装成
+第二次产品运行。公开 registry/Release、正式离线构建 ENG-010、GitLab supplemental pipeline、
+腾讯云/可信 TLS/目标机验证及学生人工验收仍未闭环，最终状态继续为 `PARTIALLY READY`。
 
 ## 4. 计划验收清单
 
