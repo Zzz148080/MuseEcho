@@ -147,6 +147,24 @@ def test_item_id_contract_covers_all_ac_and_definition_of_done_items():
     assert len(EXPECTED_ITEM_IDS) == 40
 
 
+def test_current_definition_of_done_requires_github_ci_not_dual_ci() -> None:
+    spec = SPEC_PATH.read_text(encoding="utf-8")
+
+    assert check_acceptance_matrix._spec_issues(spec) == ()
+
+    legacy_dual_ci = spec.replace(
+        "合理 Git/PR 历史、GitHub CI、全过程文档",
+        "合理 Git/PR 历史、双 CI 配置、全过程文档",
+        1,
+    )
+    assert legacy_dual_ci != spec
+    assert (
+        "SPEC DOD-11 trace fragment is missing: "
+        "合理 Git/PR 历史、GitHub CI、全过程文档"
+        in check_acceptance_matrix._spec_issues(legacy_dual_ci)
+    )
+
+
 def test_missing_item_fails_closed(tmp_path: Path):
     error = _validation_error(
         tmp_path,
@@ -270,11 +288,23 @@ def test_current_frontend_evidence_accepts_78_and_rejects_stale_66(tmp_path: Pat
     assert "E001 does not match its fixed evidence contract" in _validation_error(tmp_path, stale)
 
 
-def test_exact_historical_evidence_is_structurally_verifiable_without_git(monkeypatch):
+def test_exact_historical_evidence_uses_its_commit_tree_not_the_current_checkout() -> None:
+    audit = load_audit(SPEC_PATH, AUDIT_PATH)
+    evidence = next(record for record in audit.evidence if record.evidence_id == "E004")
+
+    assert evidence.boundary_sha256 != check_acceptance_matrix._current_boundary_sha256(ROOT)
+
+    validate_audit(audit, repo_root=ROOT, now=NOW)
+
+
+def test_historical_evidence_fails_closed_when_git_is_unavailable(monkeypatch):
     monkeypatch.setenv("PATH", "")
     audit = load_audit(SPEC_PATH, AUDIT_PATH)
 
-    validate_audit(audit, repo_root=ROOT, now=NOW)
+    with pytest.raises(AuditValidationError) as caught:
+        validate_audit(audit, repo_root=ROOT, now=NOW)
+
+    assert "E004 exact historical commit/tree is unavailable" in str(caught.value)
 
 
 def test_gitless_historical_evidence_rejects_coherent_fake_commit_and_command(
@@ -293,9 +323,9 @@ def test_gitless_historical_evidence_rejects_coherent_fake_commit_and_command(
         f"git show --format=fuller --stat {fake_commit} -- AGENT_LOG.md PLAN.md",
     )
 
-    assert "E004 does not match its fixed evidence contract" in _validation_error(
-        tmp_path, mutation
-    )
+    error = _validation_error(tmp_path, mutation)
+    assert "E004 does not match its fixed evidence contract" in error
+    assert "E004 historical commit does not match its exact evidence commit" in error
 
 
 def test_historical_evidence_rejects_audit_only_boundary_path_drift(tmp_path: Path, monkeypatch):
@@ -318,7 +348,7 @@ def test_historical_evidence_rejects_audit_only_boundary_path_drift(tmp_path: Pa
 
 
 @pytest.mark.parametrize("replacement", ("-", "0" * 64))
-def test_historical_evidence_requires_current_boundary_hash(tmp_path: Path, replacement: str):
+def test_historical_evidence_requires_exact_commit_boundary_hash(tmp_path: Path, replacement: str):
     text = _audit_text()
     if "| Boundary SHA256 |" in text:
         mutation = _replace_table_cell(
@@ -331,7 +361,7 @@ def test_historical_evidence_requires_current_boundary_hash(tmp_path: Path, repl
     else:
         mutation = text
 
-    assert "E004 current boundary SHA256" in _validation_error(tmp_path, mutation)
+    assert "E004 historical boundary SHA256" in _validation_error(tmp_path, mutation)
 
 
 def test_current_boundary_is_stable_across_text_checkout_line_endings(tmp_path: Path):
@@ -505,7 +535,8 @@ def test_current_branch_evidence_does_not_recast_pre_feature_smoke_as_current() 
     assert "app-occurrences=181" in contracts["E902"].result
     assert "gateway-occurrences=0" in contracts["E902"].result
     assert evidence_by_id["E901"].kind == "EXTERNAL_NOT_RUN"
-    assert "GitLab CI" in evidence_by_id["E901"].command
+    assert "final branch GitHub CI" in evidence_by_id["E901"].command
+    assert evidence_by_id["E901"].path == ".github/workflows/ci.yml"
     assert contracts["E906"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
     assert contracts["E906"].supports_pass is True
     assert "run=31630284744" in contracts["E906"].result

@@ -39,6 +39,11 @@ acceptance remain open. Historical statements below retain their dated boundarie
   `src/museecho/analysis/decode.py`、`src/museecho/analysis/rhythm.py` 和
   `tests/api/test_analysis_api.py` 的 Ruff format 失败。完成该独立格式修复并重新取得最终 SHA
   的 GitHub 质量、E2E 与分发结果前，项目仍为 `MUSEECHO V1 PARTIALLY READY`。
+- **Task 4 预推送合约闭环：** 当前课程 DoD 仅要求 GitHub CI；GitLab 配置仍作为
+  可选后续材料保留，不再作为当前课程门禁。Functional Audit E004 现只绑定精确历史
+  commit/tree 及其源码/测试 boundary digest，不再与可变当前工作树比较；缺失 Git 或
+  不匹配历史对象时失败关闭。已删除的 `TASK20_HANDOFF.md` 不再是交付合约依赖，当前边界由
+  `PLAN.md`、`AGENT_LOG.md`、`DELIVERY_REPORT.md`、课程核对表及现有报告共同保留。
 
 ## 2026-08-13 — TASK 24 / Product Audit and delivery report
 

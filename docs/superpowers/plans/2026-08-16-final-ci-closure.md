@@ -140,6 +140,7 @@ Expected: focused gates pass with no false current-image or formal-release claim
 
 **Files:**
 - Verify and publish the reviewed commits from Tasks 1 through 3; do not introduce unrelated product changes.
+- Modify if required by the pre-push full-suite RED: `scripts/check_acceptance_matrix.py`, `tests/unit/test_acceptance_matrix.py`, `tests/unit/test_task20_final_delivery_contract.py`, and the exact current audit/process records they validate.
 
 **Interfaces:**
 - Consumes: reviewed documentation/contracts, current-source security boundary, and formatter-only source changes.
@@ -151,19 +152,27 @@ Run the repository's documented verification commands, including backend tests, 
 
 Expected: all runnable gates exit 0; any environment-only limitation is recorded rather than hidden.
 
-- [ ] **Step 2: Review the completed commit range**
+- [x] **Step 2: TDD-close non-environment full-suite contract drift**
 
-Run: `git diff --check`, inspect the Task 1 and Task 2 commits and confirm any remaining working-tree path is intentional and explicitly identified.
+Separate missing ffmpeg/ffprobe and paused-Docker failures from deterministic repository failures. For deterministic failures, capture focused RED tests, then minimally update the current GitHub-only course contract and historical evidence lookup so historical commit evidence is never compared to mutable current files. Replace the obsolete `TASK20_HANDOFF.md` process-document dependency with durable current records; do not restore stale status prose merely to satisfy a test.
+
+Expected: focused acceptance-matrix and process-document tests pass while historical evidence remains commit-bound and current course requirements remain GitHub-only.
+
+Completed locally with focused RED (`5 failed, 1 passed`) and deterministic GREEN (`51 passed`). E004 is bound to exact commit `1047ce242884b6ba83a525524e88dcc44ab76a69`, tree `835981d848f42b1dfda147d25aed606c4d249f35`, and historical boundary digest; the deleted Task 20 pause handoff is replaced by durable current records.
+
+- [ ] **Step 3: Review the completed commit range**
+
+Run: `git diff --check`, inspect the reviewed Task 1 through Task 4 commit range and confirm any remaining working-tree path is intentional and explicitly identified.
 
 Expected: commits contain no credentials, generated bulk data, or unrelated files; the worktree has no unexplained change.
 
-- [ ] **Step 3: Push and monitor PR #3**
+- [ ] **Step 4: Push and monitor PR #3**
 
 Run: `git push origin codex/expand-common-audio-formats`, then use `gh pr checks 3 --watch --repo Zzz148080/MuseEcho` and inspect any failing job log before making a new fix.
 
 Expected: `quality`, `e2e`, and `distribution` all pass on the same final head SHA.
 
-- [ ] **Step 4: Fresh completion audit**
+- [ ] **Step 5: Fresh completion audit**
 
 Run: compare local `HEAD`, `origin/codex/expand-common-audio-formats`, PR head SHA, and the successful workflow head SHA; run `git status --short --branch`.
 

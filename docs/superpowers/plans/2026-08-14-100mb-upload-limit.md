@@ -111,7 +111,7 @@ npm.cmd run typecheck
 
 Expected: focused Vitest, frontend TypeScript, and E2E TypeScript all pass.
 
-- [ ] **Step 5: Refresh the current audit boundary only if the checker reports drift**
+- [ ] **Step 5: Verify the immutable historical audit boundary**
 
 Run:
 
@@ -120,7 +120,9 @@ Run:
 .venv\Scripts\python.exe scripts/check_acceptance_matrix.py SPEC.md docs/audits/FUNCTIONAL_AUDIT.md
 ```
 
-If the commands report the exact current-boundary digest changed, replace only E004's recorded digest in `docs/audits/FUNCTIONAL_AUDIT.md` with the digest computed by the checker, then rerun both commands.
+E004 is bound to its exact historical commit/tree and historical boundary digest. Never refresh it from
+mutable current files. If verification fails, restore or fetch the exact historical Git object and investigate
+the mismatch; do not rewrite historical evidence to match the checkout.
 
 - [ ] **Step 6: Run complete verification and publish**
 

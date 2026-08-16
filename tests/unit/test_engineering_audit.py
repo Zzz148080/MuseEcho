@@ -813,7 +813,7 @@ def test_current_acceptance_evidence_is_a_fixed_engineering_contract(tmp_path: P
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md"
     )
-    collected_count = 47
+    collected_count = 49
     expected_result = f"{collected_count} passed; 40 items validated PASS=31 PARTIAL=9 FAIL=0"
 
     assert checker.FIXED_EVIDENCE_CONTRACTS["E030"] == (

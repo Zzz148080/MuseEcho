@@ -313,7 +313,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md",
         "docs/audits/FUNCTIONAL_AUDIT.md",
-        "47 passed; 40 items validated PASS=31 PARTIAL=9 FAIL=0",
+        "49 passed; 40 items validated PASS=31 PARTIAL=9 FAIL=0",
     ),
     "E033": (
         "RED_COMMAND",

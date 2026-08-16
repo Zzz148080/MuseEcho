@@ -72,7 +72,7 @@ DOD_FRAGMENTS = (
     "Docker runtime",
     "Secret audit",
     "合理 Git/PR 历史",
-    "双 CI 配置",
+    "合理 Git/PR 历史、GitHub CI、全过程文档",
     "全过程文档",
     "三轮 Audit",
     "无已知 Critical bug 和 High security issue",
@@ -109,6 +109,7 @@ COMMIT_HASH = re.compile(r"^[0-9a-f]{40}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 TASK19_EVIDENCE_COMMIT = "1047ce242884b6ba83a525524e88dcc44ab76a69"
+TASK19_EVIDENCE_TREE = "835981d848f42b1dfda147d25aed606c4d249f35"
 TASK19_HISTORICAL_BOUNDARY_SHA256 = (
     "063f1dd0e3b9a27aa7772e3e2320e681facd7df2ff9e58e8e9e3c204f02bdc5d"
 )
@@ -337,7 +338,7 @@ EVIDENCE_CONTRACTS = {
         ),
         path="tests/unit/test_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-15"),
-        result="pytest-tests=47; pass=31; partial=9; fail=0",
+        result="pytest-tests=49; pass=31; partial=9; fail=0",
         exit_code_raw="0",
     ),
     "E902": EvidenceContract(
@@ -728,34 +729,64 @@ def _validate_task19_historical_boundary(
     issues: list[str],
 ) -> None:
     if SHA256.fullmatch(record.boundary_sha256) is None:
-        issues.append("E004 current boundary SHA256 is missing or invalid")
-    else:
-        current_boundary = _current_boundary_sha256(repo_root)
-        if record.boundary_sha256 != current_boundary:
-            issues.append("E004 current boundary SHA256 does not match repository content")
+        issues.append("E004 historical boundary SHA256 is missing or invalid")
+    elif record.boundary_sha256 != TASK19_HISTORICAL_BOUNDARY_SHA256:
+        issues.append("E004 historical boundary SHA256 does not match its exact commit")
 
-    plan_path = repo_root / "PLAN.md"
-    if not plan_path.is_file() or TASK19_EVIDENCE_COMMIT not in plan_path.read_text(
-        encoding="utf-8"
-    ):
-        issues.append("E004 authoritative PLAN anchor does not confirm its exact commit")
+    if record.commit != TASK19_EVIDENCE_COMMIT:
+        issues.append("E004 historical commit does not match its exact evidence commit")
+        return
 
     if shutil.which("git") is None:
+        issues.append("E004 exact historical commit/tree is unavailable")
         return
-    historical_boundary = _historical_boundary_sha256(repo_root, TASK19_EVIDENCE_COMMIT)
-    if historical_boundary != TASK19_HISTORICAL_BOUNDARY_SHA256:
-        issues.append("E004 historical boundary does not match its exact commit")
-    anchor = subprocess.run(
-        ["git", "show", f"{TASK19_EVIDENCE_COMMIT}:AGENT_LOG.md"],
+
+    tree = subprocess.run(
+        ["git", "rev-parse", "--verify", f"{record.commit}^{{tree}}"],
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=10,
+    )
+    if tree.returncode != 0:
+        issues.append("E004 exact historical commit/tree is unavailable")
+        return
+    if tree.stdout.strip() != TASK19_EVIDENCE_TREE:
+        issues.append("E004 historical tree does not match its exact commit")
+        return
+
+    historical_boundary = _historical_boundary_sha256(repo_root, record.commit)
+    if historical_boundary is None:
+        issues.append("E004 exact historical commit/tree is unavailable")
+    elif historical_boundary != record.boundary_sha256:
+        issues.append("E004 historical boundary SHA256 does not match its exact commit")
+
+    historical_plan = subprocess.run(
+        ["git", "show", f"{record.commit}:PLAN.md"],
         cwd=repo_root,
         capture_output=True,
         check=False,
         text=True,
         encoding="utf-8",
-        timeout=30,
+        timeout=10,
     )
-    if anchor.returncode != 0 or not all(
-        fragment in anchor.stdout for fragment in ("真实浏览器 `4 passed`", "11.201268")
+    if historical_plan.returncode != 0 or not all(
+        fragment in historical_plan.stdout for fragment in ("任务 19", "实际提交", "9ad408c")
+    ):
+        issues.append("E004 historical PLAN anchor does not expose the Task 19 commit")
+
+    historical_log = subprocess.run(
+        ["git", "show", f"{record.commit}:AGENT_LOG.md"],
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+        text=True,
+        encoding="utf-8",
+        timeout=10,
+    )
+    if historical_log.returncode != 0 or not all(
+        fragment in historical_log.stdout for fragment in ("真实浏览器 `4 passed`", "11.201268")
     ):
         issues.append("E004 historical AGENT_LOG anchor does not expose the claimed results")
 

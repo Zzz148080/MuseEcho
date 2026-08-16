@@ -447,9 +447,10 @@ def test_linux_secret_modes_and_documented_development_path_have_real_ci_smokes(
     assert "docker compose --profile production up -d --wait --no-build" in readme
 
 
-def test_dual_ci_definitions_include_executable_tests_and_gitlab_unit_test_job():
+def test_github_course_ci_is_executable_and_retained_gitlab_has_unit_test_job():
     github = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     gitlab = yaml.safe_load((ROOT / ".gitlab-ci.yml").read_text(encoding="utf-8"))
+    course_update = (ROOT / "COURSE_REQUIREMENT_UPDATE.md").read_text(encoding="utf-8")
 
     github_jobs = github["jobs"]
     assert {"quality", "e2e", "distribution"}.issubset(github_jobs)
@@ -469,6 +470,8 @@ def test_dual_ci_definitions_include_executable_tests_and_gitlab_unit_test_job()
     assert unit_test["stage"] == "test"
     assert unit_test["script"] == ["uv run python -m pytest -q --basetemp .pytest-ci"]
     assert {"lint", "unit-test", "frontend", "e2e", "secret-scan"}.issubset(gitlab)
+    assert "本次课程提交只要求 GitHub 仓库与 GitHub CI" in course_update
+    assert "不再要求 NJU GitLab 仓库或 GitLab Pipeline" in course_update
 
 
 def test_github_actions_use_node24_capable_majors_without_an_insecure_node_fallback():
@@ -684,7 +687,8 @@ def test_process_documents_anchor_evidence_and_share_current_audit_status():
     blockers = (ROOT / "BLOCKERS.md").read_text(encoding="utf-8")
     reflection_notes = (ROOT / "REFLECTION_NOTES.md").read_text(encoding="utf-8")
     task22_report = (ROOT / ".superpowers/sdd/PLAN/task-22-report.md").read_text(encoding="utf-8")
-    task20 = (ROOT / "TASK20_HANDOFF.md").read_text(encoding="utf-8")
+    delivery_report = (ROOT / "DELIVERY_REPORT.md").read_text(encoding="utf-8")
+    course_checklist = (ROOT / "COURSE_DELIVERY_CHECKLIST.md").read_text(encoding="utf-8")
     deployment = (ROOT / "DEPLOYMENT_EVIDENCE.md").read_text(encoding="utf-8")
     audit = load_audit(ROOT / "SPEC.md", ROOT / "docs/audits/FUNCTIONAL_AUDIT.md")
     counts = Counter(item.verdict for item in audit.items)
@@ -694,7 +698,9 @@ def test_process_documents_anchor_evidence_and_share_current_audit_status():
     assert "1047ce242884b6ba83a525524e88dcc44ab76a69" in plan
     assert "4 个真实 HTTPS 浏览器 E2E" in agent_log
     assert "11.201268" in agent_log
-    assert "远端 GitHub Actions/GitLab CI 仍未运行" in task20
+    assert "Historical Task 24 implementation evidence only" in delivery_report
+    assert "cannot verify the final PR SHA" in delivery_report
+    assert "final PR SHA is verified only by live GitHub checks after push" in course_checklist
     assert "No public URL is claimed." in deployment
     assert "## Pending real-server evidence" in deployment
 
