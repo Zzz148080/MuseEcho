@@ -18,6 +18,9 @@
 | 8 | `REFLECTION.md` | `REFLECTION.md` | 学生本人正在修订；内容、最终签字和真实状态由学生负责确认。 |
 | 9 | 后续线上 WebUI 部署 | `deploy/tencent-cloud/`、`DEPLOYMENT_EVIDENCE.md` | 不作为本次课程提交门禁；腾讯云、域名/DNS、可信 TLS、目标机 smoke、跨网/24 小时验证、备份恢复和回滚保留为下一步计划。 |
 
+<!-- FINAL-CI-RELATIONSHIP: implementation-sha=0674f74f4097e46cee98c4715a62ad5aa55101cf; run=31966788273; jobs=quality:success,e2e:success,distribution:success; github=required; gitlab=supplemental-not-run; reconciliation=docs-only-requires-separate-final-sha-publication-ci -->
+Any later docs-only reconciliation is not product implementation evidence and requires its own separate final-SHA publication/CI gate before Task 6 can be complete.
+
 ## 提交前必须关闭的事项
 
 1. 整理工作区：决定未跟踪文件是否纳入提交，删除可再生临时目录，并确保最终分支只有有意变更。

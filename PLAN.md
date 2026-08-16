@@ -33,6 +33,9 @@
 > cloud-deployment, or student-acceptance completion is claimed.
 <!-- TASK24-CURRENT-STATUS:END -->
 
+<!-- FINAL-CI-RELATIONSHIP: implementation-sha=0674f74f4097e46cee98c4715a62ad5aa55101cf; run=31966788273; jobs=quality:success,e2e:success,distribution:success; github=required; gitlab=supplemental-not-run; reconciliation=docs-only-requires-separate-final-sha-publication-ci -->
+Any later docs-only reconciliation is not product implementation evidence and requires its own separate final-SHA publication/CI gate before Task 6 can be complete.
+
 ## 0. 当前门禁与真实性约束
 
 - `SPEC.md` 已由用户在 2026-08-08 以原话“好，批准书面SPEC，进行下一步”批准。

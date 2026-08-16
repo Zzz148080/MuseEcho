@@ -127,6 +127,16 @@ def _duplicate_table_row(text: str, heading: str, key: str, *, new_key: str | No
     raise AssertionError(f"missing test fixture row: {heading} / {key}")
 
 
+def _swap_table_rows(text: str, heading: str, first_key: str, second_key: str) -> str:
+    lines = text.splitlines()
+    start, end = _table_bounds(lines, heading)
+    indexes = {lines[index].split("|")[1].strip(): index for index in range(start + 2, end)}
+    first_index = indexes[first_key]
+    second_index = indexes[second_key]
+    lines[first_index], lines[second_index] = lines[second_index], lines[first_index]
+    return "\n".join(lines) + "\n"
+
+
 def _validation_error(tmp_path: Path, text: str) -> str:
     audit = load_audit(SPEC_PATH, _write_audit(tmp_path, text))
     with pytest.raises(AuditValidationError) as caught:
@@ -244,6 +254,12 @@ def test_evidence_requires_command_path_and_non_future_utc_time(
     mutation = _replace_table_cell(_audit_text(), "## Evidence index", "E001", column, value)
 
     assert expected in _validation_error(tmp_path, mutation)
+
+
+def test_evidence_index_rejects_descending_observed_timestamps(tmp_path: Path) -> None:
+    mutation = _swap_table_rows(_audit_text(), "## Evidence index", "E006", "E900")
+
+    assert "evidence index must be oldest-to-newest" in _validation_error(tmp_path, mutation)
 
 
 def test_duplicate_evidence_id_fails_closed(tmp_path: Path):

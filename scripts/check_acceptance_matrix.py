@@ -336,7 +336,7 @@ EVIDENCE_CONTRACTS = {
         ),
         path="tests/unit/test_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-15"),
-        result="pytest-tests=47; pass=36; partial=4; fail=0",
+        result="pytest-tests=48; pass=36; partial=4; fail=0",
         exit_code_raw="0",
     ),
     "E901": EvidenceContract(
@@ -860,6 +860,8 @@ def validate_audit(
     evidence_by_id: dict[str, EvidenceRecord] = {}
     fingerprints: dict[tuple[str, ...], str] = {}
     evidence_exit_codes: dict[str, int | None] = {}
+    prior_observed_at: datetime | None = None
+    prior_evidence_id: str | None = None
     for record in audit.evidence:
         evidence_by_id.setdefault(record.evidence_id, record)
         if re.fullmatch(r"E\d{3}", record.evidence_id) is None:
@@ -883,6 +885,13 @@ def validate_audit(
         if observed_at is None:
             issues.append(f"{record.evidence_id} has invalid UTC timestamp")
         else:
+            if prior_observed_at is not None and observed_at < prior_observed_at:
+                issues.append(
+                    "evidence index must be oldest-to-newest: "
+                    f"{record.evidence_id} is older than preceding {prior_evidence_id}"
+                )
+            prior_observed_at = observed_at
+            prior_evidence_id = record.evidence_id
             if observed_at > now:
                 issues.append(f"{record.evidence_id} is future-dated")
             if generated_at is not None and observed_at > generated_at:

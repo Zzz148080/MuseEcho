@@ -315,7 +315,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md",
         "docs/audits/FUNCTIONAL_AUDIT.md",
-        "47 passed; 40 items validated PASS=36 PARTIAL=4 FAIL=0",
+        "48 passed; 40 items validated PASS=36 PARTIAL=4 FAIL=0",
     ),
     "E033": (
         "RED_COMMAND",
@@ -676,6 +676,8 @@ def validate_audit(
 
     evidence_by_id = {item.evidence_id: item for item in audit.evidence}
     fingerprints: dict[tuple[object, ...], str] = {}
+    prior_observed_at: datetime | None = None
+    prior_evidence_id: str | None = None
     for item in audit.evidence:
         fingerprint = (
             item.kind,
@@ -702,10 +704,18 @@ def validate_audit(
             errors.append(f"{item.evidence_id} requires result")
         if item.observed_at is None:
             errors.append(f"{item.evidence_id} has invalid observed UTC")
-        elif item.observed_at > now:
-            errors.append(f"{item.evidence_id} is future-dated")
-        elif item.observed_at > audit.generated_at:
-            errors.append(f"{item.evidence_id} is later than the generated audit")
+        else:
+            if prior_observed_at is not None and item.observed_at < prior_observed_at:
+                errors.append(
+                    "evidence index must be oldest-to-newest: "
+                    f"{item.evidence_id} is older than preceding {prior_evidence_id}"
+                )
+            prior_observed_at = item.observed_at
+            prior_evidence_id = item.evidence_id
+            if item.observed_at > now:
+                errors.append(f"{item.evidence_id} is future-dated")
+            elif item.observed_at > audit.generated_at:
+                errors.append(f"{item.evidence_id} is later than the generated audit")
         if item.exit_code is None:
             errors.append(f"{item.evidence_id} has invalid exit code")
         elif item.kind == "EXTERNAL_NOT_RUN" and item.exit_code != "NOT_RUN":

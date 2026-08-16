@@ -18,6 +18,9 @@ formal offline build ENG-010, local product review, and student acceptance;
 no Release publication or cloud deployment is claimed.
 <!-- TASK24-CURRENT-STATUS:END -->
 
+<!-- FINAL-CI-RELATIONSHIP: implementation-sha=0674f74f4097e46cee98c4715a62ad5aa55101cf; run=31966788273; jobs=quality:success,e2e:success,distribution:success; github=required; gitlab=supplemental-not-run; reconciliation=docs-only-requires-separate-final-sha-publication-ci -->
+Any later docs-only reconciliation is not product implementation evidence and requires its own separate final-SHA publication/CI gate before Task 6 can be complete.
+
 ## Project timeline and verified GitHub boundary
 
 - 2026-08-08 至 2026-08-13：从批准的 SPEC/PLAN、cold-start 修复和 Tasks 3–24 逐步完成

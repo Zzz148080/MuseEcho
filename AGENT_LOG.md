@@ -25,30 +25,55 @@ deferred follow-up work. Formal offline build ENG-010, local product review, and
 student acceptance remain open. Historical statements below retain dated boundaries.
 <!-- TASK24-CURRENT-STATUS:END -->
 
-## Current post-Task-24 maintenance summary
+## Retained Task 21–24 summary chronology
 
-The dated implementation log begins below at 2026-08-08 and runs oldest to
-newest. These retained Task 21–24 summaries are grouped here as current delivery
-context, not as a second reverse-chronological history.
+This retained summary collection is ordered oldest-to-newest with the original
+same-day record order preserved. The detailed dated implementation log is a
+separate oldest-to-newest collection immediately below.
 
-- **范围与提交：** Task 24 的实现边界之后，`6554167` 将受支持输入扩展为
-  WAV、MP3、FLAC、M4A、AAC、OGG、OPUS，`99c9169` 将浏览器上传契约对齐；`df41f14` 与
-  `0d9888f`/`8369662` 将精确上限锁为 100 MiB；`0a75c1e` 接受有界的 Broadcast WAV
-  零填充；`7f8412b` 保持单 Range 的按需解密、1 MiB 流式播放，补充 FLAC attached-picture
-  校验，并将节奏估计更新为保守的 v3 半速候选/`unknown` 回退。
-- **证据边界：** 这些是细粒度实现与测试提交，不倒填为 Task 24 的远端 CI、公开发行、正式离线
-  构建或学生人工验收。100 MiB 历史当前源码验证见 `FUNCTIONAL_AUDIT.md` E008（锁定 Linux
-  当前源码 841 passed、7 skipped；PowerShell 交付合约 20 passed）；它早于随后 `7f8412b`
-  的 FLAC/播放/节奏修复，不能证明该提交已获最终完整验证。
-- **最终验证状态：** 早期 run `31813100956` 的三处 Ruff format 失败已修复；随后历史证据、
-  pre-push Docker 与 current-image 漏洞策略漂移均关闭。PR #3 run `31966788273` 在 exact SHA
-  `0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过 quality、E2E、distribution。项目仍为
-  `MUSEECHO V1 PARTIALLY READY`，因为 offline build、人工产品复核和学生验收没有被 CI 替代。
-- **Task 4 预推送合约闭环：** 当前课程 DoD 仅要求 GitHub CI；GitLab 配置仍作为
-  可选后续材料保留，不再作为当前课程门禁。Functional Audit E004 现只绑定精确历史
-  commit/tree 及其源码/测试 boundary digest，不再与可变当前工作树比较；缺失 Git 或
-  不匹配历史对象时失败关闭。已删除的 `TASK20_HANDOFF.md` 不再是交付合约依赖，当前边界由
-  `PLAN.md`、`AGENT_LOG.md`、`DELIVERY_REPORT.md`、课程核对表及现有报告共同保留。
+### Retained TASK 21 / Tencent Cloud delivery scripts (local-only) summary
+
+- **授权边界：** 未提供腾讯云账号、Lighthouse、域名/DNS、SSH 或 registry 发布授权；未执行任何云、DNS、SSH 或公网变更，也不声称远端 CI 或公网 URL。
+- **RED→GREEN：** 先新增 `tests/deploy/test_tencent_cloud.sh`；初次 WSL 运行因 Task 21 脚本与证据文件尚不存在而失败。随后实现安装、digest-only 部署、自动/手动回滚、备份和真实状态证据文件。第二个 RED 发现生成的 release Compose 无条件设置 provider key 路径，导致 KEK-only `docker compose config` 缺少 image interpolation并且不能验证默认启动；release env 现同时持有非秘密镜像/域名/provider 设置，provider 三项默认均为空，测试转绿。
+- **本地验证：** WSL2 `bash tests/deploy/test_tencent_cloud.sh` 与 `bash deploy/tencent-cloud/install.sh --check-only` 均 exit 0；覆盖 check-only 无写入、owned paths/firewall/systemd、tag 拒绝/Secret 不泄露、health rollback、KEK-only provider、备份排除及 SHA-256 元数据、证据真实性。
+- **ShellCheck：** WSL 未安装 ShellCheck。尝试查询单一可固定的官方 ShellCheck container manifest 超时，未下载或运行任何容器；保留 `bash -n`（由合约测试执行）并如实记录未运行 ShellCheck。
+
+### Retained TASK 21 / review fix round 1 summary
+
+- **RED→GREEN：** 独立复审确认 failed release 在 health 前被写入 `.verified`、恢复旧 release 未 health-check、WAL SQLite 直接复制、UFW 只追加 allow、以及 provider 三项可部分写入。新增 WSL 合约测试先得到 12 个预期失败断言：失败发行物仍 eligible、恢复未复验/未 fail-closed、WAL 中已提交行不能从归档恢复、8080 ALLOW 仍写入、partial provider 仍 pull/switch。修复后同一套 11 个 delivery contracts 全部通过。
+- **修复：** `.verified` 仅在 restart+health 成功后写入；恢复 prior release 也重新 health-check，失败时清除 `current` 并 stop service。备份改用 Python 标准库 SQLite online backup 与 `PRAGMA integrity_check`，得到独立 snapshot。实际 install 在任何目录写入前要求 UFW active/default deny-or-reject 并拒绝 22/80/443 外的 inbound ALLOW。provider 配置现在必须三项全空或全设。
+- **ShellCheck：** 有界 Docker Registry 查询取得官方 `koalaman/shellcheck-alpine:v0.10.0` linux/amd64 digest `sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577`。只 pull/run 该一份 digest-pinned image，`--network none --entrypoint shellcheck` 对五个交付脚本 exit 0；首次 run 的 image 默认 `/bin/sh` 误执行 bash shebang，inspect 后改用 entrypoint，未下载任何其他工具或镜像。
+
+### Retained TASK 22 / Functional Audit 与验收缺口闭环 summary
+
+- **范围与结论：** 按 `SPEC.md` AC-A 至 AC-F 的 24 项和 Definition of Done 的 16 项建立 40 项机器可解析矩阵；审查修复轮 1 后为 `29 PASS / 11 PARTIAL / 0 FAIL`、`PARTIALLY_READY`。当前浏览器 E2E、目标服务器性能、公网 URL/完整 smoke、远程双 CI、Task 23/24 和学生人工验收均保持真实未运行，任何一项都阻止 `READY`。
+- **TDD checker：** 首个 RED 为 `scripts.check_acceptance_matrix` 不存在。初版 26 个测试覆盖结构与状态真实性；审查修复轮新增 9 个 mutation，先共同证明无意义成功命令、伪造历史 commit、结果文本同步改写、coverage 漂移、边界 hash 缺失/漂移和 CI/README 空证据均可被旧 checker 接受，再以代码内固定的逐 evidence command/coverage/result contract 和浏览器边界 manifest 使 9 项全部转绿。最终 focused suite 为 35 tests。
+- **真实缺口 1（checker 可移植性）：** 第一次锁定 Linux 全量门得到 `612 passed, 23 failed`；23 项均因生产镜像不含 Git，而 checker 直接启动 `git cat-file` 抛 `FileNotFoundError`。新增无 Git 与 commit/path 绑定 RED 后，最小修复要求 40 位 commit 且证据命令同时绑定 exact commit/path；Git 可用时仍验证对象，Git 不可用时结构化证据保持可离线检查。修复后锁定 Linux 全量 `637 passed in 177.01s`。
+- **真实缺口 2（Secret synthetic harness）：** 当前 scanner 对被占用文件已 exit 1 并输出 `scan-error`，但 Windows PowerShell 将 `tracked-unreadable.txt` 格式化换行成两段，测试 harness 的直接子串匹配误报。以现有失败为 RED，只在断言前去除空白并匹配完整文件名；生产扫描规则未改，GREEN 为 `Secret scan synthetic tests passed`。
+- **审查缺口闭环：** 初版把 CURRENT_COMMAND 的任意 exit-0 和 no-Git 下自洽的历史文本当作充分证据。修复后 PASS 只能引用 checker 内固定且覆盖当前 item 的成功合约；历史 E004 还需 PLAN 权威锚点、固定历史内容摘要和当前 107-file boundary SHA。Task 19 的 4 个真实 HTTPS 浏览器 E2E 属于 105-file 历史边界；该边界与当前边界确实漂移，因此 E004 不再支撑当前 PASS，AC-C-3、AC-F-1、DOD-01、DOD-03、DOD-07 降为 PARTIAL。E005 改为当前 7-test contract，实际解析 GitHub/GitLab、证明 GitLab `unit-test`，并读取 README 冷启动/HTTPS/health/cleanup 与过程文档锚点。
+- **当前验证：** 前端 `12 files / 66 tests`；frontend typecheck/build 和 E2E TypeScript gate；锁定 Linux `649 passed in 244.21s`；生产容器真实 WAV smoke、重启持久性、持久卷无明文、镜像历史无测试 KEK 和清理；89-file Ruff format、Ruff lint、45-source mypy 与 checker mypy；许可证审计；真实/合成 Secret scan。无 Git、只读 worktree、`--network none` 的 cached uv 0.11.29 门为 `35 passed in 69.04s`，checker 为 `29/11/0`。当前 Chrome 尝试中内部网络 app 健康启动，但 Docker Desktop 未把端口暴露给宿主 Chrome；未放宽无网络约束，容器/网络已清理并保留 `CURRENT-BROWSER-E2E` blocker。
+- **提交：** 初始 Functional Audit 为 `abb33e036965f877a860ad5916f4b23ea7ffa417`；证据真实性审查修复为 `22d587beb68170ab4af79a7665d1942881700499`；过程文档统计一致性修复为 `86be4968ed3b6abf14c3d058f22409a923e33f1f`。
+- **约束 concern：** `scripts/container-smoke.ps1` 没有 no-build 入口；其 gateway 缓存失效后执行锁文件限定的 `npm ci`，下载 167 个包（39 秒，0 vulnerabilities）。manifest/lock 与基线 diff 为零，未安装宿主工具，只更新正常 `museecho-app:local`/`museecho-gateway:local` smoke 标签，但该网络获取仍违反 Task 22 的禁止下载约束，已明确保留在审计报告；后续门全部使用缓存、`--network none`/`--pull=never` 或标记未运行。
+- **停放边界：** Task 21 的 `tests/deploy/test_shell_line_endings.ps1` 多文件 `bash -n` harness 缺陷只记录给 Task 23，不写成功能缺陷已关闭，也不改变 AC verdict。
+
+### Retained TASK 23 / final review fix wave round 19/20 summary
+
+- **Evidence boundary:** run `31630284744@2b2730e` is now the last product/CI
+  implementation boundary, not current branch-tip or mergeability evidence.
+  E905 remains NOT_RUN; E002/E906/E037 may support implementation-sensitive
+  PASS/VERIFIED, while FIXED still requires genuine RED plus GREEN.
+- **Process truth and smoke hardening:** five active documents expose one
+  delimited current-status block, older matrix/browser claims remain historical,
+  and development-smoke negative fixtures reject noncanonical Base64 plus an
+  arbitrary marker kind.
+- **Verification:** the expected RED was 7 failures and the focused GREEN was
+  `162 passed`; direct smoke, both audit CLIs, Ruff, acceptance-checker mypy,
+  PowerShell parsing, and diff-check passed. The Engineering checker mypy target
+  remains blocked before checking by the existing duplicate-module discovery
+  for `image_vulnerability_audit.py`; no unrelated typing cleanup was included.
+- **Boundary:** status remains `PARTIALLY_READY`; GitLab/branch-tip PR gates,
+  TC-021, Task 24, student acceptance, and formal offline build ENG-010 remain
+  open. No push was performed.
 
 ### Retained TASK 24 / Product Audit and delivery report summary
 
@@ -92,49 +117,31 @@ context, not as a second reverse-chronological history.
   remains the full locked dependency/build boundary for this documentation-only
   Task 24 change.
 
-### Retained TASK 23 / final review fix wave round 19/20 summary
+### Current post-Task-24 maintenance summary
 
-- **Evidence boundary:** run `31630284744@2b2730e` is now the last product/CI
-  implementation boundary, not current branch-tip or mergeability evidence.
-  E905 remains NOT_RUN; E002/E906/E037 may support implementation-sensitive
-  PASS/VERIFIED, while FIXED still requires genuine RED plus GREEN.
-- **Process truth and smoke hardening:** five active documents expose one
-  delimited current-status block, older matrix/browser claims remain historical,
-  and development-smoke negative fixtures reject noncanonical Base64 plus an
-  arbitrary marker kind.
-- **Verification:** the expected RED was 7 failures and the focused GREEN was
-  `162 passed`; direct smoke, both audit CLIs, Ruff, acceptance-checker mypy,
-  PowerShell parsing, and diff-check passed. The Engineering checker mypy target
-  remains blocked before checking by the existing duplicate-module discovery
-  for `image_vulnerability_audit.py`; no unrelated typing cleanup was included.
-- **Boundary:** status remains `PARTIALLY_READY`; GitLab/branch-tip PR gates,
-  TC-021, Task 24, student acceptance, and formal offline build ENG-010 remain
-  open. No push was performed.
+- **范围与提交：** Task 24 的实现边界之后，`6554167` 将受支持输入扩展为
+  WAV、MP3、FLAC、M4A、AAC、OGG、OPUS，`99c9169` 将浏览器上传契约对齐；`df41f14` 与
+  `0d9888f`/`8369662` 将精确上限锁为 100 MiB；`0a75c1e` 接受有界的 Broadcast WAV
+  零填充；`7f8412b` 保持单 Range 的按需解密、1 MiB 流式播放，补充 FLAC attached-picture
+  校验，并将节奏估计更新为保守的 v3 半速候选/`unknown` 回退。
+- **证据边界：** 这些是细粒度实现与测试提交，不倒填为 Task 24 的远端 CI、公开发行、正式离线
+  构建或学生人工验收。100 MiB 历史当前源码验证见 `FUNCTIONAL_AUDIT.md` E008（锁定 Linux
+  当前源码 841 passed、7 skipped；PowerShell 交付合约 20 passed）；它早于随后 `7f8412b`
+  的 FLAC/播放/节奏修复，不能证明该提交已获最终完整验证。
+- **最终验证状态：** 早期 run `31813100956` 的三处 Ruff format 失败已修复；随后历史证据、
+  pre-push Docker 与 current-image 漏洞策略漂移均关闭。PR #3 run `31966788273` 在 exact SHA
+  `0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过 quality、E2E、distribution。项目仍为
+  `MUSEECHO V1 PARTIALLY READY`，因为 offline build、人工产品复核和学生验收没有被 CI 替代。
+- **Task 4 预推送合约闭环：** 当前课程 DoD 仅要求 GitHub CI；GitLab 配置仍作为
+  可选后续材料保留，不再作为当前课程门禁。Functional Audit E004 现只绑定精确历史
+  commit/tree 及其源码/测试 boundary digest，不再与可变当前工作树比较；缺失 Git 或
+  不匹配历史对象时失败关闭。已删除的 `TASK20_HANDOFF.md` 不再是交付合约依赖，当前边界由
+  `PLAN.md`、`AGENT_LOG.md`、`DELIVERY_REPORT.md`、课程核对表及现有报告共同保留。
 
-### Retained TASK 22 / Functional Audit 与验收缺口闭环 summary
+## Detailed dated implementation log
 
-- **范围与结论：** 按 `SPEC.md` AC-A 至 AC-F 的 24 项和 Definition of Done 的 16 项建立 40 项机器可解析矩阵；审查修复轮 1 后为 `29 PASS / 11 PARTIAL / 0 FAIL`、`PARTIALLY_READY`。当前浏览器 E2E、目标服务器性能、公网 URL/完整 smoke、远程双 CI、Task 23/24 和学生人工验收均保持真实未运行，任何一项都阻止 `READY`。
-- **TDD checker：** 首个 RED 为 `scripts.check_acceptance_matrix` 不存在。初版 26 个测试覆盖结构与状态真实性；审查修复轮新增 9 个 mutation，先共同证明无意义成功命令、伪造历史 commit、结果文本同步改写、coverage 漂移、边界 hash 缺失/漂移和 CI/README 空证据均可被旧 checker 接受，再以代码内固定的逐 evidence command/coverage/result contract 和浏览器边界 manifest 使 9 项全部转绿。最终 focused suite 为 35 tests。
-- **真实缺口 1（checker 可移植性）：** 第一次锁定 Linux 全量门得到 `612 passed, 23 failed`；23 项均因生产镜像不含 Git，而 checker 直接启动 `git cat-file` 抛 `FileNotFoundError`。新增无 Git 与 commit/path 绑定 RED 后，最小修复要求 40 位 commit 且证据命令同时绑定 exact commit/path；Git 可用时仍验证对象，Git 不可用时结构化证据保持可离线检查。修复后锁定 Linux 全量 `637 passed in 177.01s`。
-- **真实缺口 2（Secret synthetic harness）：** 当前 scanner 对被占用文件已 exit 1 并输出 `scan-error`，但 Windows PowerShell 将 `tracked-unreadable.txt` 格式化换行成两段，测试 harness 的直接子串匹配误报。以现有失败为 RED，只在断言前去除空白并匹配完整文件名；生产扫描规则未改，GREEN 为 `Secret scan synthetic tests passed`。
-- **审查缺口闭环：** 初版把 CURRENT_COMMAND 的任意 exit-0 和 no-Git 下自洽的历史文本当作充分证据。修复后 PASS 只能引用 checker 内固定且覆盖当前 item 的成功合约；历史 E004 还需 PLAN 权威锚点、固定历史内容摘要和当前 107-file boundary SHA。Task 19 的 4 个真实 HTTPS 浏览器 E2E 属于 105-file 历史边界；该边界与当前边界确实漂移，因此 E004 不再支撑当前 PASS，AC-C-3、AC-F-1、DOD-01、DOD-03、DOD-07 降为 PARTIAL。E005 改为当前 7-test contract，实际解析 GitHub/GitLab、证明 GitLab `unit-test`，并读取 README 冷启动/HTTPS/health/cleanup 与过程文档锚点。
-- **当前验证：** 前端 `12 files / 66 tests`；frontend typecheck/build 和 E2E TypeScript gate；锁定 Linux `649 passed in 244.21s`；生产容器真实 WAV smoke、重启持久性、持久卷无明文、镜像历史无测试 KEK 和清理；89-file Ruff format、Ruff lint、45-source mypy 与 checker mypy；许可证审计；真实/合成 Secret scan。无 Git、只读 worktree、`--network none` 的 cached uv 0.11.29 门为 `35 passed in 69.04s`，checker 为 `29/11/0`。当前 Chrome 尝试中内部网络 app 健康启动，但 Docker Desktop 未把端口暴露给宿主 Chrome；未放宽无网络约束，容器/网络已清理并保留 `CURRENT-BROWSER-E2E` blocker。
-- **提交：** 初始 Functional Audit 为 `abb33e036965f877a860ad5916f4b23ea7ffa417`；证据真实性审查修复为 `22d587beb68170ab4af79a7665d1942881700499`；过程文档统计一致性修复为 `86be4968ed3b6abf14c3d058f22409a923e33f1f`。
-- **约束 concern：** `scripts/container-smoke.ps1` 没有 no-build 入口；其 gateway 缓存失效后执行锁文件限定的 `npm ci`，下载 167 个包（39 秒，0 vulnerabilities）。manifest/lock 与基线 diff 为零，未安装宿主工具，只更新正常 `museecho-app:local`/`museecho-gateway:local` smoke 标签，但该网络获取仍违反 Task 22 的禁止下载约束，已明确保留在审计报告；后续门全部使用缓存、`--network none`/`--pull=never` 或标记未运行。
-- **停放边界：** Task 21 的 `tests/deploy/test_shell_line_endings.ps1` 多文件 `bash -n` harness 缺陷只记录给 Task 23，不写成功能缺陷已关闭，也不改变 AC verdict。
-
-### Retained TASK 21 / Tencent Cloud delivery scripts (local-only) summary
-
-- **授权边界：** 未提供腾讯云账号、Lighthouse、域名/DNS、SSH 或 registry 发布授权；未执行任何云、DNS、SSH 或公网变更，也不声称远端 CI 或公网 URL。
-- **RED→GREEN：** 先新增 `tests/deploy/test_tencent_cloud.sh`；初次 WSL 运行因 Task 21 脚本与证据文件尚不存在而失败。随后实现安装、digest-only 部署、自动/手动回滚、备份和真实状态证据文件。第二个 RED 发现生成的 release Compose 无条件设置 provider key 路径，导致 KEK-only `docker compose config` 缺少 image interpolation并且不能验证默认启动；release env 现同时持有非秘密镜像/域名/provider 设置，provider 三项默认均为空，测试转绿。
-- **本地验证：** WSL2 `bash tests/deploy/test_tencent_cloud.sh` 与 `bash deploy/tencent-cloud/install.sh --check-only` 均 exit 0；覆盖 check-only 无写入、owned paths/firewall/systemd、tag 拒绝/Secret 不泄露、health rollback、KEK-only provider、备份排除及 SHA-256 元数据、证据真实性。
-- **ShellCheck：** WSL 未安装 ShellCheck。尝试查询单一可固定的官方 ShellCheck container manifest 超时，未下载或运行任何容器；保留 `bash -n`（由合约测试执行）并如实记录未运行 ShellCheck。
-
-### Retained TASK 21 / review fix round 1 summary
-
-- **RED→GREEN：** 独立复审确认 failed release 在 health 前被写入 `.verified`、恢复旧 release 未 health-check、WAL SQLite 直接复制、UFW 只追加 allow、以及 provider 三项可部分写入。新增 WSL 合约测试先得到 12 个预期失败断言：失败发行物仍 eligible、恢复未复验/未 fail-closed、WAL 中已提交行不能从归档恢复、8080 ALLOW 仍写入、partial provider 仍 pull/switch。修复后同一套 11 个 delivery contracts 全部通过。
-- **修复：** `.verified` 仅在 restart+health 成功后写入；恢复 prior release 也重新 health-check，失败时清除 `current` 并 stop service。备份改用 Python 标准库 SQLite online backup 与 `PRAGMA integrity_check`，得到独立 snapshot。实际 install 在任何目录写入前要求 UFW active/default deny-or-reject 并拒绝 22/80/443 外的 inbound ALLOW。provider 配置现在必须三项全空或全设。
-- **ShellCheck：** 有界 Docker Registry 查询取得官方 `koalaman/shellcheck-alpine:v0.10.0` linux/amd64 digest `sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577`。只 pull/run 该一份 digest-pinned image，`--network none --entrypoint shellcheck` 对五个交付脚本 exit 0；首次 run 的 image 默认 `/bin/sh` 误执行 bash shebang，inspect 后改用 entrypoint，未下载任何其他工具或镜像。
+The detailed records below run oldest-to-newest; records sharing a calendar date
+retain their existing source order.
 
 ## 2026-08-08T03:21:59+08:00 — PRE-SPEC / Brainstorming
 

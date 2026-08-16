@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -77,6 +78,16 @@ def _duplicate_table_row(text: str, heading: str, key: str) -> str:
             lines.insert(end, lines[index])
             return "\n".join(lines) + "\n"
     raise AssertionError(f"missing test fixture row: {heading} / {key}")
+
+
+def _swap_table_rows(text: str, heading: str, first_key: str, second_key: str) -> str:
+    lines = text.splitlines()
+    start, end = _table_bounds(lines, heading)
+    indexes = {lines[index].split("|")[1].strip(): index for index in range(start + 2, end)}
+    first_index = indexes[first_key]
+    second_index = indexes[second_key]
+    lines[first_index], lines[second_index] = lines[second_index], lines[first_index]
+    return "\n".join(lines) + "\n"
 
 
 def _replace_section_metadata(text: str, section_id: str, label: str, value: str) -> str:
@@ -507,6 +518,145 @@ def _validate_with_course_document_mutation(tmp_path: Path, name: str, old: str,
     validate_delivery_report(report, repo_root=repository_copy, now=NOW)
 
 
+FINAL_CI_MARKER = (
+    "<!-- FINAL-CI-RELATIONSHIP: "
+    "implementation-sha=0674f74f4097e46cee98c4715a62ad5aa55101cf; "
+    "run=31966788273; "
+    "jobs=quality:success,e2e:success,distribution:success; "
+    "github=required; gitlab=supplemental-not-run; "
+    "reconciliation=docs-only-requires-separate-final-sha-publication-ci -->"
+)
+FINAL_CI_STATEMENT = (
+    "Any later docs-only reconciliation is not product implementation evidence and requires "
+    "its own separate final-SHA publication/CI gate before Task 6 can be complete."
+)
+
+
+def _repository_copy(tmp_path: Path, label: str) -> Path:
+    report = load_delivery_report(REPORT_PATH)
+    repository_copy = tmp_path / label
+    required_paths = {
+        "README.md",
+        "PLAN.md",
+        "AGENT_LOG.md",
+        "BLOCKERS.md",
+        "REFLECTION_NOTES.md",
+        "COURSE_DELIVERY_CHECKLIST.md",
+        *(evidence.path for evidence in report.evidence),
+    }
+    for relative_path in required_paths:
+        source = ROOT / relative_path
+        destination = repository_copy / relative_path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, destination)
+    return repository_copy
+
+
+def _validate_course_document_text(tmp_path: Path, name: str, text: str, *, label: str) -> None:
+    repository_copy = _repository_copy(tmp_path, label)
+    (repository_copy / name).write_text(text, encoding="utf-8")
+    report = load_delivery_report(REPORT_PATH)
+    validate_delivery_report(report, repo_root=repository_copy, now=NOW)
+
+
+def _repository_copy_with_relationship_contracts(tmp_path: Path, label: str) -> Path:
+    repository_copy = _repository_copy(tmp_path, label)
+    for name in ("PLAN.md", "README.md", "COURSE_DELIVERY_CHECKLIST.md"):
+        path = repository_copy / name
+        text = path.read_text(encoding="utf-8")
+        text = re.sub(r"(?m)^<!-- FINAL-CI-RELATIONSHIP: .+ -->\n?", "", text)
+        text = text.replace(FINAL_CI_STATEMENT + "\n", "")
+        path.write_text(
+            text.rstrip() + f"\n\n{FINAL_CI_MARKER}\n{FINAL_CI_STATEMENT}\n",
+            encoding="utf-8",
+        )
+    return repository_copy
+
+
+def _relationship_validation_error(
+    tmp_path: Path, name: str, old: str, new: str, field: str
+) -> str:
+    repository_copy = _repository_copy_with_relationship_contracts(
+        tmp_path, f"relationship-{name}-{field}"
+    )
+    path = repository_copy / name
+    text = path.read_text(encoding="utf-8")
+    assert old in text
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    report = load_delivery_report(REPORT_PATH)
+    with pytest.raises(DeliveryValidationError) as caught:
+        validate_delivery_report(report, repo_root=repository_copy, now=NOW)
+    return str(caught.value)
+
+
+def test_delivery_evidence_index_rejects_descending_observed_timestamps(
+    tmp_path: Path,
+) -> None:
+    mutation = _swap_table_rows(_report_text(), "## Evidence index", "DEL-004", "DEL-005")
+
+    assert "evidence index must be oldest-to-newest" in _validation_error(tmp_path, mutation)
+
+
+def test_agent_log_summary_and_detailed_records_reject_reverse_order(tmp_path: Path) -> None:
+    summary_first = "### Retained TASK 21 / Tencent Cloud delivery scripts (local-only) summary"
+    summary_second = "### Retained TASK 21 / review fix round 1 summary"
+    agent_log = (ROOT / "AGENT_LOG.md").read_text(encoding="utf-8")
+    swapped = (
+        agent_log.replace(summary_first, "SUMMARY-SWAP", 1)
+        .replace(summary_second, summary_first, 1)
+        .replace("SUMMARY-SWAP", summary_second, 1)
+    )
+    with pytest.raises(DeliveryValidationError, match="summary records must be oldest-to-newest"):
+        _validate_course_document_text(
+            tmp_path, "AGENT_LOG.md", swapped, label="agent-log-summary-reverse"
+        )
+
+    reverse_detail = agent_log.replace(
+        "## 2026-08-08T03:21:59+08:00",
+        "## 2026-08-17T03:21:59+08:00",
+        1,
+    )
+    with pytest.raises(DeliveryValidationError, match="detailed records must be oldest-to-newest"):
+        _validate_course_document_text(
+            tmp_path, "AGENT_LOG.md", reverse_detail, label="agent-log-detail-reverse"
+        )
+
+
+@pytest.mark.parametrize("name", ("PLAN.md", "README.md", "COURSE_DELIVERY_CHECKLIST.md"))
+@pytest.mark.parametrize(
+    ("field", "old", "new"),
+    (
+        (
+            "implementation-sha",
+            "implementation-sha=0674f74f4097e46cee98c4715a62ad5aa55101cf",
+            "implementation-sha=966d403196e838d4b0589b410d684376e092e55c",
+        ),
+        ("run", "run=31966788273", "run=31966788274"),
+        ("quality", "quality:success", "quality:failed"),
+        ("e2e", "e2e:success", "e2e:missing"),
+        ("distribution", "distribution:success", "distribution:failed"),
+        ("github", "github=required", "github=supplemental"),
+        ("gitlab", "gitlab=supplemental-not-run", "gitlab=required"),
+        (
+            "reconciliation",
+            "reconciliation=docs-only-requires-separate-final-sha-publication-ci",
+            "reconciliation=inherits-product-run",
+        ),
+        (
+            "statement",
+            FINAL_CI_STATEMENT,
+            "The later docs-only reconciliation inherits the product implementation run.",
+        ),
+    ),
+)
+def test_course_documents_reject_each_broken_final_ci_relationship(
+    tmp_path: Path, name: str, field: str, old: str, new: str
+) -> None:
+    error = _relationship_validation_error(tmp_path, name, old, new, field)
+
+    assert f"{name} final-CI relationship has invalid {field}" in error
+
+
 def test_course_status_documents_reject_stale_draft_and_final_ci_claims(
     tmp_path: Path,
 ) -> None:
@@ -521,7 +671,7 @@ def test_course_status_documents_reject_stale_draft_and_final_ci_claims(
     for name in ("PLAN.md", "README.md", "COURSE_DELIVERY_CHECKLIST.md"):
         with pytest.raises(
             DeliveryValidationError,
-            match=f"{name} must retain the verified implementation SHA boundary",
+            match=f"{name} final-CI relationship has invalid implementation-sha",
         ):
             _validate_with_course_document_mutation(
                 tmp_path,

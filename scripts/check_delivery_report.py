@@ -163,6 +163,33 @@ EXPECTED_PRODUCT_NARRATIVE_SHA256 = (
     "0a3acbf4202eca3f1b69adb941d8a2e797a06e216e2453c53083b05fdf3a3ee1"
 )
 FINAL_IMPLEMENTATION_SHA_BOUNDARY = "0674f74f4097e46cee98c4715a62ad5aa55101cf"
+FINAL_CI_RUN = "31966788273"
+FINAL_CI_MARKER_PREFIX = "<!-- FINAL-CI-RELATIONSHIP: "
+FINAL_CI_MARKER_SUFFIX = " -->"
+FINAL_CI_STATEMENT = (
+    "Any later docs-only reconciliation is not product implementation evidence and requires "
+    "its own separate final-SHA publication/CI gate before Task 6 can be complete."
+)
+EXPECTED_FINAL_CI_RELATIONSHIP = {
+    "implementation-sha": FINAL_IMPLEMENTATION_SHA_BOUNDARY,
+    "run": FINAL_CI_RUN,
+    "quality": "success",
+    "e2e": "success",
+    "distribution": "success",
+    "github": "required",
+    "gitlab": "supplemental-not-run",
+    "reconciliation": "docs-only-requires-separate-final-sha-publication-ci",
+}
+AGENT_LOG_SUMMARY_HEADINGS = (
+    "### Retained TASK 21 / Tencent Cloud delivery scripts (local-only) summary",
+    "### Retained TASK 21 / review fix round 1 summary",
+    "### Retained TASK 22 / Functional Audit 与验收缺口闭环 summary",
+    "### Retained TASK 23 / final review fix wave round 19/20 summary",
+    "### Retained TASK 24 / Product Audit and delivery report summary",
+    "### Current post-Task-24 maintenance summary",
+)
+AGENT_LOG_SUMMARY_START = "## Retained Task 21–24 summary chronology"
+AGENT_LOG_DETAIL_START = "## Detailed dated implementation log"
 EXPECTED_DEL_011_SUMMARY = (
     "Historical Task 24 implementation evidence only; it cannot verify the final PR SHA, "
     "which is recorded separately by DEL-012."
@@ -782,9 +809,50 @@ def validate_course_status_documents(repo_root: Path) -> tuple[str, ...]:
     if "student-authored reflection draft" not in normalized_plan_block:
         errors.append("PLAN.md current status must describe the student-authored reflection draft")
     for name, text in text_by_name.items():
-        normalized_text = re.sub(r"\s+", " ", text.replace(">", " "))
-        if FINAL_IMPLEMENTATION_SHA_BOUNDARY not in normalized_text:
-            errors.append(f"{name} must retain the verified implementation SHA boundary")
+        marker_lines = [
+            line
+            for line in text.splitlines()
+            if line.startswith(FINAL_CI_MARKER_PREFIX) and line.endswith(FINAL_CI_MARKER_SUFFIX)
+        ]
+        observed: dict[str, str] = {}
+        if len(marker_lines) == 1:
+            payload = marker_lines[0][len(FINAL_CI_MARKER_PREFIX) : -len(FINAL_CI_MARKER_SUFFIX)]
+            for segment in payload.split(";"):
+                if "=" not in segment:
+                    continue
+                key, value = (part.strip() for part in segment.split("=", maxsplit=1))
+                if key == "jobs":
+                    for job in value.split(","):
+                        if ":" in job:
+                            job_name, job_status = (
+                                part.strip() for part in job.split(":", maxsplit=1)
+                            )
+                            observed[job_name] = job_status
+                else:
+                    observed[key] = value
+        for field, expected in EXPECTED_FINAL_CI_RELATIONSHIP.items():
+            if observed.get(field) != expected:
+                errors.append(f"{name} final-CI relationship has invalid {field}")
+        if text.count(FINAL_CI_STATEMENT) != 1:
+            errors.append(f"{name} final-CI relationship has invalid statement")
+
+    agent_log = (repo_root / "AGENT_LOG.md").read_text(encoding="utf-8")
+    if AGENT_LOG_SUMMARY_START not in agent_log or AGENT_LOG_DETAIL_START not in agent_log:
+        errors.append("AGENT_LOG.md chronology collection markers are missing")
+    else:
+        summary = agent_log.split(AGENT_LOG_SUMMARY_START, maxsplit=1)[1].split(
+            AGENT_LOG_DETAIL_START, maxsplit=1
+        )[0]
+        observed_headings = tuple(line for line in summary.splitlines() if line.startswith("### "))
+        if observed_headings != AGENT_LOG_SUMMARY_HEADINGS:
+            errors.append("AGENT_LOG.md summary records must be oldest-to-newest")
+        detail = agent_log.split(AGENT_LOG_DETAIL_START, maxsplit=1)[1]
+        detail_dates = [
+            datetime.strptime(match, "%Y-%m-%d").date()
+            for match in re.findall(r"(?m)^## (\d{4}-\d{2}-\d{2})", detail)
+        ]
+        if any(later < earlier for earlier, later in zip(detail_dates, detail_dates[1:])):
+            errors.append("AGENT_LOG.md detailed records must be oldest-to-newest")
     return tuple(errors)
 
 
@@ -851,6 +919,8 @@ def validate_delivery_report(
         errors.append(f"duplicate evidence ids: {', '.join(duplicate_evidence)}")
     if unexpected_evidence:
         errors.append(f"unexpected evidence ids: {', '.join(unexpected_evidence)}")
+    prior_observed_at: datetime | None = None
+    prior_evidence_id: str | None = None
     for report_evidence in report.evidence:
         if report_evidence.kind not in VALID_EVIDENCE_KINDS:
             errors.append(f"{report_evidence.evidence_id} has invalid evidence kind")
@@ -859,8 +929,16 @@ def validate_delivery_report(
         observed_at = _parse_utc(report_evidence.observed_at_raw)
         if observed_at is None:
             errors.append(f"{report_evidence.evidence_id} has invalid observed UTC")
-        elif observed_at > now or (generated_at is not None and observed_at > generated_at):
-            errors.append(f"{report_evidence.evidence_id} has an impossible observed UTC")
+        else:
+            if prior_observed_at is not None and observed_at < prior_observed_at:
+                errors.append(
+                    "evidence index must be oldest-to-newest: "
+                    f"{report_evidence.evidence_id} is older than preceding {prior_evidence_id}"
+                )
+            prior_observed_at = observed_at
+            prior_evidence_id = report_evidence.evidence_id
+            if observed_at > now or (generated_at is not None and observed_at > generated_at):
+                errors.append(f"{report_evidence.evidence_id} has an impossible observed UTC")
         contract = EVIDENCE_CONTRACTS.get(report_evidence.evidence_id)
         observed_contract = EvidenceContract(
             report_evidence.kind,

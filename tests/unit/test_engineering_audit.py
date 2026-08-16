@@ -126,6 +126,16 @@ def _duplicate_table_row(text: str, heading: str, key: str, *, new_key: str | No
     raise AssertionError(f"missing fixture row: {heading} / {key}")
 
 
+def _swap_table_rows(text: str, heading: str, first_key: str, second_key: str) -> str:
+    lines = text.splitlines()
+    start, end = _table_bounds(lines, heading)
+    indexes = {lines[index].split("|")[1].strip(): index for index in range(start + 2, end)}
+    first_index = indexes[first_key]
+    second_index = indexes[second_key]
+    lines[first_index], lines[second_index] = lines[second_index], lines[first_index]
+    return "\n".join(lines) + "\n"
+
+
 def _validation_error(tmp_path: Path, text: str) -> str:
     audit = load_audit(_write_audit(tmp_path, text))
     with pytest.raises(AuditValidationError) as caught:
@@ -230,6 +240,12 @@ def test_evidence_schema_and_time_fail_closed(
     mutation = _replace_table_cell(_audit_text(), EVIDENCE_HEADING, "E003", column, value)
 
     assert expected in _validation_error(tmp_path, mutation)
+
+
+def test_evidence_index_rejects_descending_observed_timestamps(tmp_path: Path) -> None:
+    mutation = _swap_table_rows(_audit_text(), EVIDENCE_HEADING, "E001", "E002")
+
+    assert "evidence index must be oldest-to-newest" in _validation_error(tmp_path, mutation)
 
 
 @pytest.mark.parametrize(
@@ -843,7 +859,7 @@ def test_current_acceptance_evidence_is_a_fixed_engineering_contract(tmp_path: P
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md"
     )
-    collected_count = 47
+    collected_count = 48
     expected_result = f"{collected_count} passed; 40 items validated PASS=36 PARTIAL=4 FAIL=0"
 
     assert checker.FIXED_EVIDENCE_CONTRACTS["E030"] == (
