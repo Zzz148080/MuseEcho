@@ -127,16 +127,18 @@ FIXED_EVIDENCE_CONTRACTS = {
         "mypy each passed 47 source files",
     ),
     "E013": (
-        "CURRENT_COMMAND",
+        "IMPLEMENTATION_BOUNDARY_COMMAND",
         "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
         "scripts/container-pytest.ps1 -Image museecho-task3-verification-env:latest; "
         r".venv\Scripts\python.exe -m pytest "
         "tests/unit/test_task20_final_delivery_contract.py -q",
         "tests",
-        "841 passed, 7 skipped in the locked Linux current-source verification runtime, "
+        "841 passed, 7 skipped in the locked Linux verification runtime at a historical "
+        "implementation boundary, "
         "including the 100 MiB upload-limit regressions; 20 passed on the PowerShell host, "
         "including the four PowerShell-only harnesses; "
-        "container and task-temp cleanup completed",
+        "this evidence predates 7f8412b and cannot prove its playback/rhythm changes or the "
+        "final branch tip; container and task-temp cleanup completed",
     ),
     "E015": (
         "EXTERNAL_NOT_RUN",

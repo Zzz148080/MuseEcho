@@ -110,6 +110,32 @@ def test_long_ambiguous_track_surfaces_a_tentative_half_tempo(monkeypatch):
     assert len(result.beat_positions_seconds) >= 3
 
 
+def test_constant_positive_onset_envelope_returns_unknown_rhythm(monkeypatch):
+    monkeypatch.setattr(
+        "museecho.analysis.rhythm._chunked_onset_strength",
+        lambda *args, **kwargs: np.ones(600, dtype=np.float64),
+    )
+
+    result = estimate_rhythm(
+        np.full(60_000, 0.1, dtype=np.float32),
+        1_000,
+        hop_length=100,
+        minimum_duration_seconds=2.0,
+        minimum_signal_rms=1e-4,
+        minimum_confidence=0.55,
+        minimum_onset_periodicity=0.2,
+        maximum_beat_accent_imbalance=0.25,
+        maximum_sample_rate=1_000,
+        n_fft=128,
+        band_count=32,
+        chunk_seconds=30.0,
+    )
+
+    assert result.bpm is None
+    assert result.confidence is None
+    assert result.beat_positions_seconds == ()
+
+
 @pytest.mark.parametrize("bpm", [180.0, 220.0])
 def test_fast_metronome_does_not_report_a_high_confidence_half_tempo(bpm: float):
     result = extract_signal_features(

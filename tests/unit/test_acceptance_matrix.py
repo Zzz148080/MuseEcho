@@ -526,6 +526,9 @@ def test_current_branch_evidence_does_not_recast_pre_feature_smoke_as_current() 
 
     assert "museecho-task3-verification-env:latest" in contracts["E008"].command
     assert "pytest-tests=649" != contracts["E008"].result
+    assert contracts["E008"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert evidence_by_id["E008"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert "predates 7f8412b" in evidence_by_id["E008"].summary
     assert contracts["E009"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
     assert contracts["E009"].supports_pass is False
     assert "-NoBuild -ReleaseManifest" in contracts["E009"].command
@@ -558,13 +561,14 @@ def test_current_branch_evidence_does_not_recast_pre_feature_smoke_as_current() 
 def test_pre_feature_smoke_cannot_be_recast_as_current_branch_evidence(
     tmp_path: Path,
 ) -> None:
-    mutation = _replace_table_cell(
-        _audit_text(), "## Evidence index", "E009", "Kind", "CURRENT_COMMAND"
-    )
+    for evidence_id in ("E008", "E009"):
+        mutation = _replace_table_cell(
+            _audit_text(), "## Evidence index", evidence_id, "Kind", "CURRENT_COMMAND"
+        )
 
-    assert "E009 does not match its fixed evidence contract" in _validation_error(
-        tmp_path, mutation
-    )
+        assert f"{evidence_id} does not match its fixed evidence contract" in _validation_error(
+            tmp_path, mutation
+        )
 
 
 @pytest.mark.parametrize("evidence_id", ("E002", "E906"))

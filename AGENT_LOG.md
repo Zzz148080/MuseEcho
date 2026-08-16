@@ -65,7 +65,7 @@ acceptance remain open. Historical statements below retain their dated boundarie
   checklist entries remain `RESERVED`; the checker rejects filled reflection or
   agent-claimed completion.
 - **Readiness:** Task 24 itself is complete and removed from current blockers.
-  The exact project status remains `MUSEECHO V1 PARTIALLY READY` for the five
+  The exact project status remains `MUSEECHO V1 PARTIALLY READY` for the three
   blocker classes recorded in the delivery report.
 - **Review RED/GREEN:** four new assertions failed on the old pending/browser
   story: all 13 rows still said `CONTROLLER_PENDING`, PAE-900 said NOT_RUN,

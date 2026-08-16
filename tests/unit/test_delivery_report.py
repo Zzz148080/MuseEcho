@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from scripts.check_delivery_report import (
+    EVIDENCE_CONTRACTS,
     EXPECTED_EVIDENCE_IDS,
     EXPECTED_PRODUCT_AUDIT_IDS,
     EXPECTED_SECTION_IDS,
@@ -266,9 +267,7 @@ def test_partially_ready_blocker_requires_pending_evidence_and_precise_closure(
         "later",
     )
 
-    assert "BLK-FORMAL-OFFLINE-BUILD requires evidence" in _validation_error(
-        tmp_path, no_evidence
-    )
+    assert "BLK-FORMAL-OFFLINE-BUILD requires evidence" in _validation_error(tmp_path, no_evidence)
     assert "BLK-FORMAL-OFFLINE-BUILD closure criteria are not precise" in _validation_error(
         tmp_path, vague
     )
@@ -491,9 +490,7 @@ def test_course_status_documents_reject_stale_draft_and_final_ci_claims() -> Non
         DeliveryValidationError,
         match="PLAN.md current status must describe the student-authored reflection draft",
     ):
-        _validate_with_course_document_mutation(
-            "PLAN.md", "student-authored", "blank student"
-        )
+        _validate_with_course_document_mutation("PLAN.md", "student-authored", "blank student")
 
     for name in ("PLAN.md", "README.md", "COURSE_DELIVERY_CHECKLIST.md"):
         with pytest.raises(
@@ -507,7 +504,20 @@ def test_course_status_documents_reject_stale_draft_and_final_ci_claims() -> Non
             )
 
 
-def test_checker_cli_accepts_the_committed_delivery_report() -> None:
+def test_checker_cli_accepts_the_committed_delivery_report(tmp_path: Path) -> None:
+    expected = (
+        "delivery-sections=17; evidence=16; blockers=3; readiness=MUSEECHO V1 PARTIALLY READY"
+    )
+    report = load_delivery_report(REPORT_PATH)
+    evidence = next(item for item in report.evidence if item.evidence_id == "DEL-007")
+
+    assert EVIDENCE_CONTRACTS["DEL-007"].result == expected
+    assert evidence.result == expected
+    mutation = _report_text().replace(expected, expected.replace("blockers=3", "blockers=5"), 1)
+    assert "DEL-007 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
     completed = subprocess.run(
         [sys.executable, "scripts/check_delivery_report.py", "DELIVERY_REPORT.md"],
         cwd=ROOT,

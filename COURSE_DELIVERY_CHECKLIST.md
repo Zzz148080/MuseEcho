@@ -11,7 +11,7 @@
 | 1 | `SPEC.md` | `SPEC.md`、`DESIGN.md`、`DECISIONS.md` | 材料已有；已同步当前七种音频格式与 100 MiB 边界。 |
 | 2 | `PLAN.md` | `PLAN.md`、`docs/superpowers/plans/` | 24 个原始任务与 Task 24 后维护记录均存在；最终分支验证仍待如实记录。 |
 | 3 | `SPEC_PROCESS.md` | `SPEC_PROCESS.md`、`COLD_START_REPORT.md`、`HUMAN_APPROVAL.md` | 已有真实 brainstorming、三轮迭代、不同 Agent cold-start 与修订记录。 |
-| 4 | 源码、细粒度 Git/PR 历史 | `src/`、`frontend/`、`tests/`、Git 历史 | 已有实施历史；当前分支尚有后续提交和未提交改动，提交前须逐项整理、推送、建立 PR 并以最新 SHA 复验。 |
+| 4 | 源码、细粒度 Git/PR 历史 | `src/`、`frontend/`、`tests/`、Git 历史 | 已有实施历史与后续本地提交；当前状态是待推送并以最终 SHA 执行 GitHub CI 复验。 |
 | 5 | 容器分发与 README | `Dockerfile`、`compose.yaml`、`README.md` | 本地容器构建/运行说明齐全；公开 registry 镜像与正式离线构建仍未完成，不能标记分发完成。 |
 | 6 | `AGENT_LOG.md` | `AGENT_LOG.md` | Tasks 1–24 过程记录存在；Task 24 后维护的范围、提交与验证边界已补记，不能倒填不存在的技能、人工批准或测试。 |
 | 7 | CI 配置与最后一次通过记录 | `.github/workflows/ci.yml` | 本次课程只要求 GitHub；final PR SHA is verified only by live GitHub checks after push。`DELIVERY_REPORT.md` 的 `DEL-011` 仅是历史 Task 24 implementation evidence，不能代替最终 CI。GitLab 配置保留为后续流水线材料。 |

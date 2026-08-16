@@ -242,7 +242,7 @@ EVIDENCE_CONTRACTS = {
         "scripts/check_delivery_report.py DELIVERY_REPORT.md",
         "DELIVERY_REPORT.md",
         "DR-01, DR-10",
-        "delivery-sections=17; evidence=16; blockers=5; readiness=MUSEECHO V1 PARTIALLY READY",
+        "delivery-sections=17; evidence=16; blockers=3; readiness=MUSEECHO V1 PARTIALLY READY",
         "0",
         "PASS",
     ),
@@ -749,12 +749,12 @@ def _validate_current_status_documents(repo_root: Path, errors: list[str]) -> No
 def validate_course_status_documents(repo_root: Path) -> tuple[str, ...]:
     errors: list[str] = []
     documents = ("PLAN.md", "README.md", "COURSE_DELIVERY_CHECKLIST.md")
-    text_by_name = {
-        name: (repo_root / name).read_text(encoding="utf-8") for name in documents
-    }
-    plan_block = text_by_name["PLAN.md"].split(CURRENT_STATUS_START, maxsplit=1)[1].split(
-        CURRENT_STATUS_END, maxsplit=1
-    )[0]
+    text_by_name = {name: (repo_root / name).read_text(encoding="utf-8") for name in documents}
+    plan_block = (
+        text_by_name["PLAN.md"]
+        .split(CURRENT_STATUS_START, maxsplit=1)[1]
+        .split(CURRENT_STATUS_END, maxsplit=1)[0]
+    )
     normalized_plan_block = re.sub(r"\s+", " ", plan_block.replace(">", " "))
     if "student-authored reflection draft" not in normalized_plan_block:
         errors.append("PLAN.md current status must describe the student-authored reflection draft")

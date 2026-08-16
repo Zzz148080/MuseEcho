@@ -857,6 +857,23 @@ def test_current_engineering_gates_do_not_recast_pre_feature_image_evidence() ->
     assert "pre-feature task 23 image" in contracts["E022"][3].lower()
 
 
+def test_841_test_evidence_is_a_historical_implementation_boundary(
+    tmp_path: Path,
+) -> None:
+    audit = load_audit(AUDIT_PATH)
+    evidence = next(item for item in audit.evidence if item.evidence_id == "E013")
+
+    assert checker.FIXED_EVIDENCE_CONTRACTS["E013"][0] == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert evidence.kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert "predates 7f8412b" in evidence.result
+    mutation = _replace_table_cell(
+        _audit_text(), EVIDENCE_HEADING, "E013", "Kind", "CURRENT_COMMAND"
+    )
+    assert "E013 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
+
 def test_pre_feature_image_audit_cannot_be_recast_as_current_runtime_evidence(
     tmp_path: Path,
 ) -> None:

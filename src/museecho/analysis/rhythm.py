@@ -69,6 +69,8 @@ def estimate_rhythm(
         sample_rate=rhythm_sample_rate,
         hop_length=rhythm_hop_length,
     )
+    if not math.isfinite(bpm) or bpm <= 0.0:
+        return _unknown_rhythm()
     frames = _chunked_beat_frames(
         onset_envelope,
         bpm=bpm,

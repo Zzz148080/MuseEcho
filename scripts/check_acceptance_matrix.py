@@ -231,7 +231,7 @@ EVIDENCE_CONTRACTS = {
         supports_pass=False,
     ),
     "E008": EvidenceContract(
-        kind="CURRENT_COMMAND",
+        kind="IMPLEMENTATION_BOUNDARY_COMMAND",
         command=(
             "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
             "scripts/container-pytest.ps1 -Image museecho-task3-verification-env:latest; "
