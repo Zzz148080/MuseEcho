@@ -180,6 +180,71 @@ EXPECTED_FINAL_CI_RELATIONSHIP = {
     "gitlab": "supplemental-not-run",
     "reconciliation": "docs-only-requires-separate-final-sha-publication-ci",
 }
+VISIBLE_FINAL_CI_CONTRACTS = {
+    "PLAN.md": {
+        "run": ("PR #3 run `31966788273`",),
+        "implementation-sha": (
+            "on exact final product/CI implementation SHA "
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`.",
+        ),
+        "jobs": (
+            "PR #3 run `31966788273` passed GitHub quality (5m43s), E2E (3m10s), "
+            "and distribution (7m30s) on exact final product/CI implementation SHA "
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`.",
+        ),
+        "github": ("passed GitHub quality (5m43s), E2E (3m10s), and distribution (7m30s)",),
+        "gitlab": (
+            "GitLab and Tencent Cloud/public deployment are deferred follow-up work.",
+            "no GitLab, Release, cloud-deployment, or student-acceptance completion is claimed.",
+        ),
+        "reconciliation": (FINAL_CI_STATEMENT,),
+    },
+    "README.md": {
+        "run": ("PR #3 run `31966788273`",),
+        "implementation-sha": (
+            "on exact final product/CI implementation SHA "
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`.",
+        ),
+        "jobs": (
+            "PR #3 run `31966788273` passed GitHub quality (5m43s), E2E (3m10s), "
+            "and distribution (7m30s) on exact final product/CI implementation SHA "
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`.",
+        ),
+        "github": ("passed GitHub quality (5m43s), E2E (3m10s), and distribution (7m30s)",),
+        "gitlab": (
+            "GitLab and Tencent Cloud/public deployment are deferred follow-up work, "
+            "not course submission gates.",
+            "未发生的 GitLab、Release、云部署、学生验收写成完成。",
+        ),
+        "reconciliation": (
+            FINAL_CI_STATEMENT,
+            "后续文档 reconciliation 不改变产品架构或把未发生的",
+        ),
+    },
+    "COURSE_DELIVERY_CHECKLIST.md": {
+        "run": (
+            "PR #3 run `31966788273` 在 final implementation SHA "
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过。",
+            "`DEL-012` 记录 run `31966788273` 在 SHA `0674f74f4097e46cee98c4715a62ad5aa55101cf`",
+        ),
+        "implementation-sha": (
+            "PR #3 run `31966788273` 在 final implementation SHA "
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过。",
+            "`DEL-012` 记录 run `31966788273` 在 SHA `0674f74f4097e46cee98c4715a62ad5aa55101cf`",
+        ),
+        "jobs": (
+            "`DEL-012` 记录 run `31966788273` 在 SHA "
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf` 的 "
+            "quality/E2E/distribution 全绿。",
+        ),
+        "github": ("本次课程只要求 GitHub；",),
+        "gitlab": ("GitLab 配置保留为 supplemental 后续材料。",),
+        "reconciliation": (
+            FINAL_CI_STATEMENT,
+            "文档 reconciliation commit 不冒充第二次产品验证。",
+        ),
+    },
+}
 AGENT_LOG_SUMMARY_HEADINGS = (
     "### Retained TASK 21 / Tencent Cloud delivery scripts (local-only) summary",
     "### Retained TASK 21 / review fix round 1 summary",
@@ -835,6 +900,13 @@ def validate_course_status_documents(repo_root: Path) -> tuple[str, ...]:
                 errors.append(f"{name} final-CI relationship has invalid {field}")
         if text.count(FINAL_CI_STATEMENT) != 1:
             errors.append(f"{name} final-CI relationship has invalid statement")
+        visible_text = "\n".join(
+            line for line in text.splitlines() if not line.startswith(FINAL_CI_MARKER_PREFIX)
+        )
+        normalized_visible_text = re.sub(r"\s+", " ", visible_text.replace(">", " "))
+        for field, required_fragments in VISIBLE_FINAL_CI_CONTRACTS[name].items():
+            if any(fragment not in normalized_visible_text for fragment in required_fragments):
+                errors.append(f"{name} visible final-CI relationship has invalid {field}")
 
     agent_log = (repo_root / "AGENT_LOG.md").read_text(encoding="utf-8")
     if AGENT_LOG_SUMMARY_START not in agent_log or AGENT_LOG_DETAIL_START not in agent_log:

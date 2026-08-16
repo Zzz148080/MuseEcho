@@ -589,6 +589,23 @@ def _relationship_validation_error(
     return str(caught.value)
 
 
+def _visible_relationship_validation_error(
+    tmp_path: Path, name: str, old: str, new: str, field: str
+) -> str:
+    repository_copy = _repository_copy(tmp_path, f"visible-relationship-{name}-{field}")
+    path = repository_copy / name
+    text = path.read_text(encoding="utf-8")
+    visible, marker_and_rest = text.split(FINAL_CI_MARKER, maxsplit=1)
+    assert old in visible
+    mutated = visible.replace(old, new, 1) + FINAL_CI_MARKER + marker_and_rest
+    assert FINAL_CI_MARKER in mutated
+    path.write_text(mutated, encoding="utf-8")
+    report = load_delivery_report(REPORT_PATH)
+    with pytest.raises(DeliveryValidationError) as caught:
+        validate_delivery_report(report, repo_root=repository_copy, now=NOW)
+    return str(caught.value)
+
+
 def test_delivery_evidence_index_rejects_descending_observed_timestamps(
     tmp_path: Path,
 ) -> None:
@@ -655,6 +672,48 @@ def test_course_documents_reject_each_broken_final_ci_relationship(
     error = _relationship_validation_error(tmp_path, name, old, new, field)
 
     assert f"{name} final-CI relationship has invalid {field}" in error
+
+
+@pytest.mark.parametrize(
+    ("name", "field", "old", "new"),
+    (
+        ("PLAN.md", "run", "`31966788273`", "`31966788274`"),
+        (
+            "PLAN.md",
+            "implementation-sha",
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`",
+            "`966d403196e838d4b0589b410d684376e092e55c`",
+        ),
+        ("PLAN.md", "jobs", "passed GitHub quality", "failed GitHub quality"),
+        ("README.md", "run", "`31966788273`", "`31966788274`"),
+        (
+            "README.md",
+            "implementation-sha",
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`",
+            "`966d403196e838d4b0589b410d684376e092e55c`",
+        ),
+        ("README.md", "jobs", "passed GitHub quality", "failed GitHub quality"),
+        ("COURSE_DELIVERY_CHECKLIST.md", "run", "`31966788273`", "`31966788274`"),
+        (
+            "COURSE_DELIVERY_CHECKLIST.md",
+            "implementation-sha",
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`",
+            "`966d403196e838d4b0589b410d684376e092e55c`",
+        ),
+        (
+            "COURSE_DELIVERY_CHECKLIST.md",
+            "jobs",
+            "quality/E2E/distribution 全绿",
+            "quality/E2E/distribution 未全绿",
+        ),
+    ),
+)
+def test_course_documents_reject_visible_final_ci_drift_with_marker_unchanged(
+    tmp_path: Path, name: str, field: str, old: str, new: str
+) -> None:
+    error = _visible_relationship_validation_error(tmp_path, name, old, new, field)
+
+    assert f"{name} visible final-CI relationship has invalid {field}" in error
 
 
 def test_course_status_documents_reject_stale_draft_and_final_ci_claims(
