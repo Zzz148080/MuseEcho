@@ -39,7 +39,7 @@ V1 必须形成以下闭环：
 
 ### US-01 上传并分析
 
-作为拥有合法音频使用权的用户，我希望上传 WAV 或 MP3 并看到真实分析进度，以便知道系统正在处理什么以及何时可以查看结果。
+作为拥有合法音频使用权的用户，我希望上传受支持的 WAV、MP3、FLAC、M4A、AAC、OGG 或 OPUS 音频并看到真实分析进度，以便知道系统正在处理什么以及何时可以查看结果。
 
 验收要点：文件限制和隐私规则在上传前可见；失败原因可理解；任务可在刷新后恢复。
 
@@ -83,13 +83,16 @@ V1 必须形成以下闭环：
 
 ### 5.1 音频上传与任务管理
 
-输入：单个 WAV 或 MP3 文件。
+输入：单个受支持的 WAV、MP3、FLAC、M4A、AAC、OGG 或 OPUS 文件。
 
 格式边界：WAV 只接受无压缩 PCM 或 IEEE-float（包括 `cbSize >= 22`、声明扩展字节有界且
 `0 < valid_bits <= container_bits` 的 WAVEFORMATEXTENSIBLE）；MP3 只接受可由非零 bitrate
-index 计算帧大小的常规 MPEG Layer III。V1 明确不支持 free-format（bitrate index `0000`）MP3。
+index 计算帧大小的常规 MPEG Layer III；M4A 只接受 AAC/ALAC；AAC 只接受 ADTS AAC；OGG/OPUS
+只接受 Vorbis/Opus。V1 明确不支持 free-format（bitrate index `0000`）MP3、`.mp4`、`.oga`、
+DRM 或专有加密下载。扩展名和浏览器 MIME 仅用于预检，服务端仍须校验签名、容器、全部媒体流
+与编解码器。
 
-限制：最多 100 MB、10 分钟。
+限制：最多 100 MiB、10 分钟。
 
 行为：流式接收、文件签名校验、真实解码校验、随机内部命名、创建异步任务、显示实际阶段状态。
 
@@ -161,8 +164,8 @@ LLM 不得创建或修改 chord、timestamp、instrument、modulation、structur
 
 | 场景 | 系统行为 | 用户可见结果 |
 | --- | --- | --- |
-| 扩展名或 MIME 伪造 | 按签名和解码结果拒绝 | “文件不是有效 WAV/MP3” |
-| 文件超过 100 MB | 流式接收阶段终止 | 显示大小上限，不创建任务 |
+| 扩展名或 MIME 伪造 | 按签名和解码结果拒绝 | “文件不是受支持的音频格式” |
+| 文件超过 100 MiB | 流式接收阶段终止 | 显示大小上限，不创建任务 |
 | 时长超过 10 分钟 | 解码元数据后删除临时数据 | 显示时长上限 |
 | 损坏音频 | 解码失败并清理 | 稳定错误码和重试建议 |
 | 静音或极短音频 | 完成可获得的分析 | 标记证据不足，不伪造结果 |
@@ -186,7 +189,7 @@ LLM 不得创建或修改 chord、timestamp、instrument、modulation、structur
 - 5 分钟常规音频的分析目标为 90 秒内完成；最终以目标服务器实测为准。
 - 前端只接收降采样波形和必要时间序列，不下载完整分析中间矩阵。
 - 结构地图常规交互目标为 60 FPS；数据量过大时先聚合再绘制。
-- 上传和播放支持背压与 Range 请求，不将 100 MB 上限以上内容读入内存。
+- 上传和播放支持背压与 Range 请求，不将 100 MiB 上限以上内容读入内存。
 
 ### 7.2 可用性与可访问性
 
@@ -382,8 +385,8 @@ LLM 通过窄接口适配，首版只要求一个服务端可配置的 OpenAI-co
 - 可选 LLM API；
 - Docker 与 Docker Compose；
 - Open Design `Warm Editorial` 与 `frontend-design`（仅设计/实现阶段使用，不是产品运行时依赖）；
-- 腾讯云 Lighthouse、域名/DNS 和 HTTPS 证书服务；
-- GitHub 与 NJU Git/GitLab（以实际凭据和 remote 为准）。
+- 腾讯云 Lighthouse、域名/DNS 和 HTTPS 证书服务（后续部署计划）；
+- GitHub（本次课程提交的仓库与 CI）；GitLab 可作为后续镜像流水线使用。
 
 所有第三方依赖必须锁定版本、审查许可证并记录到 README。不得提交商业版权音乐。
 
@@ -398,9 +401,9 @@ LLM 通过窄接口适配，首版只要求一个服务端可配置的 OpenAI-co
 
 陌生用户按 README 配置 Secret 后，应能用少量命令完成 build、启动、健康检查和停止。`.env` 只作为明确标注风险的开发来源，生产不依赖仓库内 `.env`。
 
-## 17. 部署方案
+## 17. 后续部署方案（不作为本次课程提交门禁）
 
-最终目标为腾讯云 Lighthouse 中国香港地域：Linux、2 vCPU、4 GB RAM、约 70 GB SSD、30 Mbps 套餐。用户已选择购买低价域名并解析到公网 IP。
+后续目标为腾讯云 Lighthouse 中国香港地域：Linux、2 vCPU、4 GB RAM、约 70 GB SSD、30 Mbps 套餐。当前尚未执行云端部署；本次课程提交不要求公网 URL，依据见 `COURSE_REQUIREMENT_UPDATE.md`。
 
 部署要求：
 
@@ -410,8 +413,8 @@ LLM 通过窄接口适配，首版只要求一个服务端可配置的 OpenAI-co
 - 应用数据位于 `/srv/museecho/data`；
 - Secret 位于 `/etc/museecho/secrets`，不进入仓库；
 - 提供部署、健康检查、备份和回滚脚本；
-- 上线后执行真实上传、分析、播放、问答、删除 smoke test；
-- 尽可能从不同大陆运营商测试 100 MB 以内上传。
+- 后续上线后执行真实上传、分析、播放、问答、删除 smoke test；
+- 后续尽可能从不同大陆运营商测试 100 MiB 以内上传。
 
 AutoDL 只适合作为可选私有算力环境，不作为最终 WebUI 托管。Fly.io 已因用户无法使用而排除。
 
@@ -443,13 +446,13 @@ AutoDL 只适合作为可选私有算力环境，不作为最终 WebUI 托管。
 
 ### CI
 
-GitHub Actions 运行 backend tests、frontend tests、integration tests、lint、typecheck、production build、E2E、Secret scan 和 Docker build。`.gitlab-ci.yml` 提供核心等价流程并包含名为 `unit-test` 的 job。
+GitHub Actions 运行 backend tests、frontend tests、integration tests、lint、typecheck、production build、E2E、Secret scan 和 Docker build，是本次课程提交的远端 CI。`.gitlab-ci.yml` 保留核心等价流程和名为 `unit-test` 的 job，供后续流水线使用，不作为本次课程门禁。
 
 ## 19. 客观验收标准
 
 ### AC-A 上传与分析
 
-- 有效 WAV/MP3 创建真实任务并运行分析。
+- 有效的受支持音频（WAV、MP3、FLAC、M4A、AAC、OGG、OPUS）创建真实任务并运行分析。
 - 超限、损坏、静音和极短文件走规定路径。
 - 任意非 demo 上传都不出现固定演示数据。
 - 5 分钟基准音频在目标服务器的实测结果被记录；超过 90 秒不得标记该性能项通过。
@@ -483,10 +486,10 @@ GitHub Actions 运行 backend tests、frontend tests、integration tests、lint�
 ### AC-F 工程交付
 
 - 后端、前端、集成、E2E、lint、typecheck、build 和 Docker 验证均有最新成功证据。
-- GitHub Actions 和 `.gitlab-ci.yml` 存在，后者含 `unit-test`。
+- GitHub Actions 对最终提交必须通过；GitLab 流水线不作为本次课程要求。
 - README 支持陌生用户本地与 Docker 启动。
 - `DESIGN.md`、语义 tokens 与前端实现符合选定的 Open Design 契约。
-- 公网 URL 通过完整 smoke test。
+- 腾讯云公网 URL 与完整 smoke 作为后续部署计划执行。
 - Functional、Engineering、Product 三轮 Audit 完成。
 
 ## 20. 风险与缓解
@@ -495,11 +498,11 @@ GitHub Actions 运行 backend tests、frontend tests、integration tests、lint�
 | --- | --- | --- |
 | 任意混音的和弦/结构识别不可靠 | 核心页面证据稀疏 | 置信度、unknown、合成基准、明确限制 |
 | Python 音频分析内存高 | 任务 OOM | 单并发、受控采样率、聚合中间矩阵、资源测试 |
-| 香港跨境上传波动 | 上传中断 | 100 MB 限制、超时与重试、三网 smoke test |
+| 香港跨境上传波动 | 上传中断 | 100 MiB 限制、超时与重试、三网 smoke test |
 | 加密 Range 实现复杂 | 播放错误或数据泄漏 | 分块格式版本化、认证加密测试、拒绝损坏块 |
 | SQLite 与单机限制 | 无法水平扩展 | V1 明确单机；repository 边界支持未来迁移 |
 | LLM 费用或不可用 | 解释失败 | 可选配置、速率限制、缓存、确定性 fallback |
-| 域名/云账号需要人工授权 | 无法自动部署 | 所有配置先完成；真实外部步骤记录为 blocker |
+| 域名/云账号需要人工授权 | 后续部署无法自动执行 | 所有配置先完成；真实外部步骤记录为后续计划 |
 | 后续阶段缺少第二视角审查 | 缺陷发现能力下降 | cold-start 已由 OpenCode 完成；后续关键审查继续使用独立 reviewer，并如实记录可用性 |
 
 ## 21. 已知限制
@@ -512,8 +515,10 @@ GitHub Actions 运行 backend tests、frontend tests、integration tests、lint�
 - 香港跨境网络质量不作 SLA 承诺。
 - 单 Machine 和 SQLite 不构成高可用部署。
 - LLM 解释是辅助性自然语言，不替代音乐教师或专业制作分析。
-- MP3 支持仅限可计算帧长度的常规 MPEG Layer III；free-format bitrate index `0000` 在媒体工具
-  启动前拒绝。该限制来自锁定 FFmpeg 5.1.9 对该端到端流的拒绝，不把所有 MP3 子类型声明为支持。
+- V1 仅支持 WAV、MP3、FLAC、M4A、AAC、OGG、OPUS 的严格容器/编解码器配对；不支持 `.mp4`、
+  `.oga`、DRM 或专有加密下载。MP3 仅限可计算帧长度的常规 MPEG Layer III；free-format bitrate
+  index `0000` 在媒体工具启动前拒绝。该限制来自锁定 FFmpeg 5.1.9 对该端到端流的拒绝，不把所有
+  MP3 子类型声明为支持。
 
 ## 22. V1 明确不做
 
@@ -529,7 +534,7 @@ GitHub Actions 运行 backend tests、frontend tests、integration tests、lint�
 
 ## 23. Definition of Done
 
-项目必须逐项满足用户总要求中的 V1 Definition of Done，包括：A–D 模块端到端运行、真实上传分析、交互时间轴、确定性理论测试、Evidence Explanation、无 Key fallback、全套测试与构建、Docker runtime、Secret audit、合理 Git/PR 历史、双 CI 配置、全过程文档、三轮 Audit、无已知 Critical bug 和 High security issue，以及没有伪造测试、CI、人工参与或部署证据。
+项目必须逐项满足本次课程提交适用的 V1 Definition of Done，包括：A–D 模块端到端运行、真实上传分析、交互时间轴、确定性理论测试、Evidence Explanation、无 Key fallback、全套测试与构建、Docker runtime、Secret audit、合理 Git/PR 历史、GitHub CI、全过程文档、三轮 Audit、无已知 Critical bug 和 High security issue，以及没有伪造测试、CI、人工参与或部署证据。GitLab 与腾讯云公网部署转为后续计划，见 `COURSE_REQUIREMENT_UPDATE.md`。
 
 学生最终仍须亲自完成 README 冷启动、真实音乐上传、核心交互、PR/CI/Secret 检查和 `REFLECTION.md` 正文。
 

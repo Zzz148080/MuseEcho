@@ -15,14 +15,10 @@ the Task 24 block below. At Task 23 closure, the blocker keys were `GitLab`,
 ## Task 24 current status
 
 `MUSEECHO V1 PARTIALLY READY`. Product Audit and final delivery verification
-are complete artifacts, so Task 24 is not a current blocker. Current blockers
-map exactly to `DELIVERY_REPORT.md`:
+are complete artifacts, so Task 24 is not a current blocker. Per
+`COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent Cloud/public deployment are
+future work, not current course blockers. Current blockers are:
 
-- `BLK-REMOTE-CI`: Task 23 PR #1 merged and Task 24 run `31687703913` passed
-  GitHub quality, E2E, and distribution; GitLab remains not run;
-- `BLK-CLOUD-PUBLIC-TARGET`: target-server performance, Tencent Cloud/public
-  trusted TLS, cross-network and 24-hour smoke, backup/restore, and live rollback
-  remain absent;
 - `BLK-FORMAL-OFFLINE-BUILD`: ENG-010 remains blocked pending a formal
   current-source Dockerfile rebuild with the complete locked cache under
   `--network none` plus regenerated release/security evidence;
@@ -31,6 +27,12 @@ map exactly to `DELIVERY_REPORT.md`:
   PA-01 through PA-13 remain `CERT_TRUST_BLOCKED` pending trusted TLS;
 - `BLK-STUDENT-MANUAL`: personal README cold start, real music acceptance,
   PR/CI/Secret review, and `REFLECTION.md` remain reserved for the student.
+
+## 后续计划（不作为本次课程 blocker）
+
+- GitLab Pipeline：若后续启用 GitLab 镜像流水线，仍应保留 `unit-test` job 和最终通过记录。
+- 腾讯云部署：目标服务器性能、受信公网 TLS、跨网与 24 小时 smoke、备份恢复和真实回滚仍未执行；
+  取得云账号、域名/DNS、SSH 与发行镜像授权后按 `DEPLOYMENT_EVIDENCE.md` 执行。
 <!-- TASK24-CURRENT-STATUS:END -->
 
 ## Historical and superseded blocker timeline

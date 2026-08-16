@@ -15,14 +15,30 @@ the Task 24 block below. At Task 23 closure, the blocker keys were `GitLab`,
 ## Task 24 current status
 
 `MUSEECHO V1 PARTIALLY READY`. Task 24 now has a machine-readable Product Audit,
-fixed 17-section Delivery Report, fail-closed checker, mutation tests, and blank
-student reflection template. Task 24 itself is closed. Task 23 PR #1 merged with
-GitHub quality, E2E, and distribution green. Task 24 run `31687703913` also
-passed all three jobs at implementation head `de5bc6f`. GitLab,
-cloud/public/target-server smoke and rollback, formal offline build ENG-010,
-trusted-certificate controller browser observation, and student acceptance remain
-open. Historical statements below retain their dated boundaries.
+fixed 17-section Delivery Report, fail-closed checker, and mutation tests. Task
+24 itself is closed. Task 23 PR #1 merged with GitHub quality, E2E, and
+distribution green. Task 24 run `31687703913` also passed all three jobs at
+implementation head `de5bc6f`. Per `COURSE_REQUIREMENT_UPDATE.md`, GitLab and
+Tencent Cloud/public deployment are deferred follow-up work. Final GitHub
+evidence, formal offline build ENG-010, local product review, and student
+acceptance remain open. Historical statements below retain their dated boundaries.
 <!-- TASK24-CURRENT-STATUS:END -->
+
+## 2026-08-16 — Task 24 后音频维护记录（课程交付整理）
+
+- **范围与提交：** Task 24 的实现边界之后，`6554167` 将受支持输入扩展为
+  WAV、MP3、FLAC、M4A、AAC、OGG、OPUS，`99c9169` 将浏览器上传契约对齐；`df41f14` 与
+  `0d9888f`/`8369662` 将精确上限锁为 100 MiB；`0a75c1e` 接受有界的 Broadcast WAV
+  零填充；`7f8412b` 保持单 Range 的按需解密、1 MiB 流式播放，补充 FLAC attached-picture
+  校验，并将节奏估计更新为保守的 v3 半速候选/`unknown` 回退。
+- **证据边界：** 这些是细粒度实现与测试提交，不倒填为 Task 24 的远端 CI、公开发行、正式离线
+  构建或学生人工验收。100 MiB 历史当前源码验证见 `FUNCTIONAL_AUDIT.md` E008（锁定 Linux
+  当前源码 841 passed、7 skipped；PowerShell 交付合约 20 passed）；它早于随后 `7f8412b`
+  的 FLAC/播放/节奏修复，不能证明该提交已获最终完整验证。
+- **当前验证状态：** 最终分支 GitHub `quality` 运行 `31813100956` 目前只报告
+  `src/museecho/analysis/decode.py`、`src/museecho/analysis/rhythm.py` 和
+  `tests/api/test_analysis_api.py` 的 Ruff format 失败。完成该独立格式修复并重新取得最终 SHA
+  的 GitHub 质量、E2E 与分发结果前，项目仍为 `MUSEECHO V1 PARTIALLY READY`。
 
 ## 2026-08-13 — TASK 24 / Product Audit and delivery report
 

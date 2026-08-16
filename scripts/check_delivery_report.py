@@ -40,8 +40,6 @@ EXPECTED_EVIDENCE_IDS = tuple(f"DEL-{index:03d}" for index in range(1, 12)) + tu
     f"DEL-{index:03d}" for index in range(900, 905)
 )
 REQUIRED_BLOCKER_IDS = (
-    "BLK-REMOTE-CI",
-    "BLK-CLOUD-PUBLIC-TARGET",
     "BLK-FORMAL-OFFLINE-BUILD",
     "BLK-STUDENT-MANUAL",
     "BLK-CONTROLLER-BROWSER",
@@ -104,11 +102,9 @@ SECTION_CONTRACTS = {
     "DR-17": ("VERIFIED", ("DEL-001",)),
 }
 BLOCKER_CONTRACTS = {
-    "BLK-REMOTE-CI": ("Repository owner", ("DEL-900",)),
-    "BLK-CLOUD-PUBLIC-TARGET": ("Deployment owner", ("DEL-901",)),
     "BLK-FORMAL-OFFLINE-BUILD": ("Build environment owner", ("DEL-902",)),
     "BLK-STUDENT-MANUAL": ("Student", ("DEL-903",)),
-    "BLK-CONTROLLER-BROWSER": ("Task 24 controller", ("DEL-904",)),
+    "BLK-CONTROLLER-BROWSER": ("Student / product reviewer", ("DEL-904",)),
 }
 PRODUCT_DOMAINS = (
     "onboarding",
@@ -150,7 +146,7 @@ EXPECTED_PRODUCT_METHOD = (
     "implementation boundary only."
 )
 EXPECTED_DELIVERY_NARRATIVE_SHA256 = (
-    "8a0cf0399a6cb3857994f58f0a5f13e446b81f1349128fec9916f50800294ee1"
+    "a4815204a1730de314c8f7416508c5e74495ad6cb9825ce0da4b0cbaba146baf"
 )
 EXPECTED_PRODUCT_NARRATIVE_SHA256 = (
     "0a3acbf4202eca3f1b69adb941d8a2e797a06e216e2453c53083b05fdf3a3ee1"
@@ -292,7 +288,7 @@ EVIDENCE_CONTRACTS = {
         "DR-01, DR-10, DR-14",
         "gitlab=NOT_RUN",
         "NOT_RUN",
-        "PENDING",
+        "DEFERRED",
     ),
     "DEL-901": EvidenceContract(
         "EXTERNAL_NOT_RUN",
@@ -302,7 +298,7 @@ EVIDENCE_CONTRACTS = {
         "DR-01, DR-09, DR-11, DR-15",
         "cloud=NOT_RUN; public-smoke=NOT_RUN; target-server=NOT_RUN; rollback=NOT_RUN",
         "NOT_RUN",
-        "PENDING",
+        "DEFERRED",
     ),
     "DEL-902": EvidenceContract(
         "EXTERNAL_NOT_RUN",
@@ -316,11 +312,11 @@ EVIDENCE_CONTRACTS = {
     ),
     "DEL-903": EvidenceContract(
         "EXTERNAL_NOT_RUN",
-        "NOT RUN: student must personally complete the final acceptance checklist and write "
-        "REFLECTION.md",
+        "NOT RUN: student must personally complete the final acceptance checklist and sign "
+        "the existing REFLECTION.md draft",
         "REFLECTION.md",
         "DR-01, DR-02, DR-03, DR-09, DR-10",
-        "student-acceptance=RESERVED; reflection=BLANK_TEMPLATE",
+        "student-acceptance=RESERVED; reflection=DRAFT_PRESENT",
         "NOT_RUN",
         "PENDING",
     ),
@@ -363,37 +359,9 @@ PRODUCT_EVIDENCE_CONTRACTS = {
     ),
 }
 
-EXPECTED_REFLECTION_TEMPLATE = """# MuseEcho Student Reflection
-
-This file is reserved for the student's own reflection. An agent must not fill,
-summarize, approve, or sign any response.
-
-## 1. What I built and why
-
-<!-- STUDENT RESPONSE: leave blank until the student writes here -->
-
-## 2. Evidence I personally checked
-
-<!-- STUDENT RESPONSE: leave blank until the student writes here -->
-
-## 3. What failed or remained incomplete
-
-<!-- STUDENT RESPONSE: leave blank until the student writes here -->
-
-## 4. Engineering decisions and trade-offs
-
-<!-- STUDENT RESPONSE: leave blank until the student writes here -->
-
-## 5. What I would improve next
-
-<!-- STUDENT RESPONSE: leave blank until the student writes here -->
-
-## Student sign-off
-
-- Name: <!-- STUDENT ONLY: leave blank -->
-- Date: <!-- STUDENT ONLY: leave blank -->
-- Final status accepted: <!-- STUDENT ONLY: leave blank -->
-"""
+EXPECTED_REFLECTION_DRAFT_SHA256 = (
+    "86a98b62efa51073dfc93189dd65f16c37b66e5903b29f908baf9043158b20ce"
+)
 
 
 class DeliveryValidationError(ValueError):
@@ -912,8 +880,11 @@ def validate_delivery_report(
             errors.append(f"{student_check.check_id} must cite the reserved student evidence")
         if student_check.student_record != "-":
             errors.append(f"{student_check.check_id} student record must remain blank")
-    if report.reflection_text.replace("\r\n", "\n") != EXPECTED_REFLECTION_TEMPLATE:
-        errors.append("student reflection template was filled or altered")
+    reflection_digest = hashlib.sha256(
+        report.reflection_text.replace("\r\n", "\n").encode("utf-8")
+    ).hexdigest()
+    if reflection_digest != EXPECTED_REFLECTION_DRAFT_SHA256:
+        errors.append("student reflection draft does not match the retained course record")
 
     product_ids = tuple(item.item_id for item in report.product_audit_items)
     if product_ids != EXPECTED_PRODUCT_AUDIT_IDS:

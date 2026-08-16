@@ -10,9 +10,10 @@
 `MUSEECHO V1 PARTIALLY READY`. The Task 24 Product Audit artifact and delivery
 validator are complete, so Task 24 itself is not a blocker. GitHub run
 `31687703913` passed quality, E2E, and distribution for Task 24 implementation
-head `de5bc6f`; remaining gates are GitLab, cloud/public/target-server
-smoke and rollback, formal offline build ENG-010, controller browser observation
-behind a trusted certificate, and the student's personal acceptance/reflection.
+head `de5bc6f`. Per `COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent
+Cloud/public deployment are deferred follow-up work. Remaining course gates are
+final GitHub evidence, formal offline build ENG-010, local product review, and
+the student's personal acceptance/reflection.
 <!-- TASK24-CURRENT-STATUS:END -->
 
 ## DR-01 — 交付结论与状态摘要
@@ -66,13 +67,13 @@ behind a trusted certificate, and the student's personal acceptance/reflection.
 ## DR-09 — 本地运行
 
 - **Status:** `PARTIAL`
-- **Conclusion:** README 给出仓库外 Secret、同源 HTTPS development profile 和健康检查；当前控制器未执行本轮手动产品流，公网运行亦待授权。
+- **Conclusion:** README 给出仓库外 Secret、同源 HTTPS development profile 和健康检查；当前控制器未执行本轮手动产品流。公网运行仍待授权，但已按 `COURSE_REQUIREMENT_UPDATE.md` 转为后续计划。
 - **Evidence IDs:** DEL-001, DEL-901, DEL-904
 
 ## DR-10 — 测试
 
 - **Status:** `PARTIAL`
-- **Conclusion:** Functional、Engineering、Task 24 focused、validator、lint、type 与 diff 门有可追溯命令；Task 24 实现边界的 GitHub quality、E2E、distribution 已通过，GitLab、目标机和控制器浏览器仍待执行。
+- **Conclusion:** Functional、Engineering、Task 24 focused、validator、lint、type 与 diff 门有可追溯命令；Task 24 实现边界的 GitHub quality、E2E、distribution 已通过。GitLab 和目标机验证转为后续计划；控制器浏览器审查仍待执行。
 - **Evidence IDs:** DEL-002, DEL-003, DEL-004, DEL-005, DEL-006, DEL-007, DEL-008, DEL-009, DEL-010, DEL-011, DEL-900, DEL-901, DEL-904
 
 ## DR-11 — Docker
@@ -96,13 +97,13 @@ behind a trusted certificate, and the student's personal acceptance/reflection.
 ## DR-14 — 分发
 
 - **Status:** `PARTIAL`
-- **Conclusion:** 双 CI 配置、Task 23 分发边界和 Task 24 GitHub distribution 均已验证；GitLab 尚未运行，正式离线发行物仍受 ENG-010 阻塞。
+- **Conclusion:** 双 CI 配置、Task 23 分发边界和 Task 24 GitHub distribution 均已验证；GitLab 未运行但不作为本次课程门禁，正式离线发行物仍受 ENG-010 阻塞。
 - **Evidence IDs:** DEL-001, DEL-002, DEL-003, DEL-004, DEL-011, DEL-900, DEL-902
 
 ## DR-15 — 部署
 
 - **Status:** `PARTIAL`
-- **Conclusion:** 部署脚本和手册存在，但腾讯云、公网受信 TLS、目标机性能、跨网、24 小时观察、备份恢复和真实回滚均未执行。
+- **Conclusion:** 部署脚本和手册存在；腾讯云、公网受信 TLS、目标机性能、跨网、24 小时观察、备份恢复和真实回滚均未执行，并按 `COURSE_REQUIREMENT_UPDATE.md` 作为后续部署计划保留。
 - **Evidence IDs:** DEL-001, DEL-002, DEL-901
 
 ## DR-16 — 限制
@@ -132,18 +133,29 @@ behind a trusted certificate, and the student's personal acceptance/reflection.
 | DEL-009 | CURRENT_COMMAND | ..\audit-23-engineering\.venv\Scripts\python.exe -m mypy scripts/check_delivery_report.py | scripts/check_delivery_report.py | DR-10 | mypy-files=1; strict=pass | 2026-08-13T09:59:08Z | 0 | PASS | Affected checker strict typing passes. |
 | DEL-010 | CURRENT_COMMAND | git diff --check | DELIVERY_REPORT.md | DR-01, DR-10 | diff-check=pass | 2026-08-13T09:59:08Z | 0 | PASS | Tracked patch has no whitespace errors. |
 | DEL-011 | IMPLEMENTATION_BOUNDARY_COMMAND | gh run view 31687703913 --repo Zzz148080/MuseEcho --json status,conclusion,headSha,jobs,url | .github/workflows/ci.yml | DR-01, DR-10, DR-14 | run=31687703913; head=de5bc6f949e6e98cff32f16116708ec7b7409c9d; quality=success; e2e=success; distribution=success | 2026-08-13T09:53:16Z | 0 | PASS | Task 24 implementation and CI-regression-fix boundary passed all three GitHub jobs; the latest evidence-only tip remains governed by the live PR gate. |
-| DEL-900 | EXTERNAL_NOT_RUN | NOT RUN: GitLab has no Task 24 pipeline | .gitlab-ci.yml | DR-01, DR-10, DR-14 | gitlab=NOT_RUN | 2026-08-13T09:53:16Z | NOT_RUN | PENDING | GitLab remains the only remote-CI blocker recorded in the report. |
-| DEL-901 | EXTERNAL_NOT_RUN | NOT RUN: Tencent Cloud, public trusted TLS, target-server benchmark, cross-network smoke, 24-hour observation, backup restore, and live rollback require authorization | DEPLOYMENT_EVIDENCE.md | DR-01, DR-09, DR-11, DR-15 | cloud=NOT_RUN; public-smoke=NOT_RUN; target-server=NOT_RUN; rollback=NOT_RUN | 2026-08-13T08:01:12Z | NOT_RUN | PENDING | No public URL, server benchmark, or live rollback is claimed. |
+| DEL-900 | EXTERNAL_NOT_RUN | NOT RUN: GitLab has no Task 24 pipeline | .gitlab-ci.yml | DR-01, DR-10, DR-14 | gitlab=NOT_RUN | 2026-08-13T09:53:16Z | NOT_RUN | DEFERRED | Historical Task 24 evidence: GitLab was not run; it is now deferred from this course submission by `COURSE_REQUIREMENT_UPDATE.md`. |
+| DEL-901 | EXTERNAL_NOT_RUN | NOT RUN: Tencent Cloud, public trusted TLS, target-server benchmark, cross-network smoke, 24-hour observation, backup restore, and live rollback require authorization | DEPLOYMENT_EVIDENCE.md | DR-01, DR-09, DR-11, DR-15 | cloud=NOT_RUN; public-smoke=NOT_RUN; target-server=NOT_RUN; rollback=NOT_RUN | 2026-08-13T08:01:12Z | NOT_RUN | DEFERRED | No public URL, server benchmark, or live rollback is claimed; these are now deferred deployment work. |
 | DEL-902 | EXTERNAL_NOT_RUN | NOT RUN: formal current-source Dockerfile offline build requires the complete locked pip and apt BuildKit cache under network none | Dockerfile | DR-01, DR-11, DR-14, DR-16 | ENG-010=BLOCKED; formal-offline-build=NOT_RUN; derivative=NON_RELEASE | 2026-08-13T08:01:12Z | NOT_RUN | PENDING | Controlled derivative remains audit-only and cannot be promoted. |
-| DEL-903 | EXTERNAL_NOT_RUN | NOT RUN: student must personally complete the final acceptance checklist and write REFLECTION.md | REFLECTION.md | DR-01, DR-02, DR-03, DR-09, DR-10 | student-acceptance=RESERVED; reflection=BLANK_TEMPLATE | 2026-08-13T08:01:12Z | NOT_RUN | PENDING | Student participation remains deliberately unclaimed. |
+| DEL-903 | EXTERNAL_NOT_RUN | NOT RUN: student must personally complete the final acceptance checklist and sign the existing REFLECTION.md draft | REFLECTION.md | DR-01, DR-02, DR-03, DR-09, DR-10 | student-acceptance=RESERVED; reflection=DRAFT_PRESENT | 2026-08-13T08:01:12Z | NOT_RUN | PENDING | The student-authored reflection draft is retained, but final acceptance and sign-off remain deliberately unclaimed. |
 | DEL-904 | CONTROLLER_COMMAND | Browser plugin: start Compose development profile --no-build; GET /api/health; navigate https://localhost:4173/; finalize; docker compose down --volumes | docs/audits/PRODUCT_AUDIT.md | DR-01, DR-03, DR-09, DR-10 | product-items=13; service-health=ready; navigation=ERR_CERT_AUTHORITY_INVALID; manual-pass=0; controller-status=CERT_TRUST_BLOCKED; cleanup=pass | 2026-08-13T09:00:00Z | 1 | PENDING | The real HTTPS service was ready, but the controller correctly refused to bypass the internal-CA interstitial; all dedicated runtime and temp resources were removed. |
 
 ## Blocking reasons
 
 | Blocker ID | Owner | Status | Evidence IDs | Reason | Closure criteria |
 | --- | --- | --- | --- | --- | --- |
-| BLK-REMOTE-CI | Repository owner | OPEN | DEL-900 | Task 24 GitHub quality, E2E, and distribution passed at the recorded implementation boundary, but GitLab has no Task 24 pipeline result. | Keep the live GitHub PR merge gate green for the latest evidence-only tip and run GitLab on the delivered commit with retained logs and artifacts. |
-| BLK-CLOUD-PUBLIC-TARGET | Deployment owner | OPEN | DEL-901 | Tencent Cloud, public trusted TLS, target-server performance, cross-network, 24-hour observation, backup restore, and live rollback are absent. | Supply cloud, DNS, SSH, and immutable image authority; execute every DEPLOYMENT_EVIDENCE.md target/public/rollback step with UTC commands, exits, and redacted results. |
+| BLK-FORMAL-OFFLINE-BUILD | Build environment owner | OPEN | DEL-902 | ENG-010 lacks the complete locked pip and apt BuildKit cache for a formal network-none Dockerfile rebuild. | Restore the complete locked cache, rebuild the formal Dockerfile with network disabled, then rerun release identity, raw scans, exact audit/VEX gates, and no-build smoke on that artifact. |
+| BLK-CONTROLLER-BROWSER | Student / product reviewer | OPEN | DEL-904 | The local controller reached HTTPS health, but the internal CA prevented the required visual/manual observation. | Trust the project CA locally or use a trusted certificate, then complete PA-01 through PA-13 and TDD-fix any serious defect. |
+| BLK-STUDENT-MANUAL | Student | OPEN | DEL-903 | README cold start, personal music acceptance, PR/CI/Secret review, and final reflection/sign-off remain student-owned. | The student personally performs the checks, records genuine evidence, completes the reflection, and signs the honest final status. |
+
+本表根据 `COURSE_REQUIREMENT_UPDATE.md` 更新。GitLab 和腾讯云/公网部署仍是未执行的后续工作，
+但不再作为本次课程交付 blocker。
+
+## 历史 Task 24 blocker（已被课程要求更新替代）
+
+| Blocker ID | Owner | Status | Evidence IDs | Reason | Closure criteria |
+| --- | --- | --- | --- | --- | --- |
+| BLK-REMOTE-CI | Repository owner | DEFERRED | DEL-900 | Historical Task 24 blocker: GitLab had no pipeline result. | GitLab is optional for this course submission; retain this row as historical evidence and use it if the later GitLab pipeline is enabled. |
+| BLK-CLOUD-PUBLIC-TARGET | Deployment owner | DEFERRED | DEL-901 | Historical Task 24 blocker: Tencent Cloud/public validation had not occurred. | Execute the documented deployment plan after cloud authority is available; it is not a current course closure condition. |
 | BLK-FORMAL-OFFLINE-BUILD | Build environment owner | OPEN | DEL-902 | ENG-010 lacks the complete locked pip and apt BuildKit cache for a formal network-none Dockerfile rebuild. | Restore the full locked cache, rebuild the formal Dockerfile with network disabled, then rerun release identity, raw scans, exact audit/VEX gates, and no-build smoke on that artifact. |
 | BLK-STUDENT-MANUAL | Student | OPEN | DEL-903 | README cold start, personal music upload, core interaction, PR/CI/Secret review, and reflection are explicitly student-only. | The student personally performs every STU-01 through STU-06 item, records genuine evidence, writes the reflection in their own words, and signs the final status. |
 | BLK-CONTROLLER-BROWSER | Task 24 controller | OPEN | DEL-904 | The controller reached a healthy same-origin HTTPS service, but the in-app browser rejected the internal Caddy CA before rendering; no visual/manual result can be claimed. | Provide publicly trusted TLS or explicitly trust the project CA outside this automation session, then execute PA-01 through PA-13 at desktop, tablet, and mobile sizes and TDD-fix any serious defect. |
@@ -155,12 +167,14 @@ behind a trusted certificate, and the student's personal acceptance/reflection.
 | STU-01 | Follow README from a clean checkout and start MuseEcho without undocumented help. | RESERVED | DEL-903 | - |
 | STU-02 | Upload music the student is legally permitted to use and wait for real analysis. | RESERVED | DEL-903 | - |
 | STU-03 | Personally exercise Music DNA, timeline, chord detail, Evidence Q&A, error recovery, second upload, and deletion. | RESERVED | DEL-903 | - |
-| STU-04 | Personally inspect the PR history, GitHub/GitLab results, and branch-tip merge gate. | RESERVED | DEL-903 | - |
+| STU-04 | Personally inspect the PR history, GitHub results, and branch-tip merge gate. | RESERVED | DEL-903 | - |
 | STU-05 | Personally inspect Secret handling and confirm no real credential appears in repository, logs, screenshots, or commands. | RESERVED | DEL-903 | - |
 | STU-06 | Write REFLECTION.md in the student's own words and sign the accepted final readiness honestly. | RESERVED | DEL-903 | - |
 
-These entries are not agent tasks. They remain blank until the student performs
-them personally; the delivery checker rejects agent-authored completion.
+These entries are not agent tasks. The student reflection draft is present, but
+each checklist item remains reserved until the student personally records the
+check and signs the final status; the delivery checker rejects agent-authored
+completion.
 
 ## Status semantics
 

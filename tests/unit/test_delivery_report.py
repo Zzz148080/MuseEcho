@@ -121,12 +121,13 @@ def test_fixed_delivery_product_and_student_id_contracts() -> None:
     assert EXPECTED_STUDENT_CHECK_IDS == tuple(f"STU-{index:02d}" for index in range(1, 7))
 
 
-def test_task24_github_boundary_is_fixed_while_gitlab_remains_pending(
+def test_task24_github_boundary_is_fixed_while_external_work_remains_deferred(
     tmp_path: Path,
 ) -> None:
     report = load_delivery_report(REPORT_PATH)
     github = next(item for item in report.evidence if item.evidence_id == "DEL-011")
     gitlab = next(item for item in report.evidence if item.evidence_id == "DEL-900")
+    cloud = next(item for item in report.evidence if item.evidence_id == "DEL-901")
 
     assert github.kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
     assert github.result == (
@@ -137,6 +138,10 @@ def test_task24_github_boundary_is_fixed_while_gitlab_remains_pending(
     assert github.status == "PASS"
     assert gitlab.command == "NOT RUN: GitLab has no Task 24 pipeline"
     assert gitlab.result == "gitlab=NOT_RUN"
+    assert gitlab.exit_code_raw == "NOT_RUN"
+    assert gitlab.status == "DEFERRED"
+    assert cloud.exit_code_raw == "NOT_RUN"
+    assert cloud.status == "DEFERRED"
     assert "Task 24 GitHub branch-tip gate has not run" not in report.raw_text
 
     forged = _replace_table_cell(
@@ -144,6 +149,13 @@ def test_task24_github_boundary_is_fixed_while_gitlab_remains_pending(
     )
     assert "DEL-011 does not match its fixed evidence contract" in _validation_error(
         tmp_path, forged
+    )
+
+    externally_executed = _replace_table_cell(
+        _report_text(), "## Evidence index", "DEL-900", "Status", "PASS"
+    )
+    assert "DEL-900 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, externally_executed
     )
 
 
@@ -217,10 +229,8 @@ def test_ready_is_rejected_while_any_blocker_is_open(tmp_path: Path) -> None:
     assert "READY contradicts open blockers" in _validation_error(tmp_path, mutation)
 
 
-def test_partially_ready_requires_each_exact_current_blocker(tmp_path: Path) -> None:
+def test_partially_ready_requires_each_exact_current_course_blocker(tmp_path: Path) -> None:
     for blocker_id in (
-        "BLK-REMOTE-CI",
-        "BLK-CLOUD-PUBLIC-TARGET",
         "BLK-FORMAL-OFFLINE-BUILD",
         "BLK-STUDENT-MANUAL",
         "BLK-CONTROLLER-BROWSER",
@@ -235,14 +245,22 @@ def test_partially_ready_blocker_requires_pending_evidence_and_precise_closure(
     tmp_path: Path,
 ) -> None:
     no_evidence = _replace_table_cell(
-        _report_text(), "## Blocking reasons", "BLK-REMOTE-CI", "Evidence IDs", "-"
+        _report_text(), "## Blocking reasons", "BLK-FORMAL-OFFLINE-BUILD", "Evidence IDs", "-"
     )
     vague = _replace_table_cell(
-        _report_text(), "## Blocking reasons", "BLK-REMOTE-CI", "Closure criteria", "later"
+        _report_text(),
+        "## Blocking reasons",
+        "BLK-FORMAL-OFFLINE-BUILD",
+        "Closure criteria",
+        "later",
     )
 
-    assert "BLK-REMOTE-CI requires evidence" in _validation_error(tmp_path, no_evidence)
-    assert "BLK-REMOTE-CI closure criteria are not precise" in _validation_error(tmp_path, vague)
+    assert "BLK-FORMAL-OFFLINE-BUILD requires evidence" in _validation_error(
+        tmp_path, no_evidence
+    )
+    assert "BLK-FORMAL-OFFLINE-BUILD closure criteria are not precise" in _validation_error(
+        tmp_path, vague
+    )
 
 
 def test_blocker_rejects_valid_but_wrong_owner_or_pending_evidence(tmp_path: Path) -> None:
@@ -416,22 +434,25 @@ def test_product_audit_cannot_claim_browser_pass_without_controller_execution(
 
 
 def test_student_acceptance_and_reflection_remain_unclaimed(tmp_path: Path) -> None:
+    report = load_delivery_report(REPORT_PATH)
+    draft = next(item for item in report.evidence if item.evidence_id == "DEL-903")
+
+    assert draft.result == "student-acceptance=RESERVED; reflection=DRAFT_PRESENT"
+    assert draft.status == "PENDING"
+    assert all(item.status == "RESERVED" for item in report.student_checks)
+
     checked = _replace_table_cell(
         _report_text(), "## Student final checklist", "STU-01", "Status", "COMPLETE"
     )
     assert "STU-01 must remain RESERVED for the student" in _validation_error(tmp_path, checked)
 
     reflection = (ROOT / "REFLECTION.md").read_text(encoding="utf-8")
-    filled_reflection = reflection.replace(
-        "<!-- STUDENT RESPONSE: leave blank until the student writes here -->",
-        "I learned that this project was successful.",
-        1,
-    )
+    filled_reflection = reflection + "\n学生最终验收：MUSEECHO V1 READY。\n"
     reflection_path = tmp_path / "REFLECTION.md"
     reflection_path.write_text(filled_reflection, encoding="utf-8")
     report = load_delivery_report(REPORT_PATH, reflection_path=reflection_path)
 
-    with pytest.raises(DeliveryValidationError, match="student reflection template was filled"):
+    with pytest.raises(DeliveryValidationError, match="student reflection draft does not match"):
         validate_delivery_report(report, repo_root=ROOT, now=NOW)
 
 

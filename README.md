@@ -4,13 +4,15 @@
 ## Task 24 current status
 
 Current delivery status is `MUSEECHO V1 PARTIALLY READY`. Task 24 now provides
-the Product Audit, 17-section delivery report, strict validator, and a blank
-student-owned reflection template; Task 24 itself is no longer a blocker.
+the Product Audit, 17-section delivery report, and strict validator; Task 24
+itself is no longer a blocker. `REFLECTION.md` is now under the student's
+personal revision and has not been used to claim final student acceptance.
 Task 23 PR #1 is merged with GitHub quality, E2E, and distribution green.
 Task 24 GitHub quality, E2E, and distribution passed at its recorded
-implementation boundary. Remaining gates are GitLab, Tencent
-Cloud/public/target-server smoke and rollback, formal offline build ENG-010,
-controller browser observation behind trusted TLS, and student acceptance.
+implementation boundary. Per `COURSE_REQUIREMENT_UPDATE.md`, GitLab and
+Tencent Cloud/public deployment are deferred follow-up work, not course
+submission gates. Remaining course gates are final GitHub evidence, formal
+offline build ENG-010, local product review, and student acceptance.
 <!-- TASK24-CURRENT-STATUS:END -->
 
 MuseEcho V1 是一款 Evidence First（证据优先）的交互式音乐理解应用。它用确定性的
@@ -70,7 +72,7 @@ DSP/MIR 管线分析用户上传的 WAV、MP3、FLAC、M4A、AAC、OGG 或 OPUS�
 - `docs/`：设计与验证资料；`SPEC.md`、`PLAN.md` 是批准的产品和实施基线。
 - `DELIVERY_REPORT.md`：Task 24 的固定 17 节交付结论、证据、精确阻因和学生保留检查表。
 - `docs/audits/PRODUCT_AUDIT.md`：机器可读的产品审计矩阵；控制器已真实到达健康 HTTPS 边界，但因内部 CA 未受信而保持 `CERT_TRUST_BLOCKED`。
-- `REFLECTION.md`：仅供学生本人填写的空白模板，Agent 不代写或勾选。
+- `REFLECTION.md`：学生本人撰写与最终确认的反思报告；不作为自动化或 Agent 完成声明的替代品。
 
 ## 环境要求
 
@@ -111,6 +113,24 @@ Set-ItemProperty "$secretDir\audio-kek" -Name IsReadOnly -Value $true
 浏览器开发必须使用下文 Docker development profile 的同源 HTTPS 网关；不要把 Secure cookie
 降级为明文 HTTP，也不要把 FastAPI 端口直接当作浏览器入口。直接使用
 `museecho.app:create_app` 只适合依赖注入测试；完整服务使用 `museecho.runtime:app`。
+
+### 可选模型凭据：本机首次配置、查看、更新与清除
+
+未启用第三方模型时不需要配置 provider Key，系统会使用确定性 fallback。原生本机运行时，
+provider Key 默认存入操作系统凭据库，而不是 `.env`、命令行参数或仓库文件。下面的命令只会在
+隐藏输入提示中读取 Key，`status` 不会回显其正文：
+
+```powershell
+uv run museecho secret status
+uv run museecho secret set
+uv run museecho secret update
+uv run museecho secret clear
+```
+
+`set` 仅用于首次配置，已有值时必须使用 `update`；`clear` 删除本机凭据库中的 provider Key。
+若操作系统凭据库不可用，命令会失败而不会退回到明文文件。`MUSEECHO_PROVIDER_BASE_URL` 与
+`MUSEECHO_PROVIDER_MODEL` 是非秘密运行配置；容器部署则使用仓库外、只读的
+`/etc/museecho/secrets/provider-key` 文件，不能通过这组本机 CLI 修改。
 
 ## 测试与质量门
 
@@ -195,6 +215,10 @@ docker compose --profile production config --quiet
 docker compose --profile production up -d --wait --no-build
 # 仅限本机内部 CA smoke；公网不得跳过证书校验。
 curl --fail --silent --show-error --insecure https://localhost:8443/api/health
+# 保留数据库和密文音频：
+docker compose --profile production down
+# 仅在确认要销毁本地分析数据时使用：
+docker compose --profile production down --volumes
 ```
 
 可重现身份来自 digest 锁定的基础镜像、不可变仓库快照/精确包版本、固定时间戳和
@@ -285,11 +309,20 @@ SHA-256 inventory，以及固定容器、构建工具、Go replacement 和 OS �
 镜像加入测试工具。本地配置通过不代表远端 CI 已运行，只有对应提交的真实流水线结果才能
 作为远端证据。
 
+### 发行状态与获取方式
+
+课程要求容器发行物提供公开 registry 地址、精确镜像 digest 和一条可执行的获取/运行命令。
+当前项目**尚未发布**可供提交者以外使用的公开 OCI 镜像；因此不能将上面的本机构建步骤表述为
+已完成的公开分发。正式发行前，发布者必须推送 app 与 gateway 的不可变 digest，更新腾讯云
+release 配置，并在目标机器按 `DEPLOYMENT_EVIDENCE.md` 完成受信 TLS smoke。公网部署是后续计划，
+不作为本次课程提交门禁，详见 `COURSE_REQUIREMENT_UPDATE.md`。
+
 ## 部署
 
 单机部署应把 8080/8443 仅用于初始验证，正式环境使用域名、受信 TLS、主机防火墙、卷备份
-与定期恢复演练。腾讯云安装、升级、回滚和备份脚本属于 PLAN Task 21，本任务不会伪造尚未
-执行的公网部署结果。
+与定期恢复演练。腾讯云安装、升级、回滚和备份脚本属于后续部署计划，不是本次课程提交门禁。
+它们尚未执行；取得授权后应逐项填写 `DEPLOYMENT_EVIDENCE.md` 中的 UTC 时间、命令、退出码与
+脱敏结果，届时才能填写公网 URL 或标记部署 PASS。
 
 ## 已知限制
 
