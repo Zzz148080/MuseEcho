@@ -138,15 +138,27 @@ def _require_git_history() -> None:
     git = shutil.which("git")
     if git is None:
         pytest.skip("historical-tree integration requires Git")
+    object_name = f"{HISTORICAL_EVIDENCE_COMMIT}^{{commit}}"
     completed = subprocess.run(
-        [git, "cat-file", "-e", f"{HISTORICAL_EVIDENCE_COMMIT}^{{commit}}"],
+        [git, "cat-file", "-e", object_name],
         cwd=ROOT,
         capture_output=True,
         check=False,
+        text=True,
         timeout=10,
     )
-    if completed.returncode != 0:
+    missing_object = (
+        completed.returncode == 128
+        and completed.stderr.strip() == f"fatal: Not a valid object name {object_name}"
+    )
+    if missing_object:
         pytest.skip("historical-tree integration requires the retained Git object database")
+    if completed.returncode != 0:
+        pytest.fail(
+            f"unexpected Git prerequisite failure (exit={completed.returncode}): "
+            f"{completed.stderr.strip() or '<no stderr>'}",
+            pytrace=False,
+        )
 
 
 def test_every_spec_acceptance_item_has_a_verdict_and_evidence():
