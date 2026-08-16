@@ -102,6 +102,7 @@ Expected: the commit changes layout only and contains no behavior or assertion c
 
 **Files:**
 - Modify: `scripts/image-vulnerability-policy.json`
+- Create if needed to preserve immutable Task 23 recomputation: `docs/audits/evidence/task23-image-vulnerability-policy.json`
 - Modify only if required by the fixed evidence schema: `docs/audits/evidence/task23-security-manifest.json`
 - Modify only if required by the fixed evidence schema: `scripts/check_engineering_audit.py`
 - Modify: `tests/unit/test_image_vulnerability_audit.py` and/or `tests/unit/test_engineering_audit.py`
@@ -125,7 +126,7 @@ Expected: the new test fails for the intended old coupling, not for fixture or t
 
 - [ ] **Step 3: Refresh only current-source policy and explicitly version historical validation**
 
-Regenerate exact current runtime file digests after the formatter repair. Make the historical checker validate its recorded policy snapshot without claiming it matches current source. Do not weaken the runtime-boundary equality enforced by `image_vulnerability_audit.py` for current distribution builds.
+Regenerate exact current runtime file digests after the formatter repair. If the retained Task 23 audit needs its old policy to remain reproducible, preserve that exact policy as a clearly named historical snapshot and make the historical checker validate/recompute against the snapshot without claiming it matches current source. Do not weaken the runtime-boundary equality enforced by `image_vulnerability_audit.py` for current distribution builds.
 
 Expected: current policy matches current source; retained manifest/tar/scan facts remain unchanged and are labelled historical.
 

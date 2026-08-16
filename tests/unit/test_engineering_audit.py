@@ -18,9 +18,6 @@ from scripts.check_engineering_audit import (
     load_audit,
     validate_audit,
 )
-from scripts.image_vulnerability_audit import (
-    build_runtime_boundary_manifest as real_runtime_boundary_manifest,
-)
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_PATH = ROOT / "docs" / "audits" / "ENGINEERING_AUDIT.md"
@@ -524,21 +521,39 @@ def test_security_manifest_rejects_coherent_audit_only_field_rewrites(
     )
 
 
-def test_security_manifest_recomputes_current_runtime_boundary(
+def test_security_manifest_recomputes_historical_policy_runtime_boundary(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def drifted_runtime_boundary(repository_root: Path) -> dict[str, str]:
-        manifest = real_runtime_boundary_manifest(repository_root)
-        manifest["src/museecho/runtime.py"] = "0" * 64
-        return manifest
+    policy = json.loads((ROOT / checker.SECURITY_POLICY_SNAPSHOT_PATH).read_text(encoding="utf-8"))
+    policy["runtime_boundary"]["src/museecho/runtime.py"] = "0" * 64
+    path = tmp_path / "task23-image-vulnerability-policy.json"
+    path.write_text(json.dumps(policy), encoding="utf-8")
+
+    monkeypatch.setattr(checker, "SECURITY_POLICY_SNAPSHOT_PATH", str(path))
+    errors: list[str] = []
+
+    checker._validate_security_manifest(ROOT, errors)
+
+    assert "security manifest runtime boundary does not match historical policy snapshot" in errors
+
+
+def test_historical_security_manifest_validation_is_independent_of_current_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def drifted_current_runtime_boundary(_repository_root: Path) -> dict[str, str]:
+        return {"src/museecho/runtime.py": "0" * 64}
 
     monkeypatch.setattr(
-        checker, "build_runtime_boundary_manifest", drifted_runtime_boundary, raising=False
+        checker,
+        "build_runtime_boundary_manifest",
+        drifted_current_runtime_boundary,
+        raising=False,
     )
+    errors: list[str] = []
 
-    assert "security manifest runtime boundary does not match current source" in _validation_error(
-        tmp_path, _audit_text()
-    )
+    checker._validate_security_manifest(ROOT, errors)
+
+    assert "security manifest runtime boundary does not match current source" not in errors
 
 
 def test_audit_generated_time_cannot_be_future_dated(tmp_path: Path) -> None:

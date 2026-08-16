@@ -17,10 +17,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 if __package__:
-    from scripts.image_vulnerability_audit import audit_image, build_runtime_boundary_manifest
+    from scripts.image_vulnerability_audit import audit_image
     from scripts.verify_release_identity import audit_release_identity, image_id_from_tar
 else:
-    from image_vulnerability_audit import audit_image, build_runtime_boundary_manifest
+    from image_vulnerability_audit import audit_image
     from verify_release_identity import audit_release_identity, image_id_from_tar
 
 EXPECTED_DOMAINS = (
@@ -63,6 +63,7 @@ FINDING_CONTRACTS = {
 
 SECURITY_MANIFEST_PATH = "docs/audits/evidence/task23-security-manifest.json"
 SECURITY_MANIFEST_SHA256 = "59e1478af5930ed515d572ad39924e6ed0820160cc291b5920939cae7682d77f"
+SECURITY_POLICY_SNAPSHOT_PATH = "docs/audits/evidence/task23-image-vulnerability-policy.json"
 
 SECURITY_MATERIAL_FILENAMES = (
     "app-raw-review1.json",
@@ -903,7 +904,7 @@ def _validate_security_manifest(repo_root: Path, errors: list[str]) -> None:
     ):
         errors.append("security evidence manifest facts do not match the fixed audit boundary")
 
-    policy_path = repo_root / "scripts/image-vulnerability-policy.json"
+    policy_path = repo_root / SECURITY_POLICY_SNAPSHOT_PATH
     try:
         policy_bytes = policy_path.read_bytes()
         policy = json.loads(policy_bytes)
@@ -911,27 +912,15 @@ def _validate_security_manifest(repo_root: Path, errors: list[str]) -> None:
             policy["runtime_boundary"], sort_keys=True, separators=(",", ":")
         ).encode()
     except (OSError, KeyError, TypeError, json.JSONDecodeError):
-        errors.append("vulnerability policy is missing or invalid")
+        errors.append("historical vulnerability policy snapshot is missing or invalid")
         return
     normalized_policy = policy_bytes.replace(b"\r\n", b"\n")
     if hashlib.sha256(normalized_policy).hexdigest() != boundary.get("policy_sha256"):
-        errors.append("security manifest policy digest does not match current policy")
+        errors.append("security manifest policy digest does not match historical policy snapshot")
     if hashlib.sha256(runtime_payload).hexdigest() != boundary.get("runtime_boundary_sha256"):
-        errors.append("security manifest runtime boundary does not match current policy")
-    try:
-        current_runtime_boundary = build_runtime_boundary_manifest(repo_root)
-    except (OSError, ValueError) as exc:
-        errors.append(f"current runtime boundary cannot be built: {exc}")
-        return
-    if current_runtime_boundary != policy["runtime_boundary"]:
-        errors.append("security manifest runtime boundary does not match current source")
-    current_runtime_payload = json.dumps(
-        current_runtime_boundary, sort_keys=True, separators=(",", ":")
-    ).encode()
-    if hashlib.sha256(current_runtime_payload).hexdigest() != boundary.get(
-        "runtime_boundary_sha256"
-    ):
-        errors.append("security manifest runtime boundary does not match current source")
+        errors.append(
+            "security manifest runtime boundary does not match historical policy snapshot"
+        )
 
 
 def _default_trivy_db_dir(repo_root: Path) -> Path:
@@ -1089,7 +1078,7 @@ def validate_security_materials(
     retained_inventory = _read_json_object(materials_dir / "app-inventory-review1.json")
     retained_vex = _read_json_object(materials_dir / "app-openvex-review1.json")
     release_identity = _read_json_object(materials_dir / "release-images-review1.json")
-    policy = _read_json_object(selected_repo_root / "scripts/image-vulnerability-policy.json")
+    policy = _read_json_object(selected_repo_root / SECURITY_POLICY_SNAPSHOT_PATH)
 
     app_summary = _scan_summary(app_scan)
     expected_app_summary = {
