@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import shutil
 import subprocess
 import sys
 from collections import Counter
@@ -22,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SPEC_PATH = ROOT / "SPEC.md"
 AUDIT_PATH = ROOT / "docs" / "audits" / "FUNCTIONAL_AUDIT.md"
 NOW = datetime(2026, 8, 15, tzinfo=UTC)
+HISTORICAL_EVIDENCE_COMMIT = "1047ce242884b6ba83a525524e88dcc44ab76a69"
 
 EXPECTED_IDS = (
     "AC-A-1",
@@ -132,7 +134,23 @@ def _validation_error(tmp_path: Path, text: str) -> str:
     return str(caught.value)
 
 
+def _require_git_history() -> None:
+    git = shutil.which("git")
+    if git is None:
+        pytest.skip("historical-tree integration requires Git")
+    completed = subprocess.run(
+        [git, "cat-file", "-e", f"{HISTORICAL_EVIDENCE_COMMIT}^{{commit}}"],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    if completed.returncode != 0:
+        pytest.skip("historical-tree integration requires the retained Git object database")
+
+
 def test_every_spec_acceptance_item_has_a_verdict_and_evidence():
+    _require_git_history()
     audit = load_audit(SPEC_PATH, AUDIT_PATH)
 
     assert audit.missing_items == ()
@@ -270,6 +288,7 @@ def test_current_command_result_contract_cannot_be_rewritten_coherently(tmp_path
 
 
 def test_current_frontend_evidence_accepts_78_and_rejects_stale_66(tmp_path: Path):
+    _require_git_history()
     current = _audit_text()
     retained = current.replace("vitest-tests=66", "vitest-tests=78").replace(
         "12 files and 66 tests passed", "12 files and 78 tests passed"
@@ -289,6 +308,7 @@ def test_current_frontend_evidence_accepts_78_and_rejects_stale_66(tmp_path: Pat
 
 
 def test_exact_historical_evidence_uses_its_commit_tree_not_the_current_checkout() -> None:
+    _require_git_history()
     audit = load_audit(SPEC_PATH, AUDIT_PATH)
     evidence = next(record for record in audit.evidence if record.evidence_id == "E004")
 
@@ -660,6 +680,7 @@ def test_audit_generated_time_and_evidence_time_must_be_real_utc(tmp_path: Path)
 
 
 def test_checker_cli_accepts_the_committed_matrix():
+    _require_git_history()
     completed = subprocess.run(
         [
             sys.executable,

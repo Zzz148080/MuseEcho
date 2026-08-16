@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -130,6 +131,21 @@ def _validation_error(tmp_path: Path, text: str) -> str:
     with pytest.raises(AuditValidationError) as caught:
         validate_audit(audit, repo_root=ROOT, now=NOW)
     return str(caught.value)
+
+
+def _require_historical_policy_git() -> None:
+    git = shutil.which("git")
+    if git is None:
+        pytest.skip("historical policy integration requires Git")
+    completed = subprocess.run(
+        [git, "cat-file", "-e", f"{checker.SECURITY_POLICY_SOURCE_COMMIT}^{{commit}}"],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    if completed.returncode != 0:
+        pytest.skip("historical policy integration requires the retained Git object database")
 
 
 def test_domain_contract_is_the_complete_fixed_set() -> None:
@@ -561,6 +577,7 @@ def test_historical_security_manifest_validation_is_independent_of_current_sourc
 
 
 def test_historical_policy_source_tree_recreates_the_frozen_source_boundary() -> None:
+    _require_historical_policy_git()
     policy = json.loads((ROOT / checker.SECURITY_POLICY_SNAPSHOT_PATH).read_text(encoding="utf-8"))
 
     with checker._verified_historical_source_tree(ROOT, policy) as source_root:
@@ -583,6 +600,7 @@ def test_historical_policy_source_tree_recreates_the_frozen_source_boundary() ->
 def test_historical_policy_source_commit_fails_closed(
     monkeypatch: pytest.MonkeyPatch, commit: str, expected: str
 ) -> None:
+    _require_historical_policy_git()
     policy = json.loads((ROOT / checker.SECURITY_POLICY_SNAPSHOT_PATH).read_text(encoding="utf-8"))
     monkeypatch.setattr(checker, "SECURITY_POLICY_SOURCE_COMMIT", commit)
 

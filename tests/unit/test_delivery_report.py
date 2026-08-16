@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -474,23 +475,43 @@ def test_current_status_documents_reject_stale_task23_or_task24_blocker(tmp_path
     assert "Task 24 audit cannot remain a current blocker" in _validation_error(tmp_path, blocker)
 
 
-def _validate_with_course_document_mutation(name: str, old: str, new: str) -> None:
-    path = ROOT / name
+def _validate_with_course_document_mutation(
+    tmp_path: Path, name: str, old: str, new: str
+) -> None:
+    report = load_delivery_report(REPORT_PATH)
+    repository_copy = tmp_path / f"{name}-{old}"
+    required_paths = {
+        "README.md",
+        "PLAN.md",
+        "AGENT_LOG.md",
+        "BLOCKERS.md",
+        "REFLECTION_NOTES.md",
+        "COURSE_DELIVERY_CHECKLIST.md",
+        *(evidence.path for evidence in report.evidence),
+    }
+    for relative_path in required_paths:
+        source = ROOT / relative_path
+        destination = repository_copy / relative_path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, destination)
+
+    path = repository_copy / name
     original = path.read_text(encoding="utf-8")
     assert old in original
-    try:
-        path.write_text(original.replace(old, new, 1), encoding="utf-8")
-        validate_delivery_report(load_delivery_report(REPORT_PATH), repo_root=ROOT, now=NOW)
-    finally:
-        path.write_text(original, encoding="utf-8")
+    path.write_text(original.replace(old, new, 1), encoding="utf-8")
+    validate_delivery_report(report, repo_root=repository_copy, now=NOW)
 
 
-def test_course_status_documents_reject_stale_draft_and_final_ci_claims() -> None:
+def test_course_status_documents_reject_stale_draft_and_final_ci_claims(
+    tmp_path: Path,
+) -> None:
     with pytest.raises(
         DeliveryValidationError,
         match="PLAN.md current status must describe the student-authored reflection draft",
     ):
-        _validate_with_course_document_mutation("PLAN.md", "student-authored", "blank student")
+        _validate_with_course_document_mutation(
+            tmp_path, "PLAN.md", "student-authored", "blank student"
+        )
 
     for name in ("PLAN.md", "README.md", "COURSE_DELIVERY_CHECKLIST.md"):
         with pytest.raises(
@@ -498,6 +519,7 @@ def test_course_status_documents_reject_stale_draft_and_final_ci_claims() -> Non
             match=f"{name} must reserve final PR SHA verification for live GitHub checks",
         ):
             _validate_with_course_document_mutation(
+                tmp_path,
                 name,
                 "final PR SHA",
                 "DEL-011 final branch-tip",
