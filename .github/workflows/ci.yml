@@ -224,6 +224,7 @@ jobs:
             --scanners vuln --exit-code 1 --severity HIGH,CRITICAL
       - name: Retain image vulnerability evidence
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: image-vulnerability-evidence

@@ -547,6 +547,20 @@ def test_distribution_uses_buildx_and_node24_artifact_without_weakening_evidence
     )
     assert "verify_release_identity.py record" in build_commands
     assert steps[artifact_index]["with"]["path"] == "tmp/image-security/"
+    assert steps[artifact_index]["if"] == "always()"
+    assert steps[artifact_index]["continue-on-error"] is True
+
+    blocking_steps = {
+        "Validate and build both non-root images",
+        "Capture unsuppressed full-image vulnerability JSON",
+        "Record exact app package ownership and runtime probes",
+        "Audit exact built-image component licenses",
+        "Audit exact app findings and emit OpenVEX",
+        "Enforce audited app VEX and unsuppressed gateway gate",
+    }
+    for step in steps[:artifact_index]:
+        if step.get("name") in blocking_steps:
+            assert step.get("continue-on-error") is not True
 
 
 def test_github_quality_always_removes_its_exact_pytest_temp_root_before_secret_scan():

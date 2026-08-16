@@ -177,3 +177,68 @@ Expected: `quality`, `e2e`, and `distribution` all pass on the same final head S
 Run: compare local `HEAD`, `origin/codex/expand-common-audio-formats`, PR head SHA, and the successful workflow head SHA; run `git status --short --branch`.
 
 Expected: all SHA values match, GitHub CI is green, and any remaining working-tree files are explicitly identified rather than silently omitted.
+
+### Task 5: Close the final distribution drift
+
+**Files:**
+- Modify: `scripts/image-vulnerability-policy.json`
+- Modify: `scripts/image_vulnerability_audit.py`
+- Modify: `.github/workflows/ci.yml`
+- Modify: `tests/unit/test_image_vulnerability_audit.py`
+- Modify: `tests/unit/test_task20_final_delivery_contract.py`
+- Do not modify: `docs/audits/evidence/task23-image-vulnerability-policy.json`
+
+**Interfaces:**
+- Consumes: GitHub Actions run `31962866791`, whose `distribution` job found one new Debian cJSON finding, stale current-source control line references, and a GitHub artifact quota upload failure.
+- Produces: an exact current-image VEX inventory, current control references, and a workflow where only evidence retention is non-blocking while every image audit and vulnerability gate remains fail-closed.
+
+- [ ] **Step 1: Capture focused RED tests for current policy/control drift and upload isolation**
+
+Add focused tests that require current upload controls `src/museecho/application/uploads.py:466` and `src/museecho/application/uploads.py:483`, reject the stale `:464`/`:481` pair in current policy and audit constants, require the evidence-retention step to use both `if: always()` and `continue-on-error: true`, and prove every preceding build/license/raw-scan/VEX/gateway enforcement step does not use `continue-on-error: true`.
+
+Expected before implementation: the focused tests fail for the stale controls and blocking artifact upload while existing security gates remain strict.
+
+- [ ] **Step 2: Add the exact new cJSON finding without weakening policy**
+
+Update current policy counts to `finding_count=182` and `distinct_cve_count=68`. Add exactly one `CVE-2026-29036` statement for `libcjson1` version `1.7.15-1+deb12u4`, status `affected`, severity `HIGH`, empty fixed version, and purl `pkg:deb/debian/libcjson1@1.7.15-1%2Bdeb12u4?arch=amd64&distro=debian-12.15`. The assessment must name the vulnerable `cJSON_Utils.c` JSON Patch functions and explain, from exact package inventory and MuseEcho execution boundaries, why those functions are absent/not executed; do not copy the unrelated `cJSON_Compare` description from `CVE-2026-67216`.
+
+Expected: statement CVEs and raw scan CVEs match exactly; no finding is silently ignored.
+
+- [ ] **Step 3: Refresh only current controls and isolate quota failure**
+
+Update `AUDIO_BOUNDARY_CONTROLS` and all current policy statement controls from `uploads.py:464`/`:481` to `uploads.py:466`/`:483`. Do not change the immutable Task 23 snapshot. Set `continue-on-error: true` only on `Retain image vulnerability evidence`; keep the raw scans, license audit, exact VEX audit, release-identity checks, and final enforcement gate blocking.
+
+Expected: exact current controls exist, the historical snapshot remains byte-identical, and a GitHub artifact storage quota delay cannot turn an otherwise successful release-security job red.
+
+- [ ] **Step 4: Verify, review, commit, push, and monitor**
+
+Run the focused image vulnerability/workflow contract tests, the audit CLI against the retained current scan fixture or freshly generated equivalent, Ruff on changed Python, and the relevant distribution contract suite. Review and commit only the intended paths, push the existing branch, then monitor `quality`, `e2e`, and `distribution` on the same SHA.
+
+Expected: all focused local gates pass and all three GitHub jobs succeed on one final head SHA.
+
+### Task 6: Reconcile final delivery records and remove confirmed local intermediates
+
+**Files:**
+- Review every tracked delivery/process document and its validator contract.
+- Modify only documents whose CI state, stage wording, or progress facts are stale.
+- Inventory ignored/untracked repository-local temporary files before deleting any of them.
+
+**Interfaces:**
+- Consumes: the final successful GitHub Actions run and the complete branch history.
+- Produces: truthful final delivery records plus a repository containing no confirmed task-local disposable intermediates.
+
+- [ ] **Step 1: Audit all delivery documents against final evidence**
+
+Synchronize the completed work, final branch SHA, PR and workflow evidence. Preserve the teacher's reported 6-of-9 threshold, all genuinely deferred items, the current GitHub-required/GitLab-supplemental wording, and student-owned reflection/acceptance boundaries.
+
+- [ ] **Step 2: Replace stale phase wording without inventing completion**
+
+Remove or update phrases such as pending CI, planned verification, or pre-release state only where final evidence supersedes them. Do not claim GitLab, cloud deployment, Release publication, or student-only acceptance occurred.
+
+- [ ] **Step 3: Inventory and safely clean repository-local intermediates**
+
+List every candidate with its resolved path and provenance. Delete only files/directories proven to be regenerable products of this task and located under `D:\智软工程师大项目\MuseEcho`; do not use broad recursive cleanup and do not touch anything elsewhere on drive D.
+
+- [ ] **Step 4: Validate and publish the reconciliation**
+
+Run document/acceptance/audit validators, inspect the final diff, commit and push any truthful documentation changes, then require a green final-SHA CI and repeat the local/origin/PR/workflow SHA equality audit.
