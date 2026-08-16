@@ -475,9 +475,7 @@ def test_current_status_documents_reject_stale_task23_or_task24_blocker(tmp_path
     assert "Task 24 audit cannot remain a current blocker" in _validation_error(tmp_path, blocker)
 
 
-def _validate_with_course_document_mutation(
-    tmp_path: Path, name: str, old: str, new: str
-) -> None:
+def _validate_with_course_document_mutation(tmp_path: Path, name: str, old: str, new: str) -> None:
     report = load_delivery_report(REPORT_PATH)
     repository_copy = tmp_path / f"{name}-{old}"
     required_paths = {
