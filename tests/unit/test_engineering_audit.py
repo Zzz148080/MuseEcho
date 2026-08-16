@@ -18,6 +18,10 @@ from scripts.check_engineering_audit import (
     load_audit,
     validate_audit,
 )
+from scripts.image_vulnerability_audit import (
+    build_runtime_boundary_manifest,
+    normalized_file_digest,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_PATH = ROOT / "docs" / "audits" / "ENGINEERING_AUDIT.md"
@@ -554,6 +558,37 @@ def test_historical_security_manifest_validation_is_independent_of_current_sourc
     checker._validate_security_manifest(ROOT, errors)
 
     assert "security manifest runtime boundary does not match current source" not in errors
+
+
+def test_historical_policy_source_tree_recreates_the_frozen_source_boundary() -> None:
+    policy = json.loads((ROOT / checker.SECURITY_POLICY_SNAPSHOT_PATH).read_text(encoding="utf-8"))
+
+    with checker._verified_historical_source_tree(ROOT, policy) as source_root:
+        assert build_runtime_boundary_manifest(source_root) == policy["runtime_boundary"]
+        assert {
+            path: normalized_file_digest(source_root / path) for path in policy["evidence_files"]
+        } == policy["evidence_files"]
+
+
+@pytest.mark.parametrize(
+    ("commit", "expected"),
+    (
+        ("0" * 40, "historical policy source is unavailable"),
+        (
+            "bc98c1bb522e0d53808b7af1ce2d638cafece2e2",
+            "historical policy source policy does not match the snapshot",
+        ),
+    ),
+)
+def test_historical_policy_source_commit_fails_closed(
+    monkeypatch: pytest.MonkeyPatch, commit: str, expected: str
+) -> None:
+    policy = json.loads((ROOT / checker.SECURITY_POLICY_SNAPSHOT_PATH).read_text(encoding="utf-8"))
+    monkeypatch.setattr(checker, "SECURITY_POLICY_SOURCE_COMMIT", commit)
+
+    with pytest.raises(AuditValidationError, match=expected):
+        with checker._verified_historical_source_tree(ROOT, policy):
+            pass
 
 
 def test_audit_generated_time_cannot_be_future_dated(tmp_path: Path) -> None:

@@ -10,11 +10,12 @@ import os
 import re
 import subprocess
 import sys
-from contextlib import chdir
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Any, Callable
+from pathlib import Path, PurePosixPath
+from tempfile import TemporaryDirectory
+from typing import Any, Callable, Iterator
 
 if __package__:
     from scripts.image_vulnerability_audit import audit_image
@@ -64,6 +65,8 @@ FINDING_CONTRACTS = {
 SECURITY_MANIFEST_PATH = "docs/audits/evidence/task23-security-manifest.json"
 SECURITY_MANIFEST_SHA256 = "59e1478af5930ed515d572ad39924e6ed0820160cc291b5920939cae7682d77f"
 SECURITY_POLICY_SNAPSHOT_PATH = "docs/audits/evidence/task23-image-vulnerability-policy.json"
+SECURITY_POLICY_SOURCE_COMMIT = "0d9888febe219373f1fafc30def8f6333bce7c67"
+SECURITY_POLICY_SOURCE_PATH = "scripts/image-vulnerability-policy.json"
 
 SECURITY_MATERIAL_FILENAMES = (
     "app-raw-review1.json",
@@ -345,7 +348,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         "NOT RUN: formal current-source Dockerfile build requires the complete locked "
         "BuildKit pip and apt cache under network none",
         "Dockerfile",
-        "Controlled current-source derivative is audit-only and is not a release artifact",
+        "Retained Task 23 derivative is audit-only and is not a release artifact",
     ),
     "E037": (
         "IMPLEMENTATION_BOUNDARY_COMMAND",
@@ -1040,6 +1043,82 @@ def _json_output_digest(value: dict[str, Any]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def _git_tree_blob(repo_root: Path, commit: str, raw_path: str) -> bytes:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(repo_root), "cat-file", "blob", f"{commit}:{raw_path}"],
+            capture_output=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise AuditValidationError(
+            f"historical policy source cannot be read: {commit}:{raw_path}"
+        ) from exc
+    if completed.returncode != 0:
+        raise AuditValidationError(f"historical policy source is unavailable: {commit}:{raw_path}")
+    return completed.stdout
+
+
+def _historical_source_paths(policy: dict[str, Any]) -> dict[str, str]:
+    selected: dict[str, str] = {}
+    for field in ("runtime_boundary", "evidence_files"):
+        entries = policy.get(field)
+        if not isinstance(entries, dict):
+            raise AuditValidationError(f"historical policy {field} is invalid")
+        for raw_path, digest in entries.items():
+            path = PurePosixPath(raw_path) if isinstance(raw_path, str) else None
+            if (
+                path is None
+                or not raw_path
+                or "\\" in raw_path
+                or path.is_absolute()
+                or path.as_posix() != raw_path
+                or any(part in {"", ".", ".."} for part in path.parts)
+                or not isinstance(digest, str)
+                or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+            ):
+                raise AuditValidationError(f"historical policy {field} path/digest is invalid")
+            prior = selected.setdefault(raw_path, digest)
+            if prior != digest:
+                raise AuditValidationError(
+                    f"historical policy has conflicting source digest: {raw_path}"
+                )
+    return selected
+
+
+@contextmanager
+def _verified_historical_source_tree(repo_root: Path, policy: dict[str, Any]) -> Iterator[Path]:
+    commit = SECURITY_POLICY_SOURCE_COMMIT
+    if re.fullmatch(r"[0-9a-f]{40}", commit) is None:
+        raise AuditValidationError("historical policy source commit is invalid")
+    policy_bytes = _git_tree_blob(repo_root, commit, SECURITY_POLICY_SOURCE_PATH)
+    normalized_policy = policy_bytes.replace(b"\r\n", b"\n")
+    try:
+        tree_policy = json.loads(normalized_policy)
+    except json.JSONDecodeError as exc:
+        raise AuditValidationError("historical policy source policy is invalid") from exc
+    if (
+        hashlib.sha256(normalized_policy).hexdigest()
+        != SECURITY_MANIFEST_CONTRACT["boundary"]["policy_sha256"]
+        or tree_policy != policy
+    ):
+        raise AuditValidationError("historical policy source policy does not match the snapshot")
+
+    paths = _historical_source_paths(policy)
+    with TemporaryDirectory(prefix="museecho-task23-source-") as temporary_directory:
+        source_root = Path(temporary_directory)
+        for raw_path, expected_digest in paths.items():
+            contents = _git_tree_blob(repo_root, commit, raw_path)
+            observed_digest = hashlib.sha256(contents.replace(b"\r\n", b"\n")).hexdigest()
+            if observed_digest != expected_digest:
+                raise AuditValidationError(f"historical policy source digest mismatch: {raw_path}")
+            destination = source_root / PurePosixPath(raw_path)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(contents)
+        yield source_root
+
+
 def validate_security_materials(
     *,
     materials_dir: Path,
@@ -1098,12 +1177,13 @@ def validate_security_materials(
             f"retained gateway raw scan summary mismatch: {gateway_summary!r}"
         )
 
-    with chdir(selected_repo_root):
+    with _verified_historical_source_tree(selected_repo_root, policy) as historical_source_root:
         audit_errors, recomputed_vex, recomputed_inventory = audit_image(
             app_scan,
             app_package_files,
             policy,
             expected_image_id=SECURITY_MANIFEST_CONTRACT["app"]["config_image_id"],
+            repository_root=historical_source_root,
         )
     if audit_errors or recomputed_vex is None or recomputed_inventory is None:
         raise AuditValidationError(
