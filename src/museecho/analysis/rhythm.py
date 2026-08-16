@@ -164,8 +164,7 @@ def estimate_rhythm(
             if (
                 half_imbalance <= tentative_accent
                 and half_confidence >= tentative_confidence
-                and half_confidence
-                >= confidence - _TENTATIVE_HALF_CONFIDENCE_TOLERANCE
+                and half_confidence >= confidence - _TENTATIVE_HALF_CONFIDENCE_TOLERANCE
             ):
                 bpm = half_bpm
                 frames = half_frames

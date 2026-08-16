@@ -478,9 +478,7 @@ def _validate_audio_stream(stream: dict[str, object]) -> None:
         raise ValueError
 
 
-def _is_allowed_attached_cover(
-    stream: dict[str, object], *, audio_format: AudioFormat
-) -> bool:
+def _is_allowed_attached_cover(stream: dict[str, object], *, audio_format: AudioFormat) -> bool:
     disposition = stream.get("disposition")
     allowed_cover_codecs = {
         ".mp3": {"mjpeg"},

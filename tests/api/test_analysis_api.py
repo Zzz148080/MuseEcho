@@ -162,9 +162,7 @@ def test_unknown_or_unauthorized_analysis_is_indistinguishable(tmp_path: Path):
     assert denied.json() == missing.json() == {"detail": "Not Found"}
 
 
-def test_audio_supports_chunked_full_and_bounded_range_reads(
-    tmp_path: Path, monkeypatch
-):
+def test_audio_supports_chunked_full_and_bounded_range_reads(tmp_path: Path, monkeypatch):
     client, _repository, job = _completed_client(tmp_path)
     calls: list[tuple[int, int]] = []
     original = ChunkedEncryptedAudioStore.read_range
