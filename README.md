@@ -11,8 +11,10 @@ Task 23 PR #1 is merged with GitHub quality, E2E, and distribution green.
 Task 24 GitHub quality, E2E, and distribution passed at its recorded
 implementation boundary. Per `COURSE_REQUIREMENT_UPDATE.md`, GitLab and
 Tencent Cloud/public deployment are deferred follow-up work, not course
-submission gates. Remaining course gates are final GitHub evidence, formal
-offline build ENG-010, local product review, and student acceptance.
+submission gates. The final PR SHA is verified only by live GitHub checks after
+push; `DEL-011` in `DELIVERY_REPORT.md` is historical Task 24 implementation
+evidence. Remaining course gates are formal offline build ENG-010, local product
+review, and student acceptance.
 <!-- TASK24-CURRENT-STATUS:END -->
 
 MuseEcho V1 是一款 Evidence First（证据优先）的交互式音乐理解应用。它用确定性的

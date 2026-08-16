@@ -151,6 +151,11 @@ EXPECTED_DELIVERY_NARRATIVE_SHA256 = (
 EXPECTED_PRODUCT_NARRATIVE_SHA256 = (
     "0a3acbf4202eca3f1b69adb941d8a2e797a06e216e2453c53083b05fdf3a3ee1"
 )
+FINAL_PR_SHA_LIVE_CHECKS_BOUNDARY = "final PR SHA is verified only by live GitHub checks after push"
+EXPECTED_DEL_011_SUMMARY = (
+    "Historical Task 24 implementation evidence only; it cannot verify the final PR SHA, "
+    "which is verified only by live GitHub checks after push."
+)
 
 
 @dataclass(frozen=True)
@@ -741,6 +746,25 @@ def _validate_current_status_documents(repo_root: Path, errors: list[str]) -> No
             errors.append("Task 24 audit cannot remain a current blocker")
 
 
+def validate_course_status_documents(repo_root: Path) -> tuple[str, ...]:
+    errors: list[str] = []
+    documents = ("PLAN.md", "README.md", "COURSE_DELIVERY_CHECKLIST.md")
+    text_by_name = {
+        name: (repo_root / name).read_text(encoding="utf-8") for name in documents
+    }
+    plan_block = text_by_name["PLAN.md"].split(CURRENT_STATUS_START, maxsplit=1)[1].split(
+        CURRENT_STATUS_END, maxsplit=1
+    )[0]
+    normalized_plan_block = re.sub(r"\s+", " ", plan_block.replace(">", " "))
+    if "student-authored reflection draft" not in normalized_plan_block:
+        errors.append("PLAN.md current status must describe the student-authored reflection draft")
+    for name, text in text_by_name.items():
+        normalized_text = re.sub(r"\s+", " ", text.replace(">", " "))
+        if FINAL_PR_SHA_LIVE_CHECKS_BOUNDARY not in normalized_text:
+            errors.append(f"{name} must reserve final PR SHA verification for live GitHub checks")
+    return tuple(errors)
+
+
 def validate_delivery_report(
     report: DeliveryReport, *, repo_root: Path, now: datetime | None = None
 ) -> None:
@@ -773,6 +797,9 @@ def validate_delivery_report(
         errors.append("delivery sections are out of order")
 
     evidence_by_id = {item.evidence_id: item for item in report.evidence}
+    task24_ci_evidence = evidence_by_id.get("DEL-011")
+    if task24_ci_evidence is None or task24_ci_evidence.summary != EXPECTED_DEL_011_SUMMARY:
+        errors.append("DEL-011 must remain historical Task 24 implementation evidence")
     for section, (expected_id, expected_title) in zip(
         report.sections, EXPECTED_SECTION_TITLES, strict=False
     ):
@@ -946,6 +973,7 @@ def validate_delivery_report(
         errors.append("product audit narrative does not match the fixed contract")
 
     _validate_current_status_documents(repo_root, errors)
+    errors.extend(validate_course_status_documents(repo_root))
     if errors:
         raise DeliveryValidationError(
             "delivery report validation failed:\n- " + "\n- ".join(dict.fromkeys(errors))

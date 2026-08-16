@@ -20,13 +20,14 @@
 
 <!-- TASK24-CURRENT-STATUS:START -->
 > **Task 24 current status:** `MUSEECHO V1 PARTIALLY READY`. The Product Audit,
-> fixed 17-section Delivery Report, fail-closed validator, and blank student
-> reflection template are complete, so Task 24 itself is not a blocker. Task 23
+> fixed 17-section Delivery Report, fail-closed validator, and student-authored
+> reflection draft are present, so Task 24 itself is not a blocker. Task 23
 > PR #1 merged at `79d87f4`; Task 24 run `31687703913` also passed GitHub
 > quality, E2E, and distribution at head `de5bc6f`. Per
 > `COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent Cloud/public deployment
-> are deferred follow-up work. Final GitHub evidence, formal offline build
-> ENG-010, local product review, and student gates remain open.
+> are deferred follow-up work. The final PR SHA is verified only by live GitHub
+> checks after push; `DEL-011` is historical Task 24 implementation evidence.
+> Formal offline build ENG-010, local product review, and student gates remain open.
 <!-- TASK24-CURRENT-STATUS:END -->
 
 ## 0. 当前门禁与真实性约束

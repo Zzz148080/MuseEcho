@@ -14,7 +14,7 @@
 | 4 | 源码、细粒度 Git/PR 历史 | `src/`、`frontend/`、`tests/`、Git 历史 | 已有实施历史；当前分支尚有后续提交和未提交改动，提交前须逐项整理、推送、建立 PR 并以最新 SHA 复验。 |
 | 5 | 容器分发与 README | `Dockerfile`、`compose.yaml`、`README.md` | 本地容器构建/运行说明齐全；公开 registry 镜像与正式离线构建仍未完成，不能标记分发完成。 |
 | 6 | `AGENT_LOG.md` | `AGENT_LOG.md` | Tasks 1–24 过程记录存在；Task 24 后维护的范围、提交与验证边界已补记，不能倒填不存在的技能、人工批准或测试。 |
-| 7 | CI 配置与最后一次通过记录 | `.github/workflows/ci.yml` | 本次课程只要求 GitHub；最终提交仍须在 GitHub CI 获得 pass。GitLab 配置保留为后续流水线材料。 |
+| 7 | CI 配置与最后一次通过记录 | `.github/workflows/ci.yml` | 本次课程只要求 GitHub；final PR SHA is verified only by live GitHub checks after push。`DELIVERY_REPORT.md` 的 `DEL-011` 仅是历史 Task 24 implementation evidence，不能代替最终 CI。GitLab 配置保留为后续流水线材料。 |
 | 8 | `REFLECTION.md` | `REFLECTION.md` | 学生本人正在修订；内容、最终签字和真实状态由学生负责确认。 |
 | 9 | 后续线上 WebUI 部署 | `deploy/tencent-cloud/`、`DEPLOYMENT_EVIDENCE.md` | 不作为本次课程提交门禁；腾讯云、域名/DNS、可信 TLS、目标机 smoke、跨网/24 小时验证、备份恢复和回滚保留为下一步计划。 |
 

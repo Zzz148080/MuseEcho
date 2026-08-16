@@ -136,6 +136,10 @@ def test_task24_github_boundary_is_fixed_while_external_work_remains_deferred(
     )
     assert github.exit_code_raw == "0"
     assert github.status == "PASS"
+    assert github.summary == (
+        "Historical Task 24 implementation evidence only; it cannot verify the final PR SHA, "
+        "which is verified only by live GitHub checks after push."
+    )
     assert gitlab.command == "NOT RUN: GitLab has no Task 24 pipeline"
     assert gitlab.result == "gitlab=NOT_RUN"
     assert gitlab.exit_code_raw == "NOT_RUN"
@@ -149,6 +153,13 @@ def test_task24_github_boundary_is_fixed_while_external_work_remains_deferred(
     )
     assert "DEL-011 does not match its fixed evidence contract" in _validation_error(
         tmp_path, forged
+    )
+
+    stale_branch_tip = _replace_table_cell(
+        _report_text(), "## Evidence index", "DEL-011", "Summary", "Final branch-tip CI passed."
+    )
+    assert "DEL-011 must remain historical Task 24 implementation evidence" in _validation_error(
+        tmp_path, stale_branch_tip
     )
 
     externally_executed = _replace_table_cell(
@@ -462,6 +473,38 @@ def test_current_status_documents_reject_stale_task23_or_task24_blocker(tmp_path
 
     blocker = _report_text().replace("BLK-CONTROLLER-BROWSER", "TASK24-AUDIT", 1)
     assert "Task 24 audit cannot remain a current blocker" in _validation_error(tmp_path, blocker)
+
+
+def _validate_with_course_document_mutation(name: str, old: str, new: str) -> None:
+    path = ROOT / name
+    original = path.read_text(encoding="utf-8")
+    assert old in original
+    try:
+        path.write_text(original.replace(old, new, 1), encoding="utf-8")
+        validate_delivery_report(load_delivery_report(REPORT_PATH), repo_root=ROOT, now=NOW)
+    finally:
+        path.write_text(original, encoding="utf-8")
+
+
+def test_course_status_documents_reject_stale_draft_and_final_ci_claims() -> None:
+    with pytest.raises(
+        DeliveryValidationError,
+        match="PLAN.md current status must describe the student-authored reflection draft",
+    ):
+        _validate_with_course_document_mutation(
+            "PLAN.md", "student-authored", "blank student"
+        )
+
+    for name in ("PLAN.md", "README.md", "COURSE_DELIVERY_CHECKLIST.md"):
+        with pytest.raises(
+            DeliveryValidationError,
+            match=f"{name} must reserve final PR SHA verification for live GitHub checks",
+        ):
+            _validate_with_course_document_mutation(
+                name,
+                "final PR SHA",
+                "DEL-011 final branch-tip",
+            )
 
 
 def test_checker_cli_accepts_the_committed_delivery_report() -> None:
