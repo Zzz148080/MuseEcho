@@ -625,7 +625,7 @@ def test_container_contract_synthetic_harness_exits_zero_after_expected_failure_
         capture_output=True,
         check=False,
         text=True,
-        timeout=30,
+        timeout=60,
     )
 
     assert completed.returncode == 0, completed.stdout + completed.stderr

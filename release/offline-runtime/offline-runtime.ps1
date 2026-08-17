@@ -74,6 +74,10 @@ function Read-ReleaseIdentity {
         if ($entry.image_id -notmatch '^sha256:[0-9a-f]{64}$') {
             throw "$name release image id is invalid"
         }
+        if ($null -ne $entry.manifest_digest -and `
+            $entry.manifest_digest -notmatch '^sha256:[0-9a-f]{64}$') {
+            throw "$name release manifest digest is invalid"
+        }
         if ($entry.tar_sha256 -notmatch '^[0-9a-f]{64}$') {
             throw "$name release tar SHA-256 is invalid"
         }
@@ -81,10 +85,20 @@ function Read-ReleaseIdentity {
         if ($actual -ne $entry.tar_sha256) {
             throw "$name release tar SHA-256 mismatch"
         }
-        $identities[$name] = [string]$entry.image_id
+        $identities[$name] = [pscustomobject]@{
+            Config = [string]$entry.image_id
+            Manifest = if ($null -ne $entry.manifest_digest) {
+                [string]$entry.manifest_digest
+            } else { '' }
+        }
     }
-    if ($identities.app -eq $identities.gateway) {
-        throw 'app and gateway release image identities must differ'
+    $appAllowedIds = @($identities.app.Config, $identities.app.Manifest) |
+        Where-Object { $_ }
+    $gatewayAllowedIds = @($identities.gateway.Config, $identities.gateway.Manifest) |
+        Where-Object { $_ }
+    $overlap = @($appAllowedIds | Where-Object { $_ -in $gatewayAllowedIds })
+    if ($overlap.Count -gt 0) {
+        throw 'app and gateway release identity sets must not overlap'
     }
     return $identities
 }
@@ -93,11 +107,16 @@ function Import-ReleaseImages {
     $identities = Read-ReleaseIdentity
     foreach ($name in @('app', 'gateway')) {
         Invoke-Docker load --input $tarPaths[$name]
+    }
+    foreach ($name in @('app', 'gateway')) {
         $loaded = @(& $DockerCommand image inspect --format '{{.Id}}' $imageNames[$name])
         $loadedId = ($loaded -join '').Trim()
-        if ($LASTEXITCODE -ne 0 -or $loadedId -ne $identities[$name]) {
-            throw "$name loaded image identity mismatch: $loadedId, expected $($identities[$name])"
+        $allowedIds = @($identities[$name].Config, $identities[$name].Manifest) |
+            Where-Object { $_ }
+        if ($LASTEXITCODE -ne 0 -or $loadedId -notin $allowedIds) {
+            throw "$name loaded image identity mismatch: $loadedId, expected $($allowedIds -join ' or ')"
         }
+        $identities[$name] | Add-Member -NotePropertyName Loaded -NotePropertyValue $loadedId
     }
     return $identities
 }
@@ -151,7 +170,7 @@ if ($Action -eq 'Stop') {
 
 $identities = Import-ReleaseImages
 if ($Action -eq 'Import') {
-    Write-Host "Offline images imported: app=$($identities.app) gateway=$($identities.gateway)"
+    Write-Host "Offline images imported: app=$($identities.app.Loaded) gateway=$($identities.gateway.Loaded)"
     exit 0
 }
 

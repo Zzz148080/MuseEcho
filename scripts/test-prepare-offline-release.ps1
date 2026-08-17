@@ -33,15 +33,13 @@ function New-DockerSaveFixture {
     $configDigest = (Get-FileHash -Algorithm SHA256 -LiteralPath $configPath).Hash.ToLowerInvariant()
     $configName = "$configDigest.json"
     Move-Item -LiteralPath $configPath -Destination (Join-Path $root $configName)
-    $manifest = @(
-        [ordered]@{
-            Config = $configName
-            RepoTags = @("museecho-$Name`:local")
-            Layers = @()
-        }
-    )
+    $manifestEntry = [ordered]@{
+        Config = $configName
+        RepoTags = @("museecho-$Name`:local")
+        Layers = @()
+    }
     Write-Utf8NoBom -Path (Join-Path $root 'manifest.json') `
-        -Value (($manifest | ConvertTo-Json -Depth 4 -Compress) + "`n")
+        -Value ("[" + ($manifestEntry | ConvertTo-Json -Depth 4 -Compress) + "]`n")
     & tar -cf $Destination -C $root manifest.json $configName
     if ($LASTEXITCODE -ne 0) { throw "could not create $Name Docker-save fixture" }
     return "sha256:$configDigest"

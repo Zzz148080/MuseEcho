@@ -13,6 +13,8 @@ $savedDockerLog = $env:MUSEECHO_FAKE_DOCKER_LOG
 $savedDockerMode = $env:MUSEECHO_FAKE_DOCKER_MODE
 $savedAppDaemonId = $env:MUSEECHO_EXPECTED_APP_DAEMON_ID
 $savedGatewayDaemonId = $env:MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID
+$savedAppConfigId = $env:MUSEECHO_EXPECTED_APP_CONFIG_ID
+$savedGatewayConfigId = $env:MUSEECHO_EXPECTED_GATEWAY_CONFIG_ID
 
 Push-Location $repositoryRoot
 try {
@@ -100,19 +102,26 @@ try {
 echo %*>>"%MUSEECHO_FAKE_DOCKER_LOG%"
 if "%1"=="image" if "%2"=="inspect" echo %*| findstr /c:"museecho-app:local" >nul && (
   if "%MUSEECHO_FAKE_DOCKER_MODE%"=="wrong-app-tag" echo sha256:5555555555555555555555555555555555555555555555555555555555555555 && exit /b 0
+  if "%MUSEECHO_FAKE_DOCKER_MODE%"=="classic-current" echo %MUSEECHO_EXPECTED_APP_CONFIG_ID% && exit /b 0
   echo %MUSEECHO_EXPECTED_APP_DAEMON_ID%
   exit /b 0
 )
 if "%1"=="image" if "%2"=="inspect" echo %*| findstr /c:"museecho-gateway:local" >nul && (
+  if "%MUSEECHO_FAKE_DOCKER_MODE%"=="classic-current" echo %MUSEECHO_EXPECTED_GATEWAY_CONFIG_ID% && exit /b 0
   echo %MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID%
   exit /b 0
 )
 if "%1"=="container" if "%2"=="inspect" if "%5"=="app-container" (
   if "%MUSEECHO_FAKE_DOCKER_MODE%"=="runtime-drift" echo sha256:6666666666666666666666666666666666666666666666666666666666666666 && exit /b 0
+  if "%MUSEECHO_FAKE_DOCKER_MODE%"=="classic-current" echo %MUSEECHO_EXPECTED_APP_CONFIG_ID% && exit /b 0
   echo %MUSEECHO_EXPECTED_APP_DAEMON_ID%
   exit /b 0
 )
-if "%1"=="container" if "%2"=="inspect" if "%5"=="gateway-container" echo %MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID% && exit /b 0
+if "%1"=="container" if "%2"=="inspect" if "%5"=="gateway-container" (
+  if "%MUSEECHO_FAKE_DOCKER_MODE%"=="classic-current" echo %MUSEECHO_EXPECTED_GATEWAY_CONFIG_ID% && exit /b 0
+  echo %MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID%
+  exit /b 0
+)
 echo %*| findstr /c:" config --format json" >nul && echo {"services":{"app":{"image":"museecho-app:local"},"gateway":{"image":"museecho-gateway:local"}}} && exit /b 0
 echo %*| findstr /c:" config --quiet" >nul && exit /b 0
 echo %*| findstr /c:" ps --quiet app" >nul && echo app-container && exit /b 0
@@ -132,19 +141,27 @@ case "$*" in
   *"image inspect"*"museecho-app:local"*)
     if [ "$MUSEECHO_FAKE_DOCKER_MODE" = wrong-app-tag ]; then
       echo sha256:5555555555555555555555555555555555555555555555555555555555555555
+    elif [ "$MUSEECHO_FAKE_DOCKER_MODE" = classic-current ]; then
+      echo "$MUSEECHO_EXPECTED_APP_CONFIG_ID"
     else
       echo "$MUSEECHO_EXPECTED_APP_DAEMON_ID"
     fi
     exit 0 ;;
-  *"image inspect"*"museecho-gateway:local"*) echo "$MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID"; exit 0 ;;
+  *"image inspect"*"museecho-gateway:local"*)
+    if [ "$MUSEECHO_FAKE_DOCKER_MODE" = classic-current ]; then echo "$MUSEECHO_EXPECTED_GATEWAY_CONFIG_ID"; else echo "$MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID"; fi
+    exit 0 ;;
   *"container inspect"*"app-container"*)
     if [ "$MUSEECHO_FAKE_DOCKER_MODE" = runtime-drift ]; then
       echo sha256:6666666666666666666666666666666666666666666666666666666666666666
+    elif [ "$MUSEECHO_FAKE_DOCKER_MODE" = classic-current ]; then
+      echo "$MUSEECHO_EXPECTED_APP_CONFIG_ID"
     else
       echo "$MUSEECHO_EXPECTED_APP_DAEMON_ID"
     fi
     exit 0 ;;
-  *"container inspect"*"gateway-container"*) echo "$MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID"; exit 0 ;;
+  *"container inspect"*"gateway-container"*)
+    if [ "$MUSEECHO_FAKE_DOCKER_MODE" = classic-current ]; then echo "$MUSEECHO_EXPECTED_GATEWAY_CONFIG_ID"; else echo "$MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID"; fi
+    exit 0 ;;
   *" config --format json"*) echo '{"services":{"app":{"image":"museecho-app:local"},"gateway":{"image":"museecho-gateway:local"}}}'; exit 0 ;;
   *" config --quiet"*) exit 0 ;;
   *" ps --quiet app"*) echo app-container; exit 0 ;;
@@ -196,6 +213,8 @@ exit 0
     $env:MUSEECHO_FAKE_DOCKER_LOG = $dockerLog
     $env:MUSEECHO_EXPECTED_APP_DAEMON_ID = $appDaemonId
     $env:MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID = $gatewayDaemonId
+    $env:MUSEECHO_EXPECTED_APP_CONFIG_ID = $appConfigId
+    $env:MUSEECHO_EXPECTED_GATEWAY_CONFIG_ID = $gatewayConfigId
     $env:PATH = "$fakeBin$([IO.Path]::PathSeparator)$savedPath"
 
     function Invoke-OfflineNoBuild {
@@ -236,9 +255,12 @@ exit 0
     }
 
     function Invoke-CurrentReleaseNoBuild {
-        param([Parameter(Mandatory = $true)][string]$Manifest)
+        param(
+            [Parameter(Mandatory = $true)][string]$Manifest,
+            [string]$Mode = 'success'
+        )
         [System.IO.File]::WriteAllText($dockerLog, '', [Text.UTF8Encoding]::new($false))
-        $env:MUSEECHO_FAKE_DOCKER_MODE = 'success'
+        $env:MUSEECHO_FAKE_DOCKER_MODE = $Mode
         $savedErrorPreference = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
         try {
@@ -282,11 +304,13 @@ exit 0
             schema_version = 1
             images = [ordered]@{
                 app = [ordered]@{
-                    image_id = $appDaemonId
+                    image_id = $appConfigId
+                    manifest_digest = $appDaemonId
                     tar_sha256 = ('a' * 64)
                 }
                 gateway = [ordered]@{
-                    image_id = $gatewayDaemonId
+                    image_id = $gatewayConfigId
+                    manifest_digest = $gatewayDaemonId
                     tar_sha256 = ('b' * 64)
                 }
             }
@@ -301,10 +325,56 @@ exit 0
         throw "current release identity smoke invoked a build`n$($currentRelease.DockerLog)"
     }
 
+    $classicCurrent = Invoke-CurrentReleaseNoBuild `
+        -Manifest $currentReleaseManifest -Mode 'classic-current'
+    if ($classicCurrent.ExitCode -ne 0) {
+        throw "current release identity rejected classic Docker config identity`n$($classicCurrent.Output)"
+    }
+
+    $legacyCurrentManifest = Join-Path $fixtureRoot 'current-release-images-without-oci.json'
+    $legacyCurrentValue = Get-Content -Raw -LiteralPath $currentReleaseManifest | ConvertFrom-Json
+    $legacyCurrentValue.images.app.PSObject.Properties.Remove('manifest_digest')
+    $legacyCurrentValue.images.gateway.PSObject.Properties.Remove('manifest_digest')
+    [System.IO.File]::WriteAllText(
+        $legacyCurrentManifest,
+        (($legacyCurrentValue | ConvertTo-Json -Depth 4) + "`n"),
+        [Text.UTF8Encoding]::new($false)
+    )
+    $legacyCurrent = Invoke-CurrentReleaseNoBuild `
+        -Manifest $legacyCurrentManifest -Mode 'classic-current'
+    if ($legacyCurrent.ExitCode -ne 0) {
+        throw "current release smoke rejected manifest without OCI digests`n$($legacyCurrent.Output)"
+    }
+
+    foreach ($collision in @(
+        [pscustomobject]@{ Label = 'cross-service config/manifest'; From = $gatewayDaemonId; To = $appConfigId },
+        [pscustomobject]@{ Label = 'duplicate manifest'; From = $gatewayDaemonId; To = $appDaemonId }
+    )) {
+        $collisionManifest = Join-Path $fixtureRoot "$($collision.Label.Replace('/', '-').Replace(' ', '-')).json"
+        [System.IO.File]::WriteAllText(
+            $collisionManifest,
+            ((Get-Content -Raw -LiteralPath $currentReleaseManifest).Replace(
+                $collision.From,
+                $collision.To
+            )),
+            [Text.UTF8Encoding]::new($false)
+        )
+        $collisionResult = Invoke-CurrentReleaseNoBuild -Manifest $collisionManifest
+        if (
+            $collisionResult.ExitCode -eq 0 -or
+            $collisionResult.Output -notmatch 'must not share image identities'
+        ) {
+            throw "current release accepted $($collision.Label) collision`n$($collisionResult.Output)"
+        }
+        if ($collisionResult.DockerLog -match '(?m)^compose .* up ') {
+            throw "current release $($collision.Label) collision reached Compose up"
+        }
+    }
+
     $malformedCurrentManifest = Join-Path $fixtureRoot 'malformed-release-images.json'
     [System.IO.File]::WriteAllText(
         $malformedCurrentManifest,
-        ((Get-Content -Raw -LiteralPath $currentReleaseManifest).Replace($appDaemonId, 'not-an-image-id')),
+        ((Get-Content -Raw -LiteralPath $currentReleaseManifest).Replace($appConfigId, 'not-an-image-id')),
         [Text.UTF8Encoding]::new($false)
     )
     $malformedCurrent = Invoke-CurrentReleaseNoBuild -Manifest $malformedCurrentManifest
@@ -352,6 +422,8 @@ exit 0
     $env:MUSEECHO_FAKE_DOCKER_MODE = $savedDockerMode
     $env:MUSEECHO_EXPECTED_APP_DAEMON_ID = $savedAppDaemonId
     $env:MUSEECHO_EXPECTED_GATEWAY_DAEMON_ID = $savedGatewayDaemonId
+    $env:MUSEECHO_EXPECTED_APP_CONFIG_ID = $savedAppConfigId
+    $env:MUSEECHO_EXPECTED_GATEWAY_CONFIG_ID = $savedGatewayConfigId
     $env:MUSEECHO_SECRETS_DIR = $savedSecretsDirectory
     Pop-Location
     if (Test-Path -LiteralPath $fixtureRoot) {

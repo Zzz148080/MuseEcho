@@ -90,14 +90,31 @@ function Read-TrustedReleaseIdentity {
         }
         Assert-ImageId -Value $manifest.images.app.image_id -Label 'app release image id'
         Assert-ImageId -Value $manifest.images.gateway.image_id -Label 'gateway release image id'
+        if ($null -ne $manifest.images.app.manifest_digest) {
+            Assert-ImageId -Value $manifest.images.app.manifest_digest `
+                -Label 'app release manifest digest'
+        }
+        if ($null -ne $manifest.images.gateway.manifest_digest) {
+            Assert-ImageId -Value $manifest.images.gateway.manifest_digest `
+                -Label 'gateway release manifest digest'
+        }
         Assert-Digest -Value $manifest.images.app.tar_sha256 -Label 'app release tar digest'
         Assert-Digest -Value $manifest.images.gateway.tar_sha256 -Label 'gateway release tar digest'
-        if ($manifest.images.app.image_id -eq $manifest.images.gateway.image_id) {
+        $appAllowedIds = @([string]$manifest.images.app.image_id)
+        if ($manifest.images.app.manifest_digest) {
+            $appAllowedIds += [string]$manifest.images.app.manifest_digest
+        }
+        $gatewayAllowedIds = @([string]$manifest.images.gateway.image_id)
+        if ($manifest.images.gateway.manifest_digest) {
+            $gatewayAllowedIds += [string]$manifest.images.gateway.manifest_digest
+        }
+        $overlap = @($appAllowedIds | Where-Object { $_ -in $gatewayAllowedIds })
+        if ($overlap.Count -gt 0) {
             throw 'app and gateway must not share image identities'
         }
-        $script:ExpectedAppDaemonImageId = [string]$manifest.images.app.image_id
+        $script:ExpectedAppDaemonImageIds = $appAllowedIds
         $script:ExpectedAppConfigImageId = [string]$manifest.images.app.image_id
-        $script:ExpectedGatewayDaemonImageId = [string]$manifest.images.gateway.image_id
+        $script:ExpectedGatewayDaemonImageIds = $gatewayAllowedIds
         $script:ExpectedGatewayConfigImageId = [string]$manifest.images.gateway.image_id
         return
     }
@@ -127,12 +144,14 @@ function Read-TrustedReleaseIdentity {
     ) {
         throw 'trusted release identity mismatch'
     }
+    $script:ExpectedAppDaemonImageIds = @($ExpectedAppDaemonImageId)
+    $script:ExpectedGatewayDaemonImageIds = @($ExpectedGatewayDaemonImageId)
 }
 
 function Get-ExistingImageId {
     param(
         [Parameter(Mandatory = $true)][string]$Image,
-        [Parameter(Mandatory = $true)][string]$Expected,
+        [Parameter(Mandatory = $true)][string[]]$Expected,
         [Parameter(Mandatory = $true)][string]$Service
     )
     $output = @(& $DockerCommand image inspect --format '{{.Id}}' $Image)
@@ -141,8 +160,8 @@ function Get-ExistingImageId {
     if ($inspectExit -ne 0 -or $imageId -notmatch '^sha256:[0-9a-f]{64}$') {
         throw "no-build smoke requires an existing sha256 image identity for $Image"
     }
-    if ($imageId -ne $Expected) {
-        throw "$Service daemon image identity mismatch: $imageId, expected $Expected"
+    if ($imageId -notin $Expected) {
+        throw "$Service daemon image identity mismatch: $imageId, expected $($Expected -join ' or ')"
     }
     return $imageId
 }
@@ -259,9 +278,11 @@ try {
         Read-TrustedReleaseIdentity
         Assert-ComposeImageConfiguration
         $appImageId = Get-ExistingImageId -Image 'museecho-app:local' `
-            -Expected $ExpectedAppDaemonImageId -Service 'app'
+            -Expected $ExpectedAppDaemonImageIds -Service 'app'
         $gatewayImageId = Get-ExistingImageId -Image 'museecho-gateway:local' `
-            -Expected $ExpectedGatewayDaemonImageId -Service 'gateway'
+            -Expected $ExpectedGatewayDaemonImageIds -Service 'gateway'
+        $script:ExpectedAppDaemonImageId = $appImageId
+        $script:ExpectedGatewayDaemonImageId = $gatewayImageId
         Write-Host "No-build smoke app identity: $appImageId"
         Write-Host "No-build smoke gateway identity: $gatewayImageId"
         Invoke-DockerCompose up --no-build --detach --wait

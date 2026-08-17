@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts import verify_release_identity
 from scripts.verify_release_identity import (
     audit_release_identity,
     build_release_identity,
@@ -137,3 +138,215 @@ def test_release_identity_is_derived_from_the_exact_config_inside_saved_tar(tmp_
             archive.addfile(info, io.BytesIO(payload))
 
     assert image_id_from_tar(tar_path) == f"sha256:{config_digest}"
+
+
+def _write_oci_image_tar(
+    tmp_path: Path,
+    *,
+    oci_config: bytes | None = None,
+    docker_layer: bytes | None = None,
+    oci_layer: bytes | None = None,
+) -> tuple[Path, str, str]:
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    config = b'{"architecture":"amd64","os":"linux"}'
+    config_digest = __import__("hashlib").sha256(config).hexdigest()
+    oci_config = oci_config or config
+    oci_config_digest = __import__("hashlib").sha256(oci_config).hexdigest()
+    oci_layer = docker_layer if oci_layer is None else oci_layer
+    oci_layers = []
+    if oci_layer is not None:
+        oci_layer_digest = __import__("hashlib").sha256(oci_layer).hexdigest()
+        oci_layers.append(
+            {
+                "mediaType": "application/vnd.oci.image.layer.v1.tar",
+                "digest": f"sha256:{oci_layer_digest}",
+                "size": len(oci_layer),
+            }
+        )
+    oci_manifest = json.dumps(
+        {
+            "schemaVersion": 2,
+            "config": {
+                "mediaType": "application/vnd.oci.image.config.v1+json",
+                "digest": f"sha256:{oci_config_digest}",
+                "size": len(oci_config),
+            },
+            "layers": oci_layers,
+        },
+        separators=(",", ":"),
+    ).encode()
+    manifest_digest = __import__("hashlib").sha256(oci_manifest).hexdigest()
+    index = json.dumps(
+        {
+            "schemaVersion": 2,
+            "manifests": [
+                {
+                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                    "digest": f"sha256:{manifest_digest}",
+                    "size": len(oci_manifest),
+                }
+            ],
+        }
+    ).encode()
+    docker_layers = []
+    if docker_layer is not None:
+        docker_layer_digest = __import__("hashlib").sha256(docker_layer).hexdigest()
+        docker_layers.append(f"blobs/sha256/{docker_layer_digest}")
+    docker_manifest = json.dumps(
+        [
+            {
+                "Config": f"blobs/sha256/{config_digest}",
+                "RepoTags": [],
+                "Layers": docker_layers,
+            }
+        ]
+    ).encode()
+    tar_path = tmp_path / "image.tar"
+    members = {
+        "index.json": index,
+        "manifest.json": docker_manifest,
+        f"blobs/sha256/{manifest_digest}": oci_manifest,
+        f"blobs/sha256/{config_digest}": config,
+        f"blobs/sha256/{oci_config_digest}": oci_config,
+    }
+    if docker_layer is not None:
+        members[f"blobs/sha256/{docker_layer_digest}"] = docker_layer
+    if oci_layer is not None:
+        members[f"blobs/sha256/{oci_layer_digest}"] = oci_layer
+    with tarfile.open(tar_path, "w") as archive:
+        for name, payload in members.items():
+            info = tarfile.TarInfo(name)
+            info.size = len(payload)
+            archive.addfile(info, io.BytesIO(payload))
+
+    return tar_path, config_digest, manifest_digest
+
+
+def test_release_manifest_digest_is_derived_from_the_exact_oci_descriptor(tmp_path: Path):
+    tar_path, _, manifest_digest = _write_oci_image_tar(
+        tmp_path,
+        docker_layer=b"matching non-empty image layer",
+    )
+
+    assert verify_release_identity.manifest_digest_from_tar(tar_path) == f"sha256:{manifest_digest}"
+
+
+def test_record_cli_writes_config_and_manifest_digests(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    app_tar, app_config, app_manifest = _write_oci_image_tar(tmp_path / "app")
+    gateway_tar, gateway_config, gateway_manifest = _write_oci_image_tar(tmp_path / "gateway")
+    output = tmp_path / "release-images.json"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "verify_release_identity.py",
+            "record",
+            "--output",
+            str(output),
+            "--tar",
+            f"app={app_tar}",
+            "--tar",
+            f"gateway={gateway_tar}",
+        ],
+    )
+
+    assert main() == 0
+    manifest = json.loads(output.read_text(encoding="utf-8"))
+    assert manifest["images"]["app"]["image_id"] == f"sha256:{app_config}"
+    assert manifest["images"]["app"]["manifest_digest"] == f"sha256:{app_manifest}"
+    assert manifest["images"]["gateway"]["image_id"] == f"sha256:{gateway_config}"
+    assert manifest["images"]["gateway"]["manifest_digest"] == f"sha256:{gateway_manifest}"
+
+
+def test_release_manifest_digest_rejects_a_missing_descriptor_blob(tmp_path: Path):
+    missing_digest = "e" * 64
+    index = json.dumps(
+        {
+            "schemaVersion": 2,
+            "manifests": [
+                {
+                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                    "digest": f"sha256:{missing_digest}",
+                    "size": 123,
+                }
+            ],
+        }
+    ).encode()
+    tar_path = tmp_path / "image.tar"
+    with tarfile.open(tar_path, "w") as archive:
+        info = tarfile.TarInfo("index.json")
+        info.size = len(index)
+        archive.addfile(info, io.BytesIO(index))
+
+    with pytest.raises(ValueError, match="has no recorded OCI manifest blob"):
+        verify_release_identity.manifest_digest_from_tar(tar_path)
+
+
+def test_record_cli_rejects_oci_manifest_bound_to_another_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    app_tar, _, _ = _write_oci_image_tar(
+        tmp_path / "app",
+        oci_config=b'{"architecture":"arm64","os":"linux"}',
+    )
+    gateway_tar, _, _ = _write_oci_image_tar(tmp_path / "gateway")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "verify_release_identity.py",
+            "record",
+            "--output",
+            str(tmp_path / "release-images.json"),
+            "--tar",
+            f"app={app_tar}",
+            "--tar",
+            f"gateway={gateway_tar}",
+        ],
+    )
+
+    assert main() == 1
+    assert "OCI manifest config digest mismatch" in capsys.readouterr().err
+
+
+def test_record_cli_rejects_oci_manifest_bound_to_other_layers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    app_tar, _, _ = _write_oci_image_tar(
+        tmp_path / "app",
+        docker_layer=b"benign scanned layer",
+        oci_layer=b"different runtime layer",
+    )
+    gateway_tar, _, _ = _write_oci_image_tar(tmp_path / "gateway")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "verify_release_identity.py",
+            "record",
+            "--output",
+            str(tmp_path / "release-images.json"),
+            "--tar",
+            f"app={app_tar}",
+            "--tar",
+            f"gateway={gateway_tar}",
+        ],
+    )
+
+    assert main() == 1
+    assert "OCI manifest layers mismatch" in capsys.readouterr().err
+
+
+def test_release_identity_rejects_claimed_manifest_digest_missing_from_saved_tars():
+    manifest = _manifest()
+    for name, digest in (("app", "e" * 64), ("gateway", "f" * 64)):
+        manifest["images"][name]["manifest_digest"] = f"sha256:{digest}"
+
+    findings = audit_release_identity(manifest, manifest_digests={})
+
+    assert findings == [
+        "app manifest digest is missing from saved tar",
+        "gateway manifest digest is missing from saved tar",
+    ]
