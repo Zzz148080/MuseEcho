@@ -1,0 +1,558 @@
+{
+  "artist_count": 2,
+  "clipped_intervals": 6,
+  "cover_group_count": 24,
+  "dataset_id": "schubert-winterreise",
+  "dataset_version": "2.1",
+  "discarded_intervals": 0,
+  "malformed_intervals": 0,
+  "manifest_sha256": "0bf74b8b4ea25e1322fa75db106747dccff942580119b7a4b3f0db2f11a4af17",
+  "out_of_vocabulary_intervals": 500,
+  "overlapping_intervals": 0,
+  "qualities": {
+    "7": {
+      "duration_seconds": 1384.06,
+      "interval_count": 888,
+      "work_count": 24
+    },
+    "N": {
+      "duration_seconds": 0.0,
+      "interval_count": 0,
+      "work_count": 0
+    },
+    "X": {
+      "duration_seconds": 927.1,
+      "interval_count": 500,
+      "work_count": 23
+    },
+    "dim": {
+      "duration_seconds": 24.64,
+      "interval_count": 28,
+      "work_count": 6
+    },
+    "hdim7": {
+      "duration_seconds": 218.7,
+      "interval_count": 114,
+      "work_count": 14
+    },
+    "maj": {
+      "duration_seconds": 2796.946531,
+      "interval_count": 1520,
+      "work_count": 24
+    },
+    "maj7": {
+      "duration_seconds": 2.98,
+      "interval_count": 4,
+      "work_count": 1
+    },
+    "min": {
+      "duration_seconds": 2561.590204,
+      "interval_count": 1228,
+      "work_count": 24
+    },
+    "min7": {
+      "duration_seconds": 50.6,
+      "interval_count": 44,
+      "work_count": 9
+    },
+    "sus2": {
+      "duration_seconds": 0.0,
+      "interval_count": 0,
+      "work_count": 0
+    },
+    "sus4": {
+      "duration_seconds": 3.86,
+      "interval_count": 2,
+      "work_count": 1
+    }
+  },
+  "schema_version": 1,
+  "total_annotated_seconds": 7970.476735,
+  "total_audio_seconds": 8123.506939,
+  "total_intervals": 4328,
+  "track_count": 48,
+  "tracks": [
+    {
+      "annotation_sha256": "49a0fed4a518884a1cb24476dd76fa682c9804171122ab7efa7b6b5572773475",
+      "artist_id": "HU33",
+      "audio_sha256": "074adc8f5899d326f10dfb2ff8b1c72312e9755ed41727c3ce7da2def18e7f60",
+      "cover_group_id": "Schubert_D911-01",
+      "duration_seconds": 311.693061,
+      "interval_count": 240,
+      "track_id": "Schubert_D911-01_HU33",
+      "work_id": "Schubert_D911-01"
+    },
+    {
+      "annotation_sha256": "272bd35249e3fc8ad7347756b39a0c9eea3bed21f6efde065a56ae12a7881bc0",
+      "artist_id": "SC06",
+      "audio_sha256": "9a48f65c522c0b711b86b1a4c87c832b83c97678c5f24daaf96263a7511f1934",
+      "cover_group_id": "Schubert_D911-01",
+      "duration_seconds": 325.32898,
+      "interval_count": 240,
+      "track_id": "Schubert_D911-01_SC06",
+      "work_id": "Schubert_D911-01"
+    },
+    {
+      "annotation_sha256": "3818c35edf3cc4871e0d2186b4a1ddf68f452143dcd4a3609ff6bc3f8d3f1593",
+      "artist_id": "HU33",
+      "audio_sha256": "82df858661d662f162ab3bd3066925dc0faefeb3429584c152bc7b5e91c4e0d2",
+      "cover_group_id": "Schubert_D911-02",
+      "duration_seconds": 101.146122,
+      "interval_count": 69,
+      "track_id": "Schubert_D911-02_HU33",
+      "work_id": "Schubert_D911-02"
+    },
+    {
+      "annotation_sha256": "28b5f0af562912acd3aa897ba24c8e97fe147dee018bc96106213b2683236507",
+      "artist_id": "SC06",
+      "audio_sha256": "c6ed76aebbd7a6f2b6fe120ec4689a247a40b8aca61de209e9112d5cf6d1f3cc",
+      "cover_group_id": "Schubert_D911-02",
+      "duration_seconds": 95.660408,
+      "interval_count": 69,
+      "track_id": "Schubert_D911-02_SC06",
+      "work_id": "Schubert_D911-02"
+    },
+    {
+      "annotation_sha256": "bb6956e5b813b820f713865e82ec70222981047724c6d5ca54ef0fa2f59a5a29",
+      "artist_id": "HU33",
+      "audio_sha256": "c67fef1ed6355a43f2f25c6f3f774f3ad2019f8941c4999c45711b3b497f9ad7",
+      "cover_group_id": "Schubert_D911-03",
+      "duration_seconds": 150.325986,
+      "interval_count": 99,
+      "track_id": "Schubert_D911-03_HU33",
+      "work_id": "Schubert_D911-03"
+    },
+    {
+      "annotation_sha256": "8389378418b029b1a5a60323ad7037ce20153d5d2ecf3239f9ee54cc5875fbf2",
+      "artist_id": "SC06",
+      "audio_sha256": "40bfb7831f4260dc2340455addf2d9df15f5463cfcd729bad5e751419198418f",
+      "cover_group_id": "Schubert_D911-03",
+      "duration_seconds": 137.16898,
+      "interval_count": 99,
+      "track_id": "Schubert_D911-03_SC06",
+      "work_id": "Schubert_D911-03"
+    },
+    {
+      "annotation_sha256": "f99ccffc715e0d34ab4bcf2b0d3081bee2ba81fc70a59024cb0588769ef423e4",
+      "artist_id": "HU33",
+      "audio_sha256": "4194489027aa84a167e84cdb98f8328a9f65c529dbfc070114b4864e9a262fef",
+      "cover_group_id": "Schubert_D911-04",
+      "duration_seconds": 178.607891,
+      "interval_count": 121,
+      "track_id": "Schubert_D911-04_HU33",
+      "work_id": "Schubert_D911-04"
+    },
+    {
+      "annotation_sha256": "1f869f12cd0c9022da0fb5a22db383b2775c4a7faa789047f5b2683f30e67e5b",
+      "artist_id": "SC06",
+      "audio_sha256": "8b9c111c1ae13b9e97c04fb433bb8bcbf566448e5ed8f32767b64d7f52708ba9",
+      "cover_group_id": "Schubert_D911-04",
+      "duration_seconds": 159.843265,
+      "interval_count": 121,
+      "track_id": "Schubert_D911-04_SC06",
+      "work_id": "Schubert_D911-04"
+    },
+    {
+      "annotation_sha256": "680f10c24a327a482595ec6d10f65fb29a30ab2aba561d8748cc48e571cfe4d5",
+      "artist_id": "HU33",
+      "audio_sha256": "8bf3910a59742e39349fbd9d6002cfea9f94f738ce674de0e0a35e29af83433f",
+      "cover_group_id": "Schubert_D911-05",
+      "duration_seconds": 274.413424,
+      "interval_count": 111,
+      "track_id": "Schubert_D911-05_HU33",
+      "work_id": "Schubert_D911-05"
+    },
+    {
+      "annotation_sha256": "519560c225f34ab673e33d9ce300d70be9a7d1f50cf689c1c0aa5361985e7088",
+      "artist_id": "SC06",
+      "audio_sha256": "4b55aa69b23041f1350c33bd683c973855e5fe3ac433524b77f5fbd127803653",
+      "cover_group_id": "Schubert_D911-05",
+      "duration_seconds": 289.436735,
+      "interval_count": 111,
+      "track_id": "Schubert_D911-05_SC06",
+      "work_id": "Schubert_D911-05"
+    },
+    {
+      "annotation_sha256": "ecbe0b80b15c1a61865c87e4fe34d9037a0cfd4a56d1f304409f444e428e7c99",
+      "artist_id": "HU33",
+      "audio_sha256": "86cbe1b94f4e38d42435913d23870e1afee22067c8ba50f2661715ba70d8031b",
+      "cover_group_id": "Schubert_D911-06",
+      "duration_seconds": 259.599093,
+      "interval_count": 79,
+      "track_id": "Schubert_D911-06_HU33",
+      "work_id": "Schubert_D911-06"
+    },
+    {
+      "annotation_sha256": "70c162844ac1ad8cc26862158bf796f86f9702c64b16df3d46dfcc9d3c1aa641",
+      "artist_id": "SC06",
+      "audio_sha256": "6576a0cb42d8e8c0d863b6cd008191d6a80c501afe4463658d89b4b42ca36d12",
+      "cover_group_id": "Schubert_D911-06",
+      "duration_seconds": 240.43102,
+      "interval_count": 79,
+      "track_id": "Schubert_D911-06_SC06",
+      "work_id": "Schubert_D911-06"
+    },
+    {
+      "annotation_sha256": "2232ed19837d42a3dbf9b502ced6af5982e0b80cbb675c8418a88b5500309dba",
+      "artist_id": "HU33",
+      "audio_sha256": "30adc8b922ceeb782f12a7c9b9728b07d4b4e9eb73be9aa43acc6d83833e8225",
+      "cover_group_id": "Schubert_D911-07",
+      "duration_seconds": 187.338594,
+      "interval_count": 108,
+      "track_id": "Schubert_D911-07_HU33",
+      "work_id": "Schubert_D911-07"
+    },
+    {
+      "annotation_sha256": "70d830cd5963d892bae0cbd08b2e44220b739af16f8f860a00c01644be28f607",
+      "artist_id": "SC06",
+      "audio_sha256": "4f64aab22e0e134ff50f9c9f300f8c40087e07149fdcf7ccd8ad5cc0d6bda109",
+      "cover_group_id": "Schubert_D911-07",
+      "duration_seconds": 190.563265,
+      "interval_count": 108,
+      "track_id": "Schubert_D911-07_SC06",
+      "work_id": "Schubert_D911-07"
+    },
+    {
+      "annotation_sha256": "c3189e78588dc9795bb25b65b29ea78b4f686ff166387f1788db0447a32662fa",
+      "artist_id": "HU33",
+      "audio_sha256": "4517c216a0b26924e56db0bebd560e3a3a5b395864b427d91265730d99065b29",
+      "cover_group_id": "Schubert_D911-08",
+      "duration_seconds": 123.390839,
+      "interval_count": 102,
+      "track_id": "Schubert_D911-08_HU33",
+      "work_id": "Schubert_D911-08"
+    },
+    {
+      "annotation_sha256": "a5234af1a5f0d3766ece723674d50de476579d1bde42ce7866e5e53b3e04594a",
+      "artist_id": "SC06",
+      "audio_sha256": "70ad74638c4edabfb8f292bdc2b9ba495c35fa8bc907e332cca2143744f6e7ec",
+      "cover_group_id": "Schubert_D911-08",
+      "duration_seconds": 114.076735,
+      "interval_count": 102,
+      "track_id": "Schubert_D911-08_SC06",
+      "work_id": "Schubert_D911-08"
+    },
+    {
+      "annotation_sha256": "a7e15523e374511e1a15a308b4c8850a91eb2767768e3d550efcb5f3024d9694",
+      "artist_id": "HU33",
+      "audio_sha256": "e16b8d12bcbe471a938a214fb8fb51764503e8264423c6b446bdbbf78d48043a",
+      "cover_group_id": "Schubert_D911-09",
+      "duration_seconds": 132.585941,
+      "interval_count": 54,
+      "track_id": "Schubert_D911-09_HU33",
+      "work_id": "Schubert_D911-09"
+    },
+    {
+      "annotation_sha256": "59eefa510783562b895b446a3baf339fbcc6685c5d8e7071ba56d71d53eed076",
+      "artist_id": "SC06",
+      "audio_sha256": "99bb3b49b7b5c2d2de6a8b69f20b83b1ae7552beff1dab4063d51c9b2e8a0661",
+      "cover_group_id": "Schubert_D911-09",
+      "duration_seconds": 146.546939,
+      "interval_count": 54,
+      "track_id": "Schubert_D911-09_SC06",
+      "work_id": "Schubert_D911-09"
+    },
+    {
+      "annotation_sha256": "ce9447c2f55b47033c38e5584c584ef08fd5e840b4841af8331338d1be66cec8",
+      "artist_id": "HU33",
+      "audio_sha256": "f78b1a8c292bbeb3e804d40d04a2124d513524597d61f53bb38acce2e0ec9407",
+      "cover_group_id": "Schubert_D911-10",
+      "duration_seconds": 195.651338,
+      "interval_count": 70,
+      "track_id": "Schubert_D911-10_HU33",
+      "work_id": "Schubert_D911-10"
+    },
+    {
+      "annotation_sha256": "9c738b37ad0085104b4a56695dcebb4d55418f29ad2e5d8e174d637c7a9caa83",
+      "artist_id": "SC06",
+      "audio_sha256": "859dd8fb2895681bada0abbbe2372b81efe96d8ca1186b8aeccbf0c012779358",
+      "cover_group_id": "Schubert_D911-10",
+      "duration_seconds": 180.924082,
+      "interval_count": 70,
+      "track_id": "Schubert_D911-10_SC06",
+      "work_id": "Schubert_D911-10"
+    },
+    {
+      "annotation_sha256": "2d1966139a49288bcaab426d8aefea0e1250d7e2d3260b952392345d63befa0f",
+      "artist_id": "HU33",
+      "audio_sha256": "c573658476e203f2513a4d7b30e060e0d27a72f61d56b751e02f7c3c317e33a6",
+      "cover_group_id": "Schubert_D911-11",
+      "duration_seconds": 254.583583,
+      "interval_count": 133,
+      "track_id": "Schubert_D911-11_HU33",
+      "work_id": "Schubert_D911-11"
+    },
+    {
+      "annotation_sha256": "dde44f1e49df52cd6605890418c9bd0eccec137aff67c788992b0b0b74ab99fb",
+      "artist_id": "SC06",
+      "audio_sha256": "c5a738de95811a12d057186df92d3776320aa45c2f5e1bcd4fb9eca5dd26dcd8",
+      "cover_group_id": "Schubert_D911-11",
+      "duration_seconds": 237.635918,
+      "interval_count": 133,
+      "track_id": "Schubert_D911-11_SC06",
+      "work_id": "Schubert_D911-11"
+    },
+    {
+      "annotation_sha256": "638ca77e2c35945c3d9ed37db4842e28114c4fb7d8c5fdc722af166e6dc6943c",
+      "artist_id": "HU33",
+      "audio_sha256": "0b29d02fa23ebed0d6136f03723d588952f9bb78b1b1db2003a06271694c06dd",
+      "cover_group_id": "Schubert_D911-12",
+      "duration_seconds": 158.336871,
+      "interval_count": 61,
+      "track_id": "Schubert_D911-12_HU33",
+      "work_id": "Schubert_D911-12"
+    },
+    {
+      "annotation_sha256": "ee2c5583b6ed8df06950b46fb3f07a08702a26274f9c0b53603c8c1de704014e",
+      "artist_id": "SC06",
+      "audio_sha256": "93d3bf18a0b73a6a2bdeb390b94c0704439c8a39c99c55cc972b05975d256c1b",
+      "cover_group_id": "Schubert_D911-12",
+      "duration_seconds": 147.043265,
+      "interval_count": 61,
+      "track_id": "Schubert_D911-12_SC06",
+      "work_id": "Schubert_D911-12"
+    },
+    {
+      "annotation_sha256": "f905ea7bc8bc083316bd08cc8e747c4921884f2dee9d0f1dbad291e060ffab05",
+      "artist_id": "HU33",
+      "audio_sha256": "ed39e5b5d4a978c9ed3e69205a4bffb263e63f08e08bae9b197c45b232e1190a",
+      "cover_group_id": "Schubert_D911-13",
+      "duration_seconds": 107.46195,
+      "interval_count": 88,
+      "track_id": "Schubert_D911-13_HU33",
+      "work_id": "Schubert_D911-13"
+    },
+    {
+      "annotation_sha256": "d8ca96827eda2b0a188452e36f09240f506261ff1ece254ce9b0f4edc29506a6",
+      "artist_id": "SC06",
+      "audio_sha256": "d20c99ca0483f7a18f9ba3a9dcf1668e8ecf7d1228008f6191ddd7ce85b809c7",
+      "cover_group_id": "Schubert_D911-13",
+      "duration_seconds": 119.666939,
+      "interval_count": 88,
+      "track_id": "Schubert_D911-13_SC06",
+      "work_id": "Schubert_D911-13"
+    },
+    {
+      "annotation_sha256": "9cefc83a4f5f2eea41647b31ef509507b38df03af07013e95276d024d2f0aaa9",
+      "artist_id": "HU33",
+      "audio_sha256": "04292b1874a7c16ab14847e7c9c41cd09d9ed84acbbb11b096508f7478bfe120",
+      "cover_group_id": "Schubert_D911-14",
+      "duration_seconds": 183.205442,
+      "interval_count": 52,
+      "track_id": "Schubert_D911-14_HU33",
+      "work_id": "Schubert_D911-14"
+    },
+    {
+      "annotation_sha256": "11fdf4aa6919031015aec6e06ba82db0c757ba8e884f2f7c9cdfec5124cd93d3",
+      "artist_id": "SC06",
+      "audio_sha256": "bf7b0f55a5fc881dd582ac0d7980c750752ac78961976963030fcb5a752c7c1b",
+      "cover_group_id": "Schubert_D911-14",
+      "duration_seconds": 149.342041,
+      "interval_count": 52,
+      "track_id": "Schubert_D911-14_SC06",
+      "work_id": "Schubert_D911-14"
+    },
+    {
+      "annotation_sha256": "5099097b17a988adaeb8b6b29ef502a8906b3cd6c35558abcd1931d45dd27219",
+      "artist_id": "HU33",
+      "audio_sha256": "f12eb15c77ee658eb2a93c1ef79f1165c96a3dde6d4d6f37b9cfec075b5744a3",
+      "cover_group_id": "Schubert_D911-15",
+      "duration_seconds": 124.273197,
+      "interval_count": 124,
+      "track_id": "Schubert_D911-15_HU33",
+      "work_id": "Schubert_D911-15"
+    },
+    {
+      "annotation_sha256": "20836ca68e515caedc88ac9901c47ec54b146e4c97f68dc43c618a9e209d96d6",
+      "artist_id": "SC06",
+      "audio_sha256": "fdec4a592259c31680f4d83174704e71a1a46e1b5e9bb8ef9a55bf3c84a21df4",
+      "cover_group_id": "Schubert_D911-15",
+      "duration_seconds": 116.845714,
+      "interval_count": 124,
+      "track_id": "Schubert_D911-15_SC06",
+      "work_id": "Schubert_D911-15"
+    },
+    {
+      "annotation_sha256": "9477ae8c770376450921cbce8b1b4ae070fa4b1ff9026d2a442713112e40298f",
+      "artist_id": "HU33",
+      "audio_sha256": "a3e314904d5c694826d85ddf4723b1988d4ef4571df47760c698a22cc094d253",
+      "cover_group_id": "Schubert_D911-16",
+      "duration_seconds": 138.48381,
+      "interval_count": 75,
+      "track_id": "Schubert_D911-16_HU33",
+      "work_id": "Schubert_D911-16"
+    },
+    {
+      "annotation_sha256": "067eab0bd200295b72233c9cc5cbcf5c8246474044088c94a24dc7422babfa6d",
+      "artist_id": "SC06",
+      "audio_sha256": "7db92a0939ca938dc8f1de3271a35f32bc42e08dd712404c3ff6bb92f39d1c07",
+      "cover_group_id": "Schubert_D911-16",
+      "duration_seconds": 113.136327,
+      "interval_count": 75,
+      "track_id": "Schubert_D911-16_SC06",
+      "work_id": "Schubert_D911-16"
+    },
+    {
+      "annotation_sha256": "698ffa2328ce6a46df0d819ed23de3e76e08f9fc4d92aad46e6a9a3cc730d2c1",
+      "artist_id": "HU33",
+      "audio_sha256": "9b99ac5af401f0081999bb689eb192acec857c01f49b3cfa7a6a6bee3d257017",
+      "cover_group_id": "Schubert_D911-17",
+      "duration_seconds": 197.741134,
+      "interval_count": 63,
+      "track_id": "Schubert_D911-17_HU33",
+      "work_id": "Schubert_D911-17"
+    },
+    {
+      "annotation_sha256": "87de53cc4fdb9bf489d3fa3833d0287fe2d146c4f4dd10237f309605ae9777ae",
+      "artist_id": "SC06",
+      "audio_sha256": "0f0e802dcc467e4754073f50dad6c550a24364befcb9e52631ebe55ca955ac1f",
+      "cover_group_id": "Schubert_D911-17",
+      "duration_seconds": 190.537143,
+      "interval_count": 63,
+      "track_id": "Schubert_D911-17_SC06",
+      "work_id": "Schubert_D911-17"
+    },
+    {
+      "annotation_sha256": "1e1cb5c0a02a17cbaacf4ac0ec7275547677881ece74d6e2ca2b99b35efbc2ac",
+      "artist_id": "HU33",
+      "audio_sha256": "9efd3c100535bb423b8e036e617dfb047915adb38b3a1b7fe9ec44dd8ee49c0e",
+      "cover_group_id": "Schubert_D911-18",
+      "duration_seconds": 47.647347,
+      "interval_count": 47,
+      "track_id": "Schubert_D911-18_HU33",
+      "work_id": "Schubert_D911-18"
+    },
+    {
+      "annotation_sha256": "510177a1e9326187d8b12645a8583b528f6d4fb5ab00fb80bf124bac00cc9ac7",
+      "artist_id": "SC06",
+      "audio_sha256": "31c6161e825d44eb6f59d59ab27f1a2d6b2a24096ba1ca5a105b9568674c22f2",
+      "cover_group_id": "Schubert_D911-18",
+      "duration_seconds": 44.068571,
+      "interval_count": 47,
+      "track_id": "Schubert_D911-18_SC06",
+      "work_id": "Schubert_D911-18"
+    },
+    {
+      "annotation_sha256": "0160f57e4d5260b26f7417aeb1dfe3c7ee97d0babf09c667ac04bf50f465e698",
+      "artist_id": "HU33",
+      "audio_sha256": "2e4cb9fd8c22254d25dc9fddb543d063709f326f92ab7691e6013ca652164937",
+      "cover_group_id": "Schubert_D911-19",
+      "duration_seconds": 70.913741,
+      "interval_count": 46,
+      "track_id": "Schubert_D911-19_HU33",
+      "work_id": "Schubert_D911-19"
+    },
+    {
+      "annotation_sha256": "eb2f4232d459900055c77142ea0903aad1c126a116822401a929734df0c7163a",
+      "artist_id": "SC06",
+      "audio_sha256": "b8378b61b3219e53998d1e60b873e54e45a3e1cf949829d7ec7397e98818ad0e",
+      "cover_group_id": "Schubert_D911-19",
+      "duration_seconds": 73.613061,
+      "interval_count": 46,
+      "track_id": "Schubert_D911-19_SC06",
+      "work_id": "Schubert_D911-19"
+    },
+    {
+      "annotation_sha256": "19c12d5060a2305b568a280d877c27c5dd580a5f64a583630a326e307140dae2",
+      "artist_id": "HU33",
+      "audio_sha256": "51e750b72fe4356b427bbb24050ee894c55e697826941f13c0474dd4120b1e7d",
+      "cover_group_id": "Schubert_D911-20",
+      "duration_seconds": 242.741406,
+      "interval_count": 103,
+      "track_id": "Schubert_D911-20_HU33",
+      "work_id": "Schubert_D911-20"
+    },
+    {
+      "annotation_sha256": "8e79594fbe35b98e59b02ca6f45f5ecf7b6394bdec354c48286918615b27ce7f",
+      "artist_id": "SC06",
+      "audio_sha256": "7529f3e12bd08ba29b4b3c893562624e2eef588f4e046b49b7bcc08c74954067",
+      "cover_group_id": "Schubert_D911-20",
+      "duration_seconds": 232.75102,
+      "interval_count": 103,
+      "track_id": "Schubert_D911-20_SC06",
+      "work_id": "Schubert_D911-20"
+    },
+    {
+      "annotation_sha256": "72bab0714425984d52ec7c3a08ff937096d5311f7c42b74929cf254ab687056a",
+      "artist_id": "HU33",
+      "audio_sha256": "a0069ccb9aa1163f32bdc83f3adc1a956ea6932eba89bf978127515d9dae6bc8",
+      "cover_group_id": "Schubert_D911-21",
+      "duration_seconds": 221.193288,
+      "interval_count": 103,
+      "track_id": "Schubert_D911-21_HU33",
+      "work_id": "Schubert_D911-21"
+    },
+    {
+      "annotation_sha256": "8a598bdf44f5118994ca005b84fee4a508cf0e26d15c950e6cfb019e15fddb75",
+      "artist_id": "SC06",
+      "audio_sha256": "95b90aaf580ce895a29a915e417b7db7a3b67fb2f8e1da1d0329e0e41fa78193",
+      "cover_group_id": "Schubert_D911-21",
+      "duration_seconds": 239.804082,
+      "interval_count": 103,
+      "track_id": "Schubert_D911-21_SC06",
+      "work_id": "Schubert_D911-21"
+    },
+    {
+      "annotation_sha256": "8bddfb04e031763a12442b03b567dea57c8df40a8c0d4923944653623d02e7e7",
+      "artist_id": "HU33",
+      "audio_sha256": "cb2d7d959980b65f3627b9e15b6f5a92a4fb584e597afcafd3cfbf2803433380",
+      "cover_group_id": "Schubert_D911-22",
+      "duration_seconds": 79.690884,
+      "interval_count": 87,
+      "track_id": "Schubert_D911-22_HU33",
+      "work_id": "Schubert_D911-22"
+    },
+    {
+      "annotation_sha256": "812d2dd47d1ec3f2eb6a905499fb302a6b6d3315d0bb214492a4d08ee9cf608c",
+      "artist_id": "SC06",
+      "audio_sha256": "3267389e13f8aa13404c9ffad74cf753cf4bcd5ec2adf9e7e744a4b62d85b2e3",
+      "cover_group_id": "Schubert_D911-22",
+      "duration_seconds": 74.631837,
+      "interval_count": 87,
+      "track_id": "Schubert_D911-22_SC06",
+      "work_id": "Schubert_D911-22"
+    },
+    {
+      "annotation_sha256": "a5dd2f15a32afc1bab409ae9c75839f709bd1ca93612dfeb7d021f5fe681d9e9",
+      "artist_id": "HU33",
+      "audio_sha256": "3b1632a4bf2bb313fd0877277430f007ee1363ba32c5ee6e9b2ed8930ac0b08b",
+      "cover_group_id": "Schubert_D911-23",
+      "duration_seconds": 189.149751,
+      "interval_count": 69,
+      "track_id": "Schubert_D911-23_HU33",
+      "work_id": "Schubert_D911-23"
+    },
+    {
+      "annotation_sha256": "e65bbaeda595bfe14f9192fbd77173801c71ffb82dc79ce7ab0b47162b1ed6a8",
+      "artist_id": "SC06",
+      "audio_sha256": "0b04bcafa110ff879268239a5612e151bf764ac5cf48bf01a9c25dda4e645a85",
+      "cover_group_id": "Schubert_D911-23",
+      "duration_seconds": 178.390204,
+      "interval_count": 69,
+      "track_id": "Schubert_D911-23_SC06",
+      "work_id": "Schubert_D911-23"
+    },
+    {
+      "annotation_sha256": "656e0a6bb85e0638811326f9c475d2e7293c1d3ca66881462dbe3326f289ed5e",
+      "artist_id": "HU33",
+      "audio_sha256": "6819a73b991121dfeb02369f35a3b215586a8c5ac1df0a0ae2a510e2d3ba7e7c",
+      "cover_group_id": "Schubert_D911-24",
+      "duration_seconds": 188.081633,
+      "interval_count": 60,
+      "track_id": "Schubert_D911-24_HU33",
+      "work_id": "Schubert_D911-24"
+    },
+    {
+      "annotation_sha256": "1fd22c11e49f3fc55c78156fb73cf62c8fd752fc851a90496b85ed110f0c62f6",
+      "artist_id": "SC06",
+      "audio_sha256": "0e012f24a75e038579b211e833efb4652c034892329e0181d3a1cbfe9d25f8d8",
+      "cover_group_id": "Schubert_D911-24",
+      "duration_seconds": 207.804082,
+      "interval_count": 60,
+      "track_id": "Schubert_D911-24_SC06",
+      "work_id": "Schubert_D911-24"
+    }
+  ],
+  "unannotated_seconds": 153.030204,
+  "work_count": 24
+}

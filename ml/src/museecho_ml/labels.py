@@ -47,11 +47,13 @@ _OUT_OF_VOCABULARY_QUALITIES = {
     "aug",
     "dim7",
     "6",
+    "maj6",
     "min6",
     "m6",
     "9",
     "add9",
 }
+_HARTE_INTERVAL_LIST = re.compile(r"^\((?:\*?[#b]{0,2}\d+)(?:,\*?[#b]{0,2}\d+)*\)$")
 _ANNOTATION_PATTERN = re.compile(
     r"^(?P<root>[A-G](?:[#b♯♭]{0,2}))"
     r"(?::(?P<colon_quality>[^/]+)|(?P<compact_quality>[^/]*))"
@@ -150,4 +152,12 @@ def _canonical_bass(raw: str, root: str) -> str:
 def _canonical_unsupported_quality(raw: str) -> str | None:
     if raw in _OUT_OF_VOCABULARY_QUALITIES:
         return "min6" if raw == "m6" else raw
+    if _HARTE_INTERVAL_LIST.fullmatch(raw):
+        return raw
+    modified = re.fullmatch(r"([^()]+)(\(.*\))", raw)
+    if modified is not None and (
+        modified.group(1) in _QUALITY_ALIASES
+        or modified.group(1) in _OUT_OF_VOCABULARY_QUALITIES
+    ) and _HARTE_INTERVAL_LIST.fullmatch(modified.group(2)):
+        return raw
     return None

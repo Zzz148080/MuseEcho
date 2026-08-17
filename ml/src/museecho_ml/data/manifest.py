@@ -41,6 +41,7 @@ class ChordInterval:
 class ConversionStats:
     total_intervals: int
     out_of_vocabulary_intervals: int
+    clipped_intervals: int = 0
 
 
 @dataclass(frozen=True)

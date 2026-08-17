@@ -59,7 +59,21 @@ def test_no_chord_and_unsupported_states_remain_distinct(raw: str, state: str) -
     assert chord.display_symbol == state
 
 
-@pytest.mark.parametrize("raw", ["C:aug", "C:dim7", "C:6", "C:min6", "C:9", "C:add9"])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "C:aug",
+        "C:dim7",
+        "C:6",
+        "C:maj6",
+        "C:min6",
+        "C:9",
+        "C:add9",
+        "C:(3,5,b7,b9)",
+        "C:(b9)",
+        "C:min(*3)",
+    ],
+)
 def test_valid_but_out_of_vocabulary_chords_map_to_x(raw: str) -> None:
     chord = parse_annotation(raw)
 

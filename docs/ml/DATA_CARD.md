@@ -1,7 +1,7 @@
 # MuseEcho chord model data card
 
-Status: one small public dataset is approved for local formal training; the pop-music candidates
-remain blocked by license or competition-scope review.
+Status: `G1 NOT READY`. One small public dataset is approved and inventoried for local formal
+training; the pop-music candidates remain blocked by license or competition-scope review.
 
 ## Purpose
 
@@ -50,6 +50,56 @@ The URLs, evidence and unresolved fields are stored in `dataset-registry.example
 - The previously recorded McGill Billboard URL is no longer valid. No substitute mirror will be
   trusted until an official current source and terms are identified.
 
+## Approved-data inventory
+
+The official Schubert Winterreise 2.1 archive was downloaded locally, verified against the
+published MD5, and processed read-only. The archive and extracted audio remain under ignored
+`ml/data/`; they are not Git or release artifacts.
+
+- Archive size: `517380038` bytes.
+- Expected and observed MD5: `591c377c6d3db522fd159b8b70180978`.
+- Packaged usable recordings: 48 (24 works, HU33 and SC06 performances).
+- Artist/performance identities: 2; cover groups: 24.
+- Total audio: 8123.506939 seconds (2.2565 hours).
+- Source-annotated duration after six recorded tail clips within the strict 50 ms tolerance:
+  7970.476735 seconds
+  (2.2140 hours).
+- Unannotated leading/trailing duration: 153.030204 seconds. It has not been silently relabeled
+  as `N`; the frame-label policy must decide this before feature extraction.
+- Intervals: 4328 total; 500 mapped to `X` (11.5527% of intervals and 11.6317% of
+  annotated duration); 0 explicit `N`; 0 malformed, overlapping, or discarded.
+- Formal local manifest SHA-256:
+  `0bf74b8b4ea25e1322fa75db106747dccff942580119b7a4b3f0db2f11a4af17`.
+- Reproducible aggregate report:
+  `docs/ml/winterreise-inventory-v2.1.json`.
+
+| Quality | Works | Intervals | Duration (seconds) | Launch coverage result |
+| --- | ---: | ---: | ---: | --- |
+| `maj` | 24 | 1520 | 2796.946531 | passes the 20-work per-quality minimum |
+| `min` | 24 | 1228 | 2561.590204 | passes |
+| `7` | 24 | 888 | 1384.06 | passes |
+| `maj7` | 1 | 4 | 2.98 | fails |
+| `min7` | 9 | 44 | 50.6 | fails |
+| `dim` | 6 | 28 | 24.64 | fails |
+| `hdim7` | 14 | 114 | 218.7 | fails |
+| `sus2` | 0 | 0 | 0 | fails |
+| `sus4` | 1 | 2 | 3.86 | fails |
+| `N` | 0 | 0 | 0 | no explicit source intervals |
+| `X` | 23 | 500 | 927.1 | retained internally, not a published known chord |
+
+Near-duplicate audio and cross-dataset collision counts remain pending Task 4 fingerprinting. The
+two performances of each song already share one explicit work/cover group and therefore cannot be
+split across train and evaluation sets.
+
+## G1 decision
+
+`G1 NOT READY`: the approved corpus contains 24 independent works and 2.214 hours of annotated
+audio, far below the planning target of 500 works and 80 hours. Six launch qualities also fail the
+20-independent-work minimum. The project may use this corpus for adapter, feature, overfit, and
+training-chain smoke tests, but it must not present a model trained only on this corpus as the
+competition accuracy candidate. More lawful data or a written vocabulary/scope revision is
+required before G1 can pass.
+
 ## Approval procedure
 
 For each dataset:
@@ -66,14 +116,10 @@ For each dataset:
 
 ## Required aggregate report
 
-Before G1 can pass, this document must be updated with:
+Before G1 can pass, this document still needs:
 
-- approved work, track, artist, and cover-group counts;
-- total annotated duration and duration by dataset;
-- duration and independent-work count for every launch quality;
-- `N`, `X`, malformed, clipped, overlapping, and discarded interval counts;
 - near-duplicate and cross-dataset collision counts;
-- the final manifest hash and split-policy hash.
+- the final multi-dataset manifest hash and split-policy hash.
 
 The planning target is at least 500 independent works and 80 hours of usable annotations, with
 every published non-`N/X` quality represented by at least 20 independent works. If lawful data

@@ -15,6 +15,8 @@ from museecho_ml.data.manifest import (
 )
 from museecho_ml.labels import parse_annotation
 
+_MAX_FINAL_ROUNDING_OVERRUN_SECONDS = 0.05
+
 
 class DatasetAdapter(ABC):
     def __init__(self, *, dataset_id: str) -> None:
@@ -29,7 +31,13 @@ class DatasetAdapter(ABC):
         audio = _resolve_local_file(source.audio_path, root)
         annotation = _resolve_local_file(source.annotation_path, root)
         intervals = tuple(self._read_intervals(annotation))
-        _validate_intervals(intervals, source.duration_seconds)
+        intervals, clipped_intervals = _clip_final_rounding_overrun(
+            intervals, source.duration_seconds
+        )
+        try:
+            _validate_intervals(intervals, source.duration_seconds)
+        except ValueError as error:
+            raise ValueError(f"track {source.track_id}: {error}") from None
         return AdaptedTrack(
             source=source,
             audio_sha256=_sha256(audio),
@@ -41,6 +49,7 @@ class DatasetAdapter(ABC):
                     item.chord.root == "X" and item.chord.mapping_reason is not None
                     for item in intervals
                 ),
+                clipped_intervals=clipped_intervals,
             ),
         )
 
@@ -66,13 +75,18 @@ class LabChordAdapter(DatasetAdapter):
 class CsvChordAdapter(DatasetAdapter):
     def _read_intervals(self, annotation: Path) -> Iterable[ChordInterval]:
         with annotation.open("r", encoding="utf-8-sig", newline="") as source:
-            reader = csv.DictReader(source)
-            if reader.fieldnames is None or not {"start", "end", "chord"}.issubset(
-                reader.fieldnames
-            ):
-                raise ValueError("annotation interval CSV must contain start, end, and chord")
+            header = source.readline()
+            source.seek(0)
+            delimiter = ";" if header.count(";") > header.count(",") else ","
+            reader = csv.DictReader(source, delimiter=delimiter)
+            fieldnames = set(reader.fieldnames or ())
+            chord_column = "chord" if "chord" in fieldnames else "shorthand"
+            if not {"start", "end", chord_column}.issubset(fieldnames):
+                raise ValueError(
+                    "annotation interval CSV must contain start, end, and chord or shorthand"
+                )
             for line_number, row in enumerate(reader, start=2):
-                yield _interval(row["start"], row["end"], row["chord"], line_number)
+                yield _interval(row["start"], row["end"], row[chord_column], line_number)
 
 
 def _interval(start: str, end: str, chord: str, line_number: int) -> ChordInterval:
@@ -99,7 +113,7 @@ def _validate_intervals(intervals: tuple[ChordInterval, ...], duration_seconds: 
     if not intervals:
         raise ValueError("annotation intervals cannot be empty")
     previous_end = 0.0
-    for item in intervals:
+    for index, item in enumerate(intervals, start=1):
         if (
             not math.isfinite(item.start_seconds)
             or not math.isfinite(item.end_seconds)
@@ -108,8 +122,32 @@ def _validate_intervals(intervals: tuple[ChordInterval, ...], duration_seconds: 
             or item.start_seconds < previous_end
             or item.end_seconds > duration_seconds + 1e-6
         ):
-            raise ValueError("annotation interval is invalid or overlapping")
+            raise ValueError(
+                "annotation interval "
+                f"{index} is invalid or overlapping "
+                f"({item.start_seconds}, {item.end_seconds}, previous_end={previous_end}, "
+                f"duration={duration_seconds})"
+            )
         previous_end = item.end_seconds
+
+
+def _clip_final_rounding_overrun(
+    intervals: tuple[ChordInterval, ...], duration_seconds: float
+) -> tuple[tuple[ChordInterval, ...], int]:
+    if not intervals:
+        return intervals, 0
+    final = intervals[-1]
+    overrun = final.end_seconds - duration_seconds
+    if (
+        0 < overrun <= _MAX_FINAL_ROUNDING_OVERRUN_SECONDS
+        and final.start_seconds < duration_seconds
+    ):
+        return (
+            intervals[:-1]
+            + (ChordInterval(final.start_seconds, duration_seconds, final.chord),),
+            1,
+        )
+    return intervals, 0
 
 
 def _sha256(path: Path) -> str:

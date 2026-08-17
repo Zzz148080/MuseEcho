@@ -167,6 +167,24 @@ def test_winterreise_csv_adapter_uses_named_columns(tmp_path: Path) -> None:
     assert [item.chord.display_symbol for item in result.intervals] == ["Fmaj7", "G7"]
 
 
+def test_winterreise_adapter_reads_official_semicolon_shorthand_format(
+    tmp_path: Path,
+) -> None:
+    _write_wav(tmp_path / "track.wav")
+    (tmp_path / "track.csv").write_text(
+        "start;end;shorthand;extended;majmin;majmin_inv\n"
+        '0.0;1.0;"F:maj7";"F:(3,5,7)";"F:maj";"F:maj"\n'
+        '1.0;2.0;"G:7/B";"G:(3,5,b7)/B";"G:maj";"G:maj/B"\n',
+        encoding="utf-8",
+    )
+
+    result = WinterreiseAdapter(dataset_id="fixture").adapt(
+        _source(tmp_path, "track.csv"), tmp_path
+    )
+
+    assert [item.chord.display_symbol for item in result.intervals] == ["Fmaj7", "G7/B"]
+
+
 def test_adapter_rejects_source_paths_outside_declared_dataset_root(tmp_path: Path) -> None:
     dataset_root = tmp_path / "dataset"
     outside_root = tmp_path / "outside"
@@ -197,3 +215,17 @@ def test_adapter_rejects_invalid_or_overlapping_intervals(tmp_path: Path, conten
 
     with pytest.raises(ValueError, match="interval"):
         IsophonicsAdapter(dataset_id="fixture").adapt(_source(tmp_path, "track.lab"), tmp_path)
+
+
+def test_adapter_clips_and_records_small_final_annotation_rounding_overrun(
+    tmp_path: Path,
+) -> None:
+    _write_wav(tmp_path / "track.wav")
+    (tmp_path / "track.lab").write_text("0.0 2.009 C:maj\n", encoding="utf-8")
+
+    result = IsophonicsAdapter(dataset_id="fixture").adapt(
+        _source(tmp_path, "track.lab"), tmp_path
+    )
+
+    assert result.intervals[-1].end_seconds == 2.0
+    assert result.conversion.clipped_intervals == 1
