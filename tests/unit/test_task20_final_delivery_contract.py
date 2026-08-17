@@ -546,7 +546,10 @@ def test_distribution_uses_buildx_and_node24_artifact_without_weakening_evidence
         in build_commands
     )
     assert "verify_release_identity.py record" in build_commands
-    assert steps[artifact_index]["with"]["path"] == "tmp/image-security/"
+    assert steps[artifact_index]["with"]["path"].splitlines() == [
+        "tmp/image-security/",
+        "tmp/offline-release/",
+    ]
     assert steps[artifact_index]["if"] == "always()"
     assert steps[artifact_index]["continue-on-error"] is True
 
@@ -557,6 +560,7 @@ def test_distribution_uses_buildx_and_node24_artifact_without_weakening_evidence
         "Audit exact built-image component licenses",
         "Audit exact app findings and emit OpenVEX",
         "Enforce audited app VEX and unsuppressed gateway gate",
+        "Package offline runtime release assets",
     }
     for step in steps[:artifact_index]:
         if step.get("name") in blocking_steps:
