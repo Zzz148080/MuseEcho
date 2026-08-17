@@ -13,6 +13,8 @@ _RWC_POPULAR_ID = re.compile(r"^RWC_P\d{3}$")
 class RwcAdapter(CsvChordAdapter):
     """Read official RWC 2.0 chord CSV files and legacy local LAB exports."""
 
+    max_final_overrun_seconds = 2.25
+
     def _read_intervals(self, annotation: Path) -> Iterable[ChordInterval]:
         if annotation.suffix.lower() == ".lab":
             yield from LabChordAdapter._read_intervals(self, annotation)

@@ -246,3 +246,18 @@ def test_adapter_clips_and_records_small_final_annotation_rounding_overrun(
 
     assert result.intervals[-1].end_seconds == 2.0
     assert result.conversion.clipped_intervals == 1
+
+
+def test_rwc_adapter_clips_documented_final_grid_overrun(tmp_path: Path) -> None:
+    _write_wav(tmp_path / "track.wav")
+    (tmp_path / "track.csv").write_text(
+        "t_start;t_end;chord\n0.0;1.0;C:maj\n1.0;4.04;G:7\n",
+        encoding="utf-8",
+    )
+
+    result = RwcAdapter(dataset_id="fixture").adapt(
+        _source(tmp_path, "track.csv"), tmp_path
+    )
+
+    assert result.intervals[-1].end_seconds == 2.0
+    assert result.conversion.clipped_intervals == 1

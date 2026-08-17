@@ -37,3 +37,15 @@ uv run --project ml python -m museecho_ml.data.winterreise_inventory `
 The full manifest remains ignored because it contains local dataset paths. The public report
 contains aggregate statistics, per-track content hashes, and the canonical manifest hash without
 including audio.
+
+For the verified RWC-P re-release plus the pinned official annotation repository, run:
+
+```powershell
+uv run --project ml python -m museecho_ml.data.rwc_inventory `
+  ml/data/sources `
+  --audio-root ml/data/sources/rwc-popular-2026-02-16 `
+  --annotations-root ml/data/sources/rwc-annotations `
+  --registry docs/ml/dataset-registry.example.json `
+  --manifest-output ml/data/manifests/rwc-popular-2026-02-16.json `
+  --report-output docs/ml/rwc-popular-inventory-v2026-02-16.json
+```

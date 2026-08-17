@@ -95,14 +95,58 @@ Near-duplicate audio and cross-dataset collision counts remain pending Task 4 fi
 two performances of each song already share one explicit work/cover group and therefore cannot be
 split across train and evaluation sets.
 
+### RWC-P 2026 re-release
+
+The official RWC-P archive and curated annotation repository were acquired after the user
+confirmed non-commercial competition use and private-cloud training. Both sources remain under
+ignored `ml/data/` paths.
+
+- Archive size: `4071840278` bytes.
+- Expected and observed MD5: `960a11a2d7fb603ad0dae8428f53d4f0`.
+- Annotation repository commit:
+  `0a1a6c31dbe73a7f5d44f7caef8cd0999402a4c2`.
+- Recordings/works: 100; artists: 34; cover groups: 100.
+- Total audio and normalized annotated duration: 24216.414898 seconds (6.7268 hours).
+- Intervals: 13467 total; 1111 mapped to `X`; 263 explicit `N`; 0 malformed,
+  overlapping, or discarded.
+- All 100 final source intervals extended beyond the released WAV. Seven were within 50 ms; the
+  remainder formed a systematic approximately 1.03–2.23 second annotation-grid tail. The RWC-only
+  adapter clips only the final interval, caps the permitted overrun at 2.25 seconds, records every
+  clip, and rejects larger or interior overruns. The observed maximum was 2.230438 seconds.
+- Formal local manifest SHA-256:
+  `65c808e8f2e9d88304b8b7e8fcfac7214917558e20410c4faf722bd92776296d`.
+- Reproducible aggregate report:
+  `docs/ml/rwc-popular-inventory-v2026-02-16.json`.
+
+### Combined approved corpus
+
+| Quality | Independent works | Intervals | Duration (seconds) | 20-work result |
+| --- | ---: | ---: | ---: | --- |
+| `maj` | 121 | 7571 | 13603.50 | passes |
+| `min` | 121 | 3108 | 6080.40 | passes |
+| `7` | 104 | 1753 | 3059.28 | passes |
+| `maj7` | 75 | 829 | 1790.79 | passes |
+| `min7` | 101 | 2035 | 3394.71 | passes |
+| `dim` | 43 | 172 | 222.43 | passes |
+| `hdim7` | 28 | 162 | 313.39 | passes |
+| `sus2` | 15 | 90 | 135.42 | **fails** |
+| `sus4` | 49 | 201 | 348.76 | passes |
+| `N` | 100 | 263 | 424.21 | internal state |
+| `X` | 108 | 1611 | 2813.99 | internal state |
+
+Combined totals are 148 recordings, 124 independent works, 32339.921837 seconds of audio, and
+32186.891633 seconds (8.9408 hours) of annotated audio. The corpus contains 17795 intervals; 1611
+(9.0531%) map to `X`. There are 106 explicitly recorded final-interval clips and 153.030204
+unannotated seconds, all from Winterreise leading/trailing gaps.
+
 ## G1 decision
 
-`G1 NOT READY`: the approved corpus contains 24 independent works and 2.214 hours of annotated
-audio, far below the planning target of 500 works and 80 hours. Six launch qualities also fail the
+`G1 NOT READY`: the approved corpus contains 124 independent works and 8.9408 hours of annotated
+audio, far below the planning target of 500 works and 80 hours. `sus2` also remains below the
 20-independent-work minimum. The project may use this corpus for adapter, feature, overfit, and
 training-chain smoke tests, but it must not present a model trained only on this corpus as the
-competition accuracy candidate. More lawful data or a written vocabulary/scope revision is
-required before G1 can pass.
+final competition accuracy candidate. More lawful data or a written data/vocabulary/scope
+revision is required before G1 can pass.
 
 ## Approval procedure
 

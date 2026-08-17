@@ -1,0 +1,1078 @@
+{
+  "artist_count": 34,
+  "clipped_intervals": 100,
+  "cover_group_count": 100,
+  "dataset_id": "rwc-popular",
+  "dataset_version": "2026-02-16 re-release",
+  "discarded_intervals": 0,
+  "malformed_intervals": 0,
+  "manifest_sha256": "65c808e8f2e9d88304b8b7e8fcfac7214917558e20410c4faf722bd92776296d",
+  "out_of_vocabulary_intervals": 1111,
+  "overlapping_intervals": 0,
+  "qualities": {
+    "7": {
+      "duration_seconds": 1675.223,
+      "interval_count": 865,
+      "work_count": 80
+    },
+    "N": {
+      "duration_seconds": 424.21219,
+      "interval_count": 263,
+      "work_count": 100
+    },
+    "X": {
+      "duration_seconds": 1886.891,
+      "interval_count": 1111,
+      "work_count": 85
+    },
+    "dim": {
+      "duration_seconds": 197.793,
+      "interval_count": 144,
+      "work_count": 37
+    },
+    "hdim7": {
+      "duration_seconds": 94.689,
+      "interval_count": 48,
+      "work_count": 14
+    },
+    "maj": {
+      "duration_seconds": 10806.548533,
+      "interval_count": 6051,
+      "work_count": 97
+    },
+    "maj7": {
+      "duration_seconds": 1787.812,
+      "interval_count": 825,
+      "work_count": 74
+    },
+    "min": {
+      "duration_seconds": 3518.807,
+      "interval_count": 1880,
+      "work_count": 97
+    },
+    "min7": {
+      "duration_seconds": 3344.113175,
+      "interval_count": 1991,
+      "work_count": 92
+    },
+    "sus2": {
+      "duration_seconds": 135.423,
+      "interval_count": 90,
+      "work_count": 15
+    },
+    "sus4": {
+      "duration_seconds": 344.903,
+      "interval_count": 199,
+      "work_count": 48
+    }
+  },
+  "schema_version": 1,
+  "total_annotated_seconds": 24216.414898,
+  "total_audio_seconds": 24216.414898,
+  "total_intervals": 13467,
+  "track_count": 100,
+  "tracks": [
+    {
+      "annotation_sha256": "af5e5f5668c8a9892b00fcb81eb1a49b63ae46b366e160200d0685ec2598e3c8",
+      "artist_id": "Kazuo Nishi",
+      "audio_sha256": "59d9deb0eb2cc1b79dc78ea93ea385225a29779cba7fce5bcae369bff4c3ad99",
+      "cover_group_id": "RWC_P001",
+      "duration_seconds": 207.168299,
+      "interval_count": 134,
+      "track_id": "RWC_P001",
+      "work_id": "RWC_P001"
+    },
+    {
+      "annotation_sha256": "58cfd30f2d0a7096c3e7a43b6d7221a53da46a38b72d0d1e11a60da534ce8ac2",
+      "artist_id": "Hiromi Yoshii",
+      "audio_sha256": "fe852b1b33c7f619ed80a32a47f1a28ce0fc8b54d00f3dcbcef852c715862f0f",
+      "cover_group_id": "RWC_P002",
+      "duration_seconds": 220.669138,
+      "interval_count": 123,
+      "track_id": "RWC_P002",
+      "work_id": "RWC_P002"
+    },
+    {
+      "annotation_sha256": "a6082050e0d14f630fdcef0062adf7a980371f217aa4fe0570d52263fb28c605",
+      "artist_id": "MIT",
+      "audio_sha256": "616975c69a27b48f6777d17c9528efb1995a7d15a488326460b290e8e3ae12b6",
+      "cover_group_id": "RWC_P003",
+      "duration_seconds": 193.325488,
+      "interval_count": 161,
+      "track_id": "RWC_P003",
+      "work_id": "RWC_P003"
+    },
+    {
+      "annotation_sha256": "b11d527849dc8e189ad25fa0e47d241f565d0e4c7d667bb0ed1bf80084cc76e1",
+      "artist_id": "Hisayoshi Kazato",
+      "audio_sha256": "d320a5216652a7e8936f24512da8ed1f1e342e4c3288dd475b611a24906ab250",
+      "cover_group_id": "RWC_P004",
+      "duration_seconds": 240.467392,
+      "interval_count": 114,
+      "track_id": "RWC_P004",
+      "work_id": "RWC_P004"
+    },
+    {
+      "annotation_sha256": "43edba62f82de1b3265880a0b52d67c76e30ec08de563f6b19d1171148791dd3",
+      "artist_id": "Eves",
+      "audio_sha256": "1be39e29afd7e213d00d009c561dd24edef7b450f819f8fd3438acbc3c2bc179",
+      "cover_group_id": "RWC_P005",
+      "duration_seconds": 226.078866,
+      "interval_count": 125,
+      "track_id": "RWC_P005",
+      "work_id": "RWC_P005"
+    },
+    {
+      "annotation_sha256": "6cdd2359452ad20b0e4d1b32357ee9befb52bb44a2502f45120683a01526de60",
+      "artist_id": "Oriken",
+      "audio_sha256": "30e2272326dbdd8b82bce30db2ac507a7844d6e0a6adb48c37f936bd01d84118",
+      "cover_group_id": "RWC_P006",
+      "duration_seconds": 204.53805,
+      "interval_count": 47,
+      "track_id": "RWC_P006",
+      "work_id": "RWC_P006"
+    },
+    {
+      "annotation_sha256": "85f43d0c8fbff48b645718a25b0a7c63c18cbeb45cbb527eb26701fa2b30df57",
+      "artist_id": "Tomomi Ogata",
+      "audio_sha256": "acfbe3c5ae85cc7db9f139c03bd59d403d03bc07348fb3cada99575897eb70f4",
+      "cover_group_id": "RWC_P007",
+      "duration_seconds": 296.645351,
+      "interval_count": 142,
+      "track_id": "RWC_P007",
+      "work_id": "RWC_P007"
+    },
+    {
+      "annotation_sha256": "b2f1a36fcb1a93c6359d54b8cf84225373c9f50de89ea4025cb8204fdf5a7678",
+      "artist_id": "fevers",
+      "audio_sha256": "ee047fedb8b5a746d520ea5184991c96b3485c8e8367c9e7e9625e7faee6ad1a",
+      "cover_group_id": "RWC_P008",
+      "duration_seconds": 190.157596,
+      "interval_count": 99,
+      "track_id": "RWC_P008",
+      "work_id": "RWC_P008"
+    },
+    {
+      "annotation_sha256": "ce8b9d49999f80b2b00f40850a91744a3342cd8cd4cacea505f80163529a1807",
+      "artist_id": "Kazuo Nishi",
+      "audio_sha256": "5d9cce0c2041da7beffe0f04fc6b85636502d86cd49aaef7236469810aaca25b",
+      "cover_group_id": "RWC_P009",
+      "duration_seconds": 275.000136,
+      "interval_count": 111,
+      "track_id": "RWC_P009",
+      "work_id": "RWC_P009"
+    },
+    {
+      "annotation_sha256": "89881814b64c6fda3af1f3c8aa27b97f67a80dca24bbd8aaa197679c14e6ba3e",
+      "artist_id": "Brakes",
+      "audio_sha256": "e8f2d2b545a89451f101695963db51443c206eeb55ec079491ce00983e1a675b",
+      "cover_group_id": "RWC_P010",
+      "duration_seconds": 213.662177,
+      "interval_count": 71,
+      "track_id": "RWC_P010",
+      "work_id": "RWC_P010"
+    },
+    {
+      "annotation_sha256": "9fd620429e7d3e7c4a3cb4e93bc8b7b1e288b249fd25ea5b8454ce320f9f8c5c",
+      "artist_id": "Hisayoshi Kazato",
+      "audio_sha256": "64c3041f138e4cdc7f0e6dcb37cdb0d3324e35425c37739b5abd98a87c062ba2",
+      "cover_group_id": "RWC_P011",
+      "duration_seconds": 265.892381,
+      "interval_count": 105,
+      "track_id": "RWC_P011",
+      "work_id": "RWC_P011"
+    },
+    {
+      "annotation_sha256": "ee6b9e5923838dfc1b95b99f189fd1e066ab70afdbd873e3dcfa286d793b904f",
+      "artist_id": "Kazuo Nishi",
+      "audio_sha256": "0de530f501ffc02a61f0876b745ed51fb92efffbde210349194a5c2b1b263980",
+      "cover_group_id": "RWC_P012",
+      "duration_seconds": 202.833311,
+      "interval_count": 104,
+      "track_id": "RWC_P012",
+      "work_id": "RWC_P012"
+    },
+    {
+      "annotation_sha256": "7747f86e837901e33f2994c7324038fe955444f0ee3f0e36095a3722227ecf5b",
+      "artist_id": "Konbu",
+      "audio_sha256": "cab3e78f03679dc25ef4df66837e8ced7f5b5cd51122a3d905d19040f890eaf6",
+      "cover_group_id": "RWC_P013",
+      "duration_seconds": 217.060249,
+      "interval_count": 151,
+      "track_id": "RWC_P013",
+      "work_id": "RWC_P013"
+    },
+    {
+      "annotation_sha256": "b4d1fb4db20cbb5b01c68b7099b3c1ca488f3fb519be2355dc043c29baf5ca07",
+      "artist_id": "Rin",
+      "audio_sha256": "ed0e0cc2eba75517315d9855097893f986cdbe032570ebbdb9054a22268c4f8d",
+      "cover_group_id": "RWC_P014",
+      "duration_seconds": 232.919274,
+      "interval_count": 154,
+      "track_id": "RWC_P014",
+      "work_id": "RWC_P014"
+    },
+    {
+      "annotation_sha256": "000870d80b4f8d7a85bf901ac6f101f8af897fdfa74ffbf4ac3ca9d4d1305742",
+      "artist_id": "Katsuyuki Ozawa",
+      "audio_sha256": "abd84376bb5a01cb3f14b856bb685fd59083123e4a818d5703247efbc07e5b39",
+      "cover_group_id": "RWC_P015",
+      "duration_seconds": 160.865964,
+      "interval_count": 126,
+      "track_id": "RWC_P015",
+      "work_id": "RWC_P015"
+    },
+    {
+      "annotation_sha256": "7e70a49891fa616ffbbaf9a0a24bb47f91ad4e80a88630d98500ffa34b20f27a",
+      "artist_id": "Hiromi Yoshii",
+      "audio_sha256": "4ed4ddaf74de148e76e211201dcb34fe5d0937ba2328bfb2cb6d73010824171e",
+      "cover_group_id": "RWC_P016",
+      "duration_seconds": 262.109002,
+      "interval_count": 180,
+      "track_id": "RWC_P016",
+      "work_id": "RWC_P016"
+    },
+    {
+      "annotation_sha256": "5f21ec8516381cfc1dd021db22ff47826168afd6988763a930e0744666f23b48",
+      "artist_id": "Hiromi Yoshii",
+      "audio_sha256": "720ede02ce180bee8abef09e3e76f2553fa935e181bbc9387f75a5c5104ffd82",
+      "cover_group_id": "RWC_P017",
+      "duration_seconds": 239.409751,
+      "interval_count": 125,
+      "track_id": "RWC_P017",
+      "work_id": "RWC_P017"
+    },
+    {
+      "annotation_sha256": "d84bbf4bfdea946e79abc2a18fc9e7d0226f800b8c45e0e9f972fad80f23099a",
+      "artist_id": "Tomomi Ogata",
+      "audio_sha256": "2240a53f3bedefa65fca3b0c4bd5402a0dda31e06c567dd6b1714dfecb790063",
+      "cover_group_id": "RWC_P018",
+      "duration_seconds": 252.072472,
+      "interval_count": 139,
+      "track_id": "RWC_P018",
+      "work_id": "RWC_P018"
+    },
+    {
+      "annotation_sha256": "06453998c99d43536f18a9719a79efe507a1dd764cf2971a3cb049c2939b615c",
+      "artist_id": "Hisayoshi Kazato",
+      "audio_sha256": "8df8187549ef0ed90b3d84672f5b204f0793a25e49f468b3f12b4305c52a7512",
+      "cover_group_id": "RWC_P019",
+      "duration_seconds": 287.008458,
+      "interval_count": 202,
+      "track_id": "RWC_P019",
+      "work_id": "RWC_P019"
+    },
+    {
+      "annotation_sha256": "873b8db3573cfcf735f3e9d08ddc0fe49c89fb999ee6222f6990b1bf62813b80",
+      "artist_id": "Eri Ichikawa",
+      "audio_sha256": "73384534ba357f645efb2cdc1cf6119b089e610dd93ab04d9a6ad96fdd92a1fe",
+      "cover_group_id": "RWC_P020",
+      "duration_seconds": 248.118753,
+      "interval_count": 156,
+      "track_id": "RWC_P020",
+      "work_id": "RWC_P020"
+    },
+    {
+      "annotation_sha256": "4abda9726f166d0e14d6778e77d3ad77f3a41d7e4f601206930204f0bbf0d7a9",
+      "artist_id": "Rin",
+      "audio_sha256": "98830540ce9d6a76ac88e2d8b31acd32e47d34b1c81d93958032fa725889bd66",
+      "cover_group_id": "RWC_P021",
+      "duration_seconds": 266.922041,
+      "interval_count": 152,
+      "track_id": "RWC_P021",
+      "work_id": "RWC_P021"
+    },
+    {
+      "annotation_sha256": "5197657028cb893a4348e14df894d4b6485833fe1f3939adf5eee1583454fbf9",
+      "artist_id": "Kazuo Nishi",
+      "audio_sha256": "07fd63355c58657de377664113d8e64f58052e756f5e631e0b734f9b07dffd0e",
+      "cover_group_id": "RWC_P022",
+      "duration_seconds": 207.489456,
+      "interval_count": 126,
+      "track_id": "RWC_P022",
+      "work_id": "RWC_P022"
+    },
+    {
+      "annotation_sha256": "3fde88e80ebf9f23c4dcb869127db2561d91a9ae670407fb9b5884cd740c1d87",
+      "artist_id": "MAPS",
+      "audio_sha256": "727be8ab58b3d270f3e15de1f9c89049e7dbac546dea3e6b4135050cd03cd58c",
+      "cover_group_id": "RWC_P023",
+      "duration_seconds": 199.149501,
+      "interval_count": 73,
+      "track_id": "RWC_P023",
+      "work_id": "RWC_P023"
+    },
+    {
+      "annotation_sha256": "d1c810d759c88b6be025231600ed5b59baa69fd735dacfb3d0be455d3440502c",
+      "artist_id": "Hisayoshi Kazato",
+      "audio_sha256": "44d0ca5d43c4b88bf4a115366fd30bc60f6e1319a55543efb1bd8ef981ecaee7",
+      "cover_group_id": "RWC_P024",
+      "duration_seconds": 238.221542,
+      "interval_count": 113,
+      "track_id": "RWC_P024",
+      "work_id": "RWC_P024"
+    },
+    {
+      "annotation_sha256": "0ef87bf3c419675ced8ce71710234948e7df753c79654ed84d9b53db0f89a7c4",
+      "artist_id": "Tomomi Ogata",
+      "audio_sha256": "17746487f2aa56c0fd4d6e7c15461e2a79127dd9db4cceb1d69787bc50488287",
+      "cover_group_id": "RWC_P025",
+      "duration_seconds": 254.43161,
+      "interval_count": 147,
+      "track_id": "RWC_P025",
+      "work_id": "RWC_P025"
+    },
+    {
+      "annotation_sha256": "a56d9aa56045c3dd3ebd74ed64e8ccd9510d3f582d72b60121afb4bdd2bb3047",
+      "artist_id": "Tomoko Nitta",
+      "audio_sha256": "d65d164dffe25d87910293ef4f3926f079581547b58791dadcdba40a5a50f8fc",
+      "cover_group_id": "RWC_P026",
+      "duration_seconds": 205.018934,
+      "interval_count": 149,
+      "track_id": "RWC_P026",
+      "work_id": "RWC_P026"
+    },
+    {
+      "annotation_sha256": "2cf93fdf4eb06d66eab82bc0f0c82a65d9bbf9cb4b74283f6663bf2670b218e5",
+      "artist_id": "Shingo Katsuta",
+      "audio_sha256": "f0ace3ddd924539944bf04a161fa90f19c728e7875753d5bf118f5bd214f8480",
+      "cover_group_id": "RWC_P027",
+      "duration_seconds": 316.410816,
+      "interval_count": 127,
+      "track_id": "RWC_P027",
+      "work_id": "RWC_P027"
+    },
+    {
+      "annotation_sha256": "3651dbdfc44b8a2aff8a450f5b2e3f064ae58bc90fbce67ebb1eec2ba452b97b",
+      "artist_id": "Tomomi Ogata",
+      "audio_sha256": "bcf4fade86e188721c9cbc37727ab1c42c833ed7120fc2c7a0c6c9ccf2f46fab",
+      "cover_group_id": "RWC_P028",
+      "duration_seconds": 248.951519,
+      "interval_count": 177,
+      "track_id": "RWC_P028",
+      "work_id": "RWC_P028"
+    },
+    {
+      "annotation_sha256": "86e2eaf0d47aac00aac52ca03663ef3127d196d7e195f7234348c3c8cdf7643b",
+      "artist_id": "Kazuo Nishi",
+      "audio_sha256": "727c9bd60767634d6a18db969c382e00383d88049fc953484548d94a24ad4427",
+      "cover_group_id": "RWC_P029",
+      "duration_seconds": 213.061746,
+      "interval_count": 87,
+      "track_id": "RWC_P029",
+      "work_id": "RWC_P029"
+    },
+    {
+      "annotation_sha256": "d8bf9209690734c97333aba70eb84dc48e5864eb087ead960ee2ece966af1c18",
+      "artist_id": "Mitsuru Tanimoto",
+      "audio_sha256": "d7c3de473294e02a174c3e829e38c137fc65385501d516dda6aa8e6bda159ff4",
+      "cover_group_id": "RWC_P030",
+      "duration_seconds": 194.062562,
+      "interval_count": 154,
+      "track_id": "RWC_P030",
+      "work_id": "RWC_P030"
+    },
+    {
+      "annotation_sha256": "a949812a67821e0bdd07f6a25c465273a6cdc5a2609802fdf9cf68d462d6a8a7",
+      "artist_id": "Yuuichi Nagayama",
+      "audio_sha256": "17f0617c9763e207a7eceaeeef5246ce6ac6c8cf3a54157779714a63ef6e4491",
+      "cover_group_id": "RWC_P031",
+      "duration_seconds": 248.181179,
+      "interval_count": 119,
+      "track_id": "RWC_P031",
+      "work_id": "RWC_P031"
+    },
+    {
+      "annotation_sha256": "9306f201dcc7f2d139fd544f33d940c9f4c0893bb608be481f1402e06098e3bd",
+      "artist_id": "Masaki Kuehara",
+      "audio_sha256": "10c018cc456c73a7414c53767b3f35eabb5f300e31b041e1b432cf138f352412",
+      "cover_group_id": "RWC_P032",
+      "duration_seconds": 252.044535,
+      "interval_count": 79,
+      "track_id": "RWC_P032",
+      "work_id": "RWC_P032"
+    },
+    {
+      "annotation_sha256": "62549d8cb348b7362fa6b0dbf061383df50224c59eb1747a28dc66748e3dac47",
+      "artist_id": "Hiromi Yoshii",
+      "audio_sha256": "ea8d14c12a3ba5bf91a48c0c29ae666a24bcc8218083b83608ed73ee3d492f44",
+      "cover_group_id": "RWC_P033",
+      "duration_seconds": 284.975079,
+      "interval_count": 146,
+      "track_id": "RWC_P033",
+      "work_id": "RWC_P033"
+    },
+    {
+      "annotation_sha256": "4307c1184943fd3fa32a19c688f5e5d848a42a420d9ba10d7d137f0a3656afb1",
+      "artist_id": "Hiromi Yoshii",
+      "audio_sha256": "aead4732caf8e9557fc1368c8907262d48f3c7d22e4f9ecc4c8b50848d4426c7",
+      "cover_group_id": "RWC_P034",
+      "duration_seconds": 205.600317,
+      "interval_count": 128,
+      "track_id": "RWC_P034",
+      "work_id": "RWC_P034"
+    },
+    {
+      "annotation_sha256": "80e917cfbd05e906b964ebbea2ecdcc5f9ec13add105de9abd2265123642233c",
+      "artist_id": "Hiromi Yoshii",
+      "audio_sha256": "7e66777cb08d3cb228fd979b4503e1523ed6775e3463474b8c2f159464fbff69",
+      "cover_group_id": "RWC_P035",
+      "duration_seconds": 190.987959,
+      "interval_count": 109,
+      "track_id": "RWC_P035",
+      "work_id": "RWC_P035"
+    },
+    {
+      "annotation_sha256": "531c1c2972580d8d63fff232f4a89fe72384b1f5cf07aa05658ed8948199cdc0",
+      "artist_id": "Kazuo Nishi",
+      "audio_sha256": "28dae7ef0a9b93f120b2e22d4d20954da4dd399b63698776b6fd769632424d82",
+      "cover_group_id": "RWC_P036",
+      "duration_seconds": 314.221066,
+      "interval_count": 164,
+      "track_id": "RWC_P036",
+      "work_id": "RWC_P036"
+    },
+    {
+      "annotation_sha256": "a95a23d142dc1c0646152aeb2328ae16abe3edd18f73bfc541be962c22b42604",
+      "artist_id": "Yoshinori Hatae",
+      "audio_sha256": "a24a9ff59c6ae3b1e7e6d82bce19a57d3c9a2109b7672d1a61e79742a4922ace",
+      "cover_group_id": "RWC_P037",
+      "duration_seconds": 237.06746,
+      "interval_count": 108,
+      "track_id": "RWC_P037",
+      "work_id": "RWC_P037"
+    },
+    {
+      "annotation_sha256": "70ff5c1e99d95f1a2beeff5999e60a4979758b6ad7bd03f27f905b2436360596",
+      "artist_id": "Kousuke Morimoto",
+      "audio_sha256": "64e4a54ae2064749f85a1295785ff8bdb4a7f00c21518f0f8cff2f8624b2338b",
+      "cover_group_id": "RWC_P038",
+      "duration_seconds": 273.301701,
+      "interval_count": 120,
+      "track_id": "RWC_P038",
+      "work_id": "RWC_P038"
+    },
+    {
+      "annotation_sha256": "650a8dd2985cce6443302e747ce97ec175336612a925a26814fb9e71205e4858",
+      "artist_id": "Kousuke Morimoto",
+      "audio_sha256": "49609ac93fba5b90ddfc225e4f05d08c179eed29b4b62177909904d0f3b66746",
+      "cover_group_id": "RWC_P039",
+      "duration_seconds": 286.815329,
+      "interval_count": 96,
+      "track_id": "RWC_P039",
+      "work_id": "RWC_P039"
+    },
+    {
+      "annotation_sha256": "2bf1901cd3f81c0ee4f9060f86a02c6935ada16f815b3f6c95f85c0fc1d56f15",
+      "artist_id": "Kazuo Nishi",
+      "audio_sha256": "0684df082a1187d5012b365314f7e594d51be89c99fa293d88617d51ff8d0fd1",
+      "cover_group_id": "RWC_P040",
+      "duration_seconds": 224.216259,
+      "interval_count": 171,
+      "track_id": "RWC_P040",
+      "work_id": "RWC_P040"
+    },
+    {
+      "annotation_sha256": "809ae91d0e41197a316305e4641ba75b64490c297c697108327007c1d2061853",
+      "artist_id": "Katsuyuki Ozawa",
+      "audio_sha256": "7a2db96a69c8d7e9550af986be92feb3952b79d51d4752496fa45ec909df95f3",
+      "cover_group_id": "RWC_P041",
+      "duration_seconds": 168.102517,
+      "interval_count": 83,
+      "track_id": "RWC_P041",
+      "work_id": "RWC_P041"
+    },
+    {
+      "annotation_sha256": "cb981eac54ce584fedf4ddd40d5b988e05183ba8888ec25c174d9a9dc62ccf20",
+      "artist_id": "Kousuke Morimoto",
+      "audio_sha256": "c2217bc7c8c33c1d5cb28f4938b7fb604dea8ecb22953082626914684185c6cc",
+      "cover_group_id": "RWC_P042",
+      "duration_seconds": 246.725374,
+      "interval_count": 153,
+      "track_id": "RWC_P042",
+      "work_id": "RWC_P042"
+    },
+    {
+      "annotation_sha256": "eb42b39bcc54ec62599b417334d1b974efb007a1603fa89c51c8895688592f7d",
+      "artist_id": "Kazuo Nishi",
+      "audio_sha256": "20551c271b68de4de4b4e7d4d72f8adc3f7896f4f6c9b6c17fa064eb46b5deb3",
+      "cover_group_id": "RWC_P043",
+      "duration_seconds": 202.276621,
+      "interval_count": 123,
+      "track_id": "RWC_P043",
+      "work_id": "RWC_P043"
+    },
+    {
+      "annotation_sha256": "b75243ce4d5407bf21d992b6ea76b7b19696bacab3da624a9e26b33aa65f1dbf",
+      "artist_id": "Kousuke Morimoto",
+      "audio_sha256": "7b0569989199a2c340a611f2b4aad5e9b2420f0983edce5ddf07c0a2a2f8a68a",
+      "cover_group_id": "RWC_P044",
+      "duration_seconds": 244.050227,
+      "interval_count": 130,
+      "track_id": "RWC_P044",
+      "work_id": "RWC_P044"
+    },
+    {
+      "annotation_sha256": "0e5865d7ccfe96ee5343671e204be1603b006a4aa345443c03ea54417d1cfdea",
+      "artist_id": "Kousuke Morimoto",
+      "audio_sha256": "a2f76fc5d1fda7bd08303c4d248b1659e55756458f3872416304ee1d3c4c05d4",
+      "cover_group_id": "RWC_P045",
+      "duration_seconds": 220.497098,
+      "interval_count": 145,
+      "track_id": "RWC_P045",
+      "work_id": "RWC_P045"
+    },
+    {
+      "annotation_sha256": "741f24fe4fc936f8dbc6eaab367147853ca49feb91e1c2e71299caa4ad59b069",
+      "artist_id": "Kousuke Morimoto",
+      "audio_sha256": "e902e41d462237e309b125e4dbd3475de189db39dacf356c1373375c7913edf0",
+      "cover_group_id": "RWC_P046",
+      "duration_seconds": 196.981542,
+      "interval_count": 166,
+      "track_id": "RWC_P046",
+      "work_id": "RWC_P046"
+    },
+    {
+      "annotation_sha256": "2d36de893ae00fb7014a33c3fdab8335bc5162edc4876e4b562271ba86df8298",
+      "artist_id": "Satoshi Kumasaka",
+      "audio_sha256": "9215e49df02a1d7d157b7ff24ed120f89a0b4b8891147bd6e23043003c393f6f",
+      "cover_group_id": "RWC_P047",
+      "duration_seconds": 208.708957,
+      "interval_count": 145,
+      "track_id": "RWC_P047",
+      "work_id": "RWC_P047"
+    },
+    {
+      "annotation_sha256": "7f183fa5a59155e03996fa6de5f6e1497757fbd810c8bf19d3d204ff90d68809",
+      "artist_id": "Hiroshi Sekiya",
+      "audio_sha256": "2486039839cade7b7db57c1e6e83385d5cf13abc365c7185c78e4d6ea0aa6850",
+      "cover_group_id": "RWC_P048",
+      "duration_seconds": 269.551905,
+      "interval_count": 180,
+      "track_id": "RWC_P048",
+      "work_id": "RWC_P048"
+    },
+    {
+      "annotation_sha256": "4c3af176c6b1e9174d95844876e284c3168fad866dbfdd851c9d31bc717648c5",
+      "artist_id": "Hiroshi Sekiya",
+      "audio_sha256": "975d02f2723628804e91178bc9bdf08dfe51a9509394b8e0c460e5689905ce96",
+      "cover_group_id": "RWC_P049",
+      "duration_seconds": 273.024467,
+      "interval_count": 179,
+      "track_id": "RWC_P049",
+      "work_id": "RWC_P049"
+    },
+    {
+      "annotation_sha256": "b2caa8488971cacf2b9e1003e39bee8d525f24cb19b5ceb6c0f9dd608a84422e",
+      "artist_id": "Rin",
+      "audio_sha256": "f3c2112520a30e8f0a1c927caca4b8f9d80e525ad49565f342f513dc25f4f075",
+      "cover_group_id": "RWC_P050",
+      "duration_seconds": 193.371927,
+      "interval_count": 128,
+      "track_id": "RWC_P050",
+      "work_id": "RWC_P050"
+    },
+    {
+      "annotation_sha256": "0f441d64b0063793fcdb3d9fdcd102dc80919e097dd6d22fbfd4f508a99dc2a1",
+      "artist_id": "Hiroshi Sekiya",
+      "audio_sha256": "5ea1c64435e8640895f78c34bcd6f33d4f17e8d542d20ee54feec57da320a8f2",
+      "cover_group_id": "RWC_P051",
+      "duration_seconds": 365.326213,
+      "interval_count": 169,
+      "track_id": "RWC_P051",
+      "work_id": "RWC_P051"
+    },
+    {
+      "annotation_sha256": "402c95cc045fec36f2f9dc985779aacbb5ea8bcb4bbdf57bb28fda84eeb86a18",
+      "artist_id": "Tomomi Ogata",
+      "audio_sha256": "d4c3a7678248b96f478434a8edc2b1ed2bd0b59a4c1aab4f92e5ca5689bb5f8e",
+      "cover_group_id": "RWC_P052",
+      "duration_seconds": 223.426122,
+      "interval_count": 98,
+      "track_id": "RWC_P052",
+      "work_id": "RWC_P052"
+    },
+    {
+      "annotation_sha256": "50868de0deec02972ecc567ba98d31895c244efd3f917da257d15f4db28961fb",
+      "artist_id": "Rin",
+      "audio_sha256": "c3c62f616cab1c3d1504a6a3f22973534bf4f7ac9581b8836bee42d5e9f3f66b",
+      "cover_group_id": "RWC_P053",
+      "duration_seconds": 217.736372,
+      "interval_count": 164,
+      "track_id": "RWC_P053",
+      "work_id": "RWC_P053"
+    },
+    {
+      "annotation_sha256": "60e55cd85569091d65e3142ad0ba99fad95a9cf66b8a7778c0e5e81a5ad52869",
+      "artist_id": "Rin",
+      "audio_sha256": "df692c0cdf7998a308bd0176f8f13baf7a0d5c29a8bc6af80904118c0410177b",
+      "cover_group_id": "RWC_P054",
+      "duration_seconds": 220.884172,
+      "interval_count": 111,
+      "track_id": "RWC_P054",
+      "work_id": "RWC_P054"
+    },
+    {
+      "annotation_sha256": "fb81d68c3e25f32983c922ed86cf456889370f6c75779608a3f89e09aa0ad913",
+      "artist_id": "Akiko Kaburagi",
+      "audio_sha256": "f82953db07a2691c7b6840bc2ae5a28c08acca1770eeb11e66560b274e9a2e9e",
+      "cover_group_id": "RWC_P055",
+      "duration_seconds": 247.145306,
+      "interval_count": 136,
+      "track_id": "RWC_P055",
+      "work_id": "RWC_P055"
+    },
+    {
+      "annotation_sha256": "67fafa10e3d34c7a0e6a7888b8eb00756caa988b17c66adca2b7a998a0dcac4c",
+      "artist_id": "Masashi Hashimoto",
+      "audio_sha256": "f6b3325ee34d89180724e6584eb9dd928f27f5ea81a77caab4cd0a481f7296a4",
+      "cover_group_id": "RWC_P056",
+      "duration_seconds": 320.928912,
+      "interval_count": 113,
+      "track_id": "RWC_P056",
+      "work_id": "RWC_P056"
+    },
+    {
+      "annotation_sha256": "e34a250d6562e72acf20e5cd175545c666f4f386288064de27289626da3b5694",
+      "artist_id": "Masashi Hashimoto",
+      "audio_sha256": "f7f37a0df287ae5b72f53aaa40aeb06c38c5741561a801e0ff8660e92a40c104",
+      "cover_group_id": "RWC_P057",
+      "duration_seconds": 265.136757,
+      "interval_count": 145,
+      "track_id": "RWC_P057",
+      "work_id": "RWC_P057"
+    },
+    {
+      "annotation_sha256": "2c5d31c8cb070c4af71e19fabd67906196dd4696486492d3ae67eef359ebebb7",
+      "artist_id": "Rin",
+      "audio_sha256": "3e803119b08ce49eb587fe19fff3787b62781e9e33027f5926efb942c9976240",
+      "cover_group_id": "RWC_P058",
+      "duration_seconds": 223.933016,
+      "interval_count": 96,
+      "track_id": "RWC_P058",
+      "work_id": "RWC_P058"
+    },
+    {
+      "annotation_sha256": "0db3670bb7c8607f7cd5d89170080c60858dbed3b0da385c6ecd56f1248e3b3a",
+      "artist_id": "Rin",
+      "audio_sha256": "c5f4025293b827b631da09ad5f50bb9037d58e1f1733b7acc8aef661de56bac6",
+      "cover_group_id": "RWC_P059",
+      "duration_seconds": 202.982177,
+      "interval_count": 93,
+      "track_id": "RWC_P059",
+      "work_id": "RWC_P059"
+    },
+    {
+      "annotation_sha256": "4394e7eac0f9f01ddd8cbc2ea8bf52f178ef650eb34c881e5f3d8563e756b6ef",
+      "artist_id": "Yuzu Iijima",
+      "audio_sha256": "bf8fcc7b14bfc7f29da550da94ffba0ea63254968b1584b4a0f5ba1e4d5fd87f",
+      "cover_group_id": "RWC_P060",
+      "duration_seconds": 241.478503,
+      "interval_count": 88,
+      "track_id": "RWC_P060",
+      "work_id": "RWC_P060"
+    },
+    {
+      "annotation_sha256": "14476330809cb7f2a75ea3df6f28d5d918c3a55870668f1757d210aaef2b8e4f",
+      "artist_id": "Kazuo Nishi",
+      "audio_sha256": "589988a58c4eca62bc486cee580989f1626ec3f3bddb4f655ced5a6137632545",
+      "cover_group_id": "RWC_P061",
+      "duration_seconds": 281.133175,
+      "interval_count": 171,
+      "track_id": "RWC_P061",
+      "work_id": "RWC_P061"
+    },
+    {
+      "annotation_sha256": "2b4931e8295ab319ec6900c5ce979b9cc820004a67dbe043a0745e13429113a8",
+      "artist_id": "Rin",
+      "audio_sha256": "f462323fd16a18200c0367a56e4cfca029b0fa60be23ea817cc601aa9afbdfc5",
+      "cover_group_id": "RWC_P062",
+      "duration_seconds": 189.072268,
+      "interval_count": 40,
+      "track_id": "RWC_P062",
+      "work_id": "RWC_P062"
+    },
+    {
+      "annotation_sha256": "39188d876cd8338ec431de4deeb8a062cc19b93aec41c44c71d24bd61a7bd8a0",
+      "artist_id": "Reiko Sato",
+      "audio_sha256": "8937773d255cf50655849e3906764b915dc23db150982c298ef9e08ef9d2645d",
+      "cover_group_id": "RWC_P063",
+      "duration_seconds": 248.972245,
+      "interval_count": 182,
+      "track_id": "RWC_P063",
+      "work_id": "RWC_P063"
+    },
+    {
+      "annotation_sha256": "efa347993c8f86893a47c613e7f0a77bf72dd12dc55c0bf822cc1fa45d38cd5e",
+      "artist_id": "Kousuke Morimoto",
+      "audio_sha256": "70d85007a23b097e6e668c1b7734d804947ead801e695487c1b78177ef8dd04d",
+      "cover_group_id": "RWC_P064",
+      "duration_seconds": 292.439524,
+      "interval_count": 212,
+      "track_id": "RWC_P064",
+      "work_id": "RWC_P064"
+    },
+    {
+      "annotation_sha256": "dcbb48aa2ac36ccf40534f46336a126ad8a310bdf661bc870d9bd8203026fdbe",
+      "artist_id": "Makiko Hattori",
+      "audio_sha256": "22fb3bb928ee36ecc3ae293f58299ae404eea056fcd8da15c325c6b4a172166d",
+      "cover_group_id": "RWC_P065",
+      "duration_seconds": 230.021859,
+      "interval_count": 137,
+      "track_id": "RWC_P065",
+      "work_id": "RWC_P065"
+    },
+    {
+      "annotation_sha256": "9a874d50a786dc2c387e0bf7c69e947785946bac8ea49148e67dacb9f87d396e",
+      "artist_id": "M & Y",
+      "audio_sha256": "c95ecefc0e171eb161464a1d78629b4b663da040817f8ad47b647e0d25707677",
+      "cover_group_id": "RWC_P066",
+      "duration_seconds": 318.561769,
+      "interval_count": 176,
+      "track_id": "RWC_P066",
+      "work_id": "RWC_P066"
+    },
+    {
+      "annotation_sha256": "be0c345a21498706b629a165564d84e292d5f93fd23f9dd9b76f04d585ae9e16",
+      "artist_id": "Makiko Hattori",
+      "audio_sha256": "6d7ed65e91df7c9b3fd4e971783c81210aa8e1d9488e49ec974790fdd95419f0",
+      "cover_group_id": "RWC_P067",
+      "duration_seconds": 248.655601,
+      "interval_count": 162,
+      "track_id": "RWC_P067",
+      "work_id": "RWC_P067"
+    },
+    {
+      "annotation_sha256": "d1123d88f8847ed60014403d59d8e461d4c027e873a75acf0350257e8f16e48d",
+      "artist_id": "Makiko Hattori",
+      "audio_sha256": "695f6e2089eeaf05bd60f449a6fc030b4a5d19b3bf47c4c3dadfc4ee553df4b3",
+      "cover_group_id": "RWC_P068",
+      "duration_seconds": 292.221746,
+      "interval_count": 155,
+      "track_id": "RWC_P068",
+      "work_id": "RWC_P068"
+    },
+    {
+      "annotation_sha256": "3193afac127f4ad782c66556ca62929f9b3bc03ed2d221d2a000b14a54da8db6",
+      "artist_id": "Hiromi Yoshii",
+      "audio_sha256": "e794a0d06e9bdac5d96a600536891dd13360cf6cd4c24d593676e6add4e5da4d",
+      "cover_group_id": "RWC_P069",
+      "duration_seconds": 358.330454,
+      "interval_count": 167,
+      "track_id": "RWC_P069",
+      "work_id": "RWC_P069"
+    },
+    {
+      "annotation_sha256": "6510316046411ef69b42cc386f1ff8fbb019da90ff2c995b5710b8c7dc960ab4",
+      "artist_id": "Tamako Matsuzaka",
+      "audio_sha256": "a1b910751798cbeb049776efc40a3395c7c49266a9c5c1a48671af1b44b14cde",
+      "cover_group_id": "RWC_P070",
+      "duration_seconds": 244.690023,
+      "interval_count": 144,
+      "track_id": "RWC_P070",
+      "work_id": "RWC_P070"
+    },
+    {
+      "annotation_sha256": "7fc93a5127e244a2cbdabf9081378bfe2c3da967d9c1fecb323ba2d9135bdd1a",
+      "artist_id": "Hiromi Yoshii",
+      "audio_sha256": "b24b67ba8401fbc34ec54bb25e073dbc2638807ea6d3d3fd245fdf6d5fd5ed88",
+      "cover_group_id": "RWC_P071",
+      "duration_seconds": 284.412789,
+      "interval_count": 186,
+      "track_id": "RWC_P071",
+      "work_id": "RWC_P071"
+    },
+    {
+      "annotation_sha256": "ae379f9746362ce6faa917706646a8b580318228fad2ac25b960d88ff1f6fd94",
+      "artist_id": "Kousuke Morimoto",
+      "audio_sha256": "86b15822bda094cf45e6079d9c75338ce6d8edeaabe4798c5cb44d8537662a3c",
+      "cover_group_id": "RWC_P072",
+      "duration_seconds": 199.343265,
+      "interval_count": 121,
+      "track_id": "RWC_P072",
+      "work_id": "RWC_P072"
+    },
+    {
+      "annotation_sha256": "2aac5a4313dc1082f00aa2e13f98952f70330b3b2ff62fff169b531efce2a944",
+      "artist_id": "Kazuo Nishi",
+      "audio_sha256": "c215f125c3df51603118ac431f5a6b4718d556ab3a68ae69a3c16b6f0c29cee4",
+      "cover_group_id": "RWC_P073",
+      "duration_seconds": 134.441202,
+      "interval_count": 101,
+      "track_id": "RWC_P073",
+      "work_id": "RWC_P073"
+    },
+    {
+      "annotation_sha256": "7aba87c62b8573f53ff0a808edae6e54e3fe125887d60121102d70ad9039da18",
+      "artist_id": "Kousuke Morimoto",
+      "audio_sha256": "15cf86bac0f295567d977c4adccf36a2fd8750a7bfcb42f830d80883f56ab80c",
+      "cover_group_id": "RWC_P074",
+      "duration_seconds": 192.26966,
+      "interval_count": 125,
+      "track_id": "RWC_P074",
+      "work_id": "RWC_P074"
+    },
+    {
+      "annotation_sha256": "4ddce1815a300b8176fcb470c5640615a00bc026b3a0872f9bd117cfdfd0debe",
+      "artist_id": "Hiromi Yoshii",
+      "audio_sha256": "126d78630b45583c753e30fb064f72c434836077b65340087d190f47867e161e",
+      "cover_group_id": "RWC_P075",
+      "duration_seconds": 199.939138,
+      "interval_count": 104,
+      "track_id": "RWC_P075",
+      "work_id": "RWC_P075"
+    },
+    {
+      "annotation_sha256": "713b81354e0525cb809dbdb2efbb41a51b621b576f7870dc476706cd6fbd9166",
+      "artist_id": "Kousuke Morimoto",
+      "audio_sha256": "fbefba121e53cbb9f670c9b691f6526bd3a9e0f7e74ca31cd8c4c27ed043af9a",
+      "cover_group_id": "RWC_P076",
+      "duration_seconds": 228.860295,
+      "interval_count": 123,
+      "track_id": "RWC_P076",
+      "work_id": "RWC_P076"
+    },
+    {
+      "annotation_sha256": "4a343c735b2f966c76ce94dda9caee9fc2a2080c97eecb12e1d54a26f49cd43b",
+      "artist_id": "Makiko Hattori",
+      "audio_sha256": "73e37daed4200667ef338db6f8cf7a0d74bcf8c0ef640042ce07b47622e86aac",
+      "cover_group_id": "RWC_P077",
+      "duration_seconds": 234.133605,
+      "interval_count": 148,
+      "track_id": "RWC_P077",
+      "work_id": "RWC_P077"
+    },
+    {
+      "annotation_sha256": "52f78f5fb806e108955c0060e804c606ce5c9aadfde15dff7732aeba3769332e",
+      "artist_id": "Masaki Kuehara",
+      "audio_sha256": "6aa99d1d5222d12dd36469121bb654a1d6bea29044be0053be35beb1c1ea3859",
+      "cover_group_id": "RWC_P078",
+      "duration_seconds": 259.207778,
+      "interval_count": 115,
+      "track_id": "RWC_P078",
+      "work_id": "RWC_P078"
+    },
+    {
+      "annotation_sha256": "55d040db6ffaadfef8bb52fe6c2a94e2ee7c8429b88882e5ac9d258a5cf93113",
+      "artist_id": "Tomomi Ogata",
+      "audio_sha256": "a6d68bde3e5f75074b1d2d793c127c618421e986b51cdc75ec6b00c8e81a45bc",
+      "cover_group_id": "RWC_P079",
+      "duration_seconds": 266.346644,
+      "interval_count": 118,
+      "track_id": "RWC_P079",
+      "work_id": "RWC_P079"
+    },
+    {
+      "annotation_sha256": "00ccc47bdc00f3917bd18268aad5798b7597b904dd8e38f07947269a9959c3b5",
+      "artist_id": "Tomomi Ogata",
+      "audio_sha256": "da95a908cee0a6298cfa6a847b85cebbc000f155b17902ccec1602aec07fa3e0",
+      "cover_group_id": "RWC_P080",
+      "duration_seconds": 219.065238,
+      "interval_count": 90,
+      "track_id": "RWC_P080",
+      "work_id": "RWC_P080"
+    },
+    {
+      "annotation_sha256": "6ecf9f2f14d8ec9f939c20e19209e5b4a153ce8cd2bc4093fcb13e9e8102d800",
+      "artist_id": "Donna Burke",
+      "audio_sha256": "1e3a421b3491006c37ffe205e5354129e9def540a91d94925e1a703f06269df7",
+      "cover_group_id": "RWC_P081",
+      "duration_seconds": 228.781769,
+      "interval_count": 123,
+      "track_id": "RWC_P081",
+      "work_id": "RWC_P081"
+    },
+    {
+      "annotation_sha256": "9b30bf436a7fe4b6988723966719f6fc650a67a135737b7f352a6f3bfc300219",
+      "artist_id": "Shinya Iguchi",
+      "audio_sha256": "72d44c7663ceea2f3f7ce711a2435f7840aa44a05e2648f385d11ca6170684fb",
+      "cover_group_id": "RWC_P082",
+      "duration_seconds": 335.045193,
+      "interval_count": 215,
+      "track_id": "RWC_P082",
+      "work_id": "RWC_P082"
+    },
+    {
+      "annotation_sha256": "ee737659cb002787d31a90936ae003c8eb181bbf08ef3c4fd5ee52c31a3c8fcf",
+      "artist_id": "Jeff Manning",
+      "audio_sha256": "259295fd6f43e2dbb28cc22d2a9f1d26b5c04fce3edcaa140608c3fd3a821cb5",
+      "cover_group_id": "RWC_P083",
+      "duration_seconds": 215.374467,
+      "interval_count": 206,
+      "track_id": "RWC_P083",
+      "work_id": "RWC_P083"
+    },
+    {
+      "annotation_sha256": "893c68d6409d7d54ae2be2c47812440cb3f60236f9751a91e1d426b1763b47de",
+      "artist_id": "Shinya Iguchi",
+      "audio_sha256": "ee6d4a454f0ae372cf496c4409bc0800ee577fe5b836138bd17d72efc98b05ce",
+      "cover_group_id": "RWC_P084",
+      "duration_seconds": 278.392834,
+      "interval_count": 155,
+      "track_id": "RWC_P084",
+      "work_id": "RWC_P084"
+    },
+    {
+      "annotation_sha256": "9e55d8b533d6ff331528b628540f48fb319d2048b30204ed14ad9aa19930114f",
+      "artist_id": "Jeff Manning",
+      "audio_sha256": "4050be12fd7e05992b7824588d1e6c76a4b3b4bb1648aa843a2c497d4bcbd0fe",
+      "cover_group_id": "RWC_P085",
+      "duration_seconds": 208.46576,
+      "interval_count": 107,
+      "track_id": "RWC_P085",
+      "work_id": "RWC_P085"
+    },
+    {
+      "annotation_sha256": "c40be428c869912cb12387ec3b6ff0045136818935e31b38dace67355460e334",
+      "artist_id": "Betty",
+      "audio_sha256": "f0c90bfee834cbce56507e5fb98084189e8c237bcaf9118cc905498e5566232e",
+      "cover_group_id": "RWC_P086",
+      "duration_seconds": 255.817098,
+      "interval_count": 133,
+      "track_id": "RWC_P086",
+      "work_id": "RWC_P086"
+    },
+    {
+      "annotation_sha256": "0612d0b86e5d63bf170c8f0bbbbea78ab007f0ca32e9980bfdf178e74db16022",
+      "artist_id": "Jeff Manning",
+      "audio_sha256": "d028c67f248f323a816825796741fbb7e30cab3b455b86753eb5c57044b2c857",
+      "cover_group_id": "RWC_P087",
+      "duration_seconds": 289.231905,
+      "interval_count": 147,
+      "track_id": "RWC_P087",
+      "work_id": "RWC_P087"
+    },
+    {
+      "annotation_sha256": "5d74d7bfa224f8af4f52ed60176499d0e152d8137d43a94759e8e19124135d79",
+      "artist_id": "Shinya Iguchi",
+      "audio_sha256": "09c8267567b1fce3a1cf1cd8d458c3b81e86d00256722a8ea67b61b0d9293ffd",
+      "cover_group_id": "RWC_P088",
+      "duration_seconds": 247.523424,
+      "interval_count": 184,
+      "track_id": "RWC_P088",
+      "work_id": "RWC_P088"
+    },
+    {
+      "annotation_sha256": "29908d3636ef9da6865619266acfe83125730cadc8a80b4ae27d98248c5bcde2",
+      "artist_id": "Donna Burke",
+      "audio_sha256": "e585145aefed94a757d0af7527962f0c9662bd2ebaa2b8d057d3672b8c66c89e",
+      "cover_group_id": "RWC_P089",
+      "duration_seconds": 221.36263,
+      "interval_count": 135,
+      "track_id": "RWC_P089",
+      "work_id": "RWC_P089"
+    },
+    {
+      "annotation_sha256": "27219c2412f2eb90ee4b7dfc8e581ad39ccc3d840df5d21f5c4d9b4c68d079d3",
+      "artist_id": "Shinya Iguchi",
+      "audio_sha256": "86bec4e7e34486a63886dcf8de13a76932710ea2d5238ceccaa963cf3773806a",
+      "cover_group_id": "RWC_P090",
+      "duration_seconds": 277.701406,
+      "interval_count": 132,
+      "track_id": "RWC_P090",
+      "work_id": "RWC_P090"
+    },
+    {
+      "annotation_sha256": "012a27a64e3305255549777070dc741917dc98dd329137f20c9202f67bac19d8",
+      "artist_id": "Donna Burke",
+      "audio_sha256": "42472045b8970c63476b0496046db938d9426d86b059df169eb90a84183d9286",
+      "cover_group_id": "RWC_P091",
+      "duration_seconds": 221.814286,
+      "interval_count": 155,
+      "track_id": "RWC_P091",
+      "work_id": "RWC_P091"
+    },
+    {
+      "annotation_sha256": "40936502b8f56e7771df7b41d2d02a4a7e8c42eb14f66a3f54d7fb1c90c0e7e4",
+      "artist_id": "Betty",
+      "audio_sha256": "5b1066ee5bc4854bc7ba66ba3988e4a1abd377f5e7bcbee877fdee43fc702a0d",
+      "cover_group_id": "RWC_P092",
+      "duration_seconds": 218.367619,
+      "interval_count": 178,
+      "track_id": "RWC_P092",
+      "work_id": "RWC_P092"
+    },
+    {
+      "annotation_sha256": "b6ee6700035c7c8416b77483d4f47b73233f157800d4c6dd9a784b209e8b8b71",
+      "artist_id": "Donna Burke",
+      "audio_sha256": "a8123ce599be659eb881e1d9371644a9f001b8fa8758fa3ec7921607e42b03d1",
+      "cover_group_id": "RWC_P093",
+      "duration_seconds": 256.804286,
+      "interval_count": 147,
+      "track_id": "RWC_P093",
+      "work_id": "RWC_P093"
+    },
+    {
+      "annotation_sha256": "b4044029704b2fcdd2cd1d399d3a192ead9bfd0dc35549bf233776a2e838e7ad",
+      "artist_id": "Betty",
+      "audio_sha256": "7e3dc1aced7e2d918733eedcc71b6b0de27239ee52726519ceefd6a67c2ddc1c",
+      "cover_group_id": "RWC_P094",
+      "duration_seconds": 221.889116,
+      "interval_count": 119,
+      "track_id": "RWC_P094",
+      "work_id": "RWC_P094"
+    },
+    {
+      "annotation_sha256": "21cb68fcf2d200ed9792abdd6530b78723b7765b844c73c04a8a8e4cbfa08553",
+      "artist_id": "Jeff Manning",
+      "audio_sha256": "b1c745b718ccfb10eacf343e7c56e37ffe4e51c748a0cfab787c029dced219df",
+      "cover_group_id": "RWC_P095",
+      "duration_seconds": 230.794354,
+      "interval_count": 216,
+      "track_id": "RWC_P095",
+      "work_id": "RWC_P095"
+    },
+    {
+      "annotation_sha256": "bd4abf18dcda2eaa76c3056109603755e50157599c3060304279ae1919aa70b7",
+      "artist_id": "Betty",
+      "audio_sha256": "4f950dfeabdbfc173b2183143688742c01b19e378c615fb3a1f87db1a1eb53f9",
+      "cover_group_id": "RWC_P096",
+      "duration_seconds": 277.971293,
+      "interval_count": 133,
+      "track_id": "RWC_P096",
+      "work_id": "RWC_P096"
+    },
+    {
+      "annotation_sha256": "9e4e83156ad331b9bb1adccbb555af20b28e1a926d8a1534c3147a2ab7532b47",
+      "artist_id": "Donna Burke",
+      "audio_sha256": "66fcc6b98ba431a7a52e55b8999309a4ded8f59dcf0a41c3a9b947a1d8972777",
+      "cover_group_id": "RWC_P097",
+      "duration_seconds": 241.097029,
+      "interval_count": 104,
+      "track_id": "RWC_P097",
+      "work_id": "RWC_P097"
+    },
+    {
+      "annotation_sha256": "9cd963ec6587d488c461878eec88d8384f0ad078ea187950b228658d70939a68",
+      "artist_id": "Jeff Manning",
+      "audio_sha256": "208f7c59e5ad0285ad33e6bb0c6b48e8cb403a360525e9d6aca9cf0f45dd4ae4",
+      "cover_group_id": "RWC_P098",
+      "duration_seconds": 209.873061,
+      "interval_count": 47,
+      "track_id": "RWC_P098",
+      "work_id": "RWC_P098"
+    },
+    {
+      "annotation_sha256": "12435233a8e12926f758631556ffbe279823527cfa023161b48033eb617b0a7e",
+      "artist_id": "Shinya Iguchi",
+      "audio_sha256": "12a3438252a67782af8e8f402d04713c1611b8aeb1d0c72ebccc24fe779ce991",
+      "cover_group_id": "RWC_P099",
+      "duration_seconds": 315.222993,
+      "interval_count": 141,
+      "track_id": "RWC_P099",
+      "work_id": "RWC_P099"
+    },
+    {
+      "annotation_sha256": "69cbf12164b69f30e69b593f0a319ae7c2dfd26724e6b25f5607ea0af44ecfb9",
+      "artist_id": "Shinya Iguchi",
+      "audio_sha256": "b68a178819bf11e23a5fd1f2c53eb307ea5ff70af0e8064883b090269eb203a3",
+      "cover_group_id": "RWC_P100",
+      "duration_seconds": 293.365193,
+      "interval_count": 154,
+      "track_id": "RWC_P100",
+      "work_id": "RWC_P100"
+    }
+  ],
+  "unannotated_seconds": 0.0,
+  "work_count": 100
+}

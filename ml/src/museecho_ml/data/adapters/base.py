@@ -19,6 +19,8 @@ _MAX_FINAL_ROUNDING_OVERRUN_SECONDS = 0.05
 
 
 class DatasetAdapter(ABC):
+    max_final_overrun_seconds = _MAX_FINAL_ROUNDING_OVERRUN_SECONDS
+
     def __init__(self, *, dataset_id: str) -> None:
         if not isinstance(dataset_id, str) or not dataset_id.strip():
             raise ValueError("dataset_id must be a non-empty string")
@@ -32,7 +34,7 @@ class DatasetAdapter(ABC):
         annotation = _resolve_local_file(source.annotation_path, root)
         intervals = tuple(self._read_intervals(annotation))
         intervals, clipped_intervals = _clip_final_rounding_overrun(
-            intervals, source.duration_seconds
+            intervals, source.duration_seconds, self.max_final_overrun_seconds
         )
         try:
             _validate_intervals(intervals, source.duration_seconds)
@@ -137,14 +139,16 @@ def _validate_intervals(intervals: tuple[ChordInterval, ...], duration_seconds: 
 
 
 def _clip_final_rounding_overrun(
-    intervals: tuple[ChordInterval, ...], duration_seconds: float
+    intervals: tuple[ChordInterval, ...],
+    duration_seconds: float,
+    maximum_overrun_seconds: float,
 ) -> tuple[tuple[ChordInterval, ...], int]:
     if not intervals:
         return intervals, 0
     final = intervals[-1]
     overrun = final.end_seconds - duration_seconds
     if (
-        0 < overrun <= _MAX_FINAL_ROUNDING_OVERRUN_SECONDS
+        0 < overrun <= maximum_overrun_seconds
         and final.start_seconds < duration_seconds
     ):
         return (
