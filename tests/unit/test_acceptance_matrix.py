@@ -22,7 +22,7 @@ from scripts.check_engineering_audit import load_audit as load_engineering_audit
 ROOT = Path(__file__).resolve().parents[2]
 SPEC_PATH = ROOT / "SPEC.md"
 AUDIT_PATH = ROOT / "docs" / "audits" / "FUNCTIONAL_AUDIT.md"
-NOW = datetime(2026, 8, 17, tzinfo=UTC)
+NOW = datetime(2026, 8, 18, tzinfo=UTC)
 HISTORICAL_EVIDENCE_COMMIT = "1047ce242884b6ba83a525524e88dcc44ab76a69"
 
 EXPECTED_IDS = (
@@ -208,7 +208,7 @@ def test_current_definition_of_done_requires_github_ci_not_dual_ci() -> None:
 def test_missing_item_fails_closed(tmp_path: Path):
     error = _validation_error(
         tmp_path,
-        _remove_table_row(_audit_text(), "## Acceptance matrix", "AC-F-6"),
+        _remove_table_row(_audit_text(), "## 验收矩阵", "AC-F-6"),
     )
 
     assert "missing acceptance items: AC-F-6" in error
@@ -217,24 +217,20 @@ def test_missing_item_fails_closed(tmp_path: Path):
 def test_duplicate_item_fails_closed(tmp_path: Path):
     error = _validation_error(
         tmp_path,
-        _duplicate_table_row(_audit_text(), "## Acceptance matrix", "AC-A-1"),
+        _duplicate_table_row(_audit_text(), "## 验收矩阵", "AC-A-1"),
     )
 
     assert "duplicate acceptance items: AC-A-1" in error
 
 
 def test_illegal_verdict_fails_closed(tmp_path: Path):
-    mutation = _replace_table_cell(
-        _audit_text(), "## Acceptance matrix", "AC-A-1", "Verdict", "READY"
-    )
+    mutation = _replace_table_cell(_audit_text(), "## 验收矩阵", "AC-A-1", "结论", "READY")
 
     assert "AC-A-1 has invalid verdict" in _validation_error(tmp_path, mutation)
 
 
 def test_pass_without_evidence_fails_closed(tmp_path: Path):
-    mutation = _replace_table_cell(
-        _audit_text(), "## Acceptance matrix", "AC-A-1", "Evidence IDs", "-"
-    )
+    mutation = _replace_table_cell(_audit_text(), "## 验收矩阵", "AC-A-1", "Evidence ID", "-")
 
     assert "AC-A-1 PASS requires evidence" in _validation_error(tmp_path, mutation)
 
@@ -242,48 +238,46 @@ def test_pass_without_evidence_fails_closed(tmp_path: Path):
 @pytest.mark.parametrize(
     ("column", "value", "expected"),
     (
-        ("Command", "-", "E001 requires an evidence command"),
-        ("Path", "-", "E001 requires an evidence path"),
-        ("Observed at UTC", "-", "E001 has invalid UTC timestamp"),
-        ("Observed at UTC", "2999-01-01T00:00:00Z", "E001 is future-dated"),
+        ("命令", "-", "E001 requires an evidence command"),
+        ("路径", "-", "E001 requires an evidence path"),
+        ("观察时间（UTC）", "-", "E001 has invalid UTC timestamp"),
+        ("观察时间（UTC）", "2999-01-01T00:00:00Z", "E001 is future-dated"),
     ),
 )
 def test_evidence_requires_command_path_and_non_future_utc_time(
     tmp_path: Path, column: str, value: str, expected: str
 ):
-    mutation = _replace_table_cell(_audit_text(), "## Evidence index", "E001", column, value)
+    mutation = _replace_table_cell(_audit_text(), "## 证据索引", "E001", column, value)
 
     assert expected in _validation_error(tmp_path, mutation)
 
 
 def test_evidence_index_rejects_descending_observed_timestamps(tmp_path: Path) -> None:
-    mutation = _swap_table_rows(_audit_text(), "## Evidence index", "E006", "E900")
+    mutation = _swap_table_rows(_audit_text(), "## 证据索引", "E006", "E900")
 
     assert "evidence index must be oldest-to-newest" in _validation_error(tmp_path, mutation)
 
 
 def test_duplicate_evidence_id_fails_closed(tmp_path: Path):
-    mutation = _duplicate_table_row(_audit_text(), "## Evidence index", "E001")
+    mutation = _duplicate_table_row(_audit_text(), "## 证据索引", "E001")
 
     assert "duplicate evidence ids: E001" in _validation_error(tmp_path, mutation)
 
 
 def test_same_evidence_cannot_be_reindexed_under_another_id(tmp_path: Path):
-    mutation = _duplicate_table_row(_audit_text(), "## Evidence index", "E001", new_key="E999")
+    mutation = _duplicate_table_row(_audit_text(), "## 证据索引", "E001", new_key="E999")
 
     assert "duplicate evidence records: E001 and E999" in _validation_error(tmp_path, mutation)
 
 
 def test_current_command_cannot_be_replaced_by_vacuous_success(tmp_path: Path):
-    mutation = _replace_table_cell(
-        _audit_text(), "## Evidence index", "E008", "Command", "python -c pass"
-    )
+    mutation = _replace_table_cell(_audit_text(), "## 证据索引", "E008", "命令", "python -c pass")
     mutation = _replace_table_cell(
         mutation,
-        "## Evidence index",
+        "## 证据索引",
         "E008",
-        "Summary",
-        "The replacement command exited successfully without exercising MuseEcho.",
+        "摘要",
+        "替换命令虽成功退出，但没有运行 MuseEcho。",
     )
 
     assert "E008 does not match its fixed evidence contract" in _validation_error(
@@ -292,21 +286,18 @@ def test_current_command_cannot_be_replaced_by_vacuous_success(tmp_path: Path):
 
 
 def test_pass_item_rejects_successful_evidence_without_item_coverage(tmp_path: Path):
-    mutation = _replace_table_cell(
-        _audit_text(), "## Acceptance matrix", "AC-A-1", "Evidence IDs", "E001"
-    )
+    mutation = _replace_table_cell(_audit_text(), "## 验收矩阵", "AC-A-1", "Evidence ID", "E001")
 
     assert "E001 does not cover AC-A-1" in _validation_error(tmp_path, mutation)
 
 
 def test_current_command_result_contract_cannot_be_rewritten_coherently(tmp_path: Path):
     text = _audit_text()
-    result_column = "Result" if "| Result |" in text else "Summary"
     mutation = _replace_table_cell(
         text,
-        "## Evidence index",
+        "## 证据索引",
         "E008",
-        result_column,
+        "结果",
         "command-exit=0; functional-assertions=0",
     )
 
@@ -327,9 +318,9 @@ def test_current_frontend_evidence_accepts_78_and_rejects_stale_66(tmp_path: Pat
 
     stale = _replace_table_cell(
         retained,
-        "## Evidence index",
+        "## 证据索引",
         "E001",
-        "Result",
+        "结果",
         "vitest-files=12; vitest-tests=66",
     )
     assert "E001 does not match its fixed evidence contract" in _validation_error(tmp_path, stale)
@@ -360,14 +351,12 @@ def test_gitless_historical_evidence_rejects_coherent_fake_commit_and_command(
 ):
     monkeypatch.setenv("PATH", "")
     fake_commit = "b" * 40
-    mutation = _replace_table_cell(
-        _audit_text(), "## Evidence index", "E004", "Commit", fake_commit
-    )
+    mutation = _replace_table_cell(_audit_text(), "## 证据索引", "E004", "Commit", fake_commit)
     mutation = _replace_table_cell(
         mutation,
-        "## Evidence index",
+        "## 证据索引",
         "E004",
-        "Command",
+        "命令",
         f"git show --format=fuller --stat {fake_commit} -- AGENT_LOG.md PLAN.md",
     )
 
@@ -379,14 +368,12 @@ def test_gitless_historical_evidence_rejects_coherent_fake_commit_and_command(
 def test_historical_evidence_rejects_audit_only_boundary_path_drift(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("PATH", "")
     commit = "1047ce242884b6ba83a525524e88dcc44ab76a69"
-    mutation = _replace_table_cell(
-        _audit_text(), "## Evidence index", "E004", "Path", "frontend/src"
-    )
+    mutation = _replace_table_cell(_audit_text(), "## 证据索引", "E004", "路径", "frontend/src")
     mutation = _replace_table_cell(
         mutation,
-        "## Evidence index",
+        "## 证据索引",
         "E004",
-        "Command",
+        "命令",
         f"git show --format=fuller --stat {commit} -- frontend/src",
     )
 
@@ -398,12 +385,12 @@ def test_historical_evidence_rejects_audit_only_boundary_path_drift(tmp_path: Pa
 @pytest.mark.parametrize("replacement", ("-", "0" * 64))
 def test_historical_evidence_requires_exact_commit_boundary_hash(tmp_path: Path, replacement: str):
     text = _audit_text()
-    if "| Boundary SHA256 |" in text:
+    if "| 边界 SHA256 |" in text:
         mutation = _replace_table_cell(
             text,
-            "## Evidence index",
+            "## 证据索引",
             "E004",
-            "Boundary SHA256",
+            "边界 SHA256",
             replacement,
         )
     else:
@@ -444,11 +431,9 @@ def test_boundary_keeps_binary_line_endings_exact():
 
 
 def test_drifted_historical_browser_boundary_cannot_make_current_item_pass(tmp_path: Path):
-    mutation = _replace_table_cell(
-        _audit_text(), "## Acceptance matrix", "AC-C-3", "Evidence IDs", "E004"
-    )
-    mutation = _replace_table_cell(mutation, "## Acceptance matrix", "AC-C-3", "Verdict", "PASS")
-    mutation = _replace_table_cell(mutation, "## Acceptance matrix", "AC-C-3", "Disposition", "-")
+    mutation = _replace_table_cell(_audit_text(), "## 验收矩阵", "AC-C-3", "Evidence ID", "E004")
+    mutation = _replace_table_cell(mutation, "## 验收矩阵", "AC-C-3", "结论", "PASS")
+    mutation = _replace_table_cell(mutation, "## 验收矩阵", "AC-C-3", "处置", "-")
 
     assert "E004 historical boundary drift cannot support PASS" in _validation_error(
         tmp_path, mutation
@@ -462,9 +447,9 @@ def test_ci_and_readme_evidence_cannot_omit_current_contract_scope(tmp_path: Pat
     else:
         mutation = _replace_table_cell(
             text,
-            "## Evidence index",
+            "## 证据索引",
             "E005",
-            "Command",
+            "命令",
             "python -c pass",
         )
 
@@ -474,7 +459,7 @@ def test_ci_and_readme_evidence_cannot_omit_current_contract_scope(tmp_path: Pat
 
 
 def test_historical_evidence_command_must_bind_its_exact_commit_and_path(tmp_path: Path):
-    mutation = _replace_table_cell(_audit_text(), "## Evidence index", "E004", "Commit", "b" * 40)
+    mutation = _replace_table_cell(_audit_text(), "## 证据索引", "E004", "Commit", "b" * 40)
 
     assert "E004 historical command must bind its exact commit and path" in _validation_error(
         tmp_path, mutation
@@ -483,13 +468,9 @@ def test_historical_evidence_command_must_bind_its_exact_commit_and_path(tmp_pat
 
 @pytest.mark.parametrize("verdict", ("PARTIAL", "FAIL"))
 def test_important_non_pass_requires_blocker_or_fix_revalidation(tmp_path: Path, verdict: str):
-    mutation = _replace_table_cell(
-        _audit_text(), "## Acceptance matrix", "AC-A-1", "Verdict", verdict
-    )
-    mutation = _replace_table_cell(
-        mutation, "## Acceptance matrix", "AC-A-1", "Importance", "IMPORTANT"
-    )
-    mutation = _replace_table_cell(mutation, "## Acceptance matrix", "AC-A-1", "Disposition", "-")
+    mutation = _replace_table_cell(_audit_text(), "## 验收矩阵", "AC-A-1", "结论", verdict)
+    mutation = _replace_table_cell(mutation, "## 验收矩阵", "AC-A-1", "重要性", "IMPORTANT")
+    mutation = _replace_table_cell(mutation, "## 验收矩阵", "AC-A-1", "处置", "-")
 
     assert f"AC-A-1 {verdict} IMPORTANT requires BLOCKER or FIXED disposition" in _validation_error(
         tmp_path, mutation
@@ -498,7 +479,7 @@ def test_important_non_pass_requires_blocker_or_fix_revalidation(tmp_path: Path,
 
 def test_ready_is_rejected_while_partial_items_and_blockers_exist(tmp_path: Path):
     mutation = _audit_text().replace(
-        "- **Readiness:** `PARTIALLY_READY`", "- **Readiness:** `READY`", 1
+        "- **就绪度：** `PARTIALLY_READY`", "- **就绪度：** `READY`", 1
     )
 
     assert "READY contradicts non-PASS items or open blockers" in _validation_error(
@@ -507,9 +488,7 @@ def test_ready_is_rejected_while_partial_items_and_blockers_exist(tmp_path: Path
 
 
 def test_file_existence_evidence_cannot_make_an_item_pass(tmp_path: Path):
-    mutation = _replace_table_cell(
-        _audit_text(), "## Evidence index", "E001", "Kind", "FILE_EXISTENCE"
-    )
+    mutation = _replace_table_cell(_audit_text(), "## 证据索引", "E001", "类型", "FILE_EXISTENCE")
 
     assert "AC-A-3 PASS relies on non-executed evidence E001" in _validation_error(
         tmp_path, mutation
@@ -517,9 +496,7 @@ def test_file_existence_evidence_cannot_make_an_item_pass(tmp_path: Path):
 
 
 def test_external_not_run_evidence_cannot_make_an_item_pass(tmp_path: Path):
-    mutation = _replace_table_cell(
-        _audit_text(), "## Acceptance matrix", "AC-A-1", "Evidence IDs", "E900"
-    )
+    mutation = _replace_table_cell(_audit_text(), "## 验收矩阵", "AC-A-1", "Evidence ID", "E900")
 
     assert "AC-A-1 PASS relies on non-executed evidence E900" in _validation_error(
         tmp_path, mutation
@@ -537,9 +514,7 @@ def test_external_not_run_evidence_cannot_make_an_item_pass(tmp_path: Path):
 def test_external_follow_up_and_manual_work_cannot_be_marked_resolved_without_execution(
     tmp_path: Path, blocker_id: str
 ):
-    mutation = _replace_table_cell(
-        _audit_text(), "## Open blockers", blocker_id, "Status", "RESOLVED"
-    )
+    mutation = _replace_table_cell(_audit_text(), "## 开放阻塞项", blocker_id, "状态", "RESOLVED")
 
     expected = (
         f"{blocker_id} must remain OPEN in the tracked audit"
@@ -572,7 +547,7 @@ def test_final_ci_closes_remote_and_current_distribution_gaps_without_recasting_
     assert "pytest-tests=649" != contracts["E008"].result
     assert contracts["E008"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
     assert evidence_by_id["E008"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
-    assert "predates 7f8412b" in evidence_by_id["E008"].summary
+    assert "早于 `7f8412b`" in evidence_by_id["E008"].summary
     assert contracts["E009"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
     assert contracts["E009"].supports_pass is False
     assert "-NoBuild -ReleaseManifest" in contracts["E009"].command
@@ -614,7 +589,7 @@ def test_pre_feature_smoke_cannot_be_recast_as_current_branch_evidence(
 ) -> None:
     for evidence_id in ("E008", "E009"):
         mutation = _replace_table_cell(
-            _audit_text(), "## Evidence index", evidence_id, "Kind", "CURRENT_COMMAND"
+            _audit_text(), "## 证据索引", evidence_id, "类型", "CURRENT_COMMAND"
         )
 
         assert f"{evidence_id} does not match its fixed evidence contract" in _validation_error(
@@ -630,16 +605,14 @@ def test_product_ci_pass_uses_the_last_implementation_boundary_not_the_branch_ti
     evidence = next(record for record in audit.evidence if record.evidence_id == evidence_id)
 
     assert evidence.kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
-    assert "implementation boundary" in evidence.summary.lower()
-    assert "exact-head" not in evidence.summary.lower()
+    assert "实现边界" in evidence.summary
+    assert "精确 head" not in evidence.summary
 
 
 def test_old_current_command_kind_cannot_recast_implementation_boundary_as_tip_evidence(
     tmp_path: Path,
 ) -> None:
-    mutation = _replace_table_cell(
-        _audit_text(), "## Evidence index", "E906", "Kind", "CURRENT_COMMAND"
-    )
+    mutation = _replace_table_cell(_audit_text(), "## 证据索引", "E906", "类型", "CURRENT_COMMAND")
 
     assert "E906 does not match its fixed evidence contract" in _validation_error(
         tmp_path, mutation
@@ -686,7 +659,7 @@ def test_current_acceptance_evidence_uses_the_executed_locked_python_command(
     assert engineering_e030.command == expected_command
     assert contract.result == (f"pytest-tests={collected_count}; pass=36; partial=4; fail=0")
     assert engineering_e030.result == (
-        f"{collected_count} passed; 40 items validated PASS=36 PARTIAL=4 FAIL=0"
+        f"{collected_count} 个测试通过；验证 40 个条目：PASS=36、PARTIAL=4、FAIL=0"
     )
 
 
@@ -703,9 +676,9 @@ def test_task23_report_labels_superseded_statistics_and_attributes_round_four() 
 def test_audit_generated_time_and_evidence_time_must_be_real_utc(tmp_path: Path):
     text = _audit_text()
     generated_line = next(
-        line for line in text.splitlines() if line.startswith("- **Generated at UTC:**")
+        line for line in text.splitlines() if line.startswith("- **生成时间（UTC）：**")
     )
-    mutation = text.replace(generated_line, "- **Generated at UTC:** `2999-08-12T19:15:00Z`", 1)
+    mutation = text.replace(generated_line, "- **生成时间（UTC）：** `2999-08-12T19:15:00Z`", 1)
 
     assert "audit generated time is future-dated" in _validation_error(tmp_path, mutation)
 

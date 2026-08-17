@@ -1,6 +1,6 @@
 # MuseEcho 规格生成过程
 
-本文件只记录真实发生的 brainstorming、设计确认和后续 cold-start 规约验证。未发生的活动不会补写或模拟。
+本文件只记录真实发生的头脑风暴、设计确认和后续冷启动规约验证。未发生的活动不会补写或模拟。
 
 ## 1. 起始状态
 
@@ -17,9 +17,9 @@
 - 没有 `HUMAN_APPROVAL.md`。
 - 存在两份 AI4SE 课程要求和一份 10 页 MuseEcho 产品 PDF。
 - 存在 `ai4coding-agentos-lab` 旧项目目录，与 MuseEcho 无关，未作为代码基础。
-- Superpowers 6.2.0 的当前 Skill 文档可读。
+- Superpowers 6.2.0 的当前技能文档可读。
 
-因此遵守 gate：不写应用实现，先完成真实 brainstorming 和设计确认。
+因此遵守门禁：不写应用实现，先完成真实头脑风暴和设计确认。
 
 ## 2. 资料审查
 
@@ -33,7 +33,7 @@
 
 产品 PDF 经文本提取和逐页渲染检查，确认原始设计包含音乐解析流程、Music DNA、多轨结构地图、和弦解构、片段追问与共鸣分享。
 
-## 3. 关键 brainstorming 决策
+## 3. 关键头脑风暴决策
 
 以下按真实对话顺序记录。用户只回复选项字母或“是/批准”的地方，不补充其未表达的主观理由。
 
@@ -47,7 +47,7 @@
 | 6 | 置信度分级 / 始终 top-1 / 仅高置信度 | 分级 | `A` | 高/中/unknown，低置信度不进入 LLM |
 | 7 | 24 小时 / 7 天 / 页面关闭失效 | 24 小时 | `A` | 24 小时结果生命周期 |
 | 8 | 三种核心工作区布局 | 引导式单画布 | `A`，浏览器点击记录一致 | 统一时间轴上的渐进式下钻 |
-| 9 | 三种视觉方向 | 温暖共鸣 | `A`，浏览器点击记录一致 | 暖白、青绿、珊瑚橙、金黄 tokens |
+| 9 | 三种视觉方向 | 温暖共鸣 | `A`，浏览器点击记录一致 | 暖白、青绿、珊瑚橙、金黄设计令牌 |
 | 10 | 进程池 / Redis Worker / 云异步任务 | 单体受限进程池 | `A` | 单实例并发 1，其余排队 |
 | 11 | CLI / Web 管理页 / `.env` | 本地 CLI | `A` | Key set/status/update/clear，无远程 Secret API |
 | 12 | 免费 / 小额付费 / 自有 VPS | 小额付费 | `B` | 预算约 50–100 元/月 |
@@ -97,13 +97,13 @@ AI 调研并提出腾讯云香港 Lighthouse。用户一度提出：
 
 ### 迭代 4：把 Open Design 从“未安装”改为正式设计依赖
 
-初版规格因当前 Skill 列表没有 Open Design 而如实写明未使用。用户在书面规格审阅阶段明确提出：
+初版规格因当前技能列表没有 Open Design 而如实写明未使用。用户在书面规格审阅阶段明确提出：
 
 > SPEC中，课程推荐的open design可以安装使用，完整设计文档改为中文
 
-课程文档中的链接确认目标仓库为 `nexu-io/open-design`。官方 OpenAI Skill 目录查询先返回 `HTTP 403`，但这不是正确来源；课程指定仓库的常规安装又因仓库体积在 120 秒后超时。随后使用安装器的稀疏 Git 模式，只安装 `skills/frontend-design`，命令成功并返回目标目录 `C:\Users\P\.codex\skills\frontend-design`。
+课程文档中的链接确认目标仓库为 `nexu-io/open-design`。官方 OpenAI 技能目录查询先返回 `HTTP 403`，但这不是正确来源；课程指定仓库的常规安装又因仓库体积在 120 秒后超时。随后使用安装器的稀疏 Git 模式，只安装 `skills/frontend-design`，命令成功并返回目标目录 `C:\Users\P\.codex\skills\frontend-design`。
 
-设计系统从 Open Design 目录中选择与既有“温暖共鸣”最一致的 `Warm Editorial`，并新增项目级 `DESIGN.md`。完整设计文档改为中文；`SPEC.md` 与 ADR-007 同步记录设计系统、Skill、来源提交和非运行时依赖边界。
+设计系统从 Open Design 目录中选择与既有“温暖共鸣”最一致的 `Warm Editorial`，并新增项目级 `DESIGN.md`。完整设计文档改为中文；`SPEC.md` 与 ADR-007 同步记录设计系统、技能、来源提交和非运行时依赖边界。
 
 ## 5. 分节设计确认
 
@@ -120,7 +120,7 @@ AI 调研并提出腾讯云香港 Lighthouse。用户一度提出：
 
 书面审阅期间，用户提出 Open Design 与中文化修订；修订后仍需重新确认书面规格。
 
-## 6. Visual Companion 记录
+## 6. 视觉伴侣记录
 
 用户明确同意打开视觉伴侣。浏览器中展示了：
 
@@ -130,7 +130,7 @@ AI 调研并提出腾讯云香港 Lighthouse。用户一度提出：
 
 视觉伴侣文件保存在本地 `.superpowers/`，并由 `.gitignore` 排除，不作为产品源码或伪造的最终 UI。
 
-## 7. Brainstorming 的客观观察
+## 7. 头脑风暴的客观观察
 
 - 一次只提出一个关键问题，使用户连续作出真实选择。
 - 可视化帮助确认布局和视觉风格；技术边界问题仍在终端文字中处理。
@@ -138,23 +138,23 @@ AI 调研并提出腾讯云香港 Lighthouse。用户一度提出：
 - 播放与立即删除的冲突是在数据模型设计后暴露的，证明分节审查改变了实际规格。
 - 部署平台经历两次真实修订，没有把不可用平台留在最终方案中。
 
-## 8. Cold-Start Validation
+## 8. 冷启动验证
 
-已执行并审查。课程要求在 `SPEC.md` 与 `PLAN.md` 均通过书面审阅后，由与 Codex 不同类型的全新 Agent 仅凭规格、计划和必要文件尝试 1–2 个任务。用户在本机终端使用 OpenCode `1.17.14`、自定义 OpenAI-compatible 提供方 `njusehub` 和模型 `deepseek-v4-flash` 完成任务 1–2 尝试；未向该 Agent 提供父目录、密钥正文、账户或对话历史。
+已执行并审查。课程要求在 `SPEC.md` 与 `PLAN.md` 均通过书面审阅后，由与 Codex 不同类型的全新智能体仅凭规格、计划和必要文件尝试 1–2 个任务。用户在本机终端使用 OpenCode `1.17.14`、自定义 OpenAI 兼容提供方 `njusehub` 和模型 `deepseek-v4-flash` 完成任务 1–2 尝试；未向该智能体提供父目录、密钥正文、账户或对话历史。
 
-OpenCode 在 `validation/opencode-cold-start` 隔离分支生成了 `COLD_START_REPORT.md`、后端/前端骨架、领域/ORM/迁移和测试。报告如实指出 `uv` 缺失、SQLite UUID 类型适配、`data/` 目录需手工创建和 ORM cascade 修复；它记录 13 个后端测试、1 个前端测试、限定范围 Ruff、mypy、前端构建和 Alembic 迁移通过。
+OpenCode 在 `validation/opencode-cold-start` 隔离分支生成了 `COLD_START_REPORT.md`、后端/前端骨架、领域/ORM/迁移和测试。报告如实指出 `uv` 缺失、SQLite UUID 类型适配、`data/` 目录需手工创建和 ORM 级联修复；它记录 13 个后端测试、1 个前端测试、限定范围 Ruff、mypy、前端构建和 Alembic 迁移通过。
 
 Codex 独立复核确认上述限定命令可复现，但发现以下规约缺口：
 
 1. PLAN 要求的 `ruff check .` 返回 11 个迁移文件错误；报告实际只运行 `ruff check src tests`。
 2. `SqliteAnalysisRepository` 未实现，所谓仓储测试直接操作 ORM，不能证明端口合同。
-3. SQLite `PRAGMA foreign_keys` 为 `0`；删除父任务后 Chord 子记录仍存在。现有测试只因 TrackAnalysis relationship 获得局部 ORM cascade，不能证明数据库全量级联。
+3. SQLite `PRAGMA foreign_keys` 为 `0`；删除父任务后 Chord 子记录仍存在。现有测试只因 TrackAnalysis 关系获得局部 ORM 级联，不能证明数据库全量级联。
 4. 区间、置信度和 UTC 时间不变量未实现；非法 `start >= end` 与 `confidence > 1` 可被构造，SQLite 时间往返丢失时区。
-5. 状态对象没有进度，且从 queued 进入 failed 被通用顺序检查拒绝；真实失败/删除/过期转换未建模。
+5. 状态对象没有进度，且从 `queued` 进入 `failed` 被通用顺序检查拒绝；真实失败/删除/过期转换未建模。
 6. `uv.lock`、README 缺失；`*.egg-info` 和 `*.tsbuildinfo` 生成物未忽略；手工创建且被忽略的 `data/` 不会出现在干净 clone。
-7. 报告末尾称“没有 branch”，但工作实际发生在预先创建的 `validation/opencode-cold-start` 分支；Files Changed 也漏列生成物。
+7. 报告末尾称“没有分支”，但工作实际发生在预先创建的 `validation/opencode-cold-start` 分支；“已修改文件”部分也漏列生成物。
 
-当时的审查结论是：这次 cold-start 达到了规约验证目的，证明任务拆分可启动，同时暴露了测试边界和干净环境假设。产品 SPEC 无需改变；PLAN 增强锁文件、生成物、仓储端口、SQLite 外键、全量级联、领域不变量、UTC 与显式终态转换要求。在代码完成修正、重新验证、独立复审和用户再次决定前，不合并该产物，也不把原始测试结果当作正式实施证据。后续真实修正与合并决定见第 11 节。
+当时的审查结论是：这次冷启动达到了规约验证目的，证明任务拆分可启动，同时暴露了测试边界和干净环境假设。产品 SPEC 无需改变；PLAN 增强锁文件、生成物、仓储端口、SQLite 外键、全量级联、领域不变量、UTC 与显式终态转换要求。在代码完成修正、重新验证、独立复审和用户再次决定前，不合并该产物，也不把原始测试结果当作正式实施证据。后续真实修正与合并决定见第 11 节。
 
 ## 9. 书面 SPEC 批准
 
@@ -166,7 +166,7 @@ Codex 独立复核确认上述限定命令可复现，但发现以下规约缺�
 
 该批准仅表示 `SPEC.md` 与配套设计文档通过书面审阅，授权进入 `PLAN.md` 阶段；它不等于批准实施，不触发 `HUMAN_APPROVAL.md`。计划仍需单独审阅，随后还需真实 cold-start 验证和最终人工实施确认。
 
-## 10. 书面 PLAN 批准与 cold-start 准备
+## 10. 书面 PLAN 批准与冷启动准备
 
 时间：2026-08-08T04:49:31+08:00
 
@@ -174,32 +174,32 @@ Codex 独立复核确认上述限定命令可复现，但发现以下规约缺�
 
 > 批准 PLAN
 
-该批准授权进入不同类型 Agent 的 cold-start 规约验证，仍不等于正式实施授权，也不触发 `HUMAN_APPROVAL.md`。
+该批准授权进入不同类型智能体的冷启动规约验证，仍不等于正式实施授权，也不触发 `HUMAN_APPROVAL.md`。
 
-环境检测发现 OpenCode `1.17.14` 已安装，可作为与 Codex 不同类型的 Agent。真实检测过程为：
+环境检测发现 OpenCode `1.17.14` 已安装，可作为与 Codex 不同类型的智能体。真实检测过程为：
 
 1. npm PowerShell `.ps1` shim 被本机执行策略拒绝；
 2. 沙箱内 `.cmd` shim 因无法访问用户配置目录报告 `EEXIST`；
 3. 用户会话中 `.cmd` shim 成功运行，显示 `0 credentials`，但模型列表仍提供 `opencode/deepseek-v4-flash-free`、`opencode/north-mini-code-free` 等 6 个 OpenCode 免费模型。
 
-尚未启动 cold-start session；查看 `opencode run --help` 时外部审批通道断开并拒绝命令，因此等待用户针对运行 OpenCode cold-start 的明确批准后继续。未伪造 Agent 输出或测试结果。
+尚未启动冷启动会话；查看 `opencode run --help` 时外部审批通道断开并拒绝命令，因此等待用户针对运行 OpenCode 冷启动验证的明确批准后继续。未伪造智能体输出或测试结果。
 
-用户随后原话批准“批准运行 OpenCode cold-start 并推送记录”。主 Agent 已创建 `validation/opencode-cold-start` 分支及 `.worktrees/opencode-cold-start` 隔离 worktree，并用 sparse checkout 将可见的既有文件限制为 `SPEC.md`、`PLAN.md`、`.gitignore`。实际启动 `opencode/deepseek-v4-flash-free` 新会话时，外部审批器因连接中断再次拒绝命令；OpenCode 进程没有启动，未产生 Agent 输出、实现或测试证据。由于第三方模型调用会传输规格、计划、生成代码和测试输出并可在隔离区运行命令，需在披露该边界后取得用户再次明确授权。
+用户随后原话批准“批准运行 OpenCode cold-start 并推送记录”。主智能体已创建 `validation/opencode-cold-start` 分支及 `.worktrees/opencode-cold-start` 隔离工作树，并用稀疏检出将可见的既有文件限制为 `SPEC.md`、`PLAN.md`、`.gitignore`。实际启动 `opencode/deepseek-v4-flash-free` 新会话时，外部审批器因连接中断再次拒绝命令；OpenCode 进程没有启动，未产生智能体输出、实现或测试证据。由于第三方模型调用会传输规格、计划、生成代码和测试输出并可在隔离区运行命令，需在披露该边界后取得用户再次明确授权。
 
-用户随后配置了 DeepSeek API Key，并在完整披露后原话再次批准“已了解上述数据边界，批准重试 OpenCode cold-start 并推送记录”。只读核验显示 OpenCode 已识别 `DeepSeek api` 1 个凭据，并列出精确模型 `deepseek/deepseek-v4-flash`。首次实际执行没有调用模型：OpenCode CLI 把位于 `--file` 之后的长 prompt 解析成第三个文件，返回 `File not found: <prompt>`。主 Agent 使用 `systematic-debugging` 追踪到 `--file` 数组选项吞并后续位置参数，准备以“message 在前、file 选项在后”的最小解析探针验证；该探针又在进程启动前被相同的外部审批连接中断拒绝。隔离分支仍无改动，尚无任何 cold-start Agent 输出或任务测试。
+用户随后配置了 DeepSeek API Key，并在完整披露后原话再次批准“已了解上述数据边界，批准重试 OpenCode cold-start 并推送记录”。只读核验显示 OpenCode 已识别 `DeepSeek api` 1 个凭据，并列出精确模型 `deepseek/deepseek-v4-flash`。首次实际执行没有调用模型：OpenCode CLI 把位于 `--file` 之后的长提示词解析成第三个文件，返回 `File not found: <prompt>`。主智能体使用 `systematic-debugging` 追踪到 `--file` 数组选项吞并后续位置参数，准备以“消息在前、文件选项在后”的最小解析探针验证；该探针又在进程启动前被相同的外部审批连接中断拒绝。隔离分支仍无改动，尚无任何冷启动智能体输出或任务测试。
 
-## 11. Corrected cold-start、最终审查与合并决定
+## 11. 修正后的冷启动、最终审查与合并决定
 
 OpenCode 后续真实完成任务 1–2 初版，原始提交 `1a3545d` 被 Codex 审查拒绝。用户明确要求修正现有产物并在确认无问题后再报告。Codex 按测试驱动方式补齐领域不变量、稳定端口、SQLite 外键/WAL/级联、缺失表、原子结果事务、回滚、UTC、有限数与 JSON 边界、锁文件和干净 checkout 文档；修正提交为 `07d135e`。
 
-独立 reviewer 共进行三轮审查。最后一轮确认 Critical、Important、Minor 均为 0；最新证据为 39 个 Python 测试、Ruff、mypy、全新 Alembic upgrade/check、Node 22 容器前端测试/typecheck/build 通过，npm audit 为 0 漏洞。用户随后原话确认：
+独立审查智能体共进行三轮审查。最后一轮确认 Critical、Important、Minor 均为 0；最新证据为 39 个 Python 测试、Ruff、mypy、全新 Alembic 升级/检查、Node 22 容器前端测试/类型检查/构建通过，`npm audit` 为 0 漏洞。用户随后原话确认：
 
 > 合并到主分支，最后审查修订SPEC和PLAN，批准生成HUMAN_APPROVAL.md
 
-主 Agent 按该决定把验证分支合并到 `main`，合并提交为 `a2d7af5`。最终审查确认产品范围、Evidence First 原则、部署目标和 Tasks 3–24 不需改变；需要修订的是 SPEC/PLAN 的门禁状态、Tasks 1–2 实际提交与“cold-start 不合并”的过时表述。批准文件将在本次最终 SPEC/PLAN 修订提交后生成，并锚定该提交；这不代表未执行的 CI、部署或产品验收已经发生。
+主智能体按该决定把验证分支合并到 `main`，合并提交为 `a2d7af5`。最终审查确认产品范围、证据优先原则和部署目标不需改变；需要修订的是 SPEC/PLAN 的门禁状态、任务 1–2 实际提交与“冷启动不合并”的过时表述。批准文件将在本次最终 SPEC/PLAN 修订提交后生成，并锚定该提交；这不代表未执行的任务 3–24、CI、部署或产品验收已经发生。
 
-## 12. HUMAN_APPROVAL 门禁放行
+## 12. 人工批准门禁放行
 
-最终 SPEC/PLAN 与过程记录以提交 `e1ecaae359db129b779f1ddcc83665bca8cdfe1c` 固定。主 Agent 随后根据用户本轮明确的“批准生成HUMAN_APPROVAL.md”指示创建 `HUMAN_APPROVAL.md`；文件记录用户原话，并引用该提交以及 SPEC/PLAN 的 Git blob 与 SHA-256。
+最终 SPEC/PLAN 与过程记录以提交 `e1ecaae359db129b779f1ddcc83665bca8cdfe1c` 固定。主智能体随后根据用户本轮明确的“批准生成HUMAN_APPROVAL.md”指示创建 `HUMAN_APPROVAL.md`；文件记录用户原话，并引用该提交以及 SPEC/PLAN 的 Git 数据对象（blob）与 SHA-256。
 
-该批准授权以合并后的 Tasks 1–2 为基线，从 Task 3 开始正式实施。它没有把未发生的 Tasks 3–24、CI、腾讯云部署、公网测试、最终 Audit 或学生验收标记为完成，也没有扩大到读取或提交密钥正文。
+该批准授权以合并后的任务 1–2 为基线，从任务 3 开始正式实施。它没有把未发生的任务 3–24、CI、腾讯云部署、公网测试、最终审计或学生验收标记为完成，也没有扩大到读取或提交密钥正文。

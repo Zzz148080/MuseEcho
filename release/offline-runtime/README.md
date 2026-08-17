@@ -1,7 +1,7 @@
 # MuseEcho v0.1.0 离线运行包
 
 此目录用于在已经下载全部 GitHub Release 资产后断网运行 MuseEcho。它不会从源码构建镜像，
-也不会从 registry 拉取镜像；`ENG-010` 所指的断网源码重建不在本运行包范围内。
+也不会从镜像仓库拉取镜像；`ENG-010` 所指的断网源码重建不在本运行包范围内。
 
 ## 前置条件
 
@@ -27,5 +27,5 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\offline-runtime.ps1 -A
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\offline-runtime.ps1 -Action Stop
 ```
 
-如果 4173 被占用，可以在验证、Smoke 和 Start 时都传入同一个 `-HttpsPort` 参数。若使用自定义
-Secret 目录，向 Start 与 Stop 同时传入同一个绝对 `-SecretsDirectory`。
+如果 4173 被占用，可以在验证、`Smoke` 和 `Start` 时都传入同一个 `-HttpsPort` 参数。若使用自定义
+Secret 目录，向 `Start` 与 `Stop` 同时传入同一个绝对 `-SecretsDirectory`。

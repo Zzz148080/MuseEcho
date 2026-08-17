@@ -1,10 +1,8 @@
-# Synthetic audio test fixtures
+# 合成音频测试夹具
 
-`audio_factory.py` generates deterministic, copyright-free inputs: sine waves, a metronome,
-major and minor triads, a four-chord progression, segmented energy, silence, very short audio,
-and corrupt bytes. Tests generate WAV files on demand. MP3 files are encoded from synthetic WAV
-inputs by the test environment's FFmpeg executable; no binary media files are committed.
+`audio_factory.py` 生成确定性且无版权负担的输入，包括正弦波、节拍器、大三和弦、小三和弦、
+四和弦进行、分段能量、静音、极短音频和损坏字节。测试按需生成 WAV 文件；MP3 文件由测试环境中的
+FFmpeg 可执行文件从合成 WAV 输入编码得到，仓库不提交二进制媒体文件。
 
-The same parameters must produce the documented stable WAV hashes. Algorithm tests must state
-sample rate, duration, frequencies, and tolerances, and must never present these fixtures as real
-music or production analysis results.
+相同参数必须生成文档所记录的稳定 WAV 摘要。算法测试必须说明采样率、时长、频率和容差，并且不得
+把这些夹具表述为真实音乐或生产分析结果。

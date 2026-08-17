@@ -716,11 +716,11 @@ def test_process_documents_anchor_evidence_and_share_current_audit_status():
     assert "1047ce242884b6ba83a525524e88dcc44ab76a69" in plan
     assert "4 个真实 HTTPS 浏览器 E2E" in agent_log
     assert "11.201268" in agent_log
-    assert "Historical Task 24 implementation evidence only" in delivery_report
-    assert "recorded separately by DEL-012" in delivery_report
+    assert "仅作为历史任务 24 实现证据" in delivery_report
+    assert "由 DEL-012 单独记录" in delivery_report
     assert "0674f74f4097e46cee98c4715a62ad5aa55101cf" in course_checklist
-    assert "No public URL is claimed." in deployment
-    assert "## Pending real-server evidence" in deployment
+    assert "不声称存在公网 URL" in deployment
+    assert "## 待补充的真实服务器证据" in deployment
 
     current_blocks = {
         name: _current_status_block(document, name=name)

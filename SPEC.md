@@ -128,9 +128,9 @@ V1 不承诺对所有曲风可靠识别和弦或结构。高置信度正常显�
 结构地图至少包含：
 
 - waveform；
-- section timeline；
-- chord timeline；
-- energy curve；
+- 分段时间线；
+- 和弦时间线；
+- 能量曲线；
 - 重要音乐事件；
 - 播放头与片段选择。
 
@@ -144,7 +144,7 @@ V1 不承诺对所有曲风可靠识别和弦或结构。高置信度正常显�
 
 该模块以纯函数和不可变值对象为核心，不调用 LLM。无法唯一判断的 enharmonic spelling 或功能必须返回候选及理由，而非单一伪确定答案。
 
-### 5.6 Evidence-Grounded Explanation
+### 5.6 基于 Evidence 的解释
 
 输入：用户问题、选定时间片段、达到置信度门槛的 Evidence ID 及其结构化内容。
 
@@ -229,7 +229,7 @@ LLM 不得创建或修改 chord、timestamp、instrument、modulation、structur
 - 限制文件大小、时长、解码时间、队列长度、每 IP 频率和 LLM 超时。
 - 分析运行在受限子进程；达到资源或时间限制时终止并清理。
 
-### 8.3 Credential Threat Model
+### 8.3 凭据威胁模型
 
 | 威胁 | 对策 |
 | --- | --- |
@@ -256,24 +256,24 @@ LLM 不得创建或修改 chord、timestamp、instrument、modulation、structur
 MuseEcho 是模块化单体：
 
 ```text
-Browser: React + Vite + TypeScript
-        │ same-origin HTTPS
+浏览器：React + Vite + TypeScript
+        │ 同源 HTTPS
         ▼
-Caddy reverse proxy
+Caddy 反向代理
         ▼
-FastAPI application
-├─ REST API and static frontend
-├─ upload/access/security services
-├─ bounded analysis process pool (concurrency = 1)
-├─ deterministic music-theory engine
-├─ optional LLM adapter + deterministic fallback
-├─ SQLite repositories
-└─ expiry/orphan cleanup scheduler
+FastAPI 应用
+├─ REST API 与静态前端
+├─ 上传、访问与安全服务
+├─ 有界分析进程池（并发数 = 1）
+├─ 确定性乐理引擎
+├─ 可选 LLM 适配器 + 确定性回退
+├─ SQLite 仓储
+└─ 到期与孤儿数据清理调度器
         │
         ▼
 /srv/museecho/data
-├─ SQLite database
-└─ encrypted audio chunks
+├─ SQLite 数据库
+└─ 加密音频分块
 ```
 
 边界原则：UI 不依赖分析实现细节；分析模块只输出版本化结构；乐理引擎不依赖 Web 或 LLM；LLM 适配器不能写入音乐事实；存储通过 repository 接口隔离，允许未来替换 SQLite。
@@ -532,7 +532,7 @@ GitHub Actions 运行 backend tests、frontend tests、integration tests、lint�
 - 自主 Agent、工具调用循环或 agent framework；
 - 把演示数据伪装成真实上传分析。
 
-## 23. Definition of Done
+## 23. 完成定义（DoD）
 
 项目必须逐项满足本次课程提交适用的 V1 Definition of Done，包括：A–D 模块端到端运行、真实上传分析、交互时间轴、确定性理论测试、Evidence Explanation、无 Key fallback、全套测试与构建、Docker runtime、Secret audit、合理 Git/PR 历史、GitHub CI、全过程文档、三轮 Audit、无已知 Critical bug 和 High security issue，以及没有伪造测试、CI、人工参与或部署证据。GitLab 与腾讯云公网部署转为后续计划，见 `COURSE_REQUIREMENT_UPDATE.md`。
 
@@ -550,18 +550,23 @@ GitHub Actions 运行 backend tests、frontend tests、integration tests、lint�
 - 2026-08-08 至 2026-08-13 按批准基线完成 Tasks 3–24：capability 访问、分块 AEAD、单队列
   DSP/MIR、Evidence-first 解释、React/Vite 工作区、Caddy/FastAPI 同源 HTTPS、SQLite、Docker/CI、
   运维手册及 Functional/Engineering/Product 三轮 Audit。
-- Task 24 后维护把当前输入契约收敛为七种格式和 100 MiB，补充 Broadcast WAV、按需解密单
+- 任务 24 后维护把当前输入契约收敛为七种格式和 100 MiB，补充 Broadcast WAV、按需解密单
   Range 播放、FLAC attached-picture 校验与保守节奏估计；这些改动没有把系统改造成多用户、
   多 worker 或云托管服务。当前 GitHub-facing 架构仍是 Caddy + React 静态前端、FastAPI 模块化
   单体、单工作线程 DSP/MIR、SQLite 结构化结果与最多 24 小时的分块 AEAD 音频。
-- PR #3 GitHub run `31966788273` 在 exact final product/CI implementation SHA
+- PR #3 GitHub run `31966788273` 在精确的最终产品/CI 实现 SHA
   `0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过 quality、真实 HTTPS E2E 和 distribution。
-  该证据关闭 GitHub required gate；GitLab 仅保留 supplemental 配置且未运行。
-- 当前结论仍为 `MUSEECHO V1 PARTIALLY READY`：正式 current-source offline Dockerfile rebuild
-  ENG-010、公开 registry/Release、腾讯云/可信公网 TLS/目标机验证、本地人工产品复核和学生本人
-  最终验收均未被这次 GitHub 成功替代。
-- 2026-08-17 新增的 `v0.1.0` 离线运行发行合同只允许发布同一 distribution 作业产生并审计的
-  app/gateway tar、release identity、校验表和 no-build 工具包。接收方下载完成后可以断网校验、
-  导入、Smoke 和运行；该能力不得改写为 current-source Dockerfile 的断网重建，也不得关闭
-  `ENG-010`。在 GitHub Release 页面、Tag、main SHA 和四项资产被实际验证前，状态只能是
-  `READY_FOR_RELEASE`，不能提前写成已发布。
+  PR #3 随后合并为 main SHA `d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1`，main run
+  `31997390847` 再次通过 quality、真实 HTTPS E2E 和 distribution。该证据关闭 GitHub required
+  gate；GitLab 仅保留 supplemental 配置且未运行。
+- 当前结论仍为 `MUSEECHO V1 PARTIALLY READY`：正式当前源码离线 Dockerfile 重建
+  ENG-010、公开 OCI registry、腾讯云/可信公网 TLS/目标机验证、本地人工产品复核和学生本人最终
+  验收均未被这次 GitHub 成功替代；正式 GitHub 离线运行 Release 已单独完成。
+- 2026-08-17 新增的 `v0.1.0` 离线运行发行合同以绿色 main 的源码/策略边界为资格门。
+  由于 main 制品被 Actions 配额跳过留存，正式 app/gateway tar 由精确 main SHA 的受控本地
+  fallback 生成，并以自身 release identity、校验表和 no-build Smoke 绑定；不声称与未留存 CI tar
+  字节相同。接收方下载完成后可以断网校验、导入、Smoke 和运行；该能力不得改写为当前源码
+  Dockerfile 的断网重建，也不得关闭 `ENG-010`。2026-08-17，Tag `v0.1.0` 已绑定 main SHA
+  `d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1`，四项资产完成实际回下载 SHA-256 比对与 no-build
+  HTTPS/WAV/重启持久化/明文音频清理 Smoke，因此离线运行发行状态已从 `READY_FOR_RELEASE`
+  转为 `RELEASED`；该状态不扩张为 registry 或云部署完成。

@@ -1,60 +1,60 @@
-# Broadcast WAV Zero-Padding Compatibility Implementation Plan
+# Broadcast WAV 零填充兼容性实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **供自主执行者使用：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐项实施本计划。步骤使用复选框（`- [ ]`）语法跟踪。
 
-**Goal:** Accept valid Pro Tools Broadcast WAV files whose ordinary PCM `fmt ` chunk contains only zero padding, without weakening MuseEcho's signature validation.
+**目标：** 接受普通 PCM `fmt ` 块只包含零填充的有效 Pro Tools Broadcast WAV 文件，同时不削弱 MuseEcho 的签名验证。
 
-**Architecture:** Extend only `_validate_pcm_wave_format` in the upload boundary. Preserve the existing RIFF parser, registry, FFprobe/FFmpeg validation, upload limits, duration limits, and codec policy.
+**架构：** 仅扩展上传边界中的 `_validate_pcm_wave_format`。保留现有 RIFF 解析器、注册表、FFprobe/FFmpeg 验证、上传限制、时长限制和编解码器策略。
 
-**Tech Stack:** Python 3.12, pytest, FastAPI upload service, FFprobe/FFmpeg, Docker Compose.
+**技术栈：** Python 3.12、pytest、FastAPI 上传服务、FFprobe/FFmpeg、Docker Compose。
 
-## Global Constraints
+## 全局约束
 
-- The maximum audio payload remains exactly `100 * 1024 * 1024` bytes.
-- Non-extensible PCM padding is accepted only when `cbSize == 0` and every trailing byte is zero.
-- WAVEFORMATEXTENSIBLE, chunk ordering, RIFF length, PCM field, decode, and duration checks remain unchanged.
-- The user's original WAV must pass through the real HTTPS gateway after the fix.
+- 最大音频载荷仍严格为 `100 * 1024 * 1024` 字节。
+- 仅当 `cbSize == 0` 且所有尾随字节均为零时，才接受非扩展 PCM 填充。
+- WAVEFORMATEXTENSIBLE、块顺序、RIFF 长度、PCM 字段、解码和时长检查保持不变。
+- 修复后，用户的原始 WAV 必须通过真实 HTTPS 网关。
 
 ---
 
-### Task 1: Accept Zero-Padded Ordinary PCM `fmt ` Chunks
+### 任务 1：接受普通 PCM `fmt ` 块的零填充
 
-**Files:**
-- Modify: `tests/api/test_upload.py`
-- Modify: `src/museecho/application/uploads.py`
+**文件：**
+- 修改：`tests/api/test_upload.py`
+- 修改：`src/museecho/application/uploads.py`
 
-**Interfaces:**
-- Consumes: `_minimal_wave(...)`, `FFmpegAudioValidator`, and `audio_format_for_suffix(".wav")`.
-- Produces: `_validate_pcm_wave_format(format_data: bytes) -> None` accepting canonical PCM data plus bounded all-zero padding.
+**接口：**
+- 输入：`_minimal_wave(...)`、`FFmpegAudioValidator` 和 `audio_format_for_suffix(".wav")`。
+- 输出：`_validate_pcm_wave_format(format_data: bytes) -> None` 接受标准 PCM 数据及有界的全零填充。
 
-- [ ] **Step 1: Write the failing acceptance and rejection tests**
+- [ ] **步骤 1：编写失败的接受与拒绝测试**
 
-Construct a PCM WAVE whose `fmt ` payload is the canonical 16 bytes followed by `cbSize=0` and 22 zero bytes. Assert that `FFmpegAudioValidator` reaches the monkeypatched `probe_audio` and `decode_audio` calls. In a paired test, replace the last padding byte with `\x01` and assert `InvalidAudioError` occurs before either tool is called.
+构造一个 PCM WAVE，其 `fmt ` 载荷为标准 16 字节，随后是 `cbSize=0` 和 22 个零字节。断言 `FFmpegAudioValidator` 会到达 monkeypatch 后的 `probe_audio` 和 `decode_audio` 调用。在配对测试中，将最后一个填充字节替换为 `\x01`，并断言在调用任一工具前发生 `InvalidAudioError`。
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [ ] **步骤 2：运行聚焦测试并确认 RED**
 
-Run: `python -m pytest tests/api/test_upload.py -k "zero_padded_pcm_format" -q`
+运行：`python -m pytest tests/api/test_upload.py -k "zero_padded_pcm_format" -q`
 
-Expected: the acceptance case fails with `InvalidAudioError: audio file signature is invalid`; the non-zero padding rejection passes.
+预期：接受用例以 `InvalidAudioError: audio file signature is invalid` 失败；非零填充拒绝用例通过。
 
-- [ ] **Step 3: Implement the minimal validation change**
+- [ ] **步骤 3：实施最小验证变更**
 
-For non-extensible formats, retain the 16-byte canonical case. Otherwise require at least 18 bytes, require the two-byte extension size at offset 16 to be zero, and reject when any byte from offset 18 onward is non-zero. Keep the existing 64-byte outer `fmt ` chunk bound.
+对于非扩展格式，保留 16 字节标准用例。否则要求至少 18 字节，要求偏移 16 处的两字节扩展大小为零，并在偏移 18 之后有任何非零字节时拒绝。保留外层 `fmt ` 块现有的 64 字节上限。
 
-- [ ] **Step 4: Verify focused and module tests GREEN**
+- [ ] **步骤 4：确认聚焦测试和模块测试为 GREEN**
 
-Run: `python -m pytest tests/api/test_upload.py -k "zero_padded_pcm_format" -q`
+运行：`python -m pytest tests/api/test_upload.py -k "zero_padded_pcm_format" -q`
 
-Expected: 2 passed.
+预期：2 个测试通过。
 
-Run: `python -m pytest tests/api/test_upload.py -q`
+运行：`python -m pytest tests/api/test_upload.py -q`
 
-Expected: every runnable upload test passes; environment-specific skips remain explicit.
+预期：所有可运行的上传测试均通过；环境特定的跳过项保持明确记录。
 
-- [ ] **Step 5: Verify the actual file through the development stack**
+- [ ] **步骤 5：通过开发栈验证实际文件**
 
-Restart the development app if reload has not applied the source change. Submit `D:\CloudMusic\华晨宇 - 忒修斯的船.wav` through `https://localhost:4173/api/analyses`, verify HTTP 202, verify the analysis reaches a terminal successful stage, and verify both Compose services remain healthy.
+如果热重载尚未应用源代码变更，则重启开发应用。通过 `https://localhost:4173/api/analyses` 提交 `D:\CloudMusic\华晨宇 - 忒修斯的船.wav`，确认 HTTP 202，确认分析到达成功终态，并确认两个 Compose 服务均保持健康。
 
-- [ ] **Step 6: Commit**
+- [ ] **步骤 6：提交**
 
-Stage only the two source/test files plus this design and plan, then commit with message `fix: accept zero-padded broadcast wav formats`.
+仅暂存这两个源代码/测试文件以及本设计和计划，然后使用提交消息 `fix: accept zero-padded broadcast wav formats` 提交。

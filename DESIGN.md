@@ -1,8 +1,8 @@
 # MuseEcho 设计系统契约
 
-状态：书面规格审阅中
+状态：已实施，并随 `v0.1.0` Release 固化
 
-来源：Open Design `Warm Editorial` 设计系统，配合 `frontend-design` Skill；基于 `nexu-io/open-design@f580271`。本文件是 MuseEcho 的项目级品牌契约，产品实现优先遵守本文件，再使用 Skill 的通用前端工艺规则。
+来源：Open Design `Warm Editorial` 设计系统，配合 `frontend-design` 技能；基于 `nexu-io/open-design@f580271`。本文件是 MuseEcho 的项目级品牌契约，产品实现优先遵守本文件，再使用该技能的通用前端工艺规则。
 
 ## 1. 设计意图
 
@@ -19,16 +19,16 @@ MuseEcho 的界面应像一份可以聆听的音乐杂志：温暖、克制、�
 3. 播放器与 Music DNA；
 4. 波形、段落、和弦、能量和事件共用的结构地图；
 5. 当前和弦的确定性乐理详情；
-6. 选定片段的 Evidence Q&A；
+6. 选定片段的证据问答（Evidence Q&A）；
 7. 到期倒计时与主动删除。
 
 桌面端可以并排呈现强相关内容；平板端减少并排；手机端使用单列，但播放器和当前时间始终易于触达。
 
 ## 3. 颜色语义
 
-颜色取自 Open Design `Warm Editorial` 的规范化 tokens，不在组件中新增无语义颜色：
+颜色取自 Open Design `Warm Editorial` 的规范化设计令牌（tokens），不在组件中新增无语义颜色：
 
-| 角色 | Token | 值 | 用途 |
+| 角色 | 设计令牌 | 值 | 用途 |
 | --- | --- | --- | --- |
 | 画布 | `--bg` | `#fbf6ee` | 全局暖色背景 |
 | 表面 | `--surface` | `#fffdf8` | 少量抬升区域 |
@@ -47,26 +47,26 @@ MuseEcho 的界面应像一份可以聆听的音乐杂志：温暖、克制、�
 
 - 展示标题使用 `Georgia, "Times New Roman", serif`，营造音乐杂志的编辑感。
 - 正文和控件使用 `Inter, system-ui, sans-serif`，保证中文与界面密度下的可读性。
-- 代码、算法名和 Evidence ID 使用 `"SF Mono", ui-monospace, Menlo, monospace`。
+- 代码、算法名和证据 ID 使用 `"SF Mono", ui-monospace, Menlo, monospace`。
 - 正文基准字号为 17px，行高 1.62；标题紧凑但不压缩中文字符间距。
 - H1/H2 使用简短名词性标题；H3 以下使用自然句式。
 
-字体文件不是 V1 必需依赖。若 Webfont 不可用，必须无布局跳变地回退到声明字体栈。
+字体文件不是 V1 必需依赖。若网页字体不可用，必须无布局跳变地回退到声明字体栈。
 
 ## 5. 布局与间距
 
-- 桌面采用 12 栏网格，内容最大宽度 1180px，左右 gutter 36px。
-- 平板采用 8 栏语义分区，gutter 24px。
-- 手机采用 4 栏基础网格，gutter 16px。
+- 桌面采用 12 栏网格，内容最大宽度 1180px，左右栏间距 36px。
+- 平板采用 8 栏语义分区，栏间距 24px。
+- 手机采用 4 栏基础网格，栏间距 16px。
 - 区段纵向间距依次为桌面 112px、平板 80px、手机 56px。
 - 数据密集区内部可更紧凑，但必须保持时间轴、轨道标题和详情面板对齐。
-- 上传后的主工作区不使用营销页式超高 Hero；首屏空间优先留给播放器、任务状态和 Music DNA。
+- 上传后的主工作区不使用营销页式巨型首屏（Hero）；首屏空间优先留给播放器、任务状态和 Music DNA。
 
 ## 6. 组件规则
 
 - 按钮：10–16px 圆角；主要按钮使用陶土色，次要按钮使用描边；危险操作保持红色且需要明确确认。
 - 卡片：默认无阴影，只使用浅边框分组；悬停或浮层允许单级抬升。
-- 输入：保持清晰标签、帮助文本、错误文本和可见焦点，不以 placeholder 代替标签。
+- 输入：保持清晰标签、帮助文本、错误文本和可见焦点，不以占位符（placeholder）代替标签。
 - 时间轴：波形、段落、和弦、能量、事件和播放头共享同一坐标；选中状态必须跨轨道可见。
 - 置信度：高、中、低/unknown 同时使用文字和视觉差异，不能只改变颜色。
 - 状态：必须设计 loading、queued、partial、unknown、error、expired、deleted 和 no-key fallback，不用理想状态替代真实状态。
@@ -94,18 +94,18 @@ MuseEcho 的界面应像一份可以聆听的音乐杂志：温暖、克制、�
 - 只显示来自当前任务的 `real` 数据，或明确标记的 `demo` / `synthetic_test` 数据。
 - 不用固定歌曲名、情绪、乐器或和弦填充空状态。
 - 低置信度事实显示 `unknown` 或“证据不足”，不以顺滑文案掩盖不确定性。
-- LLM 解释必须附 Evidence 引用和 `llm` / `fallback` 模式。
+- LLM 解释必须附证据引用和 `llm` / `fallback` 模式。
 - 界面文案不使用表情符号，不用夸张营销措辞描述分析准确率。
 
 ## 10. Open Design 使用与验收
 
-实现阶段使用已安装的 Open Design `frontend-design` Skill，并把本文件作为活动设计系统输入。每次重要界面交付至少检查：
+实现阶段使用已安装的 Open Design `frontend-design` 技能，并把本文件作为活动设计系统输入。每次重要界面交付至少检查：
 
-1. 是否遵守语义 tokens；
+1. 是否遵守语义设计令牌；
 2. 是否包含真实状态与错误状态；
 3. 桌面和手机宽度是否可用；
 4. 键盘、焦点、对比度和文本替代是否有效；
 5. 是否出现通用 AI 风格、过度圆角、无意义卡片或虚构内容；
 6. 是否保留“暖色编辑感 + 同步音乐时间轴”这一可识别特征。
 
-来源与许可：Open Design 项目及其 `Warm Editorial` 设计系统来自 [nexu-io/open-design](https://github.com/nexu-io/open-design)；`frontend-design` Skill 保留其上游 Apache-2.0 许可文件。本文件是针对 MuseEcho 的项目级改编。
+来源与许可：Open Design 项目及其 `Warm Editorial` 设计系统来自 [nexu-io/open-design](https://github.com/nexu-io/open-design)；`frontend-design` 技能保留其上游 Apache-2.0 许可文件。本文件是针对 MuseEcho 的项目级改编。

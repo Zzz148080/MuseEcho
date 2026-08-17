@@ -1,155 +1,133 @@
-# MuseEcho Agent Log
+# MuseEcho Agent 日志
 
 <!-- TASK23-CURRENT-STATUS:START -->
-## Task 23 compatibility status (superseded by Task 24)
+## 任务 23 兼容状态（已由任务 24 取代）
 
-The Functional Audit is **31 PASS / 9 PARTIAL / 0 FAIL** and
-`PARTIALLY_READY`. Task 23 PR #1 merged after GitHub quality, E2E, and
-distribution passed. Its implementation boundary is retained here for the Task
-23 regression contract; the current branch tip and authoritative status are in
-the Task 24 block below. At Task 23 closure, the blocker keys were `GitLab`,
-`TC-021`, `TASK24-AUDIT`, `STUDENT-MANUAL`, and `FORMAL-OFFLINE-BUILD`.
+功能审计为 **31 PASS / 9 PARTIAL / 0 FAIL**，结论为
+`PARTIALLY_READY`。GitHub 质量门、E2E 和分发通过后，任务 23 PR #1 已合并。
+其实现边界在此继续作为任务 23 回归合约保留；当前分支顶点和权威状态见下方任务 24 状态块。
+任务 23 收尾时的阻因键为 `GitLab`、`TC-021`、`TASK24-AUDIT`、`STUDENT-MANUAL`
+和 `FORMAL-OFFLINE-BUILD`。
 <!-- TASK23-CURRENT-STATUS:END -->
 
 <!-- TASK24-CURRENT-STATUS:START -->
-## Task 24 current status
+## 任务 24 当前状态
 
-`MUSEECHO V1 PARTIALLY READY`. Task 24 now has a machine-readable Product Audit,
-fixed 17-section Delivery Report, fail-closed checker, and mutation tests. Task
-24 itself is closed. The current Functional Audit is **36 PASS / 4 PARTIAL / 0 FAIL**.
-PR #3 run `31966788273` passed quality (5m43s), E2E (3m10s), and
-distribution (7m30s) on final product/CI implementation SHA
-`0674f74f4097e46cee98c4715a62ad5aa55101cf`. Per
-`COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent Cloud/public deployment are
-deferred follow-up work. Formal offline build ENG-010, local product review, and
-student acceptance remain open. Historical statements below retain dated boundaries.
+当前状态为 `MUSEECHO V1 PARTIALLY READY`。任务 24 已具备机器可读的产品审计、固定
+17 节的交付报告、失败关闭式校验器和变异测试，任务 24 本身已关闭。当前
+功能审计为 **36 PASS / 4 PARTIAL / 0 FAIL**。PR #3 已合入 main SHA
+`d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1`；run `31997390847` 的质量门、
+E2E 和分发均通过。GitHub Release `v0.1.0` 已发布四项经校验和验证的离线资产。
+根据 `COURSE_REQUIREMENT_UPDATE.md`，GitLab 与腾讯云/公网部署属于后续工作。正式
+当前源码离线重建 `ENG-010`、本地产品复核和学生验收仍未完成。以下历史陈述继续保留各自
+日期对应的边界。
 <!-- TASK24-CURRENT-STATUS:END -->
 
-## Retained Task 21–24 summary chronology
+## 保留的任务 21–24 摘要时间线
 
-This retained summary collection is ordered oldest-to-newest with the original
-same-day record order preserved. The detailed dated implementation log is a
-separate oldest-to-newest collection immediately below.
+以下保留摘要按时间从早到晚排列，并保持同日记录的原始顺序。其后的详细实施日志是另一组独立的
+从早到晚记录。
 
-### Retained TASK 21 / Tencent Cloud delivery scripts (local-only) summary
+### 保留的任务 21 / 腾讯云交付脚本（仅本地）摘要
 
-- **授权边界：** 未提供腾讯云账号、Lighthouse、域名/DNS、SSH 或 registry 发布授权；未执行任何云、DNS、SSH 或公网变更，也不声称远端 CI 或公网 URL。
-- **RED→GREEN：** 先新增 `tests/deploy/test_tencent_cloud.sh`；初次 WSL 运行因 Task 21 脚本与证据文件尚不存在而失败。随后实现安装、digest-only 部署、自动/手动回滚、备份和真实状态证据文件。第二个 RED 发现生成的 release Compose 无条件设置 provider key 路径，导致 KEK-only `docker compose config` 缺少 image interpolation并且不能验证默认启动；release env 现同时持有非秘密镜像/域名/provider 设置，provider 三项默认均为空，测试转绿。
-- **本地验证：** WSL2 `bash tests/deploy/test_tencent_cloud.sh` 与 `bash deploy/tencent-cloud/install.sh --check-only` 均 exit 0；覆盖 check-only 无写入、owned paths/firewall/systemd、tag 拒绝/Secret 不泄露、health rollback、KEK-only provider、备份排除及 SHA-256 元数据、证据真实性。
-- **ShellCheck：** WSL 未安装 ShellCheck。尝试查询单一可固定的官方 ShellCheck container manifest 超时，未下载或运行任何容器；保留 `bash -n`（由合约测试执行）并如实记录未运行 ShellCheck。
+- **授权边界：** 未提供腾讯云账号、Lighthouse、域名/DNS、SSH 或镜像仓库发布授权；未执行任何云、DNS、SSH 或公网变更，也不声称远端 CI 或公网 URL。
+- **RED→GREEN：** 先新增 `tests/deploy/test_tencent_cloud.sh`；初次 WSL 运行因任务 21 脚本与证据文件尚不存在而失败。随后实现安装、仅摘要部署、自动/手动回滚、备份和真实状态证据文件。第二个 RED 发现生成的发行 Compose 无条件设置提供方密钥路径，导致仅 KEK 的 `docker compose config` 缺少镜像插值并且不能验证默认启动；发行环境文件现同时持有非秘密镜像/域名/提供方设置，提供方三项默认均为空，测试转绿。
+- **本地验证：** WSL2 `bash tests/deploy/test_tencent_cloud.sh` 与 `bash deploy/tencent-cloud/install.sh --check-only` 均退出 0；覆盖只检查无写入、自有路径/防火墙/systemd、Tag 拒绝/Secret 不泄露、健康回滚、仅 KEK 的提供方配置、备份排除及 SHA-256 元数据、证据真实性。
+- **ShellCheck：** WSL 未安装 ShellCheck。尝试查询单一可固定的官方 ShellCheck 容器清单超时，未下载或运行任何容器；保留 `bash -n`（由合约测试执行）并如实记录未运行 ShellCheck。
 
-### Retained TASK 21 / review fix round 1 summary
+### 保留的任务 21 / 复审修复第 1 轮摘要
 
-- **RED→GREEN：** 独立复审确认 failed release 在 health 前被写入 `.verified`、恢复旧 release 未 health-check、WAL SQLite 直接复制、UFW 只追加 allow、以及 provider 三项可部分写入。新增 WSL 合约测试先得到 12 个预期失败断言：失败发行物仍 eligible、恢复未复验/未 fail-closed、WAL 中已提交行不能从归档恢复、8080 ALLOW 仍写入、partial provider 仍 pull/switch。修复后同一套 11 个 delivery contracts 全部通过。
-- **修复：** `.verified` 仅在 restart+health 成功后写入；恢复 prior release 也重新 health-check，失败时清除 `current` 并 stop service。备份改用 Python 标准库 SQLite online backup 与 `PRAGMA integrity_check`，得到独立 snapshot。实际 install 在任何目录写入前要求 UFW active/default deny-or-reject 并拒绝 22/80/443 外的 inbound ALLOW。provider 配置现在必须三项全空或全设。
-- **ShellCheck：** 有界 Docker Registry 查询取得官方 `koalaman/shellcheck-alpine:v0.10.0` linux/amd64 digest `sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577`。只 pull/run 该一份 digest-pinned image，`--network none --entrypoint shellcheck` 对五个交付脚本 exit 0；首次 run 的 image 默认 `/bin/sh` 误执行 bash shebang，inspect 后改用 entrypoint，未下载任何其他工具或镜像。
+- **RED→GREEN：** 独立复审确认失败发行在健康检查前被写入 `.verified`、恢复旧发行未做健康检查、WAL SQLite 被直接复制、UFW 只追加允许规则、以及提供方三项可部分写入。新增 WSL 合约测试先得到 12 个预期失败断言：失败发行物仍符合条件、恢复未复验/未失败关闭、WAL 中已提交行不能从归档恢复、8080 ALLOW 仍写入、部分提供方配置仍拉取/切换。修复后同一套 11 个交付合约全部通过。
+- **修复：** `.verified` 仅在重启和健康检查成功后写入；恢复上一发行也重新健康检查，失败时清除 `current` 并停止服务。备份改用 Python 标准库 SQLite 在线备份与 `PRAGMA integrity_check`，得到独立快照。实际安装在任何目录写入前要求 UFW 已启用且默认拒绝，并拒绝 22/80/443 外的入站 ALLOW。提供方配置现在必须三项全空或全设。
+- **ShellCheck：** 有界 Docker Registry 查询取得官方 `koalaman/shellcheck-alpine:v0.10.0` linux/amd64 摘要 `sha256:7c6a5115899d99323b22fc84b29e924aef5b6fa985612e450a8c356969ebb577`。只拉取/运行这一份摘要锁定镜像，`--network none --entrypoint shellcheck` 对五个交付脚本退出 0；首次运行的镜像默认 `/bin/sh` 误执行 bash shebang，检查后改用入口点，未下载任何其他工具或镜像。
 
-### Retained TASK 22 / Functional Audit 与验收缺口闭环 summary
+### 保留的任务 22 / 功能审计与验收缺口闭环摘要
 
-- **范围与结论：** 按 `SPEC.md` AC-A 至 AC-F 的 24 项和 Definition of Done 的 16 项建立 40 项机器可解析矩阵；审查修复轮 1 后为 `29 PASS / 11 PARTIAL / 0 FAIL`、`PARTIALLY_READY`。当前浏览器 E2E、目标服务器性能、公网 URL/完整 smoke、远程双 CI、Task 23/24 和学生人工验收均保持真实未运行，任何一项都阻止 `READY`。
-- **TDD checker：** 首个 RED 为 `scripts.check_acceptance_matrix` 不存在。初版 26 个测试覆盖结构与状态真实性；审查修复轮新增 9 个 mutation，先共同证明无意义成功命令、伪造历史 commit、结果文本同步改写、coverage 漂移、边界 hash 缺失/漂移和 CI/README 空证据均可被旧 checker 接受，再以代码内固定的逐 evidence command/coverage/result contract 和浏览器边界 manifest 使 9 项全部转绿。最终 focused suite 为 35 tests。
-- **真实缺口 1（checker 可移植性）：** 第一次锁定 Linux 全量门得到 `612 passed, 23 failed`；23 项均因生产镜像不含 Git，而 checker 直接启动 `git cat-file` 抛 `FileNotFoundError`。新增无 Git 与 commit/path 绑定 RED 后，最小修复要求 40 位 commit 且证据命令同时绑定 exact commit/path；Git 可用时仍验证对象，Git 不可用时结构化证据保持可离线检查。修复后锁定 Linux 全量 `637 passed in 177.01s`。
-- **真实缺口 2（Secret synthetic harness）：** 当前 scanner 对被占用文件已 exit 1 并输出 `scan-error`，但 Windows PowerShell 将 `tracked-unreadable.txt` 格式化换行成两段，测试 harness 的直接子串匹配误报。以现有失败为 RED，只在断言前去除空白并匹配完整文件名；生产扫描规则未改，GREEN 为 `Secret scan synthetic tests passed`。
-- **审查缺口闭环：** 初版把 CURRENT_COMMAND 的任意 exit-0 和 no-Git 下自洽的历史文本当作充分证据。修复后 PASS 只能引用 checker 内固定且覆盖当前 item 的成功合约；历史 E004 还需 PLAN 权威锚点、固定历史内容摘要和当前 107-file boundary SHA。Task 19 的 4 个真实 HTTPS 浏览器 E2E 属于 105-file 历史边界；该边界与当前边界确实漂移，因此 E004 不再支撑当前 PASS，AC-C-3、AC-F-1、DOD-01、DOD-03、DOD-07 降为 PARTIAL。E005 改为当前 7-test contract，实际解析 GitHub/GitLab、证明 GitLab `unit-test`，并读取 README 冷启动/HTTPS/health/cleanup 与过程文档锚点。
-- **当前验证：** 前端 `12 files / 66 tests`；frontend typecheck/build 和 E2E TypeScript gate；锁定 Linux `649 passed in 244.21s`；生产容器真实 WAV smoke、重启持久性、持久卷无明文、镜像历史无测试 KEK 和清理；89-file Ruff format、Ruff lint、45-source mypy 与 checker mypy；许可证审计；真实/合成 Secret scan。无 Git、只读 worktree、`--network none` 的 cached uv 0.11.29 门为 `35 passed in 69.04s`，checker 为 `29/11/0`。当前 Chrome 尝试中内部网络 app 健康启动，但 Docker Desktop 未把端口暴露给宿主 Chrome；未放宽无网络约束，容器/网络已清理并保留 `CURRENT-BROWSER-E2E` blocker。
+- **范围与结论：** 按 `SPEC.md` AC-A 至 AC-F 的 24 项和完成定义（DoD）的 16 项建立 40 项机器可解析矩阵；审查修复轮 1 后为 `29 PASS / 11 PARTIAL / 0 FAIL`、`PARTIALLY_READY`。当前浏览器 E2E、目标服务器性能、公网 URL/完整 Smoke、远程双 CI、任务 23/24 和学生人工验收均保持真实未运行，任何一项都阻止 `READY`。
+- **TDD 校验器：** 首个 RED 为 `scripts.check_acceptance_matrix` 不存在。初版 26 个测试覆盖结构与状态真实性；审查修复轮新增 9 个变异测试，先共同证明无意义成功命令、伪造历史提交、结果文本同步改写、覆盖漂移、边界哈希缺失/漂移和 CI/README 空证据均可被旧校验器接受，再以代码内固定的逐证据命令/覆盖/结果合约和浏览器边界清单使 9 项全部转绿。最终聚焦套件为 35 个测试。
+- **真实缺口 1（校验器可移植性）：** 第一次锁定 Linux 全量门得到 `612 passed, 23 failed`；23 项均因生产镜像不含 Git，而校验器直接启动 `git cat-file` 抛 `FileNotFoundError`。新增无 Git 与提交/路径绑定 RED 后，最小修复要求 40 位提交且证据命令同时绑定精确提交/路径；Git 可用时仍验证对象，Git 不可用时结构化证据保持可离线检查。修复后锁定 Linux 全量 `637 passed in 177.01s`。
+- **真实缺口 2（Secret 合成测试框架）：** 当前扫描器对被占用文件已退出 1 并输出 `scan-error`，但 Windows PowerShell 将 `tracked-unreadable.txt` 格式化换行成两段，测试框架的直接子串匹配误报。以现有失败为 RED，只在断言前去除空白并匹配完整文件名；生产扫描规则未改，GREEN 为 `Secret scan synthetic tests passed`。
+- **审查缺口闭环：** 初版把 CURRENT_COMMAND 的任意 exit-0 和 no-Git 下自洽的历史文本当作充分证据。修复后 PASS 只能引用校验器内固定且覆盖当前条目的成功合约；历史 E004 还需 PLAN 权威锚点、固定历史内容摘要和当前 107 文件边界 SHA。任务 19 的 4 个真实 HTTPS 浏览器 E2E 属于 105 文件历史边界；该边界与当前边界确实漂移，因此 E004 不再支撑当前 PASS，AC-C-3、AC-F-1、DOD-01、DOD-03、DOD-07 降为 PARTIAL。E005 改为当前 7 测试合约，实际解析 GitHub/GitLab、证明 GitLab `unit-test`，并读取 README 冷启动/HTTPS/健康/清理与过程文档锚点。
+- **当前验证：** 前端 `12 files / 66 tests`；frontend typecheck/build 和 E2E TypeScript 门禁；锁定 Linux `649 passed in 244.21s`；生产容器真实 WAV Smoke、重启持久性、持久卷无明文、镜像历史无测试 KEK 和清理；89 文件 Ruff format、Ruff lint、45 源文件 mypy 与校验器 mypy；许可证审计；真实/合成 Secret scan。无 Git、只读工作树、`--network none` 的缓存 uv 0.11.29 门禁为 `35 passed in 69.04s`，校验器为 `29/11/0`。当前 Chrome 尝试中内部网络 app 健康启动，但 Docker Desktop 未把端口暴露给宿主 Chrome；未放宽无网络约束，容器/网络已清理并保留 `CURRENT-BROWSER-E2E` 阻塞项。
 - **提交：** 初始 Functional Audit 为 `abb33e036965f877a860ad5916f4b23ea7ffa417`；证据真实性审查修复为 `22d587beb68170ab4af79a7665d1942881700499`；过程文档统计一致性修复为 `86be4968ed3b6abf14c3d058f22409a923e33f1f`。
-- **约束 concern：** `scripts/container-smoke.ps1` 没有 no-build 入口；其 gateway 缓存失效后执行锁文件限定的 `npm ci`，下载 167 个包（39 秒，0 vulnerabilities）。manifest/lock 与基线 diff 为零，未安装宿主工具，只更新正常 `museecho-app:local`/`museecho-gateway:local` smoke 标签，但该网络获取仍违反 Task 22 的禁止下载约束，已明确保留在审计报告；后续门全部使用缓存、`--network none`/`--pull=never` 或标记未运行。
-- **停放边界：** Task 21 的 `tests/deploy/test_shell_line_endings.ps1` 多文件 `bash -n` harness 缺陷只记录给 Task 23，不写成功能缺陷已关闭，也不改变 AC verdict。
+- **约束关注项：** `scripts/container-smoke.ps1` 没有 no-build 入口；其 gateway 缓存失效后执行锁文件限定的 `npm ci`，下载 167 个包（39 秒，0 vulnerabilities）。manifest/lock 与基线差异为零，未安装宿主工具，只更新正常 `museecho-app:local`/`museecho-gateway:local` Smoke 标签，但该网络获取仍违反任务 22 的禁止下载约束，已明确保留在审计报告；后续门全部使用缓存、`--network none`/`--pull=never` 或标记未运行。
+- **停放边界：** 任务 21 的 `tests/deploy/test_shell_line_endings.ps1` 多文件 `bash -n` harness 缺陷只记录给任务 23，不写成功能缺陷已关闭，也不改变 AC 结论。
 
-### Retained TASK 23 / final review fix wave round 19/20 summary
+### 保留的任务 23 / 最终复审修复第 19/20 轮摘要
 
-- **Evidence boundary:** run `31630284744@2b2730e` is now the last product/CI
-  implementation boundary, not current branch-tip or mergeability evidence.
-  E905 remains NOT_RUN; E002/E906/E037 may support implementation-sensitive
-  PASS/VERIFIED, while FIXED still requires genuine RED plus GREEN.
-- **Process truth and smoke hardening:** five active documents expose one
-  delimited current-status block, older matrix/browser claims remain historical,
-  and development-smoke negative fixtures reject noncanonical Base64 plus an
-  arbitrary marker kind.
-- **Verification:** the expected RED was 7 failures and the focused GREEN was
-  `162 passed`; direct smoke, both audit CLIs, Ruff, acceptance-checker mypy,
-  PowerShell parsing, and diff-check passed. The Engineering checker mypy target
-  remains blocked before checking by the existing duplicate-module discovery
-  for `image_vulnerability_audit.py`; no unrelated typing cleanup was included.
-- **Boundary:** status remains `PARTIALLY_READY`; GitLab/branch-tip PR gates,
-  TC-021, Task 24, student acceptance, and formal offline build ENG-010 remain
-  open. No push was performed.
+- **证据边界：** run `31630284744@2b2730e` 是最后一个产品/CI 实现边界，而不是当前分支顶点或
+  可合并性证据。E905 保持 `NOT_RUN`；E002/E906/E037 可支撑与实现相关的 `PASS/VERIFIED`，
+  而 `FIXED` 仍要求真实 RED 与 GREEN。
+- **过程真实性与 Smoke 加固：** 五份活动文档各公开一个有明确边界的当前状态块，旧矩阵/浏览器
+  结论保留为历史；development-smoke 的负向 fixture 会拒绝非规范 Base64 和任意 marker 类型。
+- **验证：** 预期 RED 为 7 个失败，聚焦 GREEN 为 `162 passed`；直接 Smoke、两个 audit CLI、
+  Ruff、验收校验器 mypy、PowerShell 解析和差异检查均通过。Engineering 校验器的
+  mypy 目标仍在检查前被 `image_vulnerability_audit.py` 的既有重复模块发现问题阻塞；本轮未夹带
+  无关 typing 清理。
+- **边界：** 状态保持 `PARTIALLY_READY`；GitLab/分支顶点 PR 门禁、TC-021、任务 24、学生验收
+  和正式离线构建 `ENG-010` 当时仍未完成，且未执行 push。
 
-### Retained TASK 24 / Product Audit and delivery report summary
+### 保留的任务 24 / 产品审计与交付报告摘要
 
-- **TDD:** the requested `uv run` command could not start because `uv` is absent
-  from this PowerShell PATH and this worktree has no `.venv`. Using the existing
-  sibling Task 23 locked Python against the current source produced the valid
-  RED: `ModuleNotFoundError: scripts.check_delivery_report`.
-- **Contract:** `DELIVERY_REPORT.md` fixes DR-01 through DR-17 from the delivery
-  contract's status summary plus README's 16 required classes. Every section
-  has a status, conclusion, and Evidence IDs; evidence fixes command, path,
-  coverage, measurable result, UTC, exit and status.
-- **Truth boundary:** Product Audit PA-01 through PA-13 covers onboarding,
-  upload, wait, DNA, structure, chords, Q&A, errors, second upload, responsive,
-  readability, evidence, and privacy. The controller started the no-build HTTPS
-  profile and observed a ready API, but the in-app browser rejected the internal
-  Caddy CA before rendering. All items therefore remain `CERT_TRUST_BLOCKED`;
-  merged GitHub E2E is cited only as the automated implementation boundary.
-- **Student ownership:** `REFLECTION.md` is an empty template and all six final
-  checklist entries remain `RESERVED`; the checker rejects filled reflection or
-  agent-claimed completion.
-- **Readiness:** Task 24 itself is complete and removed from current blockers.
-  The exact project status remains `MUSEECHO V1 PARTIALLY READY` for the three
-  blocker classes recorded in the delivery report.
-- **Review RED/GREEN:** four new assertions failed on the old pending/browser
-  story: all 13 rows still said `CONTROLLER_PENDING`, PAE-900 said NOT_RUN,
-  Product Audit metadata/evidence could be forged, and DEL-004 cited the old CI
-  boundary. Fixed contracts now bind the merged PR #1 result and the exact
-  healthy-service/certificate-block/cleanup outcome. Two later semantic REDs
-  proved valid statuses/evidence could still be swapped across sections and
-  blockers; exact section and blocker mappings close that gap. Independent
-  review then reproduced two more narrative forgeries against Product Audit
-  Scope/Method/flow/notes and delivery conclusion/reason/closure; fixed semantic
-  digests reject both. The final Task 24 suite contains 24 tests, including the
-  fail-closed Task 24 GitHub implementation-boundary contract.
-- **Proportional verification:** the safe current set passed 66 tests plus both
-  prior audit CLIs and the delivery CLI. Ruff, checker mypy, synthetic and real
-  Secret scans (216 files), and diff-check passed. A broader local command was
-  intentionally stopped after a Task 20 development-reload contract invoked a
-  real Compose build; it is not reported as passed, left no Docker resources,
-  and its read-only basetemp was removed after exact path validation. Remote CI
-  remains the full locked dependency/build boundary for this documentation-only
-  Task 24 change.
+- **TDD：** 请求的 `uv run` 命令无法启动，因为当前 PowerShell PATH 中没有 `uv`，且该工作树
+  没有 `.venv`。改用相邻任务 23 的既有锁定 Python 对当前源码运行，得到有效 RED：
+  `ModuleNotFoundError: scripts.check_delivery_report`。
+- **合约：** `DELIVERY_REPORT.md` 根据交付合约状态摘要和 README 要求的 16 类固定 DR-01 至
+  DR-17。每节均有状态、结论和 Evidence ID；证据固定命令、路径、覆盖范围、可量化结果、UTC、
+  exit 和状态。
+- **真实性边界：** Product Audit PA-01 至 PA-13 覆盖 onboarding、上传、等待、DNA、结构、和弦、
+  Q&A、错误、再次上传、响应式、可读性、证据与隐私。控制器启动 no-build HTTPS profile 并观察到
+  API ready，但应用内浏览器在渲染前拒绝内部 Caddy CA，因此所有项目保持
+  `CERT_TRUST_BLOCKED`；已合并的 GitHub E2E 仅作为自动化实现边界引用。
+- **学生所有权：** `REFLECTION.md` 是空模板，六项最终核对表均保持 `RESERVED`；校验器
+  会拒绝已填写反思或 Agent 声称完成的内容。
+- **就绪状态：** 任务 24 本身已完成并从当前阻塞项中移除。由于交付报告记录的三类阻塞项，
+  项目精确状态保持 `MUSEECHO V1 PARTIALLY READY`。
+- **复审 RED/GREEN：** 旧 pending/browser 叙述触发四个新断言失败：13 行仍全部写成
+  `CONTROLLER_PENDING`、PAE-900 为 `NOT_RUN`、Product Audit 元数据/证据可伪造、DEL-004 引用
+  旧 CI 边界。修复后的合约绑定已合并 PR #1 结果及精确的健康服务/证书阻塞/清理结果。随后两项
+  语义 RED 证明合法状态/证据仍可在章节与阻塞项间互换；精确章节和阻塞项映射关闭该缺口。
+  独立复审又复现两种针对 Product Audit 范围/方法/流程/备注及交付结论/理由/收尾的叙述伪造；
+  固定语义摘要会拒绝二者。最终任务 24 套件含 24 个测试，包括失败关闭式任务 24 GitHub
+  实现边界合约。
+- **按比例验证：** 安全的当前集合通过 66 个测试、两个既有 audit CLI 和 delivery CLI。Ruff、
+  校验器 mypy、合成/真实 Secret scan（216 个文件）和差异检查均通过。一个更广的本地命令因
+  任务 20 development-reload 合约触发真实 Compose 构建而被主动停止；未将其报告为通过，且未
+  留下 Docker 资源。只读 basetemp 在精确路径验证后删除。对于这次仅文档的任务 24 改动，远端 CI
+  仍是完整的锁定依赖/构建边界。
 
-### Current post-Task-24 maintenance summary
+### 当前任务 24 后维护摘要
 
-- **范围与提交：** Task 24 的实现边界之后，`6554167` 将受支持输入扩展为
+- **范围与提交：** 任务 24 的实现边界之后，`6554167` 将受支持输入扩展为
   WAV、MP3、FLAC、M4A、AAC、OGG、OPUS，`99c9169` 将浏览器上传契约对齐；`df41f14` 与
   `0d9888f`/`8369662` 将精确上限锁为 100 MiB；`0a75c1e` 接受有界的 Broadcast WAV
   零填充；`7f8412b` 保持单 Range 的按需解密、1 MiB 流式播放，补充 FLAC attached-picture
   校验，并将节奏估计更新为保守的 v3 半速候选/`unknown` 回退。
-- **证据边界：** 这些是细粒度实现与测试提交，不倒填为 Task 24 的远端 CI、公开发行、正式离线
+- **证据边界：** 这些是细粒度实现与测试提交，不倒填为任务 24 的远端 CI、公开发行、正式离线
   构建或学生人工验收。100 MiB 历史当前源码验证见 `FUNCTIONAL_AUDIT.md` E008（锁定 Linux
   当前源码 841 passed、7 skipped；PowerShell 交付合约 20 passed）；它早于随后 `7f8412b`
   的 FLAC/播放/节奏修复，不能证明该提交已获最终完整验证。
 - **最终验证状态：** 早期 run `31813100956` 的三处 Ruff format 失败已修复；随后历史证据、
-  pre-push Docker 与 current-image 漏洞策略漂移均关闭。PR #3 run `31966788273` 在 exact SHA
+  推送前 Docker 与当前镜像漏洞策略漂移均关闭。PR #3 run `31966788273` 在精确 SHA
   `0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过 quality、E2E、distribution。项目仍为
   `MUSEECHO V1 PARTIALLY READY`，因为 offline build、人工产品复核和学生验收没有被 CI 替代。
-- **Task 4 预推送合约闭环：** 当前课程 DoD 仅要求 GitHub CI；GitLab 配置仍作为
+- **任务 4 预推送合约闭环：** 当前课程 DoD 仅要求 GitHub CI；GitLab 配置仍作为
   可选后续材料保留，不再作为当前课程门禁。Functional Audit E004 现只绑定精确历史
-  commit/tree 及其源码/测试 boundary digest，不再与可变当前工作树比较；缺失 Git 或
+  commit/tree 及其源码/测试边界摘要，不再与可变当前工作树比较；缺失 Git 或
   不匹配历史对象时失败关闭。已删除的 `TASK20_HANDOFF.md` 不再是交付合约依赖，当前边界由
   `PLAN.md`、`AGENT_LOG.md`、`DELIVERY_REPORT.md`、课程核对表及现有报告共同保留。
 
-## Detailed dated implementation log
+## 按日期记录的详细实施日志
 
-The detailed records below run oldest-to-newest; records sharing a calendar date
-retain their existing source order.
+以下详细记录按时间从早到晚排列；同一日的记录保持现有源顺序。
 
-## 2026-08-08T03:21:59+08:00 — PRE-SPEC / Brainstorming
+## 2026-08-08T03:21:59+08:00 — 前置规格 / Brainstorming
 
-- **PLAN Task**：尚未生成 PLAN；处于课程前置设计 gate。
+- **PLAN 任务**：尚未生成 PLAN；处于课程前置设计门禁。
 - **Superpowers Skill**：`using-superpowers`、`brainstorming`；读取视觉伴侣指南。
 - **其他适用 Skill**：`pdf` 用于 MuseEcho 产品说明逐页提取和视觉检查；`visualize` 用于布局、视觉和架构对比。
 - **Prompt/context 策略**：先读取两份课程要求、用户完整执行要求、产品 PDF、仓库文件和当前 Skill 文档；问题一次只涉及一个关键决策。
-- **Subagent**：未使用。设计阶段未授权 subagent 实现。
+- **子智能体**：未使用。设计阶段未授权子智能体实现。
 - **工作结果**：完成 13 个关键选择、3 个有价值迭代、6 节设计确认；生成书面规格和过程文档。
 - **人工干预**：用户真实选择方案、质询 LLM 边界、将音频生命周期改为 24 小时加密保留，并将部署从 Fly.io/AutoDL 改为腾讯云。
 - **测试**：未运行应用测试，因为尚无实现且 brainstorming hard gate 禁止写实现。
@@ -158,7 +136,7 @@ retain their existing source order.
 - **Git**：在工作区根目录初始化仓库；使用明确的代理身份 `OpenAI Codex <codex@local.invalid>` 创建设计根提交 `e9ca961`（`docs: define MuseEcho V1 approved design`）。该提交只包含 MuseEcho 规格与过程文件，未纳入旧项目目录或课程输入资料。
 - **经验**：数据生命周期必须与播放交互共同设计；部署平台必须同时验证技术能力、支付条件和服务条款。
 
-## 2026-08-08T03:50:56+08:00 — SPEC-REVISION / Open Design
+## 2026-08-08T03:50:56+08:00 — 规格修订 / Open Design
 
 - **触发**：用户要求安装使用课程推荐的 Open Design，并将完整设计文档改为中文。
 - **Skill**：使用 `skill-installer` 确认并安装课程指定仓库中的 `frontend-design`；使用 `brainstorming` 约束保持既有已批准设计边界。
@@ -174,14 +152,14 @@ retain their existing source order.
 - **适用 Skill**：使用 `superpowers:writing-plans` 把规格拆成可执行 TDD 任务；使用 `github:yeet` 的发布前检查规则处理初始文档推送。
 - **PLAN 范围**：锁定模块目录、核心接口、依赖图、并行边界，并为 24 个任务逐项指定文件、首个失败测试、RED/GREEN、重构、验证命令、验收标准、分支与提交意图。
 - **真实性门禁**：未创建 `HUMAN_APPROVAL.md`，未写应用实现，未声称测试/CI/PR/部署已运行；真实 cold-start 仍需在 PLAN 获批后执行。
-- **Subagent**：未使用；当前只是计划编写与文档发布阶段。
+- **子智能体**：未使用；当前只是计划编写与文档发布阶段。
 - **Git**：PLAN 与书面批准记录的根提交为 `a8eeaea`（`docs: define MuseEcho implementation plan`）；该提交只包含 5 个计划/规格过程文件，未纳入课程输入或旧项目目录。
 - **GitHub**：使用用户已登录的 GitHub CLI 真实验证账户 `Zzz148080`、HTTPS 协议、私有空仓库 `Zzz148080/MuseEcho`；将本地分支由 `master` 规范为 `main`，配置 `origin=https://github.com/Zzz148080/MuseEcho.git`，并成功首次推送文档历史。空仓库首次建立默认分支无法先建 PR；后续实现任务严格走独立分支/PR。
 
-## 2026-08-08T04:49:31+08:00 — COLD-START PREP / PLAN 已批准
+## 2026-08-08T04:49:31+08:00 — 冷启动准备 / PLAN 已批准
 
 - **人工批准**：用户原话“批准 PLAN”，真实批准当前 `PLAN.md`；未批准正式实施。
-- **Superpowers Skill**：使用 `using-git-worktrees` 检查隔离策略；当前是主 checkout，项目协议已明确要求 worktree，因此 cold-start 将使用项目内 `.worktrees/` 隔离区。
+- **Superpowers Skill**：使用 `using-git-worktrees` 检查隔离策略；当前是主 checkout，项目协议已明确要求工作树，因此 cold-start 将使用项目内 `.worktrees/` 隔离区。
 - **第二 Agent 检测**：Gemini、Claude、Copilot CLI 未安装；OpenCode `1.17.14` 已安装。其凭据列表为 0，但真实模型列表返回 6 个 OpenCode 免费模型，故尚不能判定不可用。
 - **失败证据**：`.ps1` shim 被 PowerShell 执行策略拒绝；沙箱 `.cmd` 访问用户配置失败；用户会话 `.cmd` 成功。随后 `opencode run --help` 因审批通道断开被拒，尚未创建 cold-start session。
 - **实现/测试**：未写应用实现，未运行任务测试，未创建 `HUMAN_APPROVAL.md`。
@@ -189,13 +167,13 @@ retain their existing source order.
 - **启动结果**：对 `opencode/deepseek-v4-flash-free` 的全新非交互 session 调用再次被外部审批通道连接中断拒绝；OpenCode 未启动，隔离分支无代码改动。等待在披露第三方数据传输和命令执行边界后的再次明确授权。
 - **DeepSeek 配置核验**：用户说明已配置 `deepseek-v4-flash`；OpenCode 真实返回 `DeepSeek api` 1 个凭据，并列出 `deepseek/deepseek-v4-flash`。未读取或输出密钥正文。
 - **参数失败**：获批后的首次实际命令在调用模型前失败，错误为 `File not found: <完整 prompt>`；根因是 `--file` 数组选项吞并了后置位置参数。使用 `systematic-debugging` 后计划以位置参数前置的最小探针验证。
-- **审批 Blocker**：最小探针仍在 OpenCode 进程启动前被外部审批器以 `stream disconnected before completion` 拒绝。连同此前两次相同审批连接中断，已达到三次真实重复；这只阻塞 cold-start，不代表 DeepSeek/OpenCode 不可用，也不阻塞文档工作。
+- **审批阻塞项**：最小探针仍在 OpenCode 进程启动前被外部审批器以 `stream disconnected before completion` 拒绝。连同此前两次相同审批连接中断，已达到三次真实重复；这只阻塞 cold-start，不代表 DeepSeek/OpenCode 不可用，也不阻塞文档工作。
 
-## 2026-08-08T05:54:35+08:00 — PRE-IMPLEMENTATION READINESS AUDIT
+## 2026-08-08T05:54:35+08:00 — 实施前就绪审计
 
 - **请求范围**：检查后续独立构建可能需要的审批、登录和环境依赖；不读取密钥正文，不修改设置。
-- **仓库与门禁**：`main` 与 `origin/main` 在 `85cdf88` 同步；隔离 worktree/分支为 `.worktrees/opencode-cold-start` / `validation/opencode-cold-start`；`HUMAN_APPROVAL.md` 仍不存在，正式实现门禁未放行。
-- **cold-start 现场**：用户已在可见终端成功启动自定义提供方 `njusehub/deepseek-v4-flash`；隔离 worktree 中出现 FastAPI 最小后端、Vite/React 前端与测试文件，但 `COLD_START_REPORT.md` 尚未生成。未干预仍在运行的 OpenCode。
+- **仓库与门禁**：`main` 与 `origin/main` 在 `85cdf88` 同步；隔离工作树/分支为 `.worktrees/opencode-cold-start` / `validation/opencode-cold-start`；`HUMAN_APPROVAL.md` 仍不存在，正式实现门禁未放行。
+- **cold-start 现场**：用户已在可见终端成功启动自定义提供方 `njusehub/deepseek-v4-flash`；隔离工作树中出现 FastAPI 最小后端、Vite/React 前端与测试文件，但 `COLD_START_REPORT.md` 尚未生成。未干预仍在运行的 OpenCode。
 - **已确认工具链**：Git `2.48.1`、Node `24.16.0`、npm `11.13.0`、Python `3.12.5`、pip `25.3`、Docker CLI `29.1.3`、Compose `2.40.3`；Chrome、Edge、SSH/SCP/SFTP、curl 可用。
 - **待安装或固定**：`uv`、FFmpeg/ffprobe、PowerShell 7、Caddy、ShellCheck 当前未找到；Node 需按项目约束固定到 22 LTS。它们可在实现/CI/容器阶段按计划安装或由容器提供，不要求现在读取任何凭据。
 - **Docker/WSL/资源**：沙箱内 Docker named pipe 不可访问，WSL 返回 `E_ACCESSDENIED`，CIM 机器资源查询被权限边界阻止；这些结果不能等同于用户会话中的真实状态。
@@ -204,15 +182,15 @@ retain their existing source order.
 - **生产 LLM**：未发现可供 MuseEcho 服务端使用的产品运行时密钥；V1 可先用确定性 fallback/stub 完成，增强问答上线前需由用户单独配置服务端 secret，不自动复用 OpenCode 密钥。
 - **审批结果**：用户逐字批准只读用户会话复核后，命令仍在执行前被自动审批服务以 `stream disconnected before completion` 拒绝。未读取密钥正文、未修改任何设置、未绕过审批。
 
-## 2026-08-08 — USER-SESSION READINESS EVIDENCE
+## 2026-08-08 — 用户会话就绪证据
 
 - **Docker**：首次用户会话检查返回 `dockerDesktopLinuxEngine` named pipe 不存在；启动 Docker Desktop 后复测成功，返回 Server `29.1.3`、OS `Docker Desktop`、16 CPU、14,551,777,280 字节内存。根因确认是 daemon 当时未运行，而非仓库或 Dockerfile 故障。
 - **WSL**：`wsl --status` 确认默认分发 Ubuntu 20.04、默认版本 WSL 2。
-- **GitHub Actions**：仓库 Actions 已启用，`allowed_actions=all`，无需 SHA pinning；默认工作流权限为 `read`，不能批准 PR review。
+- **GitHub Actions**：仓库 Actions 已启用，`allowed_actions=all`，无需 SHA 固定；默认工作流权限为 `read`，不能批准 PR 审查。
 - **机器资源**：物理内存 29,860,155,392 字节，16 个逻辑处理器；D 盘可用空间 236,358,885,376 字节，满足本地 V1 构建的容量预期。
 - **数据边界**：以上结果均由用户运行事先列出的只读命令提供，不含 API Key 或其他密钥正文，未修改任何设置。
 
-## 2026-08-08 — OPENCODE COLD-START REVIEW
+## 2026-08-08 — OPENCODE 冷启动复审
 
 - **Agent 与范围**：OpenCode `1.17.14` / `njusehub/deepseek-v4-flash` 在隔离分支尝试 PLAN 任务 1–2，生成 `COLD_START_REPORT.md` 与未提交实现；未创建 `HUMAN_APPROVAL.md`，未合并代码。
 - **复现通过**：`python -m pytest -q` 为 13 passed；`python -m ruff check src tests`、`python -m mypy src`、前端 1 test、TypeScript typecheck 与 Vite build 通过。
@@ -222,24 +200,24 @@ retain their existing source order.
 - **交付卫生**：缺少 `uv.lock` 和 README；`src/museecho.egg-info`、`frontend/tsconfig.tsbuildinfo` 未被忽略；被忽略的 `data/` 依赖手工创建。
 - **结论**：cold-start 有效但任务 1–2 不接受为正式实现。SPEC 功能范围不变；PLAN 已按发现增强。等待用户针对修订提交哈希批准正式实施。
 
-## 2026-08-08 — CORRECTED COLD-START / FINAL SPEC-PLAN REVIEW
+## 2026-08-08 — 修正后的冷启动 / 最终 SPEC-PLAN 复审
 
 - **修正范围**：在隔离分支修正被拒绝的 OpenCode Tasks 1–2 产物；未实施 Tasks 3–24。
 - **提交与审查**：原始证据 `1a3545d`；修正 `07d135e`；三轮独立复审最终为 Critical 0、Important 0、Minor 0。
 - **验证**：合并前及合并后的 `main` 均为 39 个 Python 测试通过，Ruff、格式、mypy 通过；fresh Alembic upgrade/check 通过；Node 22 容器前端测试、typecheck、build 通过，npm audit 0 漏洞。
 - **用户决定**：用户原话“合并到主分支，最后审查修订SPEC和PLAN，批准生成HUMAN_APPROVAL.md”。
 - **合并**：`validation/opencode-cold-start` 通过 `a2d7af5` 合入 `main`；用户未跟踪的课程资料目录未纳入提交。
-- **最终审查**：SPEC 产品范围不变；PLAN 更新门禁、Tasks 1–2 实际提交和后续从 Task 3 开始的基线。未声称 CI、腾讯云部署或最终产品验收已完成。
+- **最终审查**：SPEC 产品范围不变；PLAN 更新门禁、任务 1–2 实际提交和后续从任务 3 开始的基线。未声称 CI、腾讯云部署或最终产品验收已完成。
 
-## 2026-08-08 — HUMAN APPROVAL CREATED
+## 2026-08-08 — 已生成 HUMAN_APPROVAL
 
 - **批准锚点**：最终 SPEC/PLAN 修订提交 `e1ecaae359db129b779f1ddcc83665bca8cdfe1c`；`HUMAN_APPROVAL.md` 同时记录 SPEC/PLAN 的 Git blob 和 SHA-256。
 - **真实性**：批准文件逐字引用用户“合并到主分支，最后审查修订SPEC和PLAN，批准生成HUMAN_APPROVAL.md”的指示；不伪造签名或扩大授权。
-- **实施状态**：正式门禁已放行；Tasks 1–2 已完成，后续从 Task 3 开始。Tasks 3–24、CI、部署、公网验证和最终验收仍未完成。
+- **实施状态**：正式门禁已放行；任务 1–2 已完成，后续从任务 3 开始。任务 3–24、CI、部署、公网验证和最终验收仍未完成。
 
-## 2026-08-08 — TASK 3 / CAPABILITY ACCESS
+## 2026-08-08 — 任务 3 / 能力访问
 
-- **范围**：在隔离工作树 `.worktrees/feat-03-capability-access` 和分支 `feat/03-capability-access` 实施 PLAN Task 3；未修改 SPEC，未合并到 `main`。
+- **范围**：在隔离工作树 `.worktrees/feat-03-capability-access` 和分支 `feat/03-capability-access` 实施 PLAN 任务 3；未修改 SPEC，未合并到 `main`。
 - **TDD**：从服务模块不存在开始 RED→GREEN，覆盖签发、Argon2id 哈希、错误/过期/撤销/跨分析令牌、24 小时上限、Cookie、可信 Origin、双提交 CSRF 和统一 404；审查问题也先以失败测试复现后修复。
 - **安全实现**：原始 capability 只返回浏览器且不持久化；SQLite 仅保存 Argon2id 哈希；每个分析只保留一个当前 capability，替换在同一事务完成；遗留多 grant 只校验最新有效记录；无记录、过期、非 ASCII、超长或解码失败哈希均执行 dummy Argon2 路径，正常 mismatch 与损坏记录分流。
 - **Cookie 边界**：能力 Cookie 使用 `Secure`、`HttpOnly`、`SameSite=Strict`、分析路径和最长 24 小时；CSRF Cookie 保持脚本可读用于双提交；`Max-Age` 按设置时刻的剩余授权寿命计算并在过期时归零。
@@ -249,9 +227,9 @@ retain their existing source order.
 - **Git**：实现检查点 `4cc4c88`；安全审查修复 `36a0729`；Argon2 异常耗时修复 `66b0ed0`。等待人工选择本地合并、推送 PR 或保留分支。
 - **额度策略**：为节省周额度未并行派发实现 Agent，只使用一次聚焦 reviewer 并复用其复核会话。当前工具不提供周额度读数或账户重置操作；若后续平台明确报告额度耗尽，将先提交并记录进度，然后总结并停止。
 
-## 2026-08-08 — TASK 4 / PROVIDER SECRET MANAGEMENT
+## 2026-08-08 — 任务 4 / 提供方 Secret 管理
 
-- **范围**：从 Task 3 合并后的 `main` 创建隔离分支 `feat/04-secret-cli`；实现本机 OS keyring CLI、容器只读外部 Secret 文件和非秘密 provider 配置，未实现远程 Secret API。
+- **范围**：从任务 3 合并后的 `main` 创建隔离分支 `feat/04-secret-cli`；实现本机 OS keyring CLI、容器只读外部 Secret 文件和非秘密 provider 配置，未实现远程 Secret API。
 - **TDD**：首个 RED 为 `museecho.cli` 不存在；逐步覆盖 `set/status/update/clear`、隐藏提示、覆盖/清除、stdout/stderr/log/exception repr 脱敏、resolver 冲突、生产工厂接线、Keyring 异常、路径边界、只读权限、换行长度、缺失文件和无效 UTF-8。
 - **安全边界**：CLI 不接受 Key 命令行参数；Keyring 后端原始异常使用 `from None` 转换为固定安全错误；文件必须是仓库外绝对路径、常规只读文件，POSIX 权限仅允许 owner，读取时使用可用的 `O_NOFOLLOW` 并核对 fd/path 设备与 inode，拒绝符号链接替换、宽权限和异常编码。
 - **配置**：`MUSEECHO_PROVIDER_BASE_URL`、`MUSEECHO_PROVIDER_MODEL` 仅保存非秘密值；`MUSEECHO_PROVIDER_SECRET_FILE` 选择容器只读文件，否则默认使用 OS keyring；`.env.example` 不含真实 Key。
@@ -260,50 +238,50 @@ retain their existing source order.
 - **Git**：实现 `b826810`；Secret 后端边界修复 `3267e86`；无效 UTF-8 脱敏修复 `48d5d0f`。按用户新流程，完成后自动合并并推送 `main`，同时保留任务分支。
 - **额度策略**：未并行派发实现 Agent，仅复用一次聚焦 reviewer 会话；未出现平台额度耗尽提示，当前工具仍不提供额度读数或重置入口。
 
-## 2026-08-08 — TASK 5 / CHUNKED ENCRYPTED AUDIO
+## 2026-08-08 — 任务 5 / 分块加密音频
 
-- **范围**：从 Task 4 合并后的 `main` 创建隔离工作树与分支 `feat/05-encrypted-audio`；实现分块认证加密、精确 Range 解密、密钥先销毁和密文后删除，未接入尚未实施的上传/API 编排。
+- **范围**：从任务 4 合并后的 `main` 创建隔离工作树与分支 `feat/05-encrypted-audio`；实现分块认证加密、精确 Range 解密、密钥先销毁和密文后删除，未接入尚未实施的上传/API 编排。
 - **密码设计**：每个分析生成随机 256-bit DEK，AES-256-GCM 每块使用随机 8-byte 前缀与 32-bit 块号组成唯一 nonce；AAD 绑定格式版本、分析 ID、块大小、块号和明文长度。DEK 使用专用 SecretStore 按操作加载的 256-bit KEK 包装，持久卷与数据库均不保存 KEK 明文。
 - **文件生命周期**：密文先写入同目录随机临时文件，执行文件 `fsync` 后原子替换最终路径；POSIX 下同步目录。数据库写入失败时清理密文且不遮蔽原异常；数据库无 metadata 时重试可回收同分析的崩溃孤儿文件。
 - **擦除与并发**：Range 读取只信任数据库权威 metadata，陈旧调用方副本不能在 key 删除后解密；同进程内所有 store 实例按规范化 root 与 analysis ID 共享条带锁，避免 read/delete 交付窗口；删除先销毁数据库 wrapped DEK，再删除密文。可变 DEK、KEK、分块明文和返回缓冲均尽可能清零，并明确 Python immutable 对象无法可靠零化的限制。
 - **TDD 与审查**：首个 RED 为存储模块不存在；后续审查缺陷均先以失败测试复现，包括合法短读、陈旧 metadata、孤儿最终文件和跨实例 read/delete 竞态。复用一个聚焦 reviewer 两轮复核，最终 Critical 0、Important 0、Minor 0，结论 `READY`。
-- **验证**：Task 5 定向测试 `21 passed`；后端全量 `102 passed, 1 skipped`；Ruff format/check、mypy、`uv lock --check` 通过。前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 与 npm audit 通过；宿主 Node 24 仍对项目 Node 22 约束发出 `EBADENGINE` 警告，既有 cold-start 已在 Node 22 容器验证该基线。
+- **验证**：任务 5 定向测试 `21 passed`；后端全量 `102 passed, 1 skipped`；Ruff format/check、mypy、`uv lock --check` 通过。前端基线 1 个 Vitest、TypeScript typecheck、Vite production 构建与 npm audit 通过；宿主 Node 24 仍对项目 Node 22 约束发出 `EBADENGINE` 警告，既有 cold-start 已在 Node 22 容器验证该基线。
 - **Git**：实现 `ad2f0b7`；生命周期与 SecretStore 加固 `db9898d`；跨实例擦除串行化 `ffa0fe4`。按用户既定流程，在最终验证后自动合并并推送 `main`，同时保留任务分支。
 - **额度策略**：未并行派发实现 Agent，只复用一个聚焦 reviewer；未出现平台额度耗尽提示，当前工具仍不提供额度读数或重置入口。
 
-## 2026-08-08 — TASK 7 / AUDIO DECODING AND FIXTURES
+## 2026-08-08 — 任务 7 / 音频解码与夹具
 
-- **执行顺序**：Task 6 明确依赖 Task 7，因此先保留空的 `feat/06-upload-queue` 分支与工作树，改从当时最新 `main` 创建 `feat/07-audio-decoding`；Task 7 合并后再把 Task 6 快进到最新基线。
+- **执行顺序**：任务 6 明确依赖任务 7，因此先保留空的 `feat/06-upload-queue` 分支与工作树，改从当时最新 `main` 创建 `feat/07-audio-decoding`；任务 7 合并后再把任务 6 快进到最新基线。
 - **真实解码**：通过 FFprobe 先验元数据、FFmpeg 后续解码，把 WAV/MP3 规范化为目标采样率的单声道 little-endian float32 PCM；真实 FFmpeg 9.0 WAV/MP3 集成测试通过，工具缺失会明确失败而不是跳过。
 - **输入与诊断边界**：输入解析前强制 `format_whitelist=wav,mp3` 与 `protocol_whitelist=file,pipe`，阻断 HLS/concat 等嵌套协议访问；拒绝符号链接、损坏文件、超长音频和异常 PCM。stdout/stderr 均硬限长，完整输入路径先脱敏再截断，避免长路径泄漏。
 - **资源与进程边界**：解码结果上限 64 MiB，并按 `bytearray` 与最终 `bytes` 同时存活核算 128 MiB PCM 峰值；超预算在启动 FFprobe 前拒绝。POSIX 使用独立 session/process group，Windows 使用 Job Object 并保留 `taskkill /T` 回退；超时和输出超限均终止进程树、有界等待直接进程与 reader，后代持有输出管道的真实回归测试及时返回。
 - **领域契约与夹具**：`DecodedAudio` 要求完整、非空、单声道、正采样率、little-endian 且所有样本均为有限值，拒绝 NaN/Inf。程序生成正弦、节拍器、大/小三和弦、和弦进行、分段能量、静音、极短与损坏 WAV，并用固定 SHA256 验证可复现性；MP3 在测试时由真实 FFmpeg 编码，不提交受版权保护音频。
 - **TDD 与审查**：从模块不存在的 RED 开始；三轮聚焦复审依次发现并闭环非有限 PCM、无界输出、缺失真实工具覆盖、路径脱敏顺序、端序、夹具文档编码、嵌套协议访问、PCM 峰值与后代进程清理问题。最终 Critical 0、Important 0、Minor 0，结论 `READY`。
-- **验证**：Task 7 定向 `17 passed, 1 skipped`；后端全量 `119 passed, 2 skipped`；两个 skip 均因当前 Windows 会话无符号链接创建权限，生产代码仍主动拒绝符号链接。`ruff format --check src tests`、`ruff check .`、mypy 与 `uv lock --check` 通过；仓库级 `ruff format --check .` 仅报告已批准 `PLAN.md` 历史代码片段的排版差异，不属于运行时代码。
+- **验证**：任务 7 定向 `17 passed, 1 skipped`；后端全量 `119 passed, 2 skipped`；两个 skip 均因当前 Windows 会话无符号链接创建权限，生产代码仍主动拒绝符号链接。`ruff format --check src tests`、`ruff check .`、mypy 与 `uv lock --check` 通过；仓库级 `ruff format --check .` 仅报告已批准 `PLAN.md` 历史代码片段的排版差异，不属于运行时代码。
 - **Git**：实现与合成夹具 `7daa96d`；输出、PCM、非有限值和诊断边界加固 `823d8cb`；输入协议、峰值预算与进程树隔离 `1a692f7`。按用户既定流程，最终验证后自动合并并推送 `main`，同时保留任务分支。
 
-## 2026-08-08 — TASK 6 / UPLOAD VALIDATION AND SINGLE-WORKER QUEUE
+## 2026-08-08 — 任务 6 / 上传校验与单工作线程队列
 
 - **上传边界**：POST `/api/analyses` 在 multipart 解析前执行请求体硬上限；同时校验 `Content-Length` 与实际 ASGI 分块字节数，超限只返回一次统一 413。业务层再以精确流式计数限制 30 MiB，拒绝路径分隔符、伪扩展名、损坏音频、不支持格式和超过 10 分钟的音频。
-- **真实校验与明文隔离**：上传先进入每请求独立临时目录，使用 FFprobe 确认容器与时长，再用 FFmpeg 完整受控解码；验证全局串行，避免并发上传绕过单工作队列同时启动多个 FFmpeg。只有验证成功后才写入 Task 5 的加密存储。临时目录采用严格随机名称并写入精确 owner marker；启动清理仅删除名称与 marker 同时匹配的真实目录，不删除普通文件、链接、junction 或未标记目录。
+- **真实校验与明文隔离**：上传先进入每请求独立临时目录，使用 FFprobe 确认容器与时长，再用 FFmpeg 完整受控解码；验证全局串行，避免并发上传绕过单工作队列同时启动多个 FFmpeg。只有验证成功后才写入任务 5 的加密存储。临时目录采用严格随机名称并写入精确 owner marker；启动清理仅删除名称与 marker 同时匹配的真实目录，不删除普通文件、链接、junction 或未标记目录。
 - **任务与访问能力**：成功上传创建不可猜 UUID、24 小时访问能力 Cookie 与 `QUEUED` 任务，返回 202；数据库、加密存储、访问能力或入队任一步失败时执行有界回滚，不保留无权访问的半成品。
 - **串行队列与恢复**：`SingleWorkerQueue` 保证单进程 FIFO、pending 去重和最多一个 active；启动恢复非终态任务并记录 retry，过期任务不会执行。真实阶段回调成功后才推进 checkpoint，重启从最后持久化阶段继续，不伪造完成。仓储瞬时失败时释放当前 active、保留 pending，并以可由 stop 打断的 50ms 延迟重排到 FIFO 尾部；不会杀死 worker、静默丢任务或忙循环。
 - **TDD 与审查**：从上传路由 404 RED 开始，三轮聚焦复审依次闭环 multipart 临时盘前置上限、验证并发、过期恢复、临时根链接/硬上限、ASGI 双响应、临时目录所有权和仓储异常静默丢任务。最终独立复核为 Critical 0、Important 0、Minor 0，结论 `READY`。
-- **验证**：Task 6 相关上传、队列与仓储定向 `46 passed`；后端全量 `150 passed, 2 skipped`；Ruff format/check、mypy 与 `uv lock --check` 通过。两个 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件，生产代码主动拒绝链接输入。
+- **验证**：任务 6 相关上传、队列与仓储定向 `46 passed`；后端全量 `150 passed, 2 skipped`；Ruff format/check、mypy 与 `uv lock --check` 通过。两个 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件，生产代码主动拒绝链接输入。
 - **Git**：核心实现 `8217cb4`；资源与恢复边界 `c1da09e`；请求响应、临时目录所有权和 worker 异常隔离 `76a642c`；仓储故障重排 `622ebe4`。按用户既定流程，最终验证后自动合并并推送 `main`，同时保留任务分支。
 - **额度策略**：未新建并行实现 Agent，仅复用既有聚焦 reviewer；未出现平台额度耗尽提示，当前工具仍不提供额度读数或重置入口。
 
-## 2026-08-08 — TASK 8 / 波形、节奏与能量事实
+## 2026-08-08 — 任务 8 / 波形、节奏与能量事实
 
 - **事实契约**：新增版本化的 `SignalFeatureConfig` 与严格 JSON 原生输出；波形以固定数量桶保存 min/max，节奏公开 BPM、置信度和单调合法的 beat positions，能量同时公开原始归一化 RMS 序列与宏观变化事件。静音、弱信号、非周期噪声、弱细分歧义和证据不足路径统一返回 unknown，不伪造音乐事实。
 - **节奏证据**：使用 librosa onset/beat，但在固定 BPM 搜索、onset 周期性、拍点规则性、显著性、覆盖率和交替重音一致性共同支持时才输出。弱八分音符细分不会被高置信误报为 240 BPM；120/180/220 BPM 合成节拍器均在验收容差内。
 - **能量证据**：保留细粒度 RMS 点供 UI 时间轴使用；变化事件改用 0.5 秒稳健中值包络和跨窗口比较，避免把每个拍点当成结构变化。60/120/180/220 BPM 稳定节拍均为 0 个宏观事件，同时 0.15 秒、0.25 秒及 1 秒处持续幅度跃升仍能定位；不完整尾帧不会制造伪事件，事件置信度随阈值裕量变化。
 - **资源与输入边界**：节奏输入降采样到有界采样率，onset 和 beat 以带上下文的 30 秒块处理；FFT、频带数、块时长和采样率均有上下限及交叉约束，实际降采样后若样本数小于 `n_fft` 会在进入 librosa 前返回 unknown。600 秒噪声实测约 0.87 秒完成、额外峰值 16.11 MiB、无节奏和能量伪事件。
 - **TDD 与独立复审**：从模块缺失 RED 开始；四轮聚焦复审依次关闭白噪声误报、快节奏半拍、尾帧、置信度常量、长音频内存、弱细分翻倍、拍点级能量事件、资源参数、早期持续能量盲区和低采样率 FFT 警告。最终独立复审为 Critical 0、Important 0、Minor 0，结论 `READY`。
-- **验证**：Task 8 定向 `43 passed`；后端全量 `193 passed, 2 skipped`；`ruff format --check src tests`、`ruff check src tests`、mypy 与 `uv lock --check` 通过。前端 Vitest 1 项、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件，生产代码主动拒绝链接输入。
+- **验证**：任务 8 定向 `43 passed`；后端全量 `193 passed, 2 skipped`；`ruff format --check src tests`、`ruff check src tests`、mypy 与 `uv lock --check` 通过。前端 Vitest 1 项、TypeScript typecheck、Vite production 构建通过，`npm audit --audit-level=high` 为 0 vulnerabilities。两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件，生产代码主动拒绝链接输入。
 - **Git**：核心实现 `f941d53`；置信度与资源加固 `3de45a1`；弱细分/宏观趋势修复 `d0af694`；早期能量与实际 FFT 输入保护 `80bda00`。按既定流程保留 `feat/08-signal-features`，最终验证后自动合并并推送 `main`。
 
-## 2026-08-09 — TASK 9 / 调性与调式估计
+## 2026-08-09 — 任务 9 / 调性与调式估计
 
 - **事实契约**：新增 `TonalityEstimate` 与严格 JSON 原生输出，公开 tonic、mode、confidence、stability 和算法版本；24 个候选调性只作为内部诊断，不进入公开载荷或后续 LLM 输入。音名统一使用升号规范名，降 D 实际音高输出 C#。
 - **真实调性证据**：把 PCM 规范化到 22.05 kHz，使用 tuning-aware chroma 与 Krumhansl 大小调模板排序；C 大调、A 小调、30 cents 偏调和不同受支持输入采样率均获得一致结果。
@@ -311,68 +289,68 @@ retain their existing source order.
 - **稳定性**：用 1/2/4 秒多尺度局部调性赢家与调性兼容关系计算时间稳定度，并取最弱尺度；远关系调性频繁切换或前后分段切换均降为 unknown。
 - **资源与输入边界**：分析以 30 秒带上下文分块执行，静音块不调用 tuning estimator；采样率只接受 8–192 kHz 的整数，超过 600 秒在进入分析前拒绝。600 秒输入实测未形成与全长谱图等比例的大型中间对象。
 - **TDD 与独立复审**：从模块不存在的 RED 开始，审查发现的单三和弦误判、调性切换稳定度、弱/短证据、采样率不一致和静音块警告均先以失败测试复现后修复。最终独立复审为 Critical 0、Important 0、Minor 0，结论 `READY`。
-- **验证**：Task 9 定向 `32 passed`；后端全量 `225 passed, 2 skipped`；Ruff format/check、mypy 与 `uv lock --check` 通过。两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件，生产代码主动拒绝链接输入。
+- **验证**：任务 9 定向 `32 passed`；后端全量 `225 passed, 2 skipped`；Ruff format/check、mypy 与 `uv lock --check` 通过。两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件，生产代码主动拒绝链接输入。
 - **Git**：核心实现 `902a5b8`；持续调性证据、采样率与资源边界修复 `e793097`。按既定流程保留 `feat/09-tonality`，最终验证后自动合并并推送 `main`。
 
-## 2026-08-09 — TASK 10 / 结构分段与和弦时间线
+## 2026-08-09 — 任务 10 / 结构分段与和弦时间线
 
 - **和弦事实契约**：新增 24 个大小三和弦模板、序列平滑与最短事件门控；可选调性只在声学最优候选不变时提供弱先验，不会把调外或歧义证据强制解释成调内和弦。静音、噪声、七和弦、加音和弦、半音阶集合、过短或低置信片段统一输出 `unknown`，所有事件使用版本化严格 JSON 并完整覆盖音频时长。
 - **结构事实契约**：共享分块 chroma 特征，以多尺度 novelty 生成边界、复现 profile 聚类生成 `A/B/C…` 标签，并统一执行至少 1 秒段长、段级证据与 unknown 门控。支持一般 ABC、ABAB、ABCA、ABCBA、等长和非等长 ABA；均匀重复至少三次的循环保守返回 unknown，但带有真实和声变奏或尾段时继续保留结构证据。
 - **资源与输入边界**：只接受 8–192 kHz 的整数采样率、有限的一维 PCM 和不超过 600 秒的输入；分析统一规范到 22.05 kHz，chroma 按 30 秒块提取并跳过静音 tuning，避免构造全曲平方级 self-similarity 矩阵。600 秒探针约 3.39 秒完成，额外峰值内存约 138 MiB。
 - **TDD 与独立复审**：从模块缺失 RED 开始，七轮聚焦复审依次闭环 key hint 强制、扩展和弦误报、静音吸收、局部伪结构、非等长 ABA、最短段、一般多段、音级依赖和循环变奏等反例。最终独立复审为 Critical 0、Important 0、Minor 0，结论 `READY`。
-- **验证**：Task 10 联合分析定向 `161 passed`；全量后端按分析与其余测试分片合计 `343 passed, 2 skipped`，两项 skip 仍为 Windows 当前会话无符号链接创建权限。Ruff、mypy、`git diff --check` 通过；最终前端基线与锁文件检查在合并前执行。
+- **验证**：任务 10 联合分析定向 `161 passed`；全量后端按分析与其余测试分片合计 `343 passed, 2 skipped`，两项 skip 仍为 Windows 当前会话无符号链接创建权限。Ruff、mypy、`git diff --check` 通过；最终前端基线与锁文件检查在合并前执行。
 - **Git**：核心实现 `30d63c1`，六轮审查加固 `8e6af06`、`8ca8f35`、`31b5388`、`8ac4027`、`1099cd3`、`bae61b1`，最终稳定段与循环修复 `cd5bcb9`、`53f8add`。按既定流程保留 `feat/10-structure-chords`，最终验证后自动合并并推送 `main`。
 
-## 2026-08-09 — TASK 11 / 确定性乐理引擎
+## 2026-08-09 — 任务 11 / 确定性乐理引擎
 
 - **事实边界**：新增不依赖 Web、存储或 LLM 的纯函数 `explain_chord` 与不可变 `ChordTheory`；只解释受支持的大小三和弦。未知、扩展和弦或无效输入不返回组成音、级数或功能，调外和弦不伪造唯一功能。
 - **规则与拼写**：分离音名、和弦解析和调式功能表；保留显式升降号拼写并规范 Unicode 升降记号。大小调级数和候选功能均来自静态规则；小调升导音属和弦明确标注非自然小调音阶及限制。
 - **不确定性**：等音输入保留原和弦组成音，同时返回当前调式期望拼写的候选与固定限制码；缺少合法调性上下文时仅保留和弦内部事实，不推断罗马数字或功能。输出为版本化严格 JSON 原生数据，不包含生成式文本。
 - **TDD 与复核**：首个 RED 为 `museecho.theory` 模块不存在；公共包接口和小调属和弦等音候选也分别以失败测试固定后修复。聚焦复核未发现剩余 Critical、Important 或 Minor 缺陷。
-- **验证**：Task 11 定向 `79 passed`；后端互补分片合计 `422 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件。Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
+- **验证**：任务 11 定向 `79 passed`；后端互补分片合计 `422 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件。Ruff format/check、mypy、`uv lock --check` 和差异检查通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production 构建通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
 - **Git**：核心实现 `273b39b`；等音上下文与公共接口修复 `46b1cd6`。按既定流程保留 `feat/11-theory-engine`，最终验证后自动合并并推送 `main`。
 
-## 2026-08-09 — TASK 12 / EVIDENCE 资格与时间窗策略
+## 2026-08-09 — 任务 12 / EVIDENCE 资格与时间窗策略
 
 - **事实策略**：新增不可变、版本化 `EvidencePolicy`，分别门控 rhythm、energy、tonality、section、chord 与继承和弦置信度的 deterministic_theory；低置信、unknown、空值、格式伪造或字段越界统一保留为不可用于 LLM 的 `unknown`，不泄漏原事实。
-- **白名单与值校验**：builder 只读取批准的分析字段，不读取 `emotion`、`genre`、`instrument`；selector 除 kind 白名单外重新检查当前策略阈值、公开字段形状、音名/大小三和弦、结构标签、拍号、能量范围及 Task 11 乐理 DTO 枚举，不能只信任持久化的 `eligible_for_llm` 标志。
+- **白名单与值校验**：builder 只读取批准的分析字段，不读取 `emotion`、`genre`、`instrument`；selector 除 kind 白名单外重新检查当前策略阈值、公开字段形状、音名/大小三和弦、结构标签、拍号、能量范围及任务 11 乐理 DTO 枚举，不能只信任持久化的 `eligible_for_llm` 标志。
 - **引用与选择**：Evidence ID 基于分析/source 身份或能量内容生成，不随策略版本或无关 time-series 插入变化；重复能量事实去重。片段选择严格使用左闭右开时间交集，拒绝跨分析混合，并按稳定顺序同时执行条数与规范 JSON 字符预算。
 - **TDD 与复核**：首个 RED 为 `museecho.application.evidence` 不存在；后续以失败测试闭环低置信乐理传播、高置信 unknown、字段伪装、畸形值、预算边界、可变结果重验和 kind/algorithm 运行时篡改。聚焦复核未发现剩余 Critical、Important 或 Minor 缺陷。
-- **验证**：Task 12 定向 `37 passed`，领域/仓储/Evidence 相关回归 `62 passed`；后端互补分片合计 `459 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件。Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
+- **验证**：任务 12 定向 `37 passed`，领域/仓储/Evidence 相关回归 `62 passed`；后端互补分片合计 `459 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件。Ruff format/check、mypy、`uv lock --check` 和差异检查通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production 构建通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
 - **Git**：核心实现 `c14d87e`；信任边界复验修复 `2e8da87`。按既定流程保留 `feat/12-evidence-policy`，最终验证后自动合并并推送 `main`。
 
-## 2026-08-09 — TASK 13 / EVIDENCE-FIRST 解释与确定性回退
+## 2026-08-09 — 任务 13 / EVIDENCE-FIRST 解释与确定性回退
 
-- **服务边界**：`ExplanationService` 在调用 provider 前重新应用 Task 12 的 kind、值形状、阈值与时间资格；无合格 Evidence 或无 provider 时不访问网络。provider 只接收 Evidence 深拷贝，不能修改 fallback 使用的原事实；返回 Draft 必须是 `llm` 模式、非空有界文本，且只能引用实际选择中的 UUID。
-- **HTTP 适配器**：新增 OpenAI-compatible `/chat/completions` 客户端，Key 每次从 Task 4 `SecretStore` 按需读取，只放 Authorization header；请求使用结构化 Evidence JSON、固定系统约束、零温度与 JSON response format。客户端禁重定向、流式限制响应大小，分别限制请求/响应，执行连接/总超时预算和最多一次受控重试。
-- **失败回退**：缺 Key、无证据、超时/传输失败、408/429/5xx 重试耗尽、非成功状态、超大响应、非 JSON、额外字段、空/重复/未知 Evidence ID 或异常 Draft 全部返回确定性 fallback。fallback 使用中文事实类型、公开值、置信度与算法来源，并明确证据不能证明唯一因果关系。
+- **服务边界**：`ExplanationService` 在调用 provider 前重新应用任务 12 的 kind、值形状、阈值与时间资格；无合格 Evidence 或无 provider 时不访问网络。provider 只接收 Evidence 深拷贝，不能修改 fallback 使用的原事实；返回草稿必须是 `llm` 模式、非空有界文本，且只能引用实际选择中的 UUID。
+- **HTTP 适配器**：新增 OpenAI-compatible `/chat/completions` 客户端，Key 每次从任务 4 `SecretStore` 按需读取，只放 Authorization header；请求使用结构化 Evidence JSON、固定系统约束、零温度与 JSON response format。客户端禁重定向、流式限制响应大小，分别限制请求/响应，执行连接/总超时预算和最多一次受控重试。
+- **失败回退**：缺 Key、无证据、超时/传输失败、408/429/5xx 重试耗尽、非成功状态、超大响应、非 JSON、额外字段、空/重复/未知 Evidence ID 或异常草稿全部返回确定性回退。回退使用中文事实类型、公开值、置信度与算法来源，并明确证据不能证明唯一因果关系。
 - **数据与依赖**：问题仅在调用栈中使用，本任务不持久化原问题或写日志；Key 不进入正文、repr 或异常。项目已锁定的 `httpx2` 从 dev extra 移到运行时依赖，锁文件仅调整 MuseEcho 的依赖归属，未升级包版本。
 - **TDD 与复核**：首个 RED 为 explanation service 模块不存在；后续以失败测试闭环 provider 白名单观察、未知引用、请求/响应/超时边界、单次重试、HTTP 禁重定向、provider 篡改隔离和教学型 fallback。聚焦复核未发现剩余 Critical、Important 或 Minor 缺陷。
-- **验证**：Task 13 定向 `31 passed`；后端互补分片合计 `490 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件。Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
+- **验证**：任务 13 定向 `31 passed`；后端互补分片合计 `490 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的已知平台条件。Ruff format/check、mypy、`uv lock --check` 和差异检查通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production 构建通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
 - **Git**：核心实现 `a59db06`；provider 隔离与 fallback 教学说明 `20ecd8a`。按既定流程保留 `feat/13-evidence-explanations`，最终验证后自动合并并推送 `main`。
 
-## 2026-08-09 — TASK 14 / 分析编排、完整 API 与生命周期清理
+## 2026-08-09 — 任务 14 / 分析编排、完整 API 与生命周期清理
 
 - **真实闭环**：新增 `AnalysisCoordinator`，从独立加密音频逐阶段执行 decode、signal、tonality、structure、chords、deterministic theory 与 Evidence，真实 checkpoint 在阶段成功后持久化；终态重复调度幂等返回，阶段 observer 只接收任务 ID、阶段与单调时钟耗时，不记录文件名、音频或问题正文。
 - **明文隔离**：解密输入仅写入权限受限的专用临时目录；目录使用严格随机名称和精确 owner marker。coordinator 启动只清理名称与 marker 同时匹配的崩溃遗留明文，保留普通文件、链接、junction 和未标记目录。
 - **完整 API**：实现授权 status/result、受控 audio、Evidence explanation 与 CSRF/Origin 保护的 delete。结果从 SQLite 聚合并再次执行领域校验；畸形结果返回稳定错误码。Range 支持完整、闭区间、开区间和 suffix 读取，合法范围返回 206/Content-Range，畸形、多范围、超长数字或不可满足范围统一 416。
-- **解释边界**：Explanation API 手动归一化请求校验，问题、片段、额外字段和非有限值失败均返回稳定 `invalid_explanation_request`；只选择 Task 12 合格 Evidence，持久化 SHA256 问题摘要而非原问题。每分析每分钟限制 10 次，第 11 次返回 429 与 Retry-After；未完成结果返回 409。
+- **解释边界**：Explanation API 手动归一化请求校验，问题、片段、额外字段和非有限值失败均返回稳定 `invalid_explanation_request`；只选择任务 12 合格 Evidence，持久化 SHA256 问题摘要而非原问题。每分析每分钟限制 10 次，第 11 次返回 429 与 Retry-After；未完成结果返回 409。
 - **删除与清理**：SQLite 在同一事务内撤销全部访问授权并置空 wrapped DEK，之后删除密文、音频元数据与级联业务行。文件系统失败时保持不可访问且密钥已销毁，同时保留密文路径供下轮重试；单项失败不会饿死后续到期项，observer 只记录任务 ID 与稳定错误码。授权后恰逢清理的读取竞态统一降为 404。
 - **TDD 与复核**：从 coordinator/result/audio/explanation/delete/cleanup 不存在的 RED 开始；故障注入闭环密钥销毁后 unlink 失败、原子删除准备、孤儿明文、超长 Range、畸形结果、速率限制、终态重调度和授权后清理竞态。本地聚焦审查最终 Critical 0、Important 0、Minor 0，结论 `READY`。
-- **验证**：Task 14 定向 `16 passed`；PLAN 指定 `tests/api tests/integration` 为 `100 passed, 1 skipped`；最终后端互补分片合计 `506 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的既有平台条件。Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production build 通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
+- **验证**：任务 14 定向 `16 passed`；PLAN 指定 `tests/api tests/integration` 为 `100 passed, 1 skipped`；最终后端互补分片合计 `506 passed, 2 skipped`，两项 skip 仍为当前 Windows 会话无法创建符号链接的既有平台条件。Ruff format/check、mypy、`uv lock --check` 和差异检查通过；前端基线 1 个 Vitest、TypeScript typecheck、Vite production 构建通过，`npm audit --audit-level=high` 为 0 vulnerabilities。
 - **Git**：核心实现与审查加固 `0b5342e`。按既定流程保留 `feat/14-analysis-api`，最终验证后自动合并并推送 `main`。
 
-## 2026-08-09 — TASK 15 / WARM EDITORIAL 前端基础与可访问组件
+## 2026-08-09 — 任务 15 / WARM EDITORIAL 前端基础与可访问组件
 
 - **设计系统**：以已批准的 `DESIGN.md` 与 Open Design `Warm Editorial` 为品牌契约，集中定义暖纸画布、近黑文字、陶土主强调、森林绿分析、琥珀乐理、危险红、字体、间距、圆角、焦点与运动 tokens；组件样式不新增无语义颜色，不使用玻璃拟态、霓虹渐变或通用 AI dashboard 布局。
 - **单画布基础**：`AnalysisPage` 提供唯一命名的音乐解析工作区，桌面以 12 栏语义关系并排、平板收敛、手机单列；空状态只说明“尚未选择音频”和后续真实流程，不填充歌曲、情绪、乐器、和弦或其他虚构分析事实。
 - **可访问组件**：新增安全默认 `type="button"` 的三类 Button、稳定唯一标题关联的 Panel、同时使用文字与线型差异的 ConfidenceBadge，以及包含故障与下一步操作并通过 `role="alert"` 宣告的 ErrorNotice。所有控件共享可见 `:focus-visible`，并在 `prefers-reduced-motion` 下禁用非必要动画。
 - **自动与视觉验收**：组件测试覆盖命名 landmark、真实空状态、置信度文本编码、错误宣告、Panel 唯一 ID、focus/reduced-motion CSS 契约和直接读取 tokens 计算的 WCAG AA 对比度。浏览器实测 1440px 桌面与 390px 手机均无横向溢出；手机左右 gutter 16px 且为单列；关键对比度为 4.65–16.12:1，浏览器无 warning/error。
-- **测试基础修复**：全量验证发现 `tests/unit/analysis/test_chords.py` 与 `tests/unit/theory/test_chords.py` 在 pytest 默认模式下同名冲突；以已复现 RED 固定为 `--import-mode=importlib`，恢复文档规定的单命令全量收集。当前受限会话同时将 `TEMP/TMP` 指向 worktree 内专用目录，避免系统 Temp 权限影响测试，不改变产品行为。
+- **测试基础修复**：全量验证发现 `tests/unit/analysis/test_chords.py` 与 `tests/unit/theory/test_chords.py` 在 pytest 默认模式下同名冲突；以已复现 RED 固定为 `--import-mode=importlib`，恢复文档规定的单命令全量收集。当前受限会话同时将 `TEMP/TMP` 指向工作树内专用目录，避免系统 Temp 权限影响测试，不改变产品行为。
 - **验证与复核**：前端 `10 passed`，TypeScript typecheck、Vite production build 与 `npm audit --audit-level=high`（0 vulnerabilities）通过；后端全量 `506 passed, 2 skipped`，Ruff format/check、mypy、`uv lock --check` 通过。两项 skip 仍为当前 Windows 会话无法创建符号链接的既有平台条件。聚焦审查修复非语义纸纹色与误导性 Ready 状态后，Critical 0、Important 0、Minor 0，结论 `READY`。
 - **Git**：核心实现 `b035b05`。按既定流程保留 `feat/15-design-system`，最终验证后自动合并并推送 `main`。
 
-## 2026-08-09 — TASK 16 / 上传、隐私同意与真实进度
+## 2026-08-09 — 任务 16 / 上传、隐私同意与真实进度
 
 - **上传与同意边界**：新增 WAV/MP3 与 30 MiB 客户端预检，但界面明确以后端验证为准；合法使用和最长 24 小时加密保留两项同意未同时确认时不可上传。上传使用 multipart 与 Cookie 访问能力，前端只把不可猜分析 ID 写入 URL，不存储或显示令牌。
 - **诚实进度**：XHR 只展示传输层实际上传字节，100% 后单独标识“等待后端验证”；TanStack Query 按 1.5 秒读取真实 status，展示后端阶段、百分比、保留期限与数据来源。界面明示服务端未提供可靠剩余时间，不使用定时器伪造 ETA；complete/failed/deleted/expired 及读取错误都停止自动轮询。
@@ -382,7 +360,7 @@ retain their existing source order.
 - **验证**：前端 `31 passed`，TypeScript typecheck、Vite production build 与 `npm audit --audit-level=high`（0 vulnerabilities）通过；后端全量 `506 passed, 2 skipped`，Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过。两项 skip 仍为当前 Windows 会话无符号链接创建权限的既有平台条件。
 - **Git**：核心实现 `93ba4f6`。按既定流程保留 `feat/16-upload-progress-ui`，最终验证后自动合并并推送 `main`。
 
-## 2026-08-09 — TASK 17 / 播放器、MUSIC DNA 与同步结构地图
+## 2026-08-09 — 任务 17 / 播放器、MUSIC DNA 与同步结构地图
 
 - **统一时间状态**：新增单一 `useTimeline` 控制器，集中管理播放器引用、当前秒数和规范化拖选区间；原生音频通过授权 Range URL 播放，播放事件、点击和弦、键盘步进、指针拖选、双端范围控件与播放头都复用同一秒级坐标，不在渲染层复制时间状态。
 - **真实可视化**：Music DNA 只展示当前已持久化的时长、过门 BPM/调性/拍点、真实能量均值及可靠和弦/段落计数，并明确 `source_kind`。结构地图把波形、段落、和弦、能量、重要事件、播放头与选区放入完全对齐的数据列；Canvas/SVG 轨道同时提供可访问的文本事件列表。
@@ -392,7 +370,7 @@ retain their existing source order.
 - **验证**：前端全量 `51 passed`，TypeScript typecheck、Vite production build 与 `npm audit --audit-level=high`（0 vulnerabilities）通过；后端全量 `506 passed, 2 skipped`，Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过。两项 skip 仍为当前 Windows 会话无符号链接创建权限的既有平台条件。
 - **Git**：核心实现 `13a6346`。按既定流程保留 `feat/17-music-workspace`，最终验证后自动合并并推送 `main`。
 
-## 2026-08-09 — TASK 18 / EVIDENCE 问答、保留期限与主动删除
+## 2026-08-09 — 任务 18 / EVIDENCE 问答、保留期限与主动删除
 
 - **问答与 Evidence First**：新增片段问题前置校验，要求选区有限、非空且不超过 120 秒，问题非空且不超过 500 字符；答案明确区分 `llm` 与确定性 `fallback`。客户端除严格解析响应外，还会确认所有 LLM 引用都属于当前结果、已通过 `eligible_for_llm` 门控并与所问片段重叠；校验失败时不显示任何生成式音乐事实。无合格引用的 fallback 明确保持 `unknown`。
 - **共享时间轴**：Evidence 引用只映射到当前持久化结果中的合格 UUID；点击引用同时更新播放器、播放头和选区，并平滑滚回同一结构时间轴。集成测试固定 8–12 秒引用会把共享状态同步为对应区间，不创建第二套时间状态。
@@ -404,17 +382,17 @@ retain their existing source order.
 - **验证**：前端全量 `66 passed`，TypeScript typecheck、Vite production build 与 `npm audit --audit-level=high`（0 vulnerabilities）通过；后端全量 `506 passed, 2 skipped`，Ruff format/check、mypy、`uv lock --check` 和 diff-check 通过。两项 skip 仍为当前 Windows 会话无法创建符号链接的既有平台条件。
 - **Git**：核心实现 `b1c55ec`。按既定流程保留 `feat/18-explanation-privacy-ui`，最终验证后自动合并并推送 `main`。
 
-## 2026-08-09 — TASK 19 / 端到端、安全、可访问性与性能验证
+## 2026-08-09 — 任务 19 / 端到端、安全、可访问性与性能验证
 
 - **真实系统 E2E**：新增 Playwright 1.61.1 根测试包与独立 TypeScript 门禁；测试专用服务使用临时自签名 HTTPS、SQLite、加密音频仓库、单工作队列和真实 MIR 协调器。4 秒流式生成的无版权 C–G–Am–F WAV 完成上传→分析→Music DNA→Range 音频→拖选→和弦→确定性 fallback 问答→永久删除，捕获 console、page、失败请求及 5xx，最终均为 0。Windows 服务由 Playwright global setup 直接持有，并通过随机关停信号优雅停止队列与 Uvicorn，不泄漏后台进程。
 - **响应式与可访问性**：真实完成态在 1440×900、768×1024、390×844 三档视口均无横向溢出；桌面问答/保留面板双栏，平板和手机顺序堆叠。键盘原生范围控件能建立选区，时间轴、和弦按钮和删除控件均通过可访问名称操作。
 - **安全边界**：真实能力 Cookie 下验证 32 字节 Range 返回 `206` 与正确 `Content-Range`；无能力凭证时 status/result/audio 与随机不存在 UUID 的 404 载荷不可区分；缺失/错误 CSRF 的解释请求统一 404 且资源保持可读；32 MiB multipart 在解析/分析前返回 413。审计日志只记录 method/path/status，实测不含问题正文、文件名、Cookie 名称或值。
-- **五分钟性能证据**：`scripts/benchmark.py` 流式生成 300 秒、22.05 kHz 单声道代表样本，走真实上传校验、加密持久化、队列、全部 DSP/MIR 阶段与结果持久化。Windows 进程亲和性强制为 2 核并在 `finally` 恢复；实测墙钟 `11.201268s`、峰值 RSS `323964928` 字节、240 个和弦事件和 484 条 Evidence，低于 90 秒/4 GiB 门槛。Docker 守护进程本会话不可用，故诚实标记内存为进程峰值观测而非容器硬上限，硬限额留待 Task 20。
+- **五分钟性能证据**：`scripts/benchmark.py` 流式生成 300 秒、22.05 kHz 单声道代表样本，走真实上传校验、加密持久化、队列、全部 DSP/MIR 阶段与结果持久化。Windows 进程亲和性强制为 2 核并在 `finally` 恢复；实测墙钟 `11.201268s`、峰值 RSS `323964928` 字节、240 个和弦事件和 484 条 Evidence，低于 90 秒/4 GiB 门槛。Docker 守护进程本会话不可用，故诚实标记内存为进程峰值观测而非容器硬上限，硬限额留待任务 20。
 - **TDD 与复核**：首轮依次暴露选区未滚入视口、回退标签选择器歧义、favicon 404、Windows 子进程回收、WinAPI 64 位句柄、SQLite 连接池清理和亲和性未恢复；均先以失败测试/复现固定后修复。本地聚焦审查另关闭默认系统 Chrome 不可重复和 E2E TypeScript 未门禁两项，最终 Critical 0、Important 0、Minor 0，结论 `READY`。受当前会话约束未派生子代理。
 - **验证**：后端全量 `507 passed, 2 skipped`（新增 300 秒性能门）；前端全量 `66 passed`；真实浏览器 `4 passed`。Ruff format/check、mypy（44 source files）、前端与 E2E 两套 TypeScript、Vite production build、`uv lock --check`、diff-check，以及前端/根 npm audit（均 0 vulnerabilities）通过。两项 skip 仍为当前 Windows 会话无法创建符号链接的既有平台条件。
 - **Git**：核心实现 `9ad408c`。按后续统一分支规则使用并保留 `feat/19-system-verification`；最终验证后自动推送功能分支、合并并推送 `main`。
 
-## 2026-08-10 — TASK 20 / 生产容器、双 CI 与依赖/Secret 审计
+## 2026-08-10 — 任务 20 / 生产容器、双 CI 与依赖/Secret 审计
 
 - **发行物与运行时：** 交付非 root 多阶段 app/gateway 镜像、Caddy 同源 HTTPS 网关、只读 Secret 准备卷、加密数据持久卷、只读根文件系统、健康检查和生产运行时装配；前端 Docker clean build 直接锁定 `@types/node`，不依赖根目录 hoisting。
 - **质量门禁：** GitHub Actions 与 GitLab CI 均覆盖锁定依赖、lint、类型检查、后端/前端测试、build、HTTPS E2E、Secret scan、Docker build 与 HIGH/CRITICAL Trivy 门禁；GitLab 后端 job 固定为 `unit-test`。README 和 THIRD_PARTY_NOTICES 完成发行、凭据、安全、限制与许可证说明。
@@ -422,158 +400,177 @@ retain their existing source order.
 - **验证：** fresh Secret scan 检查 165 个 tracked 文件通过；app/gateway `Config.User` 都为 `10001:10001`；PowerShell 语法和两份 CI YAML 解析通过。Ruff format/check、mypy、前端 66 个测试、两套 TypeScript、production build 和根/前端 npm audit（均 0 vulnerabilities）通过。主机全量 Python 为 `508 passed, 2 skipped, 8 failed`：仅因受限 PATH 缺少 ffmpeg/ffprobe；镜像内两项工具存在，容器 smoke 已覆盖真实分析。未下载工具、未修改测试、未声称远端 CI 已运行。
 - **Git：** `70dde35`（`build: package and verify production distribution`）。分支保留给控制器后续审查和集成。
 
-## 2026-08-10 — TASK 20 / 审查修复轮 2（未完成）
+## 2026-08-10 — 任务 20 / 审查修复轮 2（未完成）
 
-- **边界与真实性：** 移除 GitHub/GitLab 所有 Trivy 未修复项豁免参数，不再把 suppression 后的零结果写成镜像安全通过。现有缓存对重建 app 镜像仍报 169 HIGH、12 CRITICAL，181 项均无 `FixedVersion`；gateway 为零，因此 Task 20 明确保持 blocked/incomplete，未声称远端 CI 运行。
-- **Secret 与 profiles：** 删除持久 Secret 准备卷，生产/开发都从仓库外目录直接只读挂载 `/run/secrets`；Linux 默认 `/etc/museecho/secrets`。Compose `production` 只含 app/gateway，`development` 只含回环 app-dev 与独立数据卷。Windows smoke fixture 移到 OS task-temp，失败/成功均严格 down、删卷、清临时文件并暴露清理失败。
+- **边界与真实性：** 移除 GitHub/GitLab 所有 Trivy 未修复项豁免参数，不再把抑制处理后的零结果写成镜像安全通过。现有缓存对重建 app 镜像仍报 169 HIGH、12 CRITICAL，181 项均无 `FixedVersion`；gateway 为零，因此任务 20 明确保持阻塞/未完成，未声称远端 CI 运行。
+- **Secret 与 profiles：** 删除持久 Secret 准备卷，生产/开发都从仓库外目录直接只读挂载 `/run/secrets`；Linux 默认 `/etc/museecho/secrets`。Compose `production` 只含 app/gateway，`development` 只含回环 app-dev 与独立数据卷。Windows smoke fixture 移到操作系统任务临时目录，失败/成功均严格 down、删卷、清临时文件并暴露清理失败。
 - **审计与运行时：** 新增 `scripts/license-policy.json` 与纯标准库 audit，精确覆盖 79 个 Python 锁项和两个 npm lock 的许可证；Secret scan 覆盖 tracked/non-ignored untracked、主流 provider 格式及仅凭据赋值上下文的熵检测，并对 missing/unreadable fail closed。后台 expiry cleanup 首次失败发安全日志并把 health 降为 503，恢复后回到 ready；异常正文不入日志。
 - **验证：** 无网络、只读 repo/测试依赖挂载的现有 app 镜像全量 pytest 为 `524 passed` 且无 warning；production container smoke exit 0；focused `26 passed, 2 skipped`；前端 `66 passed`、Ruff format/check、mypy 45 files、前端/E2E typecheck、build、两次 npm audit、license audit、synthetic/real Secret scan、CI/Compose YAML 与 profile/mount 断言通过。没有下载任何新工具/依赖，也未把 pytest 加入生产镜像。
 
-## 2026-08-10 — TASK 20 / 审查修复轮 3（未完成）
+## 2026-08-10 — 任务 20 / 审查修复轮 3（未完成）
 
 - **审查核验与 pushback：** 初审把 `httpx2` 判为拼写错误不成立；`pyproject.toml`、`uv.lock` 与许可证策略都锁定真实包名 `httpx2`，因此通知已恢复该名称。其余复审发现均在当前实现中复现并修复。
-- **生产合约与清理：** production app 的 Secret source 固定为宿主 `/etc/museecho/secrets`，环境变量不能改成仓库相对路径；smoke 只通过 OS task-temp override 注入合成 Secret，且最外层 `try/finally` 包含 fixture 创建。容器 pytest 现在把 `docker rm --force` 非零退出计为验证失败，并严格删除精确依赖临时目录。
+- **生产合约与清理：** production app 的 Secret source 固定为宿主 `/etc/museecho/secrets`，环境变量不能改成仓库相对路径；smoke 只通过操作系统任务临时目录覆盖注入合成 Secret，且最外层 `try/finally` 包含 fixture 创建。容器 pytest 现在把 `docker rm --force` 非零退出计为验证失败，并严格删除精确依赖临时目录。
 - **确定性审计：** 许可证门禁新增显式许可集合、两个 npm lock 的完整 SHA-256 inventory，以及所有固定容器镜像、Caddy/xcaddy、Go replacements、Debian/Alpine 包与 FFmpeg 的精确清单；两套 CI 的 native audit 命令按独立失败边界执行。Secret scan 新增 `github_pat_`，并只在显式 credential 赋值上下文检查高熵 lowercase/hex；合成覆盖安全 hash、provider token、lowercase/hex、锁定不可读文件和 tracked missing 文件。
 - **RED→GREEN 与总门禁：** production mount 测试先暴露相对 source，smoke setup probe 先暴露参数/生命周期缺口；许可证新增测试由 3 个预期失败变为 `6 passed`；Secret 合成依次暴露 `github_pat_` 与 hex 漏检后全绿；pytest cleanup probe 先证明 rm 失败被吞掉，修复后通过。最终 production smoke exit 0（57.2s），无网络容器 pytest `527 passed`，前端 `66 passed`、build/typecheck、Ruff/mypy、npm audits、真实/合成审计与 YAML/PowerShell 解析通过。一个前端删除测试的固定到期时间在本日变为过去，聚焦 RED 定位后仅把其“未到期”测试前提改成 2099，未改产品行为。
-- **仍阻塞：** fresh offline Trivy 对 app 仍为 169 HIGH + 12 CRITICAL，181 项 `FixedVersion` 全为空（hard gate exit 1）；gateway 为 0（exit 0）。未下载工具/依赖，未运行或声称远端 CI，Task 20 保持 blocked/incomplete。
+- **仍阻塞：** 全新离线 Trivy 对 app 仍为 169 HIGH + 12 CRITICAL，181 项 `FixedVersion` 全为空（硬门禁 exit 1）；gateway 为 0（exit 0）。未下载工具/依赖，未运行或声称远端 CI，任务 20 保持阻塞/未完成。
 
-## 2026-08-10 — TASK 20 / 安全审查修复轮 4（READY）
+## 2026-08-10 — 任务 20 / 安全审查修复轮 4（READY）
 
 - **攻击面收紧：** 上传在启动媒体工具前严格校验 MP3 Layer III 或无压缩 PCM/IEEE-float WAV；两个工具均在 `-i` 前使用相同的 `wav,mp3`、`file,pipe` 和 PCM/MP3 decoder allowlist。真实 IMA-ADPCM、Layer I/II、不一致 RIFF 声明都在工具前失败关闭，原有 8/16/24/32-bit PCM、32/64-bit float 与 MP3 行为保留。
 - **可证明 VEX：** 纯标准库审计精确匹配 181 个 finding tuple、38 个受影响包的完整 dpkg 路径、57 个源码/Docker/配置/锁文件哈希及镜像内 zlib MiniZip 符号 probe；任何新增、缺失、变更或未证明 CVE 都不生成 VEX。GitHub/GitLab 均先保存无 suppression raw JSON，再审计、应用 67 条逐 CVE OpenVEX；GitHub 失败时仍保留证据。
 - **最终产物与门禁：** `--pull=false` 产品 Dockerfile 构建中基础、pip/uv、apt/FFmpeg、venv 层全部 `CACHED`，只执行 `COPY src/`，无下载。app 为 `sha256:ab1afb4db2e601920944c88bc1b73718a97534de42564ce65e9191949bab34a5`，gateway 为 `sha256:c20e61e9558d16045f7aa839f1d29bbf940da7874b85db0a96f5acc3edbb4e63`；完整 raw app 181（169 HIGH/12 CRITICAL、67 CVE、fixed 0）、gateway 0，精确 audit exit 0，app VEX/gateway 门禁均 exit 0 且可见 0。
-- **验证与审查：** 与最终镜像 51/51 源文件 SHA-256 完全一致的锁定运行时完成 `573 passed`；post-review production smoke exit 0；聚焦 `58 passed, 1 skipped`，前端 `66 passed`、真实 Chrome E2E `4 passed`，Ruff/mypy、type/build、license/npm/Secret/container contracts 通过。第一轮审查提出 3 组 Important 后全部 RED→GREEN；第二轮 Critical/Important/Minor 均为 0，结论 `READY`。
+- **验证与审查：** 与最终镜像 51/51 源文件 SHA-256 完全一致的锁定运行时完成 `573 passed`；审查后 production smoke exit 0；聚焦 `58 passed, 1 skipped`，前端 `66 passed`、真实 Chrome E2E `4 passed`，Ruff/mypy、type/build、license/npm/Secret/container contracts 通过。第一轮审查提出 3 组 Important 后全部 RED→GREEN；第二轮 Critical/Important/Minor 均为 0，结论 `READY`。
 - **Git：** 安全实现提交 `f6ad8679af1f913f412fe5a29c9d6fbe9c8ea921`。未推送、未合并，且没有声称远端 GitHub Actions/GitLab CI 已运行。
 
-## 2026-08-11 — TASK 20 / 安全审查修复轮 5（进行中）
+## 2026-08-11 — 任务 20 / 安全审查修复轮 5（进行中）
 
 - **范围收敛：** 保留符合标准且失败关闭的 PCM/IEEE-float WAVEFORMATEXTENSIBLE：`cbSize >= 22`、有界声明扩展、`0 < valid_bits <= container_bits`（包括 32-bit container 的 24 valid bits），以及精确 GUID/速率/通道/block-align/byte-rate 校验和两个媒体工具的相同 allowlist。
 - **MP3 边界：** 仅支持可由非零 bitrate index 计算帧大小的常规 MPEG Layer III。锁定 FFmpeg 5.1.9 拒绝了尝试的 free-format 真实流，所以移除未完成的 free-format 接受/fixture/正向集成实验，新增工具启动前的负向拒绝测试；不声明所有 MP3 子类型受支持。
 - **GitLab 证据顺序：** 同一不可变 app tar 现在要求 raw 无 suppression 扫描 → package/probe inventory → 精确 audit/OpenVEX → VEX gate；raw/audit artifacts 设为 `when: always`，且 contract tests 拒绝顺序、identity 或证据漂移。
 - **验证与状态：** cached-only final Docker build 的 base/uv/apt/FFmpeg/venv 层全为 CACHED，最终锁定 Linux 为 `583 passed`，production smoke、Ruff/mypy、前端 66 tests/type/build 通过；hash 已刷新。仓库 `tmp/trivy-cache/db/trivy.db` 通过显式 read/write mount 供 Trivy 0.70.0 在 `--network none`、offline/no-update 下使用；final app `sha256:5c12e66ae1b5b63f40c32d2e4ddc8a96157abc8f8952d87ff0fd4982b18934ed`、gateway `sha256:ef3c87c9657ca052c02af74271219b36b260a712d0567ed8560410ec37e36317` 的 raw app 为 181（169 HIGH/12 CRITICAL、67 CVE、fixed 0）、gateway 0，精确 audit 为 181 tuple/38 packages/67 statements/residual 0，app VEX 与 gateway raw gate 均 exit 0、可见 0。远端 CI 未运行。
 
-## 2026-08-11 — TASK 23 / Engineering Audit 与高风险缺陷闭环
+## 2026-08-11 — 任务 23 / 工程审计与高风险缺陷闭环
 
-- **Checker TDD：** `tests/unit/test_engineering_audit.py` 首次因 `scripts.check_engineering_audit` 不存在而 RED；最终 27 个 schema、固定域、重复/删除/降级、时间、RED+GREEN、ACCEPTED/BLOCKED、虚假 scan/release 与 compact security manifest mutation 全部通过。审计固定 15 个域与 9 个真实 finding，结论为 4 High FIXED、2 Medium FIXED、3 Medium BLOCKED、0 OPEN。
+- **校验器 TDD：** `tests/unit/test_engineering_audit.py` 首次因 `scripts.check_engineering_audit` 不存在而 RED；最终 27 个 schema、固定域、重复/删除/降级、时间、RED+GREEN、ACCEPTED/BLOCKED、虚假 scan/release 与 compact security manifest mutation 全部通过。审计固定 15 个域与 9 个真实 finding，结论为 4 High FIXED、2 Medium FIXED、3 Medium BLOCKED、0 OPEN。
 - **六组缺陷闭环：** 逐文件 Bash parse、空 release comparison、development partial-start/down 双失败、container smoke no-build identity、production observability、dirty-context egg-info 可复现性均先复现失败再最小修复。`verify.ps1` 纳入三个新增 PowerShell lifecycle/shell 合约。
 - **安全链：** 正式 Dockerfile 在 `--network none` 下因 pip/apt BuildKit layer 缺失而 fail-closed；未开放网络。使用明确标记为非发布的 Task20-final runtime 派生审计镜像，删除旧 egg-info 后仅覆盖 current `src/`。Trivy 0.70.0 使用只读 Task20 DB 子目录与 tmpfs fanal cache，fresh app raw 为 181 occurrences / 67 CVE（169 High、12 Critical），gateway 为 0；exact package/runtime policy audit、67-statement OpenVEX gate、gateway unsuppressed gate、tar/config/raw release identity 均 exit 0。提交 compact deterministic manifest，不提交 1.8MB raw 或大 tar/DB。
-- **回归：** 锁定 Linux current-source runtime 为 `681 passed in 248.21s`；风险聚焦为 `82 passed, 1 skipped`；Linux 五分钟预算为 `1 passed in 51.24s`；当前 frontend Vitest 为 12 files / 66 tests；Secret real/synthetic、license、Ruff/mypy、Functional Audit、production no-build smoke 与 cleanup 均通过。
+- **回归：** 锁定 Linux 当前源码运行时为 `681 passed in 248.21s`；风险聚焦为 `82 passed, 1 skipped`；Linux 五分钟预算为 `1 passed in 51.24s`；当前 frontend Vitest 为 12 files / 66 tests；Secret real/synthetic、license、Ruff/mypy、Functional Audit、production no-build smoke 与 cleanup 均通过。
 - **诚实边界：** 宿主缺 `pwsh`、`uv`、ffmpeg/ffprobe；前端精确 lock 的保留缓存缺 `@types/node` 且 root Playwright junction 目标已消失，禁止 `npm ci` 后本轮 type/build 与 current Chrome E2E 未运行。GitHub/GitLab remote CI、腾讯云/DNS/SSH/公网 TLS/24h/rollback 与学生验收均未运行。BuildKit 在一次 `--pull=false` frontend cache probe 中仍做了 registry metadata/auth resolution，但 `--network none` 阻止 npm 包获取；发现后未再 build。
-- **状态：** Task 23 Engineering Audit 完成，实现从 `31b2351fcf308b4aeb3ce8b1931afafe3350522d` 延续至最终复审修复 `f697d13`；`TASK23-AUDIT` 从 Functional Audit blocker 中移除，Task 24 和外部/环境 blocker 保持开放。分支已非 force 推送并建立 GitHub 草稿 PR #1；未执行云部署，未代写学生 `REFLECTION.md`。
+- **状态：** 任务 23 Engineering Audit 完成，实现从 `31b2351fcf308b4aeb3ce8b1931afafe3350522d` 延续至最终复审修复 `f697d13`；`TASK23-AUDIT` 从 Functional Audit 阻塞项中移除，任务 24 和外部/环境阻塞项保持开放。分支已非 force 推送并建立 GitHub 草稿 PR #1；未执行云部署，未代写学生 `REFLECTION.md`。
 
-## 2026-08-11 — TASK 23 / review fix round 1
+## 2026-08-11 — 任务 23 / 复审修复第 1 轮
 
-- **RED→GREEN:** Audit evidence isolation produced 40 expected failures before 43 focused mutations passed. Trusted no-build identity, safe 500/background failure observability, waiting-only queue metrics, cleanup-only reporting, Functional truth, and direct Linux checker execution each retained a focused failing reproduction before repair.
-- **Current evidence:** The non-release current-source derivative is app daemon/config `b0231299…` / `89c7b7ad…`. Fixed-DB offline evidence remains 181 app occurrences / 67 CVEs / 0 VEX residual and 0 gateway occurrences. The trusted no-build smoke passed both startup identity checks and exact cleanup.
-- **Truth boundary:** Functional Audit is `28 PASS / 12 PARTIAL / 0 FAIL`; Task 23 frontend type/build and current Chrome E2E are NOT_RUN, not inherited from historical Task 22 evidence. Engineering findings remain 4 High FIXED, 2 Medium FIXED, 3 Medium BLOCKED, and 0 OPEN.
-- **Full-suite checkpoint:** The first review run was 721 passed / 6 expected stale-audit failures. After audit repair, the next run was 727 passed / 1 stale cross-document statistics failure; final green evidence is recorded only after that contract and every process document agree.
-- **Review closure:** Final locked Linux was `728 passed in 342.25s`; final focused review was 139 passed; trusted no-build, static/type, Secret/license, lifecycle/shell contracts, Functional `28/12/0`, and Engineering 9-finding checker all passed. The exact wrapper remained exit 1 because host `pwsh` and `uv` are absent; no dependency/tool download was used to hide the boundary.
-- **Review commit:** `07cf82687df5fa4adba9448c1fbaf1a81871a29e` (`fix: harden engineering audit evidence`); hash backfill is documentation-only. No push or external write was performed.
+- **RED→GREEN：** Audit 证据隔离先产生 40 个预期失败，随后 43 个聚焦 mutation 通过。可信
+  no-build 身份、安全的 500/后台失败可观测性、仅统计 waiting 的队列指标、仅清理报告、Functional
+  事实和直接 Linux 校验器执行，在修复前都保留了聚焦失败复现。
+- **当前证据：** 非 Release 的当前源码派生 app daemon/config 为 `b0231299…` / `89c7b7ad…`。
+  固定 DB 的离线证据保持 181 个 app occurrence / 67 个 CVE / 0 个 VEX residual，gateway 为 0 个
+  occurrence。可信 no-build Smoke 通过两次启动身份检查和精确清理。
+- **真实性边界：** Functional Audit 为 `28 PASS / 12 PARTIAL / 0 FAIL`；任务 23 前端 type/build
+  和当前 Chrome E2E 为 `NOT_RUN`，不继承任务 22 历史证据。Engineering finding 保持
+  4 High `FIXED`、2 Medium `FIXED`、3 Medium `BLOCKED`、0 `OPEN`。
+- **全套件检查点：** 首次复审 run 为 721 passed / 6 个预期陈旧 Audit 失败。修复 Audit 后，下一次
+  run 为 727 passed / 1 个陈旧跨文档统计失败；只有该合约与全部过程文档一致后才记录最终绿色证据。
+- **复审收尾：** 最终锁定 Linux 为 `728 passed in 342.25s`，最终聚焦复审为 139 passed；可信
+  no-build、static/type、Secret/license、生命周期/shell 合约、Functional `28/12/0` 和 Engineering
+  9-finding 校验器均通过。因宿主缺少 `pwsh` 和 `uv`，精确 wrapper 保持 exit 1；未通过下载依赖或
+  工具掩盖该边界。
+- **复审提交：** `07cf82687df5fa4adba9448c1fbaf1a81871a29e`
+  （`fix: harden engineering audit evidence`）；哈希回填仅修改文档。未执行 push 或外部写入。
 
-## 2026-08-12 — TASK 23 / review fix round 2
+## 2026-08-12 — 任务 23 / 复审修复第 2 轮
 
-- **RED→GREEN:** 默认 Engineering completion CLI 指向空 evidence/DB 目录时旧实现仍 exit 0；修复后缺任一 retained material、摘要/JSON/scan 结构、计数/tuple、DB 时间、本地镜像、release identity、policy/runtime/VEX/inventory 漂移均失败关闭。完整 checker 文件为 89 passed，实际 retained-material strict CLI exit 0。
-- **审计真值：** 新增 `ENG-010 Medium BLOCKED` 记录正式 current-source Dockerfile 在离线 BuildKit cache 不完整时真实 exit 1，并明确 derivative 不可发布。当前共 10 findings：4 High FIXED、2 Medium FIXED、4 Medium BLOCKED、0 OPEN；Functional Audit 保持 28/12/0。
-- **远端发布：** 用户明确要求发布 Task 20 起的本地分支；已在认证的 `Zzz148080/MuseEcho` 上无强推创建 `feat/20-production-delivery`、`ops/21-tencent-delivery`、`audit/22-functional`。Task 23/24 仅在各自最终复审通过后发布。
+- **RED→GREEN:** 默认 Engineering completion CLI 指向空 evidence/DB 目录时旧实现仍 exit 0；修复后缺任一 retained material、摘要/JSON/scan 结构、计数/tuple、DB 时间、本地镜像、release identity、policy/runtime/VEX/inventory 漂移均失败关闭。完整校验器文件为 89 passed，实际 retained-material strict CLI exit 0。
+- **审计真值：** 新增 `ENG-010 Medium BLOCKED` 记录正式当前源码 Dockerfile 在离线 BuildKit cache 不完整时真实 exit 1，并明确 derivative 不可发布。当前共 10 findings：4 High FIXED、2 Medium FIXED、4 Medium BLOCKED、0 OPEN；Functional Audit 保持 28/12/0。
+- **远端发布：** 用户明确要求发布任务 20 起的本地分支；已在认证的 `Zzz148080/MuseEcho` 上无强推创建 `feat/20-production-delivery`、`ops/21-tencent-delivery`、`audit/22-functional`。任务 23/24 仅在各自最终复审通过后发布。
 - **复审轮 2 提交：** `a240f64bcd57a34818356805b9a177086668752c`（strict retained-material completion 与 `ENG-010`）；哈希回填为纯文档提交。
 
-## 2026-08-12 — TASK 23 / review fix round 3
+## 2026-08-12 — 任务 23 / 复审修复第 3 轮
 
-- **跨审计 RED→GREEN：** Functional E902 与 acceptance contract 仍接受旧 `9 findings / 3 blocked`；新增测试从真实 Engineering Audit 推导统计并先失败。E902 改为实际 strict-material 命令与 `10/4` 后，Functional、Engineering 与交付契约 134 tests、两个 CLI 均通过；Task 23 顶部统计表同步为 4 Medium BLOCKED。
+- **跨审计 RED→GREEN：** Functional E902 与 acceptance contract 仍接受旧 `9 findings / 3 blocked`；新增测试从真实 Engineering Audit 推导统计并先失败。E902 改为实际 strict-material 命令与 `10/4` 后，Functional、Engineering 与交付契约 134 tests、两个 CLI 均通过；任务 23 顶部统计表同步为 4 Medium BLOCKED。
 - **复审轮 3 提交：** `93baab9f6f20d6e34dc393a837a6d6cb2a5fddaf`（跨审计统计与严格材料命令一致性）。
 
-## 2026-08-12 — TASK 23 / review fix round 4
+## 2026-08-12 — 任务 23 / 复审修复第 4 轮
 
 - **CURRENT evidence RED→GREEN：** 独立复审实测 acceptance 单文件已为 37 tests，而 E014 仍固定 36；同步 E014/contract 为 37，并让跨审计测试从 Engineering findings 推导 OPEN 总数，不再硬编码 `open=0`。修正 Generated 时间边界后，acceptance 37 tests 与跨审计/交付联合 134 tests 均通过；Functional 仍为 `28/12/0`，Engineering 严格材料门仍为 10 findings。
 
-## 2026-08-12 — TASK 23 / review fix round 5
+## 2026-08-12 — 任务 23 / 复审修复第 5 轮
 
 - **真实命令与历史边界 RED→GREEN：** E014 曾把宿主不可用的 `uv run` 命令记为 current exit 0，E030 仍记录 36 tests，初始 9 findings/`29/11` 表格也未标注 superseded。三个聚焦测试先失败；现固定实际 `.venv\Scripts\python.exe` 命令、E030 结果与历史标签。新增两个跨审计测试后单文件实际为 39 tests，精确命令已返回 `39 passed`。
 - **网页交付：** 独立最终复审为 0 Critical / 0 Important / 0 Minor；`audit/23-engineering` 已推送至 `origin`，GitHub 草稿 PR #1 为 `https://github.com/Zzz148080/MuseEcho/pull/1`。
-- **合并结果 RED→GREEN：** main checkout 的既有 `src/museecho.egg-info` 曾被 runtime boundary builder 重新纳入，导致 7 个审计失败；跟踪确认该目录已由 `.dockerignore` 排除。新 dirty-checkout RED 先失败，边界 builder 对任意 `.egg-info` 路径组件排除后 GREEN；聚焦 168 tests 与锁定 Linux `753 passed, 1 skipped` 通过。修复提交 `acb2cb09e7c62e104ef64331f105514d6ce3016a`。
+- **合并结果 RED→GREEN：** main checkout 的既有 `src/museecho.egg-info` 曾被运行时边界构建器重新纳入，导致 7 个审计失败；跟踪确认该目录已由 `.dockerignore` 排除。新 dirty-checkout RED 先失败，边界构建器对任意 `.egg-info` 路径组件排除后 GREEN；聚焦 168 tests 与锁定 Linux `753 passed, 1 skipped` 通过。修复提交 `acb2cb09e7c62e104ef64331f105514d6ce3016a`。
 
-## 2026-08-12 — TASK 23 / merged checkout line endings
+## 2026-08-12 — 任务 23 / 合并后 checkout 换行符
 
-- **RED→GREEN:** `main` and the reviewed worktree had identical Git trees but
-  legal CRLF/LF working-tree differences produced different Functional Audit
-  boundary digests. A focused test failed first; text boundary bytes now use a
-  canonical LF form while NUL-containing binary content remains byte-exact.
-  The acceptance file passes 41 tests and the Functional CLI passes at
-  28/12/0; E014/E030 are bound to the collected file count.
+- **RED→GREEN：** `main` 与已复审工作树的 Git tree 完全一致，但合法的 CRLF/LF 工作树差异
+  产生了不同的 Functional Audit 边界摘要。聚焦测试先失败；文本边界字节现统一使用规范 LF，
+  含 NUL 的二进制内容仍保持逐字节精确。acceptance 文件通过 41 个测试，Functional CLI 以
+  28/12/0 通过；E014/E030 绑定到实际收集的文件数。
 
-- **Remote CI RED→GREEN local fix:** GitHub Actions quality exposed four Linux
-  mypy errors for Windows-only `ctypes.WinDLL` and
-  `subprocess.CREATE_NEW_PROCESS_GROUP`. `mypy --platform linux` reproduced
-  the exact RED locally; platform-safe `getattr` boundaries make Linux and
-  Windows mypy green without changing runtime behavior. The current-source
-  audit image and all raw→audit→VEX→identity materials were regenerated
-  offline, and trusted no-build smoke passed on the refreshed identity.
-  The refreshed locked Linux suite passed 755 tests with one explicit skip.
+- **远端 CI RED→GREEN 本地修复：** GitHub Actions quality 暴露了 Windows 专用
+  `ctypes.WinDLL` 和 `subprocess.CREATE_NEW_PROCESS_GROUP` 引起的四个 Linux mypy 错误。
+  `mypy --platform linux` 在本地精确复现 RED；平台安全的 `getattr` 边界在不改变运行时行为的
+  前提下使 Linux 和 Windows mypy 转绿。当前源码 Audit image 以及全部
+  raw→audit→VEX→identity 材料离线重新生成，可信 no-build Smoke 在刷新后的身份上通过。
+  刷新后的锁定 Linux suite 为 755 个测试通过、1 个显式 skip。
 
-## 2026-08-12 — TASK 23 / remote evidence truth review
+## 2026-08-12 — 任务 23 / 远端证据真实性复审
 
-- **Review findings:** the audit still recorded pre-fix default mypy evidence,
-  described GitHub Actions as NOT_RUN after run `31523692229` had failed, and
-  timestamped the strict material check before the final retained materials.
-- **RED→GREEN:** Functional audit gained fixed non-PASS evidence `E906` and
-  Engineering audit gained `E037`; the initial checkers rejected the new
-  record because Engineering stopped at `E036` and Functional required every
-  external-blocker record to be NOT_RUN. The minimal fix accepts only a fixed
-  executed evidence contract with `supports_pass=False`; 162 audit, mutation,
-  and security-policy tests passed, and both strict CLIs returned zero.
-- **Current truth:** GitHub run `31523692229` failed quality on `eec6dd0` and
-  skipped E2E/distribution; GitLab remains NOT_RUN. Windows-host and explicit
-  Linux mypy each pass all 46 source files locally. A pushed rerun is still
-  required before remote CI can be classified green.
+- **复审发现：** Audit 仍记录修复前的默认 mypy 证据；run `31523692229` 失败后仍把 GitHub
+  Actions 描述为 `NOT_RUN`；严格材料检查的时间戳还早于最终保留材料。
+- **RED→GREEN：** Functional Audit 新增固定的非 `PASS` 证据 `E906`，Engineering Audit 新增
+  `E037`；初版校验器拒绝新记录，因为 Engineering 只到 `E036`，且 Functional 要求每条外部
+  阻塞项记录均为 `NOT_RUN`。最小修复仅接受固定且已执行、`supports_pass=False` 的证据合约；
+  162 个 audit、mutation 和 security-policy 测试通过，两个严格 CLI 均返回 0。
+- **当前事实：** GitHub run `31523692229` 在 `eec6dd0` 上 quality 失败并跳过 E2E/distribution；
+  GitLab 保持 `NOT_RUN`。Windows 宿主和显式 Linux mypy 均在本地通过全部 46 个源文件；远端 CI
+  在完成推送重跑前不能归类为绿色。
 
-## 2026-08-13 — TASK 23/24 final review and Product Audit
+## 2026-08-13 — 任务 23/24 最终复审与产品审计
 
-- Task 23's later review waves fixed Linux typing, historical/current evidence identity, and
-  checkout-line-ending drift before Task 24 published the 13-domain Product Audit, fixed
-  17-section Delivery Report, fail-closed validator, and student-reserved checklist.
-- Task 24 controller evidence stopped at the internal-CA browser boundary; this remains
-  `CERT_TRUST_BLOCKED` and was not rewritten as a manual product PASS.
+- 任务 23 后续复审依次修复 Linux typing、历史/当前证据身份和 checkout 换行漂移；随后任务 24
+  发布 13 域 Product Audit、固定 17 节的 Delivery Report、失败关闭式校验器和学生保留 checklist。
+- 任务 24 控制器证据停在内部 CA 浏览器边界；该状态保持 `CERT_TRUST_BLOCKED`，未被改写为人工产品 `PASS`。
 
-## 2026-08-14 — Task 24 后产品维护
+## 2026-08-14 — 任务 24 后产品维护
 
-- Trusted result presentation, common audio formats, exact 100 MiB upload, bounded Broadcast
-  WAV padding, on-demand single-Range playback, FLAC attached-picture validation, and conservative
-  rhythm v3 were implemented through the commits and plans listed in PLAN section 3.1.
-- Historical Task 24 CI evidence remained historical; each later implementation required its own
-  current verification rather than inheriting an older green run.
+- 可信结果呈现、常见音频格式、精确 100 MiB 上传、有界 Broadcast WAV padding、按需单 Range
+  播放、FLAC attached-picture 校验和保守 rhythm v3，均通过 PLAN §3.1 所列提交与计划实现。
+- 历史任务 24 CI 证据继续保持为历史；每项后续实现都需要自己的当前验证，不能继承旧的绿色 run。
 
-## 2026-08-16 — Final CI closure and delivery reconciliation
+## 2026-08-16 — 最终 CI 收尾与交付对账
 
-- Linux formatting, historical audit identity, pre-push Docker contracts, and the current-image
-  cJSON vulnerability-policy drift were closed in order, ending at product/CI implementation SHA
-  `0674f74f4097e46cee98c4715a62ad5aa55101cf`.
-- PR #3 GitHub run `31966788273` passed quality in 5m43s, E2E in 3m10s, and distribution in
-  7m30s on that exact SHA. GitLab was not run and remains supplemental; no Release or cloud
-  deployment is claimed.
-- Final reconciliation updated tracked delivery/audit records and validator contracts, while
-  student reflection and acceptance text remained untouched. Ignored `tmp/` cleanup is local-only
-  and is not represented as a tracked GitHub deletion.
+- Linux formatting、历史 Audit 身份、预推送 Docker 合约和当前镜像 cJSON 漏洞策略漂移依次
+  关闭，最终产品/CI 实现 SHA 为 `0674f74f4097e46cee98c4715a62ad5aa55101cf`。
+- PR #3 GitHub run `31966788273` 在该精确 SHA 上通过 quality（5m43s）、E2E（3m10s）和
+  distribution（7m30s）。GitLab 未运行并保持 supplemental；此时不声称 Release 或云端部署完成。
+- 最终对账更新了已跟踪的交付/Audit 记录和校验器合约，学生反思与验收文本保持不变。
+  被忽略的 `tmp/` 清理仅发生在本地，不表述为 GitHub 上已跟踪的删除。
 
-## 2026-08-17 — v0.1.0 offline runtime Release candidate
+## 2026-08-17 — v0.1.0 离线运行 Release 发布
 
-- **Skills and approval:** `using-superpowers`, `brainstorming`, `writing-plans`,
-  `executing-plans`, `using-git-worktrees`, `test-driven-development`,
-  `systematic-debugging`, and `verification-before-completion` were applied. The
-  user approved an offline runtime package and automatic continuation through
-  formal Release publication. Work remained on the existing PR #3 feature
-  branch so its integration history would not be split.
-- **Scope:** Added a runtime-only Compose file and PowerShell Verify/Import/Start/
-  Smoke/Stop receiver, current `release-images.json` support in trusted no-build
-  smoke, deterministic file-selection packaging, checksums, reproduction
-  guidance, and CI retention. Startup forbids builds and pulls; Stop preserves
-  encrypted data. No cloud deployment or offline source-build claim was added.
-- **TDD evidence:** receiver missing RED → synthetic runtime GREEN; current
-  identity legacy-only RED → legacy/current contract GREEN; packager missing RED
-  → packaging GREEN; CI contract 3 failed → 3 passed. The combined identity/CI
-  focus returned 13 passed. Formal Release publication and downloaded-asset
-  smoke remain future evidence at this checkpoint.
-- **Windows baseline note:** full local `verify.ps1` stopped at Ruff format because
-  eight pre-existing files contain mixed CRLF/LF working-tree bytes under global
-  `core.autocrlf=true`; Git-filtered hashes exactly equal HEAD, so no unrelated
-  source formatting was committed. Linux CI remains the authoritative format
-  gate for normalized repository bytes.
+- **Skills 与批准：** 使用了 `using-superpowers`、`brainstorming`、`writing-plans`、
+  `executing-plans`、`using-git-worktrees`、`test-driven-development`、
+  `systematic-debugging` 和 `verification-before-completion`。用户批准离线运行包，并授权自动继续到
+  正式 Release 发布。工作继续留在既有 PR #3 功能分支，避免拆分集成历史。
+- **范围：** 新增 runtime-only Compose、PowerShell Verify/Import/Start/Smoke/Stop 接收端、可信
+  no-build Smoke 对当前 `release-images.json` 的支持、确定性文件选择打包、checksum、复现指南和
+  CI retention。启动禁止 build 和 pull；Stop 保留加密数据。未新增云端部署或离线源码构建声明。
+- **TDD 证据：** 缺失接收端 RED → synthetic runtime GREEN；current identity 仅支持 legacy RED →
+  legacy/current 合约 GREEN；缺失打包器 RED → packaging GREEN；CI 合约 3 failed → 3 passed。
+  identity/CI 联合聚焦为 13 passed。这是发布前检查点；最终证据记录在下文，不倒填到早期命令。
+- **Windows 基线说明：** 完整本地 `verify.ps1` 在 Ruff format 停止，因为全局
+  `core.autocrlf=true` 下八个既有文件的工作树字节混合 CRLF/LF；经 Git filter 的哈希与 HEAD
+  完全相等，因此未提交无关源码格式化。Linux CI 继续作为规范化仓库字节的权威 format 门。
+- **最终验证：** release identity/接收端 TOCTOU 加固提交为 `b314c00`；最终宿主 suite 为
+  `910 passed / 5 skipped`，Ruff、Windows/Linux mypy（各 47 个文件）、diff-check、接收端测试、
+  打包测试和真实离线 Smoke 均通过。独立最终复审为 0 Critical、0 Important、0 Minor。
+- **集成与 CI：** PR #3 转为 Ready，通过 run `31996576568`，并以
+  `d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1` 合入。main run `31997390847` 的
+  quality、E2E 和 distribution 均通过。Actions 存储配额跳过工作流制品上传，但没有跳过
+  security、package 或 distribution 执行步骤。精确 CI tar 字节未留存，因而无法下载或与 Release
+  比较。在用户要求自动继续至正式发布的边界内，Release 使用从该精确 main SHA 重建的来源
+  fallback，并针对发布字节重跑 release identity、packaging、checksum、no-build Smoke 和发布后
+  下载验证。main CI 配置的 license/vulnerability/VEX 门在其内部构建上通过，但不声称是发布 tar
+  的直接逐字节证据，也明确不声称其与不可用的 CI tar 字节相等。
+- **已发布 Release：** 正式、非草稿、非预发布的 `v0.1.0` 于
+  `2026-08-17T05:54:50Z` 发布，恰含 `museecho-app.tar`、`museecho-gateway.tar`、
+  `museecho-offline-runtime-v0.1.0.zip` 和 `SHA256SUMS.txt`。四项资产均从 GitHub 回下载并与
+  Release SHA-256 一致。解压包完成 Verify、导入、manifest identity、no-build Compose、HTTPS
+  health、WAV 分析、重启持久化、无明文音频和清理验证。
+
+## 2026-08-17 — v0.1.0 发布后证据重放
+
+- **真实回下载：** 在重新建立 `gh` keyring 授权后，从正式 Release 的新空目录重新下载四项资产；
+  远端 Release 状态、发布时间、资产名称/大小/摘要、annotated Tag 最终 commit、本地四文件
+  SHA-256 与 `SHA256SUMS.txt` 三个载荷条目均由失败关闭式验证器重新核对。
+- **系统化调试与 TDD：** 首次完整 Linux 回归的 17 个失败共同来自 `/tmp` 的 `noexec` 边界；
+  verifier 的测试命令改为无 shell 参数前缀后，聚焦 18 项与 Linux 全量 `941 passed / 14 skipped`
+  转绿。真实接收重放随后暴露 Python 子进程继承 Codex PowerShell 7 `PSModulePath`、遮蔽 Windows
+  PowerShell 5.1 标准 `Get-FileHash` 的根因。污染路径回归测试先按预期失败，最小修复仅清理接收
+  子进程的该变量，随后测试转绿。
+- **接收方证据：** 修复后的验证器对已回下载的发布字节重新执行远端/本地身份与 checksum 校验，
+  再依次完成 `Verify` 和完整 no-build `Smoke`。Ruff、47-source mypy、根 E2E TypeScript、前端
+  typecheck、12 files / 80 tests、生产 build、248-file Secret scan，以及交付/审计/Release 聚焦
+  `256 passed / 1 skipped` 均通过。PR 与合并后的最终 CI 证据仍由任务 6 步骤 5 等待闭环。

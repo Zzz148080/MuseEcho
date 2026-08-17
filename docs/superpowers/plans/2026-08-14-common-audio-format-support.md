@@ -1,19 +1,19 @@
-# Common Audio Format Support Implementation Plan
+# 常见音频格式支持实施计划
 
-**Goal:** Safely accept and analyze common non-DRM music-file formats without a front-end/back-end format mismatch.
+**目标：** 安全接受和分析常见的非 DRM 音乐文件格式，避免前端与后端的格式支持不一致。
 
-**Architecture:** A single server format registry ties suffixes to detected FFmpeg demuxers and canonical stored media types. Format-specific signature validation rejects malformed inputs before the existing bounded FFmpeg probe/decode; the coordinator maps stored type back to a safe temporary suffix. The front end lists the same public extensions as the server registry tests.
+**架构：** 单一服务端格式注册表将后缀名与检测到的 FFmpeg 解复用器及规范存储媒体类型关联。格式专用的签名验证会在现有有界 FFmpeg 探测/解码前拒绝畸形输入；协调器把存储类型映射回安全的临时后缀。前端公开的扩展名列表与服务端注册表测试保持一致。
 
-## Global Constraints
+## 全局约束
 
-- Keep the 30 MB upload and 10-minute duration limits unchanged.
-- Do not trust MIME type or extension alone.
-- Permit only WAV/MP3/FLAC/AAC/ALAC/Vorbis/Opus audio decoders and required demuxers over `file,pipe`.
-- Do not support DRM or proprietary encrypted download formats.
-- Do not alter result-page design or analysis algorithms.
+- 30 MB 上传限制和 10 分钟时长限制保持不变。
+- 不得只信任 MIME 类型或扩展名。
+- 在 `file,pipe` 协议上，只允许 WAV/MP3/FLAC/AAC/ALAC/Vorbis/Opus 音频解码器及所需解复用器。
+- 不支持 DRM 或专有加密下载格式。
+- 不改动结果页设计或分析算法。
 
-## Tasks
+## 任务
 
-1. Add server registry, signature validation, full-stream probe validation, exact FFprobe/FFmpeg allowlists, and real acceptance/rejection integration coverage.
-2. Restore encrypted pipeline source suffix from the shared canonical media-type registry and test every canonical type.
-3. Expand the browser chooser using exact suffix filters only, update upload guidance/README, and verify frontend/container/smoke paths.
+1. 增加服务端注册表、签名验证、全流探测验证、精确的 FFprobe/FFmpeg 白名单，以及真实的接受/拒绝集成覆盖。
+2. 从共享的规范媒体类型注册表恢复加密管线的源文件后缀，并测试每一种规范类型。
+3. 只使用精确后缀过滤器扩展浏览器文件选择器，更新上传指引/README，并验证前端、容器和 Smoke 路径。

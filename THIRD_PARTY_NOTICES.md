@@ -13,7 +13,7 @@
 | cryptography | Apache-2.0 OR BSD-3-Clause |
 | librosa | ISC |
 | NumPy | BSD-3-Clause 及其二进制包所列第三方许可 |
-| SciPy | BSD-3-Clause 及其二进制包所列 BLAS/LAPACK/GCC Runtime 许可 |
+| SciPy | BSD-3-Clause 及其二进制包所列 BLAS/LAPACK/GCC 运行时许可 |
 | python-multipart | Apache-2.0 |
 | Alembic | MIT |
 
@@ -32,11 +32,11 @@
 
 | 组件 | 许可证/注意事项 |
 |---|---|
-| Python Docker Official Image、Node Docker Official Image | 镜像内各 Debian 软件包许可证；基础镜像说明见 Docker Official Images |
+| Python Docker 官方镜像、Node Docker 官方镜像 | 镜像内各 Debian 软件包许可证；基础镜像说明见 Docker 官方镜像文档 |
 | Alpine Linux | 各 APK 软件包许可证 |
 | Caddy | Apache-2.0；发行镜像应保留上游版权和许可证 |
 | FFmpeg（Debian 包） | LGPL-2.1-or-later，并可能启用受 GPL 约束的可选组件；以构建配置和 `/usr/share/doc/ffmpeg/copyright` 为准 |
-| OpenSSL、CA certificates、系统 C/C++ 运行库 | 以镜像内 `/usr/share/doc/*/copyright` 或 `/usr/share/licenses` 为准 |
+| OpenSSL、CA 证书、系统 C/C++ 运行库 | 以镜像内 `/usr/share/doc/*/copyright` 或 `/usr/share/licenses` 为准 |
 
 FFmpeg 的实际许可证取决于编译选项。分发前应在最终 `app` 镜像执行 `ffmpeg -L` 和
 `ffmpeg -buildconf`，保存输出，并按其报告履行 LGPL/GPL 的通知、可替换/重链接条件及对应
@@ -46,7 +46,7 @@ FFmpeg 的实际许可证取决于编译选项。分发前应在最终 `app` 镜
 
 1. `npm audit --audit-level=high` 必须对根目录和 `frontend/` 均为零高危失败。
 2. `python scripts/license_audit.py` 必须确认 `uv.lock` 名称/版本、两个 npm lock 的完整
-   SHA-256 inventory，以及固定容器镜像、Caddy/xcaddy、Go replacement、Debian/Alpine
+   SHA-256 清单，以及固定容器镜像、Caddy/xcaddy、Go 替换项、Debian/Alpine
    包和 FFmpeg 清单都与 `scripts/license-policy.json` 精确一致；所有许可证还必须属于显式
    审批集合。
 3. CI 使用固定 Trivy 版本扫描两个最终镜像，对任何 HIGH/CRITICAL 漏洞失败且不使用

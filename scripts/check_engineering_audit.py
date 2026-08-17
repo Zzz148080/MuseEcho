@@ -123,8 +123,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         ".venv/Scripts/python.exe -m mypy src; "
         ".venv/Scripts/python.exe -m mypy --platform linux src",
         "scripts/check_engineering_audit.py",
-        "96 files formatted; lint passed; Windows-host and explicit Linux strict "
-        "mypy each passed 47 source files",
+        "96 个文件格式正确；lint 通过；Windows 宿主和显式 Linux 严格 mypy 各通过 47 个源文件",
     ),
     "E013": (
         "IMPLEMENTATION_BOUNDARY_COMMAND",
@@ -133,25 +132,23 @@ FIXED_EVIDENCE_CONTRACTS = {
         r".venv\Scripts\python.exe -m pytest "
         "tests/unit/test_task20_final_delivery_contract.py -q",
         "tests",
-        "841 passed, 7 skipped in the locked Linux verification runtime at a historical "
-        "implementation boundary, "
-        "including the 100 MiB upload-limit regressions; 20 passed on the PowerShell host, "
-        "including the four PowerShell-only harnesses; "
-        "this evidence predates 7f8412b and cannot prove its playback/rhythm changes or the "
-        "final branch tip; container and task-temp cleanup completed",
+        "历史实现边界在锁定 Linux 验证 runtime 中 841 个测试通过、7 个跳过，包括 100 MiB "
+        "上传限制回归；PowerShell 宿主上 20 个测试通过，包括 4 个仅 PowerShell harness；"
+        "本证据早于 `7f8412b`，不能证明其播放/节奏变更或最终分支顶端；容器和 task-temp "
+        "清理完成",
     ),
     "E015": (
         "EXTERNAL_NOT_RUN",
         "NOT RUN: local Task 23 review lacked the locked Node/Playwright cache before "
         "the remote run",
         ".superpowers/sdd/PLAN/task-22-report.md",
-        "Historical NOT_RUN retained; superseded for product implementation coverage by E037",
+        "保留历史 NOT_RUN；产品实现覆盖已由 E037 取代",
     ),
     "E026": (
         "EXTERNAL_NOT_RUN",
         "NOT RUN: local current Chrome E2E lacked the locked Playwright cache before remote CI",
         "e2e",
-        "Historical local NOT_RUN retained; superseded for product implementation coverage by E037",
+        "保留历史本地 NOT_RUN；产品实现覆盖已由 E037 取代",
     ),
     "E002": (
         "RED_COMMAND",
@@ -159,73 +156,69 @@ FIXED_EVIDENCE_CONTRACTS = {
         "tests/deploy/test_shell_line_endings.ps1 with invalid syntax in the last "
         "fresh-checkout file",
         "tests/deploy/test_shell_line_endings.ps1",
-        "Old multi-file bash -n invocation accepted the invalid final file",
+        "旧多文件 `bash -n` 调用接受了无效的最后一个文件",
     ),
     "E003": (
         "CURRENT_COMMAND",
         "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
         "tests/deploy/test_shell_line_endings.ps1",
         "tests/deploy/test_shell_line_endings.ps1",
-        "LF checks passed and bash -n independently parsed 8 fresh-checkout files",
+        "LF 检查通过，`bash -n` 独立解析 8 个 fresh-checkout 文件",
     ),
     "E004": (
         "RED_COMMAND",
         "python scripts/verify_release_identity.py verify --manifest manifest-only.json",
         "tests/unit/test_release_identity.py",
-        "Manifest-only verify returned success without any comparison class",
+        "仅 manifest 的 verify 在没有任何比较类别时返回成功",
     ),
     "E005": (
         "CURRENT_COMMAND",
         ".venv/Scripts/python.exe -m pytest tests/unit/test_release_identity.py -q",
         "tests/unit/test_release_identity.py",
-        "10 passed; verify rejects an empty comparison inventory while tar plus scan and "
-        "optional image-id remain valid",
+        "10 个测试通过；verify 拒绝空比较 inventory，同时 tar + scan 和可选 image-id 保持有效",
     ),
     "E006": (
         "RED_COMMAND",
         "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
         "scripts/test-development-smoke.ps1 against the old smoke",
         "scripts/test-development-smoke.ps1",
-        "Partial compose startup skipped down and cleanup failure could replace or hide "
-        "the primary failure",
+        "Compose 部分启动会跳过 down，且清理失败可能替换或隐藏主失败",
     ),
     "E007": (
         "CURRENT_COMMAND",
         "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
         "scripts/test-development-smoke.ps1",
         "scripts/test-development-smoke.ps1",
-        "Synthetic partial-start, primary-only, cleanup-only, and combined failure "
-        "reporting passed",
+        "合成 partial-start、仅主失败、仅清理失败和组合失败报告均通过",
     ),
     "E008": (
         "RED_COMMAND",
         "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
         "scripts/test-container-contract.ps1 against the old smoke",
         "scripts/test-container-contract.ps1",
-        "No explicit no-build path, trusted image identity validation, runtime identity "
-        "check, or repeated up --no-build",
+        "缺少显式 no-build 路径、受信镜像 identity 校验、runtime identity 检查和重复 "
+        "`up --no-build`",
     ),
     "E009": (
         "CURRENT_COMMAND",
         "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
         "scripts/test-container-contract.ps1",
         "scripts/test-container-contract.ps1",
-        "Synthetic contract rejected wrong, duplicate, swapped, and runtime-drifted image "
-        "identities and required --no-build on both starts",
+        "合成合同拒绝错误、重复、交换及 runtime-drifted 镜像 identity，并要求两次启动都使用 "
+        "`--no-build`",
     ),
     "E010": (
         "RED_COMMAND",
         ".venv/Scripts/python.exe -m pytest tests/unit/test_observability.py -q",
         "tests/unit/test_observability.py",
-        "ModuleNotFoundError: museecho.observability",
+        "`ModuleNotFoundError: museecho.observability`",
     ),
     "E011": (
         "CURRENT_COMMAND",
         ".venv/Scripts/python.exe -m pytest tests/unit/test_observability.py "
         "tests/api/test_health.py tests/integration/test_runtime_app.py -q",
         "tests/unit/test_observability.py",
-        "Safe request and background failure logs, stable 500 responses, metrics, "
-        "liveness/readiness, cleanup degradation and recovery passed",
+        "安全请求和后台失败日志、稳定 500 响应、指标、liveness/readiness、清理降级与恢复均通过",
     ),
     "E019": (
         "CURRENT_COMMAND",
@@ -241,8 +234,8 @@ FIXED_EVIDENCE_CONTRACTS = {
         "-ExpectedGatewayConfigImageId "
         "sha256:8cc0429e45fd48c911a92fd8504c1f3c14daccb0fee8a24529d72af51b0b4053",
         "scripts/container-smoke.ps1",
-        "Trusted app and gateway daemon/config identities, both runtime container "
-        "identities, real WAV, restart, ciphertext, history, and cleanup passed without build",
+        "受信 app/gateway daemon/config identity、两个 runtime 容器 identity、真实 WAV、重启、"
+        "密文、历史和清理均在无构建条件下通过",
     ),
     "E020": (
         "CURRENT_COMMAND",
@@ -250,8 +243,8 @@ FIXED_EVIDENCE_CONTRACTS = {
         "--severity HIGH,CRITICAL --format json --output /evidence/app-raw-review1.json "
         "--skip-db-update --skip-java-db-update --skip-version-check --offline-scan",
         SECURITY_MANIFEST_PATH,
-        "Trivy 0.70.0 and fixed DB found app occurrences=181 distinct-cves=67 "
-        "critical=12 high=169; raw SHA and tuple SHA fixed",
+        "Trivy 0.70.0 与固定 DB 发现 app occurrences=181、distinct-cves=67、critical=12、"
+        "high=169；raw SHA 与 tuple SHA 已固定",
     ),
     "E021": (
         "CURRENT_COMMAND",
@@ -259,7 +252,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         "--severity HIGH,CRITICAL --format json --output /evidence/gateway-raw-review1.json "
         "--skip-db-update --skip-java-db-update --skip-version-check --offline-scan",
         SECURITY_MANIFEST_PATH,
-        "Gateway raw occurrences=0 and distinct-cves=0; exact config and raw SHA fixed",
+        "Gateway raw occurrences=0、distinct-cves=0；精确 config 和 raw SHA 已固定",
     ),
     "E022": (
         "IMPLEMENTATION_BOUNDARY_COMMAND",
@@ -276,9 +269,8 @@ FIXED_EVIDENCE_CONTRACTS = {
         "--vex-output /evidence/app-openvex-review1.json "
         "--inventory-output /evidence/app-inventory-review1.json",
         SECURITY_MANIFEST_PATH,
-        "Pre-feature Task 23 image raw tuple, package ownership, 67 reviewed statements, "
-        "and release identity passed; current source policy is bound separately and this "
-        "record is not a current runtime-image scan",
+        "功能前任务 23 镜像 raw tuple、package ownership、67 条已复审 statement 和 release "
+        "identity 通过；当前源代码 policy 单独绑定，本记录不是当前 runtime-image 扫描",
     ),
     "E023": (
         "CURRENT_COMMAND",
@@ -286,7 +278,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         "--severity HIGH,CRITICAL --exit-code 1 --vex /evidence/app-openvex-review1.json "
         "--skip-db-update --skip-java-db-update --skip-version-check --offline-scan",
         SECURITY_MANIFEST_PATH,
-        "App VEX gate residual High/Critical=0",
+        "App VEX 门 residual High/Critical=0",
     ),
     "E024": (
         "CURRENT_COMMAND",
@@ -294,7 +286,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         "--severity HIGH,CRITICAL --exit-code 1 --skip-db-update --skip-java-db-update "
         "--skip-version-check --offline-scan",
         SECURITY_MANIFEST_PATH,
-        "Unsuppressed gateway gate High/Critical=0",
+        "未 suppression 的 gateway 门 High/Critical=0",
     ),
     "E025": (
         "CURRENT_COMMAND",
@@ -305,7 +297,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         "--scan app=tmp/task23-engineering/app-raw-review1.json "
         "--scan gateway=tmp/task23-engineering/gateway-raw-review1.json",
         SECURITY_MANIFEST_PATH,
-        "App and gateway config IDs, tar SHA256 values, and raw scan ImageIDs agree",
+        "App/gateway config ID、tar SHA256 和 raw scan ImageID 一致",
     ),
     "E030": (
         "CURRENT_COMMAND",
@@ -315,7 +307,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md",
         "docs/audits/FUNCTIONAL_AUDIT.md",
-        "48 passed; 40 items validated PASS=36 PARTIAL=4 FAIL=0",
+        "48 个测试通过；验证 40 个条目：PASS=36、PARTIAL=4、FAIL=0",
     ),
     "E033": (
         "RED_COMMAND",
@@ -323,7 +315,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         "tests/unit/test_task20_final_delivery_contract.py::"
         "test_docker_context_excludes_generated_python_package_metadata -q",
         "tests/unit/test_task20_final_delivery_contract.py",
-        "1 failed because .dockerignore did not exclude gitignored egg-info metadata",
+        "1 个测试失败，因为 `.dockerignore` 未排除被 Git 忽略的 egg-info 元数据",
     ),
     "E034": (
         "CURRENT_COMMAND",
@@ -335,38 +327,38 @@ FIXED_EVIDENCE_CONTRACTS = {
         "tests/unit/test_image_vulnerability_audit.py::"
         "test_audit_rejects_schema_probe_or_complete_runtime_boundary_drift -q",
         "tests/unit/test_image_vulnerability_audit.py",
-        "Clean Docker context contract passed and 6 policy/runtime drift mutations passed; "
-        "derived image contains no egg-info",
+        "干净 Docker context 合同通过，6 个 policy/runtime drift mutation 通过；派生镜像不含 "
+        "egg-info",
     ),
     "E035": (
         "RED_COMMAND",
         "docker build --pull=false --network none --tag museecho-app:task23-formal-offline .",
         "Dockerfile",
-        "Formal current-source Dockerfile build exited 1 because locked pip and apt "
-        "BuildKit layers were unavailable with network disabled",
+        "正式 current-source Dockerfile 构建以 exit 1 结束，因为网络禁用时锁定 pip/apt "
+        "BuildKit layer 不可用",
     ),
     "E036": (
         "EXTERNAL_NOT_RUN",
         "NOT RUN: formal current-source Dockerfile build requires the complete locked "
         "BuildKit pip and apt cache under network none",
         "Dockerfile",
-        "Retained Task 23 derivative is audit-only and is not a release artifact",
+        "保留的任务 23 派生物仅供审计，不是 Release 产物",
     ),
     "E037": (
         "IMPLEMENTATION_BOUNDARY_COMMAND",
         "gh run view 31630284744 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha",
         ".github/workflows/ci.yml",
-        "Last product/CI implementation boundary 31630284744 on 2b2730e completed with "
-        "quality, e2e, and distribution success; it is not branch-tip evidence",
+        "上一个产品/CI 实现边界 `2b2730e` 的 run `31630284744` 以 quality、e2e 和 "
+        "distribution success 完成；它不是分支顶端证据",
     ),
     "E038": (
         "IMPLEMENTATION_BOUNDARY_COMMAND",
         "gh run view 31966788273 --repo Zzz148080/MuseEcho --json "
         "status,conclusion,headBranch,headSha,jobs,url",
         ".github/workflows/ci.yml",
-        "Final product/CI implementation SHA 0674f74f4097e46cee98c4715a62ad5aa55101cf "
-        "on codex/expand-common-audio-formats passed quality (5m43s), e2e (3m10s), "
-        "and distribution (7m30s) in run 31966788273",
+        "`codex/expand-common-audio-formats` 上最终产品/CI 实现 SHA "
+        "`0674f74f4097e46cee98c4715a62ad5aa55101cf` 在 run `31966788273` 中通过 "
+        "quality（5m43s）、e2e（3m10s）和 distribution（7m30s）",
     ),
 }
 
@@ -540,7 +532,7 @@ def _required(row: dict[str, str], columns: set[str], heading: str) -> None:
 def load_audit(path: Path) -> EngineeringAudit:
     text = path.read_text(encoding="utf-8")
     generated_matches = re.findall(
-        r"^- \*\*Generated at UTC:\*\* `([^`]+)`$", text, flags=re.MULTILINE
+        r"^- \*\*生成时间（UTC）：\*\* `([^`]+)`$", text, flags=re.MULTILINE
     )
     if len(generated_matches) != 1:
         raise AuditValidationError("audit must contain exactly one generated UTC time")
@@ -548,78 +540,76 @@ def load_audit(path: Path) -> EngineeringAudit:
     if generated_at is None:
         raise AuditValidationError("audit generated UTC time is invalid")
 
-    domain_rows = _table(text, "## Domain coverage")
+    domain_rows = _table(text, "## 领域覆盖")
     domains: list[DomainCoverage] = []
     for row in domain_rows:
-        _required(row, {"Domain", "Evidence IDs", "Conclusion"}, "Domain coverage")
-        domains.append(
-            DomainCoverage(row["Domain"], _split_ids(row["Evidence IDs"]), row["Conclusion"])
-        )
+        _required(row, {"领域", "Evidence ID", "结论"}, "领域覆盖")
+        domains.append(DomainCoverage(row["领域"], _split_ids(row["Evidence ID"]), row["结论"]))
 
-    evidence_rows = _table(text, "## Evidence index")
+    evidence_rows = _table(text, "## 证据索引")
     evidence: list[Evidence] = []
     for row in evidence_rows:
         _required(
             row,
             {
                 "ID",
-                "Kind",
-                "Command",
-                "Path",
-                "Result",
-                "Observed at UTC",
-                "Exit code",
+                "类型",
+                "命令",
+                "路径",
+                "结果",
+                "观察时间（UTC）",
+                "退出码",
             },
-            "Evidence index",
+            "证据索引",
         )
-        if row["Exit code"] == "NOT_RUN":
+        if row["退出码"] == "NOT_RUN":
             exit_code: int | str | None = "NOT_RUN"
         else:
             try:
-                exit_code = None if row["Exit code"] == "-" else int(row["Exit code"])
+                exit_code = None if row["退出码"] == "-" else int(row["退出码"])
             except ValueError:
                 exit_code = None
         evidence.append(
             Evidence(
                 row["ID"],
-                row["Kind"],
-                row["Command"],
-                row["Path"],
-                row["Result"],
-                _parse_utc(row["Observed at UTC"]),
+                row["类型"],
+                row["命令"],
+                row["路径"],
+                row["结果"],
+                _parse_utc(row["观察时间（UTC）"]),
                 exit_code,
             )
         )
 
-    finding_rows = _table(text, "## Findings")
+    finding_rows = _table(text, "## 发现项")
     findings: list[Finding] = []
     for row in finding_rows:
         _required(
             row,
             {
                 "ID",
-                "Domain",
-                "Severity",
-                "Status",
-                "Description",
-                "Evidence IDs",
-                "Owner",
-                "Disposition",
-                "Review condition",
+                "领域",
+                "严重级别",
+                "状态",
+                "描述",
+                "Evidence ID",
+                "负责人",
+                "处置",
+                "复审条件",
             },
-            "Findings",
+            "发现项",
         )
         findings.append(
             Finding(
                 row["ID"],
-                row["Domain"],
-                row["Severity"],
-                row["Status"],
-                row["Description"],
-                _split_ids(row["Evidence IDs"]),
-                row["Owner"],
-                row["Disposition"],
-                row["Review condition"],
+                row["领域"],
+                row["严重级别"],
+                row["状态"],
+                row["描述"],
+                _split_ids(row["Evidence ID"]),
+                row["负责人"],
+                row["处置"],
+                row["复审条件"],
             )
         )
     return EngineeringAudit(path, generated_at, tuple(domains), tuple(evidence), tuple(findings))
@@ -849,7 +839,7 @@ def validate_audit(
                     f"{finding.finding_id} VERIFIED requires historical NOT_RUN and current "
                     "GREEN evidence"
                 )
-            if not finding.disposition.startswith("VERIFIED:"):
+            if not finding.disposition.startswith("VERIFIED："):
                 errors.append(f"{finding.finding_id} VERIFIED requires a verified disposition")
             if finding.owner in {"", "-"}:
                 errors.append(f"{finding.finding_id} VERIFIED requires an owner")
@@ -857,7 +847,7 @@ def validate_audit(
                 errors.append(f"{finding.finding_id} VERIFIED requires a review condition")
         if finding.status == "ACCEPTED":
             if (
-                not finding.disposition.startswith("RISK ACCEPTED:")
+                not finding.disposition.startswith("RISK ACCEPTED：")
                 or len(finding.disposition) < 40
             ):
                 errors.append(f"{finding.finding_id} ACCEPTED requires a specific risk rationale")
@@ -869,7 +859,7 @@ def validate_audit(
             has_external = any(
                 item is not None and item.kind == "EXTERNAL_NOT_RUN" for item in referenced
             )
-            if not finding.disposition.startswith("EXTERNAL:") or not has_external:
+            if not finding.disposition.startswith("EXTERNAL：") or not has_external:
                 errors.append(f"{finding.finding_id} BLOCKED requires a real external condition")
             if finding.owner in {"", "-"}:
                 errors.append(f"{finding.finding_id} BLOCKED requires an owner")

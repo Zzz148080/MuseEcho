@@ -1,12 +1,12 @@
-# Common Audio Format Support Design
+# 常见音频格式支持设计
 
-## Goal
+## 目标
 
-Safely accept common non-DRM music formats without creating a browser/server mismatch or weakening the existing bounded audio-decode boundary.
+安全接受常见的非 DRM 音乐格式，同时避免浏览器与服务端不一致，也不削弱现有有界音频解码边界。
 
-## Supported input contract
+## 支持的输入契约
 
-| Extension | Stored media type | Allowed audio codec(s) | Demuxer |
+| 扩展名 | 存储媒体类型 | 允许的音频编解码器 | 解复用器 |
 | --- | --- | --- | --- |
 | `.wav` | `audio/wav` | PCM | `wav` |
 | `.mp3` | `audio/mpeg` | MP3 | `mp3` |
@@ -16,8 +16,8 @@ Safely accept common non-DRM music formats without creating a browser/server mis
 | `.ogg` | `audio/ogg` | Vorbis | `ogg` |
 | `.opus` | `audio/opus` | Opus | `ogg` |
 
-Only these extensions and format/codec pairings are accepted. DRM/proprietary encrypted downloads and video/container variants remain unsupported. FFprobe validates every stream, rejects non-attached video and disallowed extra audio, and has exactly the same protocol, demuxer and codec whitelist as FFmpeg. A MP3-attached MJPEG cover remains explicitly supported and is never decoded as audio.
+只接受这些扩展名及格式/编解码器组合。DRM/专有加密下载以及视频/容器变体仍不受支持。FFprobe 验证每个流，拒绝非附加图片视频和不允许的额外音频，并与 FFmpeg 使用完全相同的协议、解复用器和编解码器白名单。明确支持 MP3 附带的 MJPEG 封面，且绝不将其作为音频解码。
 
-## Pipeline
+## 管线
 
-One immutable Python registry owns extension, canonical stored media type, signature validator kind, demuxer aliases and permitted codec list. Upload uses it to validate the staged actual suffix and source/probe pairing. Coordinator resolves the stored canonical media type through the same registry when materializing encrypted plaintext, retaining the safe decoder suffix. Browser offers the exact extension list only; it does not treat browser MIME detection as trusted validation.
+一个不可变 Python 注册表统一管理扩展名、规范存储媒体类型、签名验证器种类、解复用器别名和允许的编解码器列表。上传流程用它验证暂存文件的实际后缀以及来源/探测结果组合。协调器在实例化加密明文时，通过同一注册表解析已存储的规范媒体类型，并保留安全的解码器后缀。浏览器只提供精确的扩展名列表；它不把浏览器 MIME 检测视为可信验证。

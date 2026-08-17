@@ -12,7 +12,7 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Any, Iterable, Sequence
 
 EXPECTED_SECTION_TITLES = (
     ("DR-01", "交付结论与状态摘要"),
@@ -36,7 +36,7 @@ EXPECTED_SECTION_TITLES = (
 EXPECTED_SECTION_IDS = tuple(item[0] for item in EXPECTED_SECTION_TITLES)
 EXPECTED_PRODUCT_AUDIT_IDS = tuple(f"PA-{index:02d}" for index in range(1, 14))
 EXPECTED_STUDENT_CHECK_IDS = tuple(f"STU-{index:02d}" for index in range(1, 7))
-EXPECTED_EVIDENCE_IDS = tuple(f"DEL-{index:03d}" for index in range(1, 13)) + tuple(
+EXPECTED_EVIDENCE_IDS = tuple(f"DEL-{index:03d}" for index in range(1, 15)) + tuple(
     f"DEL-{index:03d}" for index in range(900, 905)
 )
 REQUIRED_BLOCKER_IDS = (
@@ -58,6 +58,8 @@ SECTION_CONTRACTS = {
             "DEL-010",
             "DEL-011",
             "DEL-012",
+            "DEL-013",
+            "DEL-014",
             "DEL-900",
             "DEL-901",
             "DEL-902",
@@ -87,14 +89,22 @@ SECTION_CONTRACTS = {
             "DEL-010",
             "DEL-011",
             "DEL-012",
+            "DEL-013",
+            "DEL-014",
             "DEL-900",
             "DEL-901",
             "DEL-904",
         ),
     ),
-    "DR-11": ("PARTIAL", ("DEL-001", "DEL-003", "DEL-004", "DEL-901", "DEL-902")),
+    "DR-11": (
+        "PARTIAL",
+        ("DEL-001", "DEL-003", "DEL-004", "DEL-013", "DEL-014", "DEL-901", "DEL-902"),
+    ),
     "DR-12": ("VERIFIED", ("DEL-001",)),
-    "DR-13": ("VERIFIED", ("DEL-001", "DEL-002", "DEL-003", "DEL-004", "DEL-012")),
+    "DR-13": (
+        "VERIFIED",
+        ("DEL-001", "DEL-002", "DEL-003", "DEL-004", "DEL-012", "DEL-013", "DEL-014"),
+    ),
     "DR-14": (
         "PARTIAL",
         (
@@ -104,6 +114,8 @@ SECTION_CONTRACTS = {
             "DEL-004",
             "DEL-011",
             "DEL-012",
+            "DEL-013",
+            "DEL-014",
             "DEL-900",
             "DEL-902",
         ),
@@ -113,24 +125,24 @@ SECTION_CONTRACTS = {
     "DR-17": ("VERIFIED", ("DEL-001",)),
 }
 BLOCKER_CONTRACTS = {
-    "BLK-FORMAL-OFFLINE-BUILD": ("Build environment owner", ("DEL-902",)),
-    "BLK-STUDENT-MANUAL": ("Student", ("DEL-903",)),
-    "BLK-CONTROLLER-BROWSER": ("Student / product reviewer", ("DEL-904",)),
+    "BLK-FORMAL-OFFLINE-BUILD": ("构建环境负责人", ("DEL-902",)),
+    "BLK-STUDENT-MANUAL": ("学生", ("DEL-903",)),
+    "BLK-CONTROLLER-BROWSER": ("学生/产品复审者", ("DEL-904",)),
 }
 PRODUCT_DOMAINS = (
-    "onboarding",
-    "upload",
-    "wait",
-    "music-dna",
-    "structure-map",
-    "chords",
-    "evidence-qa",
-    "errors",
-    "second-upload",
-    "responsive",
-    "readability",
-    "evidence-traceability",
-    "privacy",
+    "新手引导",
+    "上传",
+    "等待",
+    "Music DNA",
+    "结构地图",
+    "和弦",
+    "证据问答",
+    "错误",
+    "再次上传",
+    "响应式",
+    "可读性",
+    "证据可追溯性",
+    "隐私",
 )
 VALID_SECTION_STATUSES = frozenset({"VERIFIED", "PARTIAL", "PENDING"})
 EXECUTED_KINDS = frozenset(
@@ -145,31 +157,75 @@ VALID_EVIDENCE_KINDS = EXECUTED_KINDS | {"EXTERNAL_NOT_RUN", "CONTROLLER_NOT_RUN
 UTC_TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 CURRENT_STATUS_START = "<!-- TASK24-CURRENT-STATUS:START -->"
 CURRENT_STATUS_END = "<!-- TASK24-CURRENT-STATUS:END -->"
-EXPECTED_PRODUCT_SCOPE = (
-    "First-use product flow and product-quality review required by PLAN Task 24"
-)
+EXPECTED_PRODUCT_SCOPE = "PLAN 任务 24 要求的首次使用产品流程与产品质量复审"
 EXPECTED_PRODUCT_METHOD = (
-    "The Task 24 controller started the no-build HTTPS development profile and "
-    "observed a ready API, but the in-app browser rejected the internal Caddy CA "
-    "with ERR_CERT_AUTHORITY_INVALID before rendering. Browser safety policy "
-    "forbids bypassing that interstitial, so every manual or visual conclusion "
-    "remains CERT_TRUST_BLOCKED. The merged Task 23 GitHub E2E proves an automated "
-    "implementation boundary only."
+    "任务 24 控制器启动 no-build HTTPS 开发配置并观察到 API ready，但应用内浏览器在渲染前"
+    "因 ERR_CERT_AUTHORITY_INVALID 拒绝内部 Caddy CA。浏览器安全策略禁止绕过该中间页，"
+    "因此所有人工或视觉结论保持 CERT_TRUST_BLOCKED。已合并的任务 23 GitHub E2E 仅证明"
+    "自动化实现边界。"
 )
 EXPECTED_DELIVERY_NARRATIVE_SHA256 = (
-    "8c0200afe51917f0cd800d7c47522230b371277a9bc2136fd13bff94e18a580e"
+    "31a23e53719c5016779d3358bd2686be1723aecee7669c30fffc343dbee73960"
 )
 EXPECTED_PRODUCT_NARRATIVE_SHA256 = (
-    "0a3acbf4202eca3f1b69adb941d8a2e797a06e216e2453c53083b05fdf3a3ee1"
+    "62e707d68c822b8f50643d2d2b4f50c093ddf77efb9335f68839e752c27aae08"
 )
-FINAL_IMPLEMENTATION_SHA_BOUNDARY = "0674f74f4097e46cee98c4715a62ad5aa55101cf"
-FINAL_CI_RUN = "31966788273"
+FINAL_IMPLEMENTATION_SHA_BOUNDARY = "d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1"
+FINAL_CI_RUN = "31997390847"
+RELEASE_CONTRACT: dict[str, Any] = {
+    "repository": "Zzz148080/MuseEcho",
+    "tag": "v0.1.0",
+    "target": "d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1",
+    "main-ci-run": 31997390847,
+    "published-at": "2026-08-17T05:54:50Z",
+    "release-url": "https://github.com/Zzz148080/MuseEcho/releases/tag/v0.1.0",
+    "assets": (
+        (
+            "museecho-app.tar",
+            366037504,
+            "f8aaf8369f76bd70304e2770e21e1bfc5f5a45979b63d9eb512e39d58d2fff95",
+        ),
+        (
+            "museecho-gateway.tar",
+            59211776,
+            "765a0b089f174ce57e92ffdac8aada6fa24475f0a445a361850e27764f3320a3",
+        ),
+        (
+            "museecho-offline-runtime-v0.1.0.zip",
+            9293,
+            "e85248bbee5dd2e4b406f830db02e6547649cc948dbae01b04685882d827f80c",
+        ),
+        (
+            "SHA256SUMS.txt",
+            275,
+            "058ae2c2f641fea7b311bf996c4d51d04fbd6d4b84955ae3dc501b98bf3b8d46",
+        ),
+    ),
+}
+REFLECTION_NOTES_DATED_HEADINGS = (
+    "## 2026-08-08 — 前置设计阶段",
+    "## 2026-08-11 — 任务 21 / 交付边界的本地证据",
+    "## 2026-08-11 — 任务 22 / 证据驱动验收材料",
+    "## 2026-08-11 — 任务 23 / 工程审计过程材料",
+    "## 2026-08-13 — 任务 24 / 客观交付材料",
+    "## 2026-08-17 — v0.1.0 离线运行发行客观材料",
+)
 FINAL_CI_MARKER_PREFIX = "<!-- FINAL-CI-RELATIONSHIP: "
 FINAL_CI_MARKER_SUFFIX = " -->"
-FINAL_CI_STATEMENT = (
-    "Any later docs-only reconciliation is not product implementation evidence and requires "
-    "its own separate final-SHA publication/CI gate before Task 6 can be complete."
-)
+FINAL_CI_STATEMENTS = {
+    "PLAN.md": (
+        "已发布的 `v0.1.0` Release 绑定到这一精确 main SHA 和四项经校验和验证的资产；"
+        "后续仅文档对账需要自己的 CI，但不会改写已发布资产的身份。"
+    ),
+    "README.md": (
+        "已发布的 `v0.1.0` Release 绑定到这一精确 main SHA 和四项经校验和验证的资产；"
+        "后续仅文档对账需要自己的 CI，但不会改写已发布资产的身份。"
+    ),
+    "COURSE_DELIVERY_CHECKLIST.md": (
+        "已发布的 v0.1.0 Release 绑定该精确 main SHA 与四项经过校验和验证的资产；"
+        "后续仅文档证据对账须运行独立 CI，但不会改写已发布资产的身份。"
+    ),
+}
 EXPECTED_FINAL_CI_RELATIONSHIP = {
     "implementation-sha": FINAL_IMPLEMENTATION_SHA_BOUNDARY,
     "run": FINAL_CI_RUN,
@@ -178,86 +234,65 @@ EXPECTED_FINAL_CI_RELATIONSHIP = {
     "distribution": "success",
     "github": "required",
     "gitlab": "supplemental-not-run",
-    "reconciliation": "docs-only-requires-separate-final-sha-publication-ci",
+    "reconciliation": "docs-only-after-release",
+    "release-tag": "v0.1.0",
+    "release-assets": "4",
 }
 VISIBLE_FINAL_CI_CONTRACTS = {
     "PLAN.md": {
-        "run": ("PR #3 run `31966788273`",),
-        "implementation-sha": (
-            "on exact final product/CI implementation SHA "
-            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`.",
-        ),
-        "jobs": (
-            "PR #3 run `31966788273` passed GitHub quality (5m43s), E2E (3m10s), "
-            "and distribution (7m30s) on exact final product/CI implementation SHA "
-            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`.",
-        ),
-        "github": ("passed GitHub quality (5m43s), E2E (3m10s), and distribution (7m30s)",),
+        "run": ("main run `31997390847`",),
+        "implementation-sha": ("合并 SHA `d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1`",),
+        "jobs": ("main run `31997390847` 的 GitHub 质量门、E2E 和分发均通过",),
+        "github": ("GitHub Release `v0.1.0` 已发布",),
         "gitlab": (
-            "GitLab and Tencent Cloud/public deployment are deferred follow-up work.",
-            "no GitLab, Release, cloud-deployment, or student-acceptance completion is claimed.",
+            "GitLab 与腾讯云/公网部署属于后续工作。",
+            "本文不声称 GitLab、云端部署或学生验收已经完成。",
         ),
-        "reconciliation": (FINAL_CI_STATEMENT,),
+        "reconciliation": (FINAL_CI_STATEMENTS["PLAN.md"],),
     },
     "README.md": {
-        "run": ("PR #3 run `31966788273`",),
-        "implementation-sha": (
-            "on exact final product/CI implementation SHA "
-            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`.",
-        ),
-        "jobs": (
-            "PR #3 run `31966788273` passed GitHub quality (5m43s), E2E (3m10s), "
-            "and distribution (7m30s) on exact final product/CI implementation SHA "
-            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`.",
-        ),
-        "github": ("passed GitHub quality (5m43s), E2E (3m10s), and distribution (7m30s)",),
+        "run": ("main run `31997390847`",),
+        "implementation-sha": ("合并 SHA `d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1`",),
+        "jobs": ("main run `31997390847` 的 GitHub 质量门、E2E 和分发均通过",),
+        "github": ("GitHub Release `v0.1.0` 已发布",),
         "gitlab": (
-            "GitLab and Tencent Cloud/public deployment are deferred follow-up work, "
-            "not course submission gates.",
-            "未发生的 GitLab、Release、云部署、学生验收写成完成。",
+            "GitLab 与腾讯云/公网部署属于后续工作，不是课程提交门禁。",
+            "本文不声称 GitLab、",
+            "云端部署或学生验收已经完成。",
         ),
         "reconciliation": (
-            FINAL_CI_STATEMENT,
-            "后续文档 reconciliation 不改变产品架构或把未发生的",
+            FINAL_CI_STATEMENTS["README.md"],
+            "后续文档对账不改变产品架构或把未发生的",
         ),
     },
     "COURSE_DELIVERY_CHECKLIST.md": {
         "run": (
-            "PR #3 run `31966788273` 在 final implementation SHA "
-            "`0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过。",
-            "`DEL-012` 记录 run `31966788273` 在 SHA `0674f74f4097e46cee98c4715a62ad5aa55101cf`",
+            "main run `31997390847` 在合并 SHA `d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1` 上通过。",
         ),
         "implementation-sha": (
-            "PR #3 run `31966788273` 在 final implementation SHA "
-            "`0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过。",
-            "`DEL-012` 记录 run `31966788273` 在 SHA `0674f74f4097e46cee98c4715a62ad5aa55101cf`",
+            "main run `31997390847` 在合并 SHA `d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1` 上通过。",
         ),
-        "jobs": (
-            "`DEL-012` 记录 run `31966788273` 在 SHA "
-            "`0674f74f4097e46cee98c4715a62ad5aa55101cf` 的 "
-            "quality/E2E/distribution 全绿。",
-        ),
-        "github": ("本次课程只要求 GitHub；",),
-        "gitlab": ("GitLab 配置保留为 supplemental 后续材料。",),
+        "jobs": ("`DEL-013` 记录 main run `31997390847` 的 quality/E2E/distribution 全绿。",),
+        "github": ("GitHub `v0.1.0` 正式离线运行 Release 已发布",),
+        "gitlab": ("GitLab 配置仅作为补充性后续材料保留。",),
         "reconciliation": (
-            FINAL_CI_STATEMENT,
-            "文档 reconciliation commit 不冒充第二次产品验证。",
+            FINAL_CI_STATEMENTS["COURSE_DELIVERY_CHECKLIST.md"],
+            "不得把文档提交冒充第二次产品实现验证。",
         ),
     },
 }
 AGENT_LOG_SUMMARY_HEADINGS = (
-    "### Retained TASK 21 / Tencent Cloud delivery scripts (local-only) summary",
-    "### Retained TASK 21 / review fix round 1 summary",
-    "### Retained TASK 22 / Functional Audit 与验收缺口闭环 summary",
-    "### Retained TASK 23 / final review fix wave round 19/20 summary",
-    "### Retained TASK 24 / Product Audit and delivery report summary",
-    "### Current post-Task-24 maintenance summary",
+    "### 保留的任务 21 / 腾讯云交付脚本（仅本地）摘要",
+    "### 保留的任务 21 / 复审修复第 1 轮摘要",
+    "### 保留的任务 22 / 功能审计与验收缺口闭环摘要",
+    "### 保留的任务 23 / 最终复审修复第 19/20 轮摘要",
+    "### 保留的任务 24 / 产品审计与交付报告摘要",
+    "### 当前任务 24 后维护摘要",
 )
-AGENT_LOG_SUMMARY_START = "## Retained Task 21–24 summary chronology"
-AGENT_LOG_DETAIL_START = "## Detailed dated implementation log"
+AGENT_LOG_SUMMARY_START = "## 保留的任务 21–24 摘要时间线"
+AGENT_LOG_DETAIL_START = "## 按日期记录的详细实施日志"
 EXPECTED_DEL_011_SUMMARY = (
-    "Historical Task 24 implementation evidence only; it cannot verify the final PR SHA, "
-    "which is recorded separately by DEL-012."
+    "仅作为历史任务 24 实现证据；它不能验证最终 PR SHA，后者由 DEL-012 单独记录。"
 )
 
 
@@ -345,7 +380,7 @@ EVIDENCE_CONTRACTS = {
         "scripts/check_delivery_report.py DELIVERY_REPORT.md",
         "DELIVERY_REPORT.md",
         "DR-01, DR-10",
-        "delivery-sections=17; evidence=17; blockers=3; readiness=MUSEECHO V1 PARTIALLY READY",
+        "delivery-sections=17; evidence=19; blockers=3; readiness=MUSEECHO V1 PARTIALLY READY",
         "0",
         "PASS",
     ),
@@ -398,6 +433,33 @@ EVIDENCE_CONTRACTS = {
         "run=31966788273; head=0674f74f4097e46cee98c4715a62ad5aa55101cf; "
         "branch=codex/expand-common-audio-formats; quality=success (5m43s); "
         "e2e=success (3m10s); distribution=success (7m30s)",
+        "0",
+        "PASS",
+    ),
+    "DEL-013": EvidenceContract(
+        "IMPLEMENTATION_BOUNDARY_COMMAND",
+        "gh run view 31997390847 --repo Zzz148080/MuseEcho --json "
+        "status,conclusion,headBranch,headSha,jobs,url; gh api "
+        "repos/Zzz148080/MuseEcho/actions/runs/31997390847/artifacts",
+        ".github/workflows/ci.yml",
+        "DR-01, DR-10, DR-11, DR-13, DR-14",
+        "run=31997390847; head=d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1; "
+        "branch=main; quality=success; e2e=success; distribution=success; "
+        "artifacts=quota-skipped",
+        "0",
+        "PASS",
+    ),
+    "DEL-014": EvidenceContract(
+        "CURRENT_COMMAND",
+        "$releaseDir = Join-Path (Get-Location) 'tmp\\release-v0.1.0-verification'; "
+        ".\\.venv\\Scripts\\python.exe scripts/verify_github_release.py --action Smoke "
+        "--manifest release/v0.1.0-manifest.json --assets-directory $releaseDir --download",
+        "RELEASE_REPRODUCTION.md",
+        "DR-01, DR-10, DR-11, DR-13, DR-14",
+        "tag=v0.1.0; target=d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1; "
+        "draft=false; prerelease=false; assets=4; tag-resolved-to-target=pass; "
+        "asset-metadata=pass; checksum-file-self-digest=pass; checksum-payloads=pass; "
+        "offline-smoke=pass",
         "0",
         "PASS",
     ),
@@ -480,7 +542,7 @@ PRODUCT_EVIDENCE_CONTRACTS = {
 }
 
 EXPECTED_REFLECTION_DRAFT_SHA256 = (
-    "a20aa48434e3d8f56e39767def0a777ff3714491f68769b7d951601f6ed3616b"
+    "72a1f93f05435d003d8624cee147a3ec35250de43831eaee513a6d68a16a25c5"
 )
 
 
@@ -584,7 +646,7 @@ def _refs(value: str) -> tuple[str, ...]:
 
 def _metadata(text: str, label: str, issues: list[str]) -> str:
     matches = re.findall(
-        rf"^- \*\*{re.escape(label)}:\*\*\s+`([^`]+)`\s*$", text, flags=re.MULTILINE
+        rf"^- \*\*{re.escape(label)}：\*\*\s+`([^`]+)`\s*$", text, flags=re.MULTILINE
     )
     if len(matches) != 1:
         issues.append(f"metadata {label!r} must appear exactly once")
@@ -642,9 +704,9 @@ def _sections(text: str, issues: list[str]) -> tuple[DeliverySection, ...]:
     for index, match in enumerate(matches):
         end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
         body = text[match.end() : end]
-        status_match = re.findall(r"(?m)^- \*\*Status:\*\*\s+`?([^`\n]+)`?\s*$", body)
-        conclusion_match = re.findall(r"(?m)^- \*\*Conclusion:\*\*\s+(.+)$", body)
-        evidence_match = re.findall(r"(?m)^- \*\*Evidence IDs:\*\*\s+(.+)$", body)
+        status_match = re.findall(r"(?m)^- \*\*状态：\*\*\s+`?([^`\n]+)`?\s*$", body)
+        conclusion_match = re.findall(r"(?m)^- \*\*结论：\*\*\s+(.+)$", body)
+        evidence_match = re.findall(r"(?m)^- \*\*Evidence ID：\*\*\s+(.+)$", body)
         if len(status_match) != 1:
             issues.append(f"{match.group(1)} must have exactly one Status")
         if len(conclusion_match) != 1:
@@ -669,15 +731,15 @@ def _evidence_from_rows(
     return tuple(
         DeliveryEvidence(
             row[id_column],
-            row["Kind"],
-            row["Command"],
-            row["Path"],
-            row["Coverage"],
-            row["Result"],
-            row["Observed at UTC"],
-            row["Exit code"],
-            row["Status"],
-            row["Summary"],
+            row["类型"],
+            row["命令"],
+            row["路径"],
+            row["覆盖范围"],
+            row["结果"],
+            row["观察时间（UTC）"],
+            row["退出码"],
+            row["状态"],
+            row["摘要"],
         )
         for row in rows
     )
@@ -692,36 +754,36 @@ def load_delivery_report(
     path = Path(report_path)
     text = path.read_text(encoding="utf-8")
     issues: list[str] = []
-    generated_at = _metadata(text, "Generated at UTC", issues)
-    status = _metadata(text, "Readiness", issues)
+    generated_at = _metadata(text, "生成时间（UTC）", issues)
+    status = _metadata(text, "就绪度", issues)
     sections = _sections(text, issues)
     evidence_rows = _table(
         text,
-        "## Evidence index",
+        "## 证据索引",
         (
             "Evidence ID",
-            "Kind",
-            "Command",
-            "Path",
-            "Coverage",
-            "Result",
-            "Observed at UTC",
-            "Exit code",
-            "Status",
-            "Summary",
+            "类型",
+            "命令",
+            "路径",
+            "覆盖范围",
+            "结果",
+            "观察时间（UTC）",
+            "退出码",
+            "状态",
+            "摘要",
         ),
         issues,
     )
     blocker_rows = _table(
         text,
-        "## Blocking reasons",
-        ("Blocker ID", "Owner", "Status", "Evidence IDs", "Reason", "Closure criteria"),
+        "## 阻塞原因",
+        ("阻塞项 ID", "负责人", "状态", "Evidence ID", "原因", "关闭条件"),
         issues,
     )
     student_rows = _table(
         text,
-        "## Student final checklist",
-        ("Check ID", "Item", "Status", "Evidence IDs", "Student record"),
+        "## 学生最终核对表",
+        ("检查 ID", "项目", "状态", "Evidence ID", "学生记录"),
         issues,
     )
     report_root = path.resolve().parent
@@ -731,30 +793,30 @@ def load_delivery_report(
         else report_root / "docs" / "audits" / "PRODUCT_AUDIT.md"
     )
     product_text = product_path.read_text(encoding="utf-8")
-    product_generated_at = _metadata(product_text, "Generated at UTC", issues)
-    product_status = _metadata(product_text, "Readiness", issues)
-    product_scope = _metadata(product_text, "Scope", issues)
-    product_method = _metadata(product_text, "Method", issues)
+    product_generated_at = _metadata(product_text, "生成时间（UTC）", issues)
+    product_status = _metadata(product_text, "就绪度", issues)
+    product_scope = _metadata(product_text, "范围", issues)
+    product_method = _metadata(product_text, "方法", issues)
     product_rows = _table(
         product_text,
-        "## Product audit matrix",
-        ("Item ID", "Domain", "Flow step", "Status", "Evidence IDs", "Notes"),
+        "## 产品审计矩阵",
+        ("条目 ID", "领域", "流程步骤", "状态", "Evidence ID", "说明"),
         issues,
     )
     product_evidence_rows = _table(
         product_text,
-        "## Evidence index",
+        "## 证据索引",
         (
             "Evidence ID",
-            "Kind",
-            "Command",
-            "Path",
-            "Coverage",
-            "Result",
-            "Observed at UTC",
-            "Exit code",
-            "Status",
-            "Summary",
+            "类型",
+            "命令",
+            "路径",
+            "覆盖范围",
+            "结果",
+            "观察时间（UTC）",
+            "退出码",
+            "状态",
+            "摘要",
         ),
         issues,
     )
@@ -770,33 +832,33 @@ def load_delivery_report(
         _evidence_from_rows(evidence_rows, id_column="Evidence ID"),
         tuple(
             BlockingReason(
-                row["Blocker ID"],
-                row["Owner"],
-                row["Status"],
-                _refs(row["Evidence IDs"]),
-                row["Reason"],
-                row["Closure criteria"],
+                row["阻塞项 ID"],
+                row["负责人"],
+                row["状态"],
+                _refs(row["Evidence ID"]),
+                row["原因"],
+                row["关闭条件"],
             )
             for row in blocker_rows
         ),
         tuple(
             StudentCheck(
-                row["Check ID"],
-                row["Item"],
-                row["Status"],
-                _refs(row["Evidence IDs"]),
-                row["Student record"],
+                row["检查 ID"],
+                row["项目"],
+                row["状态"],
+                _refs(row["Evidence ID"]),
+                row["学生记录"],
             )
             for row in student_rows
         ),
         tuple(
             ProductAuditItem(
-                row["Item ID"],
-                row["Domain"],
-                row["Flow step"],
-                row["Status"],
-                _refs(row["Evidence IDs"]),
-                row["Notes"],
+                row["条目 ID"],
+                row["领域"],
+                row["流程步骤"],
+                row["状态"],
+                _refs(row["Evidence ID"]),
+                row["说明"],
             )
             for row in product_rows
         ),
@@ -853,7 +915,7 @@ def _validate_current_status_documents(repo_root: Path, errors: list[str]) -> No
         block = text.split(CURRENT_STATUS_START, maxsplit=1)[1].split(
             CURRENT_STATUS_END, maxsplit=1
         )[0]
-        if "Task 24 current status" not in block or "Task 23 current status" in block:
+        if "任务 24 当前状态" not in block or "任务 23 当前状态" in block:
             errors.append(f"{name} current status is stale")
         if "MUSEECHO V1 PARTIALLY READY" not in block:
             errors.append(f"{name} current status lacks the exact readiness")
@@ -871,7 +933,7 @@ def validate_course_status_documents(repo_root: Path) -> tuple[str, ...]:
         .split(CURRENT_STATUS_END, maxsplit=1)[0]
     )
     normalized_plan_block = re.sub(r"\s+", " ", plan_block.replace(">", " "))
-    if "student-authored reflection draft" not in normalized_plan_block:
+    if "学生撰写的反思草稿" not in normalized_plan_block:
         errors.append("PLAN.md current status must describe the student-authored reflection draft")
     for name, text in text_by_name.items():
         marker_lines = [
@@ -898,7 +960,7 @@ def validate_course_status_documents(repo_root: Path) -> tuple[str, ...]:
         for field, expected in EXPECTED_FINAL_CI_RELATIONSHIP.items():
             if observed.get(field) != expected:
                 errors.append(f"{name} final-CI relationship has invalid {field}")
-        if text.count(FINAL_CI_STATEMENT) != 1:
+        if text.count(FINAL_CI_STATEMENTS[name]) != 1:
             errors.append(f"{name} final-CI relationship has invalid statement")
         visible_text = "\n".join(
             line for line in text.splitlines() if not line.startswith(FINAL_CI_MARKER_PREFIX)
@@ -925,7 +987,116 @@ def validate_course_status_documents(repo_root: Path) -> tuple[str, ...]:
         ]
         if any(later < earlier for earlier, later in zip(detail_dates, detail_dates[1:])):
             errors.append("AGENT_LOG.md detailed records must be oldest-to-newest")
+
+    reflection_notes = (repo_root / "REFLECTION_NOTES.md").read_text(encoding="utf-8")
+    reflection_headings = tuple(
+        line for line in reflection_notes.splitlines() if re.match(r"^## \d{4}-\d{2}-\d{2}", line)
+    )
+    if reflection_headings != REFLECTION_NOTES_DATED_HEADINGS:
+        errors.append("REFLECTION_NOTES.md dated heading inventory is invalid")
+    reflection_dates = [
+        datetime.strptime(match, "%Y-%m-%d").date()
+        for match in re.findall(r"(?m)^## (\d{4}-\d{2}-\d{2})", reflection_notes)
+    ]
+    if any(later < earlier for earlier, later in zip(reflection_dates, reflection_dates[1:])):
+        errors.append("REFLECTION_NOTES.md dated records must be oldest-to-newest")
+    _validate_release_contract(repo_root, errors)
     return tuple(errors)
+
+
+def _validate_release_contract(repo_root: Path, errors: list[str]) -> None:
+    manifest_path = repo_root / "release" / "v0.1.0-manifest.json"
+    reproduction_path = repo_root / "RELEASE_REPRODUCTION.md"
+    verifier_path = repo_root / "scripts" / "verify_github_release.py"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        errors.append("release/v0.1.0-manifest.json release contract is unreadable")
+        return
+    manifest_fields = {
+        "repository": manifest.get("repository"),
+        "tag": manifest.get("tag"),
+        "target": manifest.get("target_commit"),
+        "main-ci-run": manifest.get("main_ci_run"),
+        "published-at": manifest.get("published_at"),
+        "release-url": manifest.get("release_url"),
+    }
+    for field in ("repository", "tag", "target", "main-ci-run", "published-at", "release-url"):
+        if manifest_fields[field] != RELEASE_CONTRACT[field]:
+            errors.append(f"release/v0.1.0-manifest.json release contract has invalid {field}")
+    expected_assets = tuple(
+        {"name": name, "size": size, "sha256": sha256}
+        for name, size, sha256 in RELEASE_CONTRACT["assets"]
+    )
+    observed_assets = manifest.get("assets")
+    if not isinstance(observed_assets, list) or tuple(observed_assets) != expected_assets:
+        errors.append("release/v0.1.0-manifest.json release contract has invalid assets")
+    provenance = manifest.get("provenance")
+    if not isinstance(provenance, dict):
+        errors.append("release/v0.1.0-manifest.json release contract has invalid provenance")
+    else:
+        required_provenance = {
+            "mode": "local-rebuild-from-exact-main-commit",
+            "source_commit": RELEASE_CONTRACT["target"],
+            "main_ci_run": RELEASE_CONTRACT["main-ci-run"],
+            "ci_distribution_passed": True,
+            "ci_artifact_retained": False,
+            "published_bytes_identity_checksum_smoke_verified": True,
+            "byte_equality_with_unretained_ci_output_claimed": False,
+        }
+        if any(provenance.get(key) != value for key, value in required_provenance.items()):
+            errors.append("release/v0.1.0-manifest.json release contract has invalid provenance")
+
+    try:
+        reproduction = reproduction_path.read_text(encoding="utf-8")
+    except OSError:
+        errors.append("RELEASE_REPRODUCTION.md release contract is unreadable")
+        return
+    normalized_reproduction = re.sub(r"\s+", " ", reproduction)
+    reproduction_fields = {
+        "release-url": (RELEASE_CONTRACT["release-url"],),
+        "tag": (f"标签 `{RELEASE_CONTRACT['tag']}`",),
+        "target": (RELEASE_CONTRACT["target"],),
+        "main-ci-run": (str(RELEASE_CONTRACT["main-ci-run"]),),
+        "published-at": (RELEASE_CONTRACT["published-at"],),
+        "asset-name": tuple(f"`{name}`" for name, _, _ in RELEASE_CONTRACT["assets"]),
+        "asset-size": tuple(f"{size:,} 字节" for _, size, _ in RELEASE_CONTRACT["assets"]),
+        "asset-sha256": tuple(sha256 for _, _, sha256 in RELEASE_CONTRACT["assets"]),
+        "replay-command": (
+            "scripts/verify_github_release.py",
+            "--action Smoke",
+            "--manifest release/v0.1.0-manifest.json",
+            "--assets-directory $releaseDir",
+            "--download",
+        ),
+        "provenance": (
+            "Actions 配额跳过了制品留存",
+            "从精确 `main` SHA 本地重建",
+            "不声称与 CI 内未留存 tar 字节相同",
+            "镜像身份、打包、回下载校验和与真实 no-build Smoke",
+        ),
+    }
+    for field, fragments in reproduction_fields.items():
+        if any(fragment not in normalized_reproduction for fragment in fragments):
+            errors.append(f"RELEASE_REPRODUCTION.md release contract has invalid {field}")
+    if not verifier_path.is_file():
+        errors.append("scripts/verify_github_release.py replay verifier is missing")
+    stale_claims = {
+        "PLAN.md": "最终 main CI 的 tar 已下载",
+        "SPEC.md": "只允许发布同一 distribution 作业产生并审计的",
+        "README.md": "两个经过同一 distribution 作业审计的镜像 tar",
+        "docs/superpowers/specs/2026-08-17-offline-runtime-release-design.md": (
+            "`release-images.json`, copied from the distribution job"
+        ),
+    }
+    for relative_path, stale_claim in stale_claims.items():
+        try:
+            text = (repo_root / relative_path).read_text(encoding="utf-8")
+        except OSError:
+            errors.append(f"{relative_path} release provenance document is unreadable")
+            continue
+        if stale_claim in text:
+            errors.append(f"{relative_path} contains stale retained-CI artifact provenance")
 
 
 def validate_delivery_report(
@@ -938,10 +1109,7 @@ def validate_delivery_report(
         errors.append("delivery report generated time is not strict UTC")
     elif generated_at > now:
         errors.append("delivery report generated time is future-dated")
-    if (
-        "Task 24 current status" not in report.raw_text
-        or "Task 23 current status" in report.raw_text
-    ):
+    if "任务 24 当前状态" not in report.raw_text or "任务 23 当前状态" in report.raw_text:
         errors.append("DELIVERY_REPORT.md current status is stale")
     if "TASK24-AUDIT" in report.raw_text:
         errors.append("Task 24 audit cannot remain a current blocker")
@@ -1048,7 +1216,7 @@ def validate_delivery_report(
                 errors.append(f"{blocker.blocker_id} references unknown evidence {evidence_id}")
             elif evidence.status != "PENDING":
                 errors.append(f"{blocker.blocker_id} requires pending evidence")
-        if len(blocker.closure_criteria) < 35 or blocker.closure_criteria.lower() in {
+        if len(blocker.closure_criteria) < 20 or blocker.closure_criteria.lower() in {
             "later",
             "tbd",
             "todo",
