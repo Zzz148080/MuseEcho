@@ -75,6 +75,12 @@ jobs:
       - name: Container test-runner cleanup coverage
         shell: pwsh
         run: ./scripts/test-container-pytest.ps1
+      - name: Offline runtime synthetic coverage
+        shell: pwsh
+        run: ./scripts/test-offline-runtime.ps1
+      - name: Offline release packaging synthetic coverage
+        shell: pwsh
+        run: ./scripts/test-prepare-offline-release.ps1
 
   e2e:
     needs: quality
@@ -222,11 +228,19 @@ jobs:
             -v "$PWD:/workspace:ro" aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e image \
             --input /workspace/tmp/image-security/museecho-gateway.tar \
             --scanners vuln --exit-code 1 --severity HIGH,CRITICAL
+      - name: Package offline runtime release assets
+        shell: pwsh
+        run: |
+          ./scripts/prepare-offline-release.ps1 -Version 0.1.0 `
+            -EvidenceDirectory tmp/image-security -OutputDirectory tmp/offline-release
       - name: Retain image vulnerability evidence
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: image-vulnerability-evidence
-          path: tmp/image-security/
+          path: |
+            tmp/image-security/
+            tmp/offline-release/
           if-no-files-found: warn
           retention-days: 14

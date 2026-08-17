@@ -1,8 +1,9 @@
-export type ConfidenceLevel = 'high' | 'medium' | 'unknown'
+export type ConfidenceLevel = 'high' | 'medium' | 'low' | 'unknown'
 
 const confidenceLabels: Record<ConfidenceLevel, string> = {
   high: '高置信',
   medium: '中置信',
+  low: '低置信',
   unknown: '证据不足',
 }
 

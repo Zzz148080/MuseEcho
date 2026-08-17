@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from museecho.analysis.energy import extract_energy
+from museecho.analysis.rhythm import estimate_rhythm
 from museecho.analysis.signal_features import SignalFeatureConfig, extract_signal_features
 from tests.fixtures.audio_factory import sine_samples
 
@@ -57,11 +58,81 @@ def test_metronome_estimates_120_bpm_with_monotonic_beats():
     assert result.rhythm_algorithm
 
 
-def test_weak_eighth_note_subdivisions_do_not_become_high_confidence_240_bpm():
+def test_weak_eighth_note_subdivisions_resolve_to_the_strong_120_bpm_pulse():
     result = extract_signal_features(_subdivided_metronome_samples(), SAMPLE_RATE)
 
+    assert result.bpm == pytest.approx(120.0, abs=3.0)
+    assert result.bpm_confidence is not None
+    assert result.bpm_confidence >= 0.55
+    assert len(result.beat_positions_seconds) >= 8
+
+
+def test_long_ambiguous_track_surfaces_a_tentative_half_tempo(monkeypatch):
+    onset_envelope = np.ones(600, dtype=np.float64)
+    monkeypatch.setattr(
+        "museecho.analysis.rhythm._chunked_onset_strength",
+        lambda *args, **kwargs: onset_envelope,
+    )
+    monkeypatch.setattr(
+        "museecho.analysis.rhythm._estimate_periodic_tempo",
+        lambda *args, **kwargs: (160.0, 0.18, 0.14),
+    )
+    monkeypatch.setattr(
+        "museecho.analysis.rhythm._chunked_beat_frames",
+        lambda *args, bpm, **kwargs: np.arange(0, 600, 4 if bpm > 100.0 else 8),
+    )
+    monkeypatch.setattr(
+        "museecho.analysis.rhythm._beat_accent_imbalance",
+        lambda _onset, frames: 0.05 if frames.size > 100 else 0.08,
+    )
+    monkeypatch.setattr(
+        "museecho.analysis.rhythm._rhythm_confidence",
+        lambda *args, **kwargs: 0.53,
+    )
+
+    result = estimate_rhythm(
+        np.full(60_000, 0.1, dtype=np.float32),
+        1_000,
+        hop_length=100,
+        minimum_duration_seconds=2.0,
+        minimum_signal_rms=1e-4,
+        minimum_confidence=0.55,
+        minimum_onset_periodicity=0.2,
+        maximum_beat_accent_imbalance=0.25,
+        maximum_sample_rate=1_000,
+        n_fft=128,
+        band_count=32,
+        chunk_seconds=30.0,
+    )
+
+    assert result.bpm == 80.0
+    assert result.confidence == 0.53
+    assert len(result.beat_positions_seconds) >= 3
+
+
+def test_constant_positive_onset_envelope_returns_unknown_rhythm(monkeypatch):
+    monkeypatch.setattr(
+        "museecho.analysis.rhythm._chunked_onset_strength",
+        lambda *args, **kwargs: np.ones(600, dtype=np.float64),
+    )
+
+    result = estimate_rhythm(
+        np.full(60_000, 0.1, dtype=np.float32),
+        1_000,
+        hop_length=100,
+        minimum_duration_seconds=2.0,
+        minimum_signal_rms=1e-4,
+        minimum_confidence=0.55,
+        minimum_onset_periodicity=0.2,
+        maximum_beat_accent_imbalance=0.25,
+        maximum_sample_rate=1_000,
+        n_fft=128,
+        band_count=32,
+        chunk_seconds=30.0,
+    )
+
     assert result.bpm is None
-    assert result.bpm_confidence is None
+    assert result.confidence is None
     assert result.beat_positions_seconds == ()
 
 
@@ -88,6 +159,16 @@ def test_waveform_buckets_preserve_minimum_and_maximum_peaks():
     assert result.waveform.resolution_seconds == pytest.approx(0.25)
     assert result.waveform.confidence == 1.0
     assert result.waveform.algorithm
+
+
+def test_waveform_buckets_clamp_decoder_overshoot_to_safe_display_range():
+    samples = [-1.2, 0.2, -0.1, 1.25]
+    config = SignalFeatureConfig(waveform_bucket_count=2, frame_length=4, hop_length=2)
+
+    result = extract_signal_features(samples, 4, config=config)
+
+    assert result.waveform.minimums == pytest.approx((-1.0, -0.1))
+    assert result.waveform.maximums == pytest.approx((0.2, 1.0))
 
 
 def test_segmented_energy_detects_rise_and_fall_near_boundaries():
@@ -202,7 +283,7 @@ def test_output_is_strict_json_and_contains_versioned_algorithms():
     payload = result.to_dict()
     encoded = json.dumps(payload, allow_nan=False, sort_keys=True)
 
-    assert '"config_version": "signal-v1"' in encoded
+    assert '"config_version": "signal-v3"' in encoded
     assert payload["waveform"]["algorithm"]
     assert payload["energy"]["algorithm"]
     assert payload["rhythm"]["algorithm"]

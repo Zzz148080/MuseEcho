@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 import base64
+import io
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from museecho.app import create_app
+from museecho.application import coordinator as coordinator_module
 from museecho.application.access import AccessService
-from museecho.application.coordinator import AnalysisCoordinator
+from museecho.application.coordinator import AnalysisCoordinator, AnalysisInputUnavailableError
 from museecho.application.explanations import ExplanationService
 from museecho.application.queue import SingleWorkerQueue
 from museecho.application.uploads import UploadSubmissionService
+from museecho.audio_formats import AUDIO_FORMATS, AudioFormat
 from museecho.domain.status import AnalysisJob, AnalysisStage, SourceKind
 from museecho.infrastructure.audio_store import ChunkedEncryptedAudioStore
 from museecho.infrastructure.db import create_session_factory
@@ -35,6 +39,86 @@ class MemorySecretStore:
     def clear(self) -> bool:
         self.value = ""
         return True
+
+
+class _StopAfterMaterialization(Exception):
+    pass
+
+
+def _encrypted_pipeline_dependencies(tmp_path: Path):
+    database_url = f"sqlite:///{(tmp_path / 'museecho.db').as_posix()}"
+    init_db(database_url)
+    repository = SqliteAnalysisRepository(create_session_factory(database_url))
+    store = ChunkedEncryptedAudioStore(
+        tmp_path / "ciphertext",
+        key_store=MemorySecretStore(b"m" * 32),
+        repository=repository,
+        chunk_size=16,
+    )
+    return repository, store
+
+
+def _add_real_job(repository: SqliteAnalysisRepository) -> uuid.UUID:
+    now = datetime.now(timezone.utc)
+    analysis_id = uuid.uuid4()
+    repository.add(
+        AnalysisJob(
+            id=analysis_id,
+            created_at=now,
+            updated_at=now,
+            expires_at=now + timedelta(hours=24),
+            source_kind=SourceKind.REAL,
+        )
+    )
+    return analysis_id
+
+
+@pytest.mark.parametrize("audio_format", AUDIO_FORMATS, ids=lambda item: item.suffix[1:])
+def test_coordinator_materializes_encrypted_audio_with_registered_suffix(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    audio_format: AudioFormat,
+):
+    repository, store = _encrypted_pipeline_dependencies(tmp_path)
+    analysis_id = _add_real_job(repository)
+    plaintext = f"encrypted source for {audio_format.canonical_media_type}".encode()
+    store.write(analysis_id, io.BytesIO(plaintext), audio_format.canonical_media_type)
+    observed: list[tuple[str, bytes]] = []
+
+    def inspect_decoder_input(path: Path, **_: object) -> None:
+        observed.append((path.suffix, path.read_bytes()))
+        raise _StopAfterMaterialization
+
+    monkeypatch.setattr(coordinator_module, "decode_audio", inspect_decoder_input)
+
+    with pytest.raises(_StopAfterMaterialization):
+        AnalysisCoordinator(
+            repository=repository,
+            audio_store=store,
+            temp_root=tmp_path / "analysis",
+        )(analysis_id)
+
+    assert observed == [(audio_format.suffix, plaintext)]
+
+
+def test_coordinator_rejects_unknown_persisted_media_type_before_decoder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    repository, store = _encrypted_pipeline_dependencies(tmp_path)
+    analysis_id = _add_real_job(repository)
+    store.write(analysis_id, io.BytesIO(b"encrypted source"), "audio/x-unknown")
+
+    def fail_if_decoder_runs(*_: object, **__: object) -> None:
+        pytest.fail("unknown persisted media type reached the decoder")
+
+    monkeypatch.setattr(coordinator_module, "decode_audio", fail_if_decoder_runs)
+
+    with pytest.raises(AnalysisInputUnavailableError, match="unsupported"):
+        AnalysisCoordinator(
+            repository=repository,
+            audio_store=store,
+            temp_root=tmp_path / "analysis",
+        )(analysis_id)
 
 
 def test_coordinator_startup_removes_only_owned_abandoned_plaintext(tmp_path: Path):

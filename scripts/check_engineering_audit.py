@@ -10,17 +10,18 @@ import os
 import re
 import subprocess
 import sys
-from contextlib import chdir
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Any, Callable
+from pathlib import Path, PurePosixPath
+from tempfile import TemporaryDirectory
+from typing import Any, Callable, Iterator
 
 if __package__:
-    from scripts.image_vulnerability_audit import audit_image, build_runtime_boundary_manifest
+    from scripts.image_vulnerability_audit import audit_image
     from scripts.verify_release_identity import audit_release_identity, image_id_from_tar
 else:
-    from image_vulnerability_audit import audit_image, build_runtime_boundary_manifest
+    from image_vulnerability_audit import audit_image
     from verify_release_identity import audit_release_identity, image_id_from_tar
 
 EXPECTED_DOMAINS = (
@@ -62,7 +63,10 @@ FINDING_CONTRACTS = {
 }
 
 SECURITY_MANIFEST_PATH = "docs/audits/evidence/task23-security-manifest.json"
-SECURITY_MANIFEST_SHA256 = "a5e6dca09e26501927d338168f6da8644a504bfb54aacb7e593a708670c5a790"
+SECURITY_MANIFEST_SHA256 = "59e1478af5930ed515d572ad39924e6ed0820160cc291b5920939cae7682d77f"
+SECURITY_POLICY_SNAPSHOT_PATH = "docs/audits/evidence/task23-image-vulnerability-policy.json"
+SECURITY_POLICY_SOURCE_COMMIT = "0d9888febe219373f1fafc30def8f6333bce7c67"
+SECURITY_POLICY_SOURCE_PATH = "scripts/image-vulnerability-policy.json"
 
 SECURITY_MATERIAL_FILENAMES = (
     "app-raw-review1.json",
@@ -119,8 +123,22 @@ FIXED_EVIDENCE_CONTRACTS = {
         ".venv/Scripts/python.exe -m mypy src; "
         ".venv/Scripts/python.exe -m mypy --platform linux src",
         "scripts/check_engineering_audit.py",
-        "93 files formatted; lint passed; Windows-host and explicit Linux strict "
-        "mypy each passed 46 source files",
+        "96 files formatted; lint passed; Windows-host and explicit Linux strict "
+        "mypy each passed 47 source files",
+    ),
+    "E013": (
+        "IMPLEMENTATION_BOUNDARY_COMMAND",
+        "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
+        "scripts/container-pytest.ps1 -Image museecho-task3-verification-env:latest; "
+        r".venv\Scripts\python.exe -m pytest "
+        "tests/unit/test_task20_final_delivery_contract.py -q",
+        "tests",
+        "841 passed, 7 skipped in the locked Linux verification runtime at a historical "
+        "implementation boundary, "
+        "including the 100 MiB upload-limit regressions; 20 passed on the PowerShell host, "
+        "including the four PowerShell-only harnesses; "
+        "this evidence predates 7f8412b and cannot prove its playback/rhythm changes or the "
+        "final branch tip; container and task-temp cleanup completed",
     ),
     "E015": (
         "EXTERNAL_NOT_RUN",
@@ -244,7 +262,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         "Gateway raw occurrences=0 and distinct-cves=0; exact config and raw SHA fixed",
     ),
     "E022": (
-        "CURRENT_COMMAND",
+        "IMPLEMENTATION_BOUNDARY_COMMAND",
         "docker run --rm --network none --read-only --cap-drop ALL "
         "--security-opt no-new-privileges --workdir /workspace "
         "--mount type=bind,source=REPOSITORY,target=/workspace,readonly "
@@ -258,8 +276,9 @@ FIXED_EVIDENCE_CONTRACTS = {
         "--vex-output /evidence/app-openvex-review1.json "
         "--inventory-output /evidence/app-inventory-review1.json",
         SECURITY_MANIFEST_PATH,
-        "Exact raw tuple, package ownership, current clean runtime boundary, 67 reviewed "
-        "statements, and release identity passed",
+        "Pre-feature Task 23 image raw tuple, package ownership, 67 reviewed statements, "
+        "and release identity passed; current source policy is bound separately and this "
+        "record is not a current runtime-image scan",
     ),
     "E023": (
         "CURRENT_COMMAND",
@@ -296,7 +315,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md",
         "docs/audits/FUNCTIONAL_AUDIT.md",
-        "44 passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0",
+        "48 passed; 40 items validated PASS=36 PARTIAL=4 FAIL=0",
     ),
     "E033": (
         "RED_COMMAND",
@@ -331,7 +350,7 @@ FIXED_EVIDENCE_CONTRACTS = {
         "NOT RUN: formal current-source Dockerfile build requires the complete locked "
         "BuildKit pip and apt cache under network none",
         "Dockerfile",
-        "Controlled current-source derivative is audit-only and is not a release artifact",
+        "Retained Task 23 derivative is audit-only and is not a release artifact",
     ),
     "E037": (
         "IMPLEMENTATION_BOUNDARY_COMMAND",
@@ -339,6 +358,15 @@ FIXED_EVIDENCE_CONTRACTS = {
         ".github/workflows/ci.yml",
         "Last product/CI implementation boundary 31630284744 on 2b2730e completed with "
         "quality, e2e, and distribution success; it is not branch-tip evidence",
+    ),
+    "E038": (
+        "IMPLEMENTATION_BOUNDARY_COMMAND",
+        "gh run view 31966788273 --repo Zzz148080/MuseEcho --json "
+        "status,conclusion,headBranch,headSha,jobs,url",
+        ".github/workflows/ci.yml",
+        "Final product/CI implementation SHA 0674f74f4097e46cee98c4715a62ad5aa55101cf "
+        "on codex/expand-common-audio-formats passed quality (5m43s), e2e (3m10s), "
+        "and distribution (7m30s) in run 31966788273",
     ),
 }
 
@@ -363,7 +391,7 @@ SECURITY_MANIFEST_CONTRACT = {
         "tar_sha256": "c45998dfa5bc6c733799b036f07d64ebce081f23a4cd7497bcb323f72bb7e25e",
         "tuple_sha256": "4ab629f0f3b74d2357fcf19d195831c37adbee645d881e9a3fb4605224de35ba",
         "vex_gate_exit": 0,
-        "vex_sha256": "76b539cb0b71dbb6339150f322eaf049207d862d66a209fdb97bf64245c7afaa",
+        "vex_sha256": "5a99f65ff2876867117e257903df87a63c0821c614ea82a88d61ccbef833f372",
     },
     "boundary": {
         "build_kind": "controlled_current_source_derivation_from_task20_final",
@@ -371,9 +399,9 @@ SECURITY_MANIFEST_CONTRACT = {
         "formal_dockerfile_build_reason": (
             "locked pip and apt BuildKit layers unavailable under network none"
         ),
-        "policy_sha256": "f0210dd1e4c441c51dc183ef31764872ad75ed88973249ab8b4cfc4d52916d91",
+        "policy_sha256": "2ccccb86f5efe5f40f3af16dcd210abe85977bb3213ccb29235758966164a004",
         "runtime_boundary_sha256": (
-            "74c3ee936529f49df7a220aa6bcecb089278fd4b26d5a797792a3a08c5d43fa4"
+            "4dc93b5c783978818ff5f3bc03b663897f310589dc451c297db7952dedc5bb2a"
         ),
         "task20_base_daemon_image_id": (
             "sha256:96cd900d6c17c360b01665362330aca8ef032b0d4d1f140659a52265ce47f39c"
@@ -638,7 +666,7 @@ def validate_audit(
     if duplicate_evidence:
         errors.append(f"duplicate evidence ids: {', '.join(duplicate_evidence)}")
 
-    expected_evidence_ids = {f"E{index:03d}" for index in range(1, 38)}
+    expected_evidence_ids = {f"E{index:03d}" for index in range(1, 39)}
     missing_evidence = sorted(expected_evidence_ids - set(evidence_ids))
     extra_evidence = sorted(set(evidence_ids) - expected_evidence_ids)
     if missing_evidence:
@@ -648,6 +676,8 @@ def validate_audit(
 
     evidence_by_id = {item.evidence_id: item for item in audit.evidence}
     fingerprints: dict[tuple[object, ...], str] = {}
+    prior_observed_at: datetime | None = None
+    prior_evidence_id: str | None = None
     for item in audit.evidence:
         fingerprint = (
             item.kind,
@@ -674,10 +704,18 @@ def validate_audit(
             errors.append(f"{item.evidence_id} requires result")
         if item.observed_at is None:
             errors.append(f"{item.evidence_id} has invalid observed UTC")
-        elif item.observed_at > now:
-            errors.append(f"{item.evidence_id} is future-dated")
-        elif item.observed_at > audit.generated_at:
-            errors.append(f"{item.evidence_id} is later than the generated audit")
+        else:
+            if prior_observed_at is not None and item.observed_at < prior_observed_at:
+                errors.append(
+                    "evidence index must be oldest-to-newest: "
+                    f"{item.evidence_id} is older than preceding {prior_evidence_id}"
+                )
+            prior_observed_at = item.observed_at
+            prior_evidence_id = item.evidence_id
+            if item.observed_at > now:
+                errors.append(f"{item.evidence_id} is future-dated")
+            elif item.observed_at > audit.generated_at:
+                errors.append(f"{item.evidence_id} is later than the generated audit")
         if item.exit_code is None:
             errors.append(f"{item.evidence_id} has invalid exit code")
         elif item.kind == "EXTERNAL_NOT_RUN" and item.exit_code != "NOT_RUN":
@@ -890,7 +928,7 @@ def _validate_security_manifest(repo_root: Path, errors: list[str]) -> None:
     ):
         errors.append("security evidence manifest facts do not match the fixed audit boundary")
 
-    policy_path = repo_root / "scripts/image-vulnerability-policy.json"
+    policy_path = repo_root / SECURITY_POLICY_SNAPSHOT_PATH
     try:
         policy_bytes = policy_path.read_bytes()
         policy = json.loads(policy_bytes)
@@ -898,27 +936,15 @@ def _validate_security_manifest(repo_root: Path, errors: list[str]) -> None:
             policy["runtime_boundary"], sort_keys=True, separators=(",", ":")
         ).encode()
     except (OSError, KeyError, TypeError, json.JSONDecodeError):
-        errors.append("vulnerability policy is missing or invalid")
+        errors.append("historical vulnerability policy snapshot is missing or invalid")
         return
     normalized_policy = policy_bytes.replace(b"\r\n", b"\n")
     if hashlib.sha256(normalized_policy).hexdigest() != boundary.get("policy_sha256"):
-        errors.append("security manifest policy digest does not match current policy")
+        errors.append("security manifest policy digest does not match historical policy snapshot")
     if hashlib.sha256(runtime_payload).hexdigest() != boundary.get("runtime_boundary_sha256"):
-        errors.append("security manifest runtime boundary does not match current policy")
-    try:
-        current_runtime_boundary = build_runtime_boundary_manifest(repo_root)
-    except (OSError, ValueError) as exc:
-        errors.append(f"current runtime boundary cannot be built: {exc}")
-        return
-    if current_runtime_boundary != policy["runtime_boundary"]:
-        errors.append("security manifest runtime boundary does not match current source")
-    current_runtime_payload = json.dumps(
-        current_runtime_boundary, sort_keys=True, separators=(",", ":")
-    ).encode()
-    if hashlib.sha256(current_runtime_payload).hexdigest() != boundary.get(
-        "runtime_boundary_sha256"
-    ):
-        errors.append("security manifest runtime boundary does not match current source")
+        errors.append(
+            "security manifest runtime boundary does not match historical policy snapshot"
+        )
 
 
 def _default_trivy_db_dir(repo_root: Path) -> Path:
@@ -1038,6 +1064,82 @@ def _json_output_digest(value: dict[str, Any]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def _git_tree_blob(repo_root: Path, commit: str, raw_path: str) -> bytes:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(repo_root), "cat-file", "blob", f"{commit}:{raw_path}"],
+            capture_output=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise AuditValidationError(
+            f"historical policy source cannot be read: {commit}:{raw_path}"
+        ) from exc
+    if completed.returncode != 0:
+        raise AuditValidationError(f"historical policy source is unavailable: {commit}:{raw_path}")
+    return completed.stdout
+
+
+def _historical_source_paths(policy: dict[str, Any]) -> dict[str, str]:
+    selected: dict[str, str] = {}
+    for field in ("runtime_boundary", "evidence_files"):
+        entries = policy.get(field)
+        if not isinstance(entries, dict):
+            raise AuditValidationError(f"historical policy {field} is invalid")
+        for raw_path, digest in entries.items():
+            path = PurePosixPath(raw_path) if isinstance(raw_path, str) else None
+            if (
+                path is None
+                or not raw_path
+                or "\\" in raw_path
+                or path.is_absolute()
+                or path.as_posix() != raw_path
+                or any(part in {"", ".", ".."} for part in path.parts)
+                or not isinstance(digest, str)
+                or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+            ):
+                raise AuditValidationError(f"historical policy {field} path/digest is invalid")
+            prior = selected.setdefault(raw_path, digest)
+            if prior != digest:
+                raise AuditValidationError(
+                    f"historical policy has conflicting source digest: {raw_path}"
+                )
+    return selected
+
+
+@contextmanager
+def _verified_historical_source_tree(repo_root: Path, policy: dict[str, Any]) -> Iterator[Path]:
+    commit = SECURITY_POLICY_SOURCE_COMMIT
+    if re.fullmatch(r"[0-9a-f]{40}", commit) is None:
+        raise AuditValidationError("historical policy source commit is invalid")
+    policy_bytes = _git_tree_blob(repo_root, commit, SECURITY_POLICY_SOURCE_PATH)
+    normalized_policy = policy_bytes.replace(b"\r\n", b"\n")
+    try:
+        tree_policy = json.loads(normalized_policy)
+    except json.JSONDecodeError as exc:
+        raise AuditValidationError("historical policy source policy is invalid") from exc
+    if (
+        hashlib.sha256(normalized_policy).hexdigest()
+        != SECURITY_MANIFEST_CONTRACT["boundary"]["policy_sha256"]
+        or tree_policy != policy
+    ):
+        raise AuditValidationError("historical policy source policy does not match the snapshot")
+
+    paths = _historical_source_paths(policy)
+    with TemporaryDirectory(prefix="museecho-task23-source-") as temporary_directory:
+        source_root = Path(temporary_directory)
+        for raw_path, expected_digest in paths.items():
+            contents = _git_tree_blob(repo_root, commit, raw_path)
+            observed_digest = hashlib.sha256(contents.replace(b"\r\n", b"\n")).hexdigest()
+            if observed_digest != expected_digest:
+                raise AuditValidationError(f"historical policy source digest mismatch: {raw_path}")
+            destination = source_root / PurePosixPath(raw_path)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(contents)
+        yield source_root
+
+
 def validate_security_materials(
     *,
     materials_dir: Path,
@@ -1076,7 +1178,7 @@ def validate_security_materials(
     retained_inventory = _read_json_object(materials_dir / "app-inventory-review1.json")
     retained_vex = _read_json_object(materials_dir / "app-openvex-review1.json")
     release_identity = _read_json_object(materials_dir / "release-images-review1.json")
-    policy = _read_json_object(selected_repo_root / "scripts/image-vulnerability-policy.json")
+    policy = _read_json_object(selected_repo_root / SECURITY_POLICY_SNAPSHOT_PATH)
 
     app_summary = _scan_summary(app_scan)
     expected_app_summary = {
@@ -1096,12 +1198,13 @@ def validate_security_materials(
             f"retained gateway raw scan summary mismatch: {gateway_summary!r}"
         )
 
-    with chdir(selected_repo_root):
+    with _verified_historical_source_tree(selected_repo_root, policy) as historical_source_root:
         audit_errors, recomputed_vex, recomputed_inventory = audit_image(
             app_scan,
             app_package_files,
             policy,
             expected_image_id=SECURITY_MANIFEST_CONTRACT["app"]["config_image_id"],
+            repository_root=historical_source_root,
         )
     if audit_errors or recomputed_vex is None or recomputed_inventory is None:
         raise AuditValidationError(

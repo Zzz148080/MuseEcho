@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import shutil
 import subprocess
 import sys
 from collections import Counter
@@ -21,7 +22,8 @@ from scripts.check_engineering_audit import load_audit as load_engineering_audit
 ROOT = Path(__file__).resolve().parents[2]
 SPEC_PATH = ROOT / "SPEC.md"
 AUDIT_PATH = ROOT / "docs" / "audits" / "FUNCTIONAL_AUDIT.md"
-NOW = datetime(2026, 8, 13, tzinfo=UTC)
+NOW = datetime(2026, 8, 17, tzinfo=UTC)
+HISTORICAL_EVIDENCE_COMMIT = "1047ce242884b6ba83a525524e88dcc44ab76a69"
 
 EXPECTED_IDS = (
     "AC-A-1",
@@ -125,6 +127,16 @@ def _duplicate_table_row(text: str, heading: str, key: str, *, new_key: str | No
     raise AssertionError(f"missing test fixture row: {heading} / {key}")
 
 
+def _swap_table_rows(text: str, heading: str, first_key: str, second_key: str) -> str:
+    lines = text.splitlines()
+    start, end = _table_bounds(lines, heading)
+    indexes = {lines[index].split("|")[1].strip(): index for index in range(start + 2, end)}
+    first_index = indexes[first_key]
+    second_index = indexes[second_key]
+    lines[first_index], lines[second_index] = lines[second_index], lines[first_index]
+    return "\n".join(lines) + "\n"
+
+
 def _validation_error(tmp_path: Path, text: str) -> str:
     audit = load_audit(SPEC_PATH, _write_audit(tmp_path, text))
     with pytest.raises(AuditValidationError) as caught:
@@ -132,7 +144,35 @@ def _validation_error(tmp_path: Path, text: str) -> str:
     return str(caught.value)
 
 
+def _require_git_history() -> None:
+    git = shutil.which("git")
+    if git is None:
+        pytest.skip("historical-tree integration requires Git")
+    object_name = f"{HISTORICAL_EVIDENCE_COMMIT}^{{commit}}"
+    completed = subprocess.run(
+        [git, "cat-file", "-e", object_name],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=10,
+    )
+    missing_object = (
+        completed.returncode == 128
+        and completed.stderr.strip() == f"fatal: Not a valid object name {object_name}"
+    )
+    if missing_object:
+        pytest.skip("historical-tree integration requires the retained Git object database")
+    if completed.returncode != 0:
+        pytest.fail(
+            f"unexpected Git prerequisite failure (exit={completed.returncode}): "
+            f"{completed.stderr.strip() or '<no stderr>'}",
+            pytrace=False,
+        )
+
+
 def test_every_spec_acceptance_item_has_a_verdict_and_evidence():
+    _require_git_history()
     audit = load_audit(SPEC_PATH, AUDIT_PATH)
 
     assert audit.missing_items == ()
@@ -145,6 +185,24 @@ def test_every_spec_acceptance_item_has_a_verdict_and_evidence():
 def test_item_id_contract_covers_all_ac_and_definition_of_done_items():
     assert EXPECTED_ITEM_IDS == EXPECTED_IDS
     assert len(EXPECTED_ITEM_IDS) == 40
+
+
+def test_current_definition_of_done_requires_github_ci_not_dual_ci() -> None:
+    spec = SPEC_PATH.read_text(encoding="utf-8")
+
+    assert check_acceptance_matrix._spec_issues(spec) == ()
+
+    legacy_dual_ci = spec.replace(
+        "合理 Git/PR 历史、GitHub CI、全过程文档",
+        "合理 Git/PR 历史、双 CI 配置、全过程文档",
+        1,
+    )
+    assert legacy_dual_ci != spec
+    assert (
+        "SPEC DOD-11 trace fragment is missing: "
+        "合理 Git/PR 历史、GitHub CI、全过程文档"
+        in check_acceptance_matrix._spec_issues(legacy_dual_ci)
+    )
 
 
 def test_missing_item_fails_closed(tmp_path: Path):
@@ -196,6 +254,12 @@ def test_evidence_requires_command_path_and_non_future_utc_time(
     mutation = _replace_table_cell(_audit_text(), "## Evidence index", "E001", column, value)
 
     assert expected in _validation_error(tmp_path, mutation)
+
+
+def test_evidence_index_rejects_descending_observed_timestamps(tmp_path: Path) -> None:
+    mutation = _swap_table_rows(_audit_text(), "## Evidence index", "E006", "E900")
+
+    assert "evidence index must be oldest-to-newest" in _validation_error(tmp_path, mutation)
 
 
 def test_duplicate_evidence_id_fails_closed(tmp_path: Path):
@@ -251,11 +315,44 @@ def test_current_command_result_contract_cannot_be_rewritten_coherently(tmp_path
     )
 
 
-def test_exact_historical_evidence_is_structurally_verifiable_without_git(monkeypatch):
+def test_current_frontend_evidence_accepts_78_and_rejects_stale_66(tmp_path: Path):
+    _require_git_history()
+    current = _audit_text()
+    retained = current.replace("vitest-tests=66", "vitest-tests=78").replace(
+        "12 files and 66 tests passed", "12 files and 78 tests passed"
+    )
+    audit = load_audit(SPEC_PATH, _write_audit(tmp_path, retained))
+
+    validate_audit(audit, repo_root=ROOT, now=NOW)
+
+    stale = _replace_table_cell(
+        retained,
+        "## Evidence index",
+        "E001",
+        "Result",
+        "vitest-files=12; vitest-tests=66",
+    )
+    assert "E001 does not match its fixed evidence contract" in _validation_error(tmp_path, stale)
+
+
+def test_exact_historical_evidence_uses_its_commit_tree_not_the_current_checkout() -> None:
+    _require_git_history()
+    audit = load_audit(SPEC_PATH, AUDIT_PATH)
+    evidence = next(record for record in audit.evidence if record.evidence_id == "E004")
+
+    assert evidence.boundary_sha256 != check_acceptance_matrix._current_boundary_sha256(ROOT)
+
+    validate_audit(audit, repo_root=ROOT, now=NOW)
+
+
+def test_historical_evidence_fails_closed_when_git_is_unavailable(monkeypatch):
     monkeypatch.setenv("PATH", "")
     audit = load_audit(SPEC_PATH, AUDIT_PATH)
 
-    validate_audit(audit, repo_root=ROOT, now=NOW)
+    with pytest.raises(AuditValidationError) as caught:
+        validate_audit(audit, repo_root=ROOT, now=NOW)
+
+    assert "E004 exact historical commit/tree is unavailable" in str(caught.value)
 
 
 def test_gitless_historical_evidence_rejects_coherent_fake_commit_and_command(
@@ -274,9 +371,9 @@ def test_gitless_historical_evidence_rejects_coherent_fake_commit_and_command(
         f"git show --format=fuller --stat {fake_commit} -- AGENT_LOG.md PLAN.md",
     )
 
-    assert "E004 does not match its fixed evidence contract" in _validation_error(
-        tmp_path, mutation
-    )
+    error = _validation_error(tmp_path, mutation)
+    assert "E004 does not match its fixed evidence contract" in error
+    assert "E004 historical commit does not match its exact evidence commit" in error
 
 
 def test_historical_evidence_rejects_audit_only_boundary_path_drift(tmp_path: Path, monkeypatch):
@@ -299,7 +396,7 @@ def test_historical_evidence_rejects_audit_only_boundary_path_drift(tmp_path: Pa
 
 
 @pytest.mark.parametrize("replacement", ("-", "0" * 64))
-def test_historical_evidence_requires_current_boundary_hash(tmp_path: Path, replacement: str):
+def test_historical_evidence_requires_exact_commit_boundary_hash(tmp_path: Path, replacement: str):
     text = _audit_text()
     if "| Boundary SHA256 |" in text:
         mutation = _replace_table_cell(
@@ -312,7 +409,7 @@ def test_historical_evidence_requires_current_boundary_hash(tmp_path: Path, repl
     else:
         mutation = text
 
-    assert "E004 current boundary SHA256" in _validation_error(tmp_path, mutation)
+    assert "E004 historical boundary SHA256" in _validation_error(tmp_path, mutation)
 
 
 def test_current_boundary_is_stable_across_text_checkout_line_endings(tmp_path: Path):
@@ -429,7 +526,14 @@ def test_external_not_run_evidence_cannot_make_an_item_pass(tmp_path: Path):
     )
 
 
-@pytest.mark.parametrize("blocker_id", ("TC-021", "REMOTE-CI", "TASK24-AUDIT", "STUDENT-MANUAL"))
+@pytest.mark.parametrize(
+    "blocker_id",
+    (
+        "TC-021",
+        "FORMAL-OFFLINE-BUILD",
+        "STUDENT-MANUAL",
+    ),
+)
 def test_external_follow_up_and_manual_work_cannot_be_marked_resolved_without_execution(
     tmp_path: Path, blocker_id: str
 ):
@@ -437,9 +541,12 @@ def test_external_follow_up_and_manual_work_cannot_be_marked_resolved_without_ex
         _audit_text(), "## Open blockers", blocker_id, "Status", "RESOLVED"
     )
 
-    assert f"{blocker_id} cannot be RESOLVED with NOT_RUN evidence" in _validation_error(
-        tmp_path, mutation
+    expected = (
+        f"{blocker_id} must remain OPEN in the tracked audit"
+        if blocker_id == "FORMAL-OFFLINE-BUILD"
+        else f"{blocker_id} cannot be RESOLVED with NOT_RUN evidence"
     )
+    assert expected in _validation_error(tmp_path, mutation)
 
 
 def test_green_github_evidence_closes_frontend_and_browser_gaps() -> None:
@@ -454,24 +561,34 @@ def test_green_github_evidence_closes_frontend_and_browser_gaps() -> None:
     assert item.disposition == "-"
 
 
-def test_task23_current_backend_smoke_static_secret_and_security_contracts_replace_task22() -> None:
+def test_final_ci_closes_remote_and_current_distribution_gaps_without_recasting_smoke() -> None:
     contracts = check_acceptance_matrix.EVIDENCE_CONTRACTS
     audit = load_audit(SPEC_PATH, AUDIT_PATH)
     evidence_by_id = {record.evidence_id: record for record in audit.evidence}
     remote_ci_item = next(item for item in audit.items if item.item_id == "DOD-10")
-    remote_ci_blocker = next(
-        blocker for blocker in audit.blockers if blocker.blocker_id == "REMOTE-CI"
-    )
+    audit_item = next(item for item in audit.items if item.item_id == "DOD-13")
 
-    assert "museecho-app:task23-review1" in contracts["E008"].command
+    assert "museecho-task3-verification-env:latest" in contracts["E008"].command
     assert "pytest-tests=649" != contracts["E008"].result
+    assert contracts["E008"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert evidence_by_id["E008"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert "predates 7f8412b" in evidence_by_id["E008"].summary
+    assert contracts["E009"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert contracts["E009"].supports_pass is False
     assert "-NoBuild -ReleaseManifest" in contracts["E009"].command
-    assert "mypy-src-files=46" in contracts["E010"].result
+    assert "mypy-src-files=47" in contracts["E010"].result
+    assert all("E009" not in item.evidence_ids for item in audit.items if item.verdict == "PASS")
     assert contracts["E003"].result == "secret-scan-files=210"
     assert "app-occurrences=181" in contracts["E902"].result
     assert "gateway-occurrences=0" in contracts["E902"].result
-    assert evidence_by_id["E901"].kind == "EXTERNAL_NOT_RUN"
-    assert "GitLab CI" in evidence_by_id["E901"].command
+    assert evidence_by_id["E901"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert "31966788273" in evidence_by_id["E901"].command
+    assert evidence_by_id["E901"].path == ".github/workflows/ci.yml"
+    assert contracts["E901"].result == (
+        "run=31966788273; head=0674f74f4097e46cee98c4715a62ad5aa55101cf; "
+        "branch=codex/expand-common-audio-formats; quality=success; e2e=success; "
+        "distribution=success"
+    )
     assert contracts["E906"].kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
     assert contracts["E906"].supports_pass is True
     assert "run=31630284744" in contracts["E906"].result
@@ -486,8 +603,23 @@ def test_task23_current_backend_smoke_static_secret_and_security_contracts_repla
         "DOD-07",
         "DOD-10",
     )
-    assert remote_ci_item.evidence_ids == ("E901", "E906")
-    assert remote_ci_blocker.evidence_ids == ("E901",)
+    assert remote_ci_item.verdict == "PASS"
+    assert remote_ci_item.evidence_ids == ("E901",)
+    assert audit_item.verdict == "PASS"
+    assert audit_item.evidence_ids == ("E903",)
+
+
+def test_pre_feature_smoke_cannot_be_recast_as_current_branch_evidence(
+    tmp_path: Path,
+) -> None:
+    for evidence_id in ("E008", "E009"):
+        mutation = _replace_table_cell(
+            _audit_text(), "## Evidence index", evidence_id, "Kind", "CURRENT_COMMAND"
+        )
+
+        assert f"{evidence_id} does not match its fixed evidence contract" in _validation_error(
+            tmp_path, mutation
+        )
 
 
 @pytest.mark.parametrize("evidence_id", ("E002", "E906"))
@@ -552,9 +684,9 @@ def test_current_acceptance_evidence_uses_the_executed_locked_python_command(
 
     assert contract.command == expected_command
     assert engineering_e030.command == expected_command
-    assert contract.result == (f"pytest-tests={collected_count}; pass=34; partial=6; fail=0")
+    assert contract.result == (f"pytest-tests={collected_count}; pass=36; partial=4; fail=0")
     assert engineering_e030.result == (
-        f"{collected_count} passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0"
+        f"{collected_count} passed; 40 items validated PASS=36 PARTIAL=4 FAIL=0"
     )
 
 
@@ -569,14 +701,17 @@ def test_task23_report_labels_superseded_statistics_and_attributes_round_four() 
 
 
 def test_audit_generated_time_and_evidence_time_must_be_real_utc(tmp_path: Path):
-    mutation = _audit_text().replace(
-        "- **Generated at UTC:** `2026-08-12T", "- **Generated at UTC:** `2999-08-12T", 1
+    text = _audit_text()
+    generated_line = next(
+        line for line in text.splitlines() if line.startswith("- **Generated at UTC:**")
     )
+    mutation = text.replace(generated_line, "- **Generated at UTC:** `2999-08-12T19:15:00Z`", 1)
 
     assert "audit generated time is future-dated" in _validation_error(tmp_path, mutation)
 
 
 def test_checker_cli_accepts_the_committed_matrix():
+    _require_git_history()
     completed = subprocess.run(
         [
             sys.executable,

@@ -1,9 +1,39 @@
 import fs from 'node:fs'
 import crypto from 'node:crypto'
+import https from 'node:https'
 import { expect, request, test } from '@playwright/test'
 import { uploadAndWait } from './support'
 
 const baseUrl = 'https://127.0.0.1:4173'
+const maxUploadRequestBytes = 100 * 1024 * 1024 + 64 * 1024
+
+function postDeclaredMultipartLength(
+  contentLength: number,
+): Promise<{ body: string; status: number }> {
+  return new Promise((resolve, reject) => {
+    const upload = https.request(
+      `${baseUrl}/api/analyses`,
+      {
+        method: 'POST',
+        rejectUnauthorized: false,
+        headers: {
+          'content-length': String(contentLength),
+          'content-type': 'multipart/form-data; boundary=museecho',
+        },
+      },
+      (response) => {
+        let body = ''
+        response.setEncoding('utf8')
+        response.on('data', (chunk) => (body += chunk))
+        response.on('end', () =>
+          resolve({ body, status: response.statusCode ?? 0 }),
+        )
+      },
+    )
+    upload.on('error', reject)
+    upload.end()
+  })
+}
 
 test('capability, CSRF, Range, and audit-log boundaries hold together', async ({
   page,
@@ -75,20 +105,8 @@ test('capability, CSRF, Range, and audit-log boundaries hold together', async ({
 })
 
 test('oversized multipart is rejected before parsing or analysis', async () => {
-  const client = await request.newContext({
-    baseURL: baseUrl,
-    ignoreHTTPSErrors: true,
-  })
-  const response = await client.post('/api/analyses', {
-    multipart: {
-      file: {
-        name: 'oversized.wav',
-        mimeType: 'audio/wav',
-        buffer: Buffer.alloc(32 * 1024 * 1024, 0x41),
-      },
-    },
-  })
-  expect(response.status()).toBe(413)
-  expect((await response.json()).error.code).toBe('upload_too_large')
-  await client.dispose()
+  const response = await postDeclaredMultipartLength(maxUploadRequestBytes + 1)
+
+  expect(response.status).toBe(413)
+  expect(JSON.parse(response.body).error.code).toBe('upload_too_large')
 })

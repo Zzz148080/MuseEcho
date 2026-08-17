@@ -4,27 +4,54 @@
 ## Task 24 current status
 
 Current delivery status is `MUSEECHO V1 PARTIALLY READY`. Task 24 now provides
-the Product Audit, 17-section delivery report, strict validator, and a blank
-student-owned reflection template; Task 24 itself is no longer a blocker.
+the Product Audit, 17-section delivery report, and strict validator; Task 24
+itself is no longer a blocker. `REFLECTION.md` is now under the student's
+personal revision and has not been used to claim final student acceptance.
 Task 23 PR #1 is merged with GitHub quality, E2E, and distribution green.
-Task 24 GitHub quality, E2E, and distribution passed at its recorded
-implementation boundary. Remaining gates are GitLab, Tencent
-Cloud/public/target-server smoke and rollback, formal offline build ENG-010,
-controller browser observation behind trusted TLS, and student acceptance.
+The current Functional Audit is **36 PASS / 4 PARTIAL / 0 FAIL**. PR #3 run
+`31966788273` passed GitHub quality (5m43s), E2E (3m10s), and distribution
+(7m30s) on exact final product/CI implementation SHA
+`0674f74f4097e46cee98c4715a62ad5aa55101cf`. Per
+`COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent Cloud/public deployment are
+deferred follow-up work, not course submission gates. Remaining gates are
+formal offline build ENG-010, local product review, and student acceptance;
+no Release publication or cloud deployment is claimed.
 <!-- TASK24-CURRENT-STATUS:END -->
 
+<!-- FINAL-CI-RELATIONSHIP: implementation-sha=0674f74f4097e46cee98c4715a62ad5aa55101cf; run=31966788273; jobs=quality:success,e2e:success,distribution:success; github=required; gitlab=supplemental-not-run; reconciliation=docs-only-requires-separate-final-sha-publication-ci -->
+Any later docs-only reconciliation is not product implementation evidence and requires its own separate final-SHA publication/CI gate before Task 6 can be complete.
+
+## Project timeline and verified GitHub boundary
+
+- 2026-08-08 至 2026-08-13：从批准的 SPEC/PLAN、cold-start 修复和 Tasks 3–24 逐步完成
+  能力访问、加密生命周期、DSP/MIR、Evidence-first 解释、React 工作区、Docker/CI、部署手册及
+  三轮审计；Task 23 PR #1 和 Task 24 implementation boundary 的历史证据继续保留。
+- 2026-08-14 至 2026-08-16：在 Task 24 后按细粒度提交完成可信结果呈现、七种常见音频格式、
+  100 MiB 上限、Broadcast WAV、按需解密 Range 播放、FLAC attached-picture 与节奏修复，随后闭合
+  Linux formatter、历史证据、pre-push Docker 和 current-image 漏洞策略漂移。
+- 2026-08-16：PR #3 的最终产品/CI 实现 SHA
+  `0674f74f4097e46cee98c4715a62ad5aa55101cf` 由 GitHub run
+  [`31966788273`](https://github.com/Zzz148080/MuseEcho/actions/runs/31966788273)
+  同时通过 quality、E2E、distribution。后续文档 reconciliation 不改变产品架构或把未发生的
+  GitLab、Release、云部署、学生验收写成完成。
+
 MuseEcho V1 是一款 Evidence First（证据优先）的交互式音乐理解应用。它用确定性的
-DSP/MIR 管线分析用户上传的 WAV/MP3，生成节拍、能量、调性、结构、和弦、波形和确定性
+DSP/MIR 管线分析用户上传的 WAV、MP3、FLAC、M4A、AAC、OGG 或 OPUS，生成节拍、能量、调性、结构、和弦、波形和确定性
 乐理证据；可选 LLM 只能解释已经通过置信度门的结构化证据，不能生成或改写音乐事实。
 
 ## 核心功能
 
-- 最大 30 MiB、最长 10 分钟的 WAV/MP3 上传、格式探测和受限解码。
+- 最大 100 MiB、最长 10 分钟的 WAV/MP3/FLAC/M4A/AAC/OGG/OPUS 上传、格式探测和受限解码。
 - 单工作线程的可恢复分析队列，失败返回稳定错误码。
 - 节拍/能量、调性、结构与大小三和弦分析；低置信结果统一为 `unknown`。
 - 时间轴、波形、证据面板、确定性乐理说明和可选证据约束式 LLM 解释。
 - 24 小时 capability cookie、CSRF/同源保护、加密音频存储和到期密码学删除。
 - 中文桌面/移动界面、真实 HTTPS E2E、300 秒性能基准。
+
+浏览器选择器仅列出 `.wav,.mp3,.flac,.m4a,.aac,.ogg,.opus` 这七个精确后缀。M4A
+仅支持 AAC/ALAC；OGG/Ogg 系列仅支持 Vorbis/Opus（`.ogg` 对应 Vorbis，`.opus`
+对应 Opus）。浏览器的 MIME 类型或文件名后缀预检不能代替服务器对容器、编解码器和
+实际内容的验证。DRM 或专有加密下载明确不受支持。
 
 ## 架构
 
@@ -65,7 +92,7 @@ DSP/MIR 管线分析用户上传的 WAV/MP3，生成节拍、能量、调性、�
 - `docs/`：设计与验证资料；`SPEC.md`、`PLAN.md` 是批准的产品和实施基线。
 - `DELIVERY_REPORT.md`：Task 24 的固定 17 节交付结论、证据、精确阻因和学生保留检查表。
 - `docs/audits/PRODUCT_AUDIT.md`：机器可读的产品审计矩阵；控制器已真实到达健康 HTTPS 边界，但因内部 CA 未受信而保持 `CERT_TRUST_BLOCKED`。
-- `REFLECTION.md`：仅供学生本人填写的空白模板，Agent 不代写或勾选。
+- `REFLECTION.md`：学生本人撰写与最终确认的反思报告；不作为自动化或 Agent 完成声明的替代品。
 
 ## 环境要求
 
@@ -106,6 +133,24 @@ Set-ItemProperty "$secretDir\audio-kek" -Name IsReadOnly -Value $true
 浏览器开发必须使用下文 Docker development profile 的同源 HTTPS 网关；不要把 Secure cookie
 降级为明文 HTTP，也不要把 FastAPI 端口直接当作浏览器入口。直接使用
 `museecho.app:create_app` 只适合依赖注入测试；完整服务使用 `museecho.runtime:app`。
+
+### 可选模型凭据：本机首次配置、查看、更新与清除
+
+未启用第三方模型时不需要配置 provider Key，系统会使用确定性 fallback。原生本机运行时，
+provider Key 默认存入操作系统凭据库，而不是 `.env`、命令行参数或仓库文件。下面的命令只会在
+隐藏输入提示中读取 Key，`status` 不会回显其正文：
+
+```powershell
+uv run museecho secret status
+uv run museecho secret set
+uv run museecho secret update
+uv run museecho secret clear
+```
+
+`set` 仅用于首次配置，已有值时必须使用 `update`；`clear` 删除本机凭据库中的 provider Key。
+若操作系统凭据库不可用，命令会失败而不会退回到明文文件。`MUSEECHO_PROVIDER_BASE_URL` 与
+`MUSEECHO_PROVIDER_MODEL` 是非秘密运行配置；容器部署则使用仓库外、只读的
+`/etc/museecho/secrets/provider-key` 文件，不能通过这组本机 CLI 修改。
 
 ## 测试与质量门
 
@@ -190,6 +235,10 @@ docker compose --profile production config --quiet
 docker compose --profile production up -d --wait --no-build
 # 仅限本机内部 CA smoke；公网不得跳过证书校验。
 curl --fail --silent --show-error --insecure https://localhost:8443/api/health
+# 保留数据库和密文音频：
+docker compose --profile production down
+# 仅在确认要销毁本地分析数据时使用：
+docker compose --profile production down --volumes
 ```
 
 可重现身份来自 digest 锁定的基础镜像、不可变仓库快照/精确包版本、固定时间戳和
@@ -248,10 +297,11 @@ Compose、命令行、截图、日志、Git 历史或前端变量。`scripts/sec
 - 访问 token 只存 Argon2id 哈希，cookie 为 Secure/HttpOnly/SameSite；写操作还需同源与
   CSRF token。
 - 上传体、解码时间、时长、响应大小、LLM 超时和引用集合均有硬限制。
-- 上传解码只接受 MP3，或 RIFF/WAVE 中的无压缩 PCM：无符号 8 位、little-endian 有符号
-  16/24/32 位、IEEE float 32/64 位（含匹配的 WAVE_FORMAT_EXTENSIBLE 子格式）。压缩或
-  歧义 RIFF codec 会在启动媒体工具前失败关闭；`ffprobe` 与 `ffmpeg` 均在输入前应用完全
-  相同的 `wav,mp3` format、`file,pipe` protocol 和上述 PCM/MP3 decoder allowlist。
+- 上传解码只接受严格容器/编解码器配对：WAV 中的受限 PCM/IEEE float、常规 MP3、FLAC、
+  M4A 中的 AAC/ALAC、ADTS AAC、Ogg/Vorbis 和 Ogg/Opus。浏览器 MIME 或后缀只是预检，
+  服务器会独立核对签名、容器、全部媒体流与 codec；DRM 和专有加密下载均失败关闭。
+  `ffprobe` 与 `ffmpeg` 共用从格式注册表派生的精确 format/codec allowlist 和 `file,pipe`
+  protocol allowlist。
 - WAVEFORMATEXTENSIBLE 仅在 `cbSize >= 22`、声明扩展字节有界、`0 < valid_bits <=
   container_bits`、GUID/速率/通道/block-align/byte-rate 全部一致时接受。MP3 仅支持可由非零
   bitrate index 计算帧大小的常规 MPEG Layer III；V1 明确拒绝 free-format (`0000`) MP3，因为
@@ -264,6 +314,11 @@ Compose、命令行、截图、日志、Git 历史或前端变量。`scripts/sec
   使用 `--ignore-unfixed`、status/package 过滤或 blanket ignore。
 
 ## 分发与 CI
+
+正式 GitHub Release 的接收方复现入口见 [`RELEASE_REPRODUCTION.md`](RELEASE_REPRODUCTION.md)。
+`v0.1.0` 发行合同由两个经过同一 distribution 作业审计的镜像 tar、离线运行工具包和
+`SHA256SUMS.txt` 组成；工具包强制 `pull_policy: never` 与 `--no-build`。这只解决接收方断网
+导入和运行，不关闭 `ENG-010` 所指的 current-source Dockerfile 断网重建。
 
 `Dockerfile` 的 `app` 与 `gateway` target 组成发行物。GitHub Actions 与 GitLab CI 都执行
 Python/TypeScript 静态检查、后端/前端测试、构建、真实 HTTPS E2E、确定性许可证策略、
@@ -279,15 +334,26 @@ SHA-256 inventory，以及固定容器、构建工具、Go replacement 和 OS �
 镜像加入测试工具。本地配置通过不代表远端 CI 已运行，只有对应提交的真实流水线结果才能
 作为远端证据。
 
+### 发行状态与获取方式
+
+课程要求容器发行物提供公开 registry 地址、精确镜像 digest 和一条可执行的获取/运行命令。
+当前项目**尚未发布**可供提交者以外使用的公开 OCI 镜像；因此不能将上面的本机构建步骤表述为
+已完成的公开分发。正式发行前，发布者必须推送 app 与 gateway 的不可变 digest，更新腾讯云
+release 配置，并在目标机器按 `DEPLOYMENT_EVIDENCE.md` 完成受信 TLS smoke。公网部署是后续计划，
+不作为本次课程提交门禁，详见 `COURSE_REQUIREMENT_UPDATE.md`。
+
 ## 部署
 
 单机部署应把 8080/8443 仅用于初始验证，正式环境使用域名、受信 TLS、主机防火墙、卷备份
-与定期恢复演练。腾讯云安装、升级、回滚和备份脚本属于 PLAN Task 21，本任务不会伪造尚未
-执行的公网部署结果。
+与定期恢复演练。腾讯云安装、升级、回滚和备份脚本属于后续部署计划，不是本次课程提交门禁。
+它们尚未执行；取得授权后应逐项填写 `DEPLOYMENT_EVIDENCE.md` 中的 UTC 时间、命令、退出码与
+脱敏结果，届时才能填写公网 URL 或标记部署 PASS。
 
 ## 已知限制
 
-- V1 仅接受 WAV/MP3，最长 10 分钟；仅输出大小三和弦，其他和声保守为 `unknown`。
+- V1 仅接受 `.wav,.mp3,.flac,.m4a,.aac,.ogg,.opus` 七个后缀与其严格内容配对，
+  最长 10 分钟；`.mp4`、`.oga`、DRM 和专有加密下载不支持；仅输出大小三和弦，
+  其他和声保守为 `unknown`。
 - 结构标签是可解释的相似段落标识，不等同于曲式学人工定论。
 - 分析队列是单进程单工作线程，不是多租户横向扩展系统。
 - 当前锁定的 Debian/FFmpeg 运行时在原始 Trivy 0.70.0 扫描中仍有 181 个无修复版本的

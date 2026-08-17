@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import re
 import uuid
+from collections.abc import Iterator
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi.responses import StreamingResponse
 
 from museecho.api.dependencies import require_analysis_access
 from museecho.application.lifecycle import AnalysisLifecycleService
+from museecho.domain.models import EncryptedAudioMetadata
 from museecho.domain.ports import AccessService
 from museecho.infrastructure.audio_store import DestroyedAudioKeyError
 
 _SINGLE_RANGE = re.compile(r"^bytes=(\d*)-(\d*)$")
+AUDIO_STREAM_CHUNK_BYTES = 1024 * 1024
 
 
 class InvalidByteRange(ValueError):
@@ -45,26 +49,41 @@ def create_audio_router(
                     "Content-Range": f"bytes */{total}",
                 },
             )
+        first_end = min(end + 1, start + AUDIO_STREAM_CHUNK_BYTES)
         try:
-            body = service.read_audio(metadata, start, end + 1)
+            first_chunk = service.read_audio(metadata, start, first_end)
         except (DestroyedAudioKeyError, KeyError):
             raise HTTPException(status_code=404, detail="Not Found") from None
         headers = {
             "Accept-Ranges": "bytes",
-            "Content-Length": str(len(body)),
+            "Content-Length": str(end - start + 1),
         }
         status_code = status.HTTP_200_OK
         if range_header is not None:
             status_code = status.HTTP_206_PARTIAL_CONTENT
             headers["Content-Range"] = f"bytes {start}-{end}/{total}"
-        return Response(
-            content=body,
+        return StreamingResponse(
+            _stream_audio(service, metadata, first_chunk, first_end, end + 1),
             status_code=status_code,
             media_type=metadata.media_type,
             headers=headers,
         )
 
     return router
+
+
+def _stream_audio(
+    service: AnalysisLifecycleService,
+    metadata: EncryptedAudioMetadata,
+    first_chunk: bytes,
+    current: int,
+    end: int,
+) -> Iterator[bytes]:
+    yield first_chunk
+    while current < end:
+        next_end = min(end, current + AUDIO_STREAM_CHUNK_BYTES)
+        yield service.read_audio(metadata, current, next_end)
+        current = next_end
 
 
 def _parse_range(value: str | None, total: int) -> tuple[int, int]:

@@ -3,15 +3,6 @@ import { ConfidenceBadge } from '../../components/ConfidenceBadge'
 import { confidenceLevel, isUsableConfidence } from '../confidence'
 import { formatTime } from '../timeline/Timeline'
 
-const functionLabels: Record<string, string> = {
-  dominant: '属功能',
-  'dominant-substitute': '属功能替代',
-  predominant: '下属准备功能',
-  tonic: '主功能',
-  'tonic-prolongation': '主功能延展',
-  'tonic-substitute': '主功能替代',
-}
-
 export interface ChordDetailsProps {
   chord: ChordResult | null
 }
@@ -21,7 +12,7 @@ export function ChordDetails({ chord }: ChordDetailsProps) {
     return (
       <section className="chord-details" aria-labelledby="chord-details-title">
         <h2 id="chord-details-title">和弦详情</h2>
-        <p>点击时间轴中的和弦事件查看已持久化的确定性乐理。</p>
+        <p>点击地图中的和声线索，查看组成音与音程。</p>
       </section>
     )
   }
@@ -36,7 +27,7 @@ export function ChordDetails({ chord }: ChordDetailsProps) {
           {formatTime(chord.start_seconds)}–{formatTime(chord.end_seconds)}
         </p>
         <h2 id="chord-details-title">和弦详情</h2>
-        <p className="unknown-copy">证据不足，前端不补全未持久化的乐理事实。</p>
+        <p className="unknown-copy">暂无可用的和声细节。</p>
       </section>
     )
   }
@@ -65,24 +56,8 @@ export function ChordDetails({ chord }: ChordDetailsProps) {
                 : '不确定'
           }
         />
-        <TheoryFact label="调内级数" value={theory.roman_numeral ?? '不确定'} />
-        <TheoryFact
-          label="可能功能"
-          value={
-            theory.functions.length
-              ? theory.functions.map((item) => functionLabels[item] ?? item).join(' · ')
-              : '不确定'
-          }
-        />
       </dl>
-      {theory.limitations.length ? (
-        <p className="theory-limitations">
-          限制：{theory.limitations.join(' · ')}
-        </p>
-      ) : null}
-      <p className="algorithm-note">
-        来源：<code>{theory.algorithm}</code>
-      </p>
+      <p className="theory-guide">A–G 表示音名；♯ 表示升半音；m 表示小三和弦。</p>
     </section>
   )
 }

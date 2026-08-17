@@ -246,7 +246,7 @@
   "binaries": {
     "caddy": {
       "approved_license": "Apache-2.0",
-      "sha256": "6f325f26cf3177a8ba89ad5e3cf1dbb89e2666f8397e7e2f24c74f124f444891"
+      "sha256": "a6a989828ff0454faefed1c600407aed8d42a36f386eb7e8df89089291c8fd89"
     }
   },
   "components": {
@@ -4517,7 +4517,7 @@
           "d18f6323b71b0b768bb5e9616e36da390fbd39369a81807cca352de4e4e6aa0b"
         ]
       },
-      "stdlib@go1.26.5": {
+      "stdlib@go1.26.6": {
         "approved_license": "BSD-3-Clause",
         "go_sum": null,
         "license_files_sha256": [

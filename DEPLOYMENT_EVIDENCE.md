@@ -7,6 +7,11 @@ domain/DNS control, or SSH authorization was available for Task 21. Therefore
 this file records only local script evidence and the real-server evidence that
 remains pending; it is not a public-deployment completion claim.
 
+Per `COURSE_REQUIREMENT_UPDATE.md`, these real-server items are a next-phase
+deployment plan rather than a blocker for the current course submission. They
+remain unexecuted and must receive fresh, redacted evidence before any future
+public-deployment claim.
+
 ## Local evidence
 
 - The delivery scripts are contract-tested in a disposable filesystem root

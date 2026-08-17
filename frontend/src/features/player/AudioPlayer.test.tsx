@@ -21,4 +21,16 @@ describe('AudioPlayer', () => {
 
     expect(screen.getByLabelText(/当前播放时间/)).toHaveTextContent('0:04')
   })
+
+  it('explains on-demand decryption and reports buffering around seeks', () => {
+    const { container } = render(<Harness />)
+    const media = container.querySelector('audio')
+    if (!media) throw new Error('missing audio element')
+
+    expect(screen.getByText(/按需解密/)).toBeVisible()
+    fireEvent.seeking(media)
+    expect(screen.getByText(/正在读取所选位置/)).toBeVisible()
+    fireEvent.seeked(media)
+    expect(screen.getByText(/音频已就绪/)).toBeVisible()
+  })
 })

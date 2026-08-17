@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from museecho.api import audio as audio_module
 from museecho.api.results import create_results_router
 from museecho.app import create_app
 from museecho.application.access import AccessService
@@ -161,10 +162,21 @@ def test_unknown_or_unauthorized_analysis_is_indistinguishable(tmp_path: Path):
     assert denied.json() == missing.json() == {"detail": "Not Found"}
 
 
-def test_audio_supports_full_and_bounded_range_reads(tmp_path: Path):
+def test_audio_supports_chunked_full_and_bounded_range_reads(tmp_path: Path, monkeypatch):
     client, _repository, job = _completed_client(tmp_path)
+    calls: list[tuple[int, int]] = []
+    original = ChunkedEncryptedAudioStore.read_range
+
+    def observed_read_range(self, metadata, start, end):
+        calls.append((start, end))
+        return original(self, metadata, start, end)
+
+    monkeypatch.setattr(audio_module, "AUDIO_STREAM_CHUNK_BYTES", 4)
+    monkeypatch.setattr(ChunkedEncryptedAudioStore, "read_range", observed_read_range)
 
     full = client.get(f"/api/analyses/{job.id}/audio")
+    assert calls == [(0, 4), (4, 8), (8, 12), (12, 16)]
+    calls.clear()
     partial = client.get(
         f"/api/analyses/{job.id}/audio",
         headers={"Range": "bytes=2-5"},
@@ -179,6 +191,7 @@ def test_audio_supports_full_and_bounded_range_reads(tmp_path: Path):
     assert partial.headers["content-range"] == "bytes 2-5/16"
     assert partial.headers["content-length"] == "4"
     assert partial.headers["content-type"].startswith("audio/wav")
+    assert calls == [(2, 6)]
 
 
 def test_audio_rejects_malformed_or_unsatisfiable_ranges(tmp_path: Path):

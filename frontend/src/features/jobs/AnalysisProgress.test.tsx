@@ -34,13 +34,16 @@ function renderProgress(loadStatus: () => Promise<AnalysisStatus>) {
 }
 
 describe('AnalysisProgress', () => {
-  it('shows the real server stage and progress without inventing remaining time', async () => {
+  it('shows progress without exposing task identifiers, source labels, or made-up timing', async () => {
     renderProgress(vi.fn().mockResolvedValue(status()))
 
     expect(await screen.findByText('分析调性')).toBeVisible()
+    expect(screen.getByText('分析进度')).toBeVisible()
+    expect(screen.queryByText('后端真实阶段')).not.toBeInTheDocument()
     expect(screen.getByRole('progressbar', { name: /分析进度/ })).toHaveValue(50)
-    expect(screen.getByText(/服务端未提供可靠估算/)).toBeVisible()
-    expect(screen.getByText('真实上传')).toBeVisible()
+    expect(screen.queryByText(/服务端未提供可靠估算/)).not.toBeInTheDocument()
+    expect(screen.queryByText('真实上传')).not.toBeInTheDocument()
+    expect(screen.queryByText('任务编号')).not.toBeInTheDocument()
   })
 
   it('stops status polling for every terminal state', () => {

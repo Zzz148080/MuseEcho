@@ -16,6 +16,11 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
   const summary = result.track.summary
   const waveform = summary?.waveform
   const energy = result.time_series.find((item) => item.kind === 'energy')
+  const usableChords = result.chords.filter(
+    (chord) =>
+      chord.symbol !== 'unknown' &&
+      isUsableConfidence(chord.confidence),
+  )
   const selectionStyle = timeline.selection
     ? eventPosition(
         timeline.selection.start,
@@ -91,7 +96,7 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
               dragStart.current = null
             }}
           >
-            按住并拖动以选择片段
+            选择片段以回听和比较
           </div>
         </div>
 
@@ -123,18 +128,22 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
           <span className="timeline__track-label">段落</span>
           <div className="timeline__events">
             {result.sections.map((section) => (
-              <span
-                aria-label={`段落 ${visibleFact(section.label, section.confidence)}，${confidenceLabel(section.confidence)}，${formatTime(section.start_seconds)} 至 ${formatTime(section.end_seconds)}`}
+              <button
+                aria-label={`选择片段 ${formatTime(section.start_seconds)} 至 ${formatTime(section.end_seconds)}`}
                 className="timeline__event timeline__event--section"
+                data-testid="section-boundary"
                 key={section.id}
+                onClick={() => {
+                  timeline.seek(section.start_seconds)
+                  timeline.select(section.start_seconds, section.end_seconds)
+                }}
                 style={eventPosition(
                   section.start_seconds,
                   section.end_seconds,
                   timeline.duration,
                 )}
-              >
-                {visibleFact(section.label, section.confidence)}
-              </span>
+                type="button"
+              />
             ))}
           </div>
         </div>
@@ -142,9 +151,9 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
         <div className="timeline__track" role="group" aria-label="和弦轨道">
           <span className="timeline__track-label">和弦</span>
           <div className="timeline__events">
-            {result.chords.map((chord) => (
+            {usableChords.map((chord) => (
               <button
-                aria-label={`和弦 ${visibleFact(chord.symbol, chord.confidence)}，${confidenceLabel(chord.confidence)}`}
+                aria-label={`和弦 ${chord.symbol}，${confidenceLabel(chord.confidence)}`}
                 className="timeline__event timeline__event--chord"
                 key={chord.id}
                 onClick={() => {
@@ -158,14 +167,17 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
                 )}
                 type="button"
               >
-                {visibleFact(chord.symbol, chord.confidence)}
+                {chord.symbol}
               </button>
             ))}
+            {!usableChords.length ? (
+              <span className="timeline__empty-event">暂无局部和声候选</span>
+            ) : null}
           </div>
         </div>
 
-        <div className="timeline__track" role="group" aria-label="能量轨道">
-          <span className="timeline__track-label">能量</span>
+        <div className="timeline__track" role="group" aria-label="动态强弱轨道">
+          <span className="timeline__track-label">动态强弱</span>
           <svg
             aria-hidden="true"
             className="timeline__graph timeline__graph--energy"
@@ -181,7 +193,7 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
           <div className="timeline__events">
             {summary?.energy_changes.filter((event) => isUsableConfidence(event.confidence)).map((event, index) => (
               <button
-                aria-label={`能量${event.direction === 'rise' ? '上升' : '下降'} ${formatTime(event.timestamp_seconds)}`}
+                aria-label={`音频强度${event.direction === 'rise' ? '上升' : '下降'} ${formatTime(event.timestamp_seconds)}`}
                 className="timeline__marker"
                 key={`${event.timestamp_seconds}-${index}`}
                 onClick={() => timeline.seek(event.timestamp_seconds)}
@@ -259,48 +271,14 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
         当前 {formatTime(timeline.currentTime)}
         {timeline.selection
           ? `；已选 ${formatTime(timeline.selection.start)}–${formatTime(timeline.selection.end)}`
-          : '；尚未选择片段'}
+          : '；选择片段以回听和比较'}
       </p>
-      <details className="timeline__event-list">
-        <summary>时间轴文本事件列表</summary>
-        <h3>段落</h3>
-        <ol>
-          {result.sections.map((section) => (
-            <li key={section.id}>
-              {formatTime(section.start_seconds)}–{formatTime(section.end_seconds)}：
-              {visibleFact(section.label, section.confidence)}（{confidenceLabel(section.confidence)}）
-            </li>
-          ))}
-        </ol>
-        <h3>和弦</h3>
-        <ol>
-          {result.chords.map((chord) => (
-            <li key={chord.id}>
-              <button
-                className="timeline__list-button"
-                onClick={() => {
-                  timeline.seek(chord.start_seconds)
-                  onChordSelect?.(chord)
-                }}
-                type="button"
-              >
-                跳到 {formatTime(chord.start_seconds)} 的
-                {visibleFact(chord.symbol, chord.confidence)}（{confidenceLabel(chord.confidence)}）
-              </button>
-            </li>
-          ))}
-        </ol>
-      </details>
     </section>
   )
 }
 
-function visibleFact(value: string, confidence: number): string {
-  return value === 'unknown' || !isUsableConfidence(confidence) ? 'unknown' : value
-}
-
 function confidenceLabel(confidence: number): string {
-  const labels = { high: '高置信', medium: '中置信', unknown: '证据不足' }
+  const labels = { high: '高置信', medium: '中置信', low: '低置信', unknown: '证据不足' }
   return labels[confidenceLevel(confidence)]
 }
 

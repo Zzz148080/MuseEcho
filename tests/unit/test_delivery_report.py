@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -8,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from scripts.check_delivery_report import (
+    EVIDENCE_CONTRACTS,
     EXPECTED_EVIDENCE_IDS,
     EXPECTED_PRODUCT_AUDIT_IDS,
     EXPECTED_SECTION_IDS,
@@ -19,7 +22,7 @@ from scripts.check_delivery_report import (
 
 ROOT = Path(__file__).resolve().parents[2]
 REPORT_PATH = ROOT / "DELIVERY_REPORT.md"
-NOW = datetime(2026, 8, 14, tzinfo=UTC)
+NOW = datetime(2026, 8, 17, tzinfo=UTC)
 
 
 def _report_text() -> str:
@@ -77,6 +80,16 @@ def _duplicate_table_row(text: str, heading: str, key: str) -> str:
     raise AssertionError(f"missing test fixture row: {heading} / {key}")
 
 
+def _swap_table_rows(text: str, heading: str, first_key: str, second_key: str) -> str:
+    lines = text.splitlines()
+    start, end = _table_bounds(lines, heading)
+    indexes = {lines[index].split("|")[1].strip(): index for index in range(start + 2, end)}
+    first_index = indexes[first_key]
+    second_index = indexes[second_key]
+    lines[first_index], lines[second_index] = lines[second_index], lines[first_index]
+    return "\n".join(lines) + "\n"
+
+
 def _replace_section_metadata(text: str, section_id: str, label: str, value: str) -> str:
     lines = text.splitlines()
     heading_index = next(
@@ -116,17 +129,19 @@ def test_delivery_status_matches_evidence() -> None:
 
 def test_fixed_delivery_product_and_student_id_contracts() -> None:
     assert EXPECTED_SECTION_IDS == tuple(f"DR-{index:02d}" for index in range(1, 18))
-    assert "DEL-011" in EXPECTED_EVIDENCE_IDS
+    assert "DEL-012" in EXPECTED_EVIDENCE_IDS
     assert EXPECTED_PRODUCT_AUDIT_IDS == tuple(f"PA-{index:02d}" for index in range(1, 14))
     assert EXPECTED_STUDENT_CHECK_IDS == tuple(f"STU-{index:02d}" for index in range(1, 7))
 
 
-def test_task24_github_boundary_is_fixed_while_gitlab_remains_pending(
+def test_task24_github_boundary_is_fixed_while_external_work_remains_deferred(
     tmp_path: Path,
 ) -> None:
     report = load_delivery_report(REPORT_PATH)
     github = next(item for item in report.evidence if item.evidence_id == "DEL-011")
+    final_ci = next(item for item in report.evidence if item.evidence_id == "DEL-012")
     gitlab = next(item for item in report.evidence if item.evidence_id == "DEL-900")
+    cloud = next(item for item in report.evidence if item.evidence_id == "DEL-901")
 
     assert github.kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
     assert github.result == (
@@ -135,8 +150,22 @@ def test_task24_github_boundary_is_fixed_while_gitlab_remains_pending(
     )
     assert github.exit_code_raw == "0"
     assert github.status == "PASS"
+    assert github.summary == (
+        "Historical Task 24 implementation evidence only; it cannot verify the final PR SHA, "
+        "which is recorded separately by DEL-012."
+    )
+    assert final_ci.result == (
+        "run=31966788273; head=0674f74f4097e46cee98c4715a62ad5aa55101cf; "
+        "branch=codex/expand-common-audio-formats; quality=success (5m43s); "
+        "e2e=success (3m10s); distribution=success (7m30s)"
+    )
+    assert final_ci.status == "PASS"
     assert gitlab.command == "NOT RUN: GitLab has no Task 24 pipeline"
     assert gitlab.result == "gitlab=NOT_RUN"
+    assert gitlab.exit_code_raw == "NOT_RUN"
+    assert gitlab.status == "DEFERRED"
+    assert cloud.exit_code_raw == "NOT_RUN"
+    assert cloud.status == "DEFERRED"
     assert "Task 24 GitHub branch-tip gate has not run" not in report.raw_text
 
     forged = _replace_table_cell(
@@ -144,6 +173,20 @@ def test_task24_github_boundary_is_fixed_while_gitlab_remains_pending(
     )
     assert "DEL-011 does not match its fixed evidence contract" in _validation_error(
         tmp_path, forged
+    )
+
+    stale_branch_tip = _replace_table_cell(
+        _report_text(), "## Evidence index", "DEL-011", "Summary", "Final branch-tip CI passed."
+    )
+    assert "DEL-011 must remain historical Task 24 implementation evidence" in _validation_error(
+        tmp_path, stale_branch_tip
+    )
+
+    externally_executed = _replace_table_cell(
+        _report_text(), "## Evidence index", "DEL-900", "Status", "PASS"
+    )
+    assert "DEL-900 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, externally_executed
     )
 
 
@@ -217,10 +260,8 @@ def test_ready_is_rejected_while_any_blocker_is_open(tmp_path: Path) -> None:
     assert "READY contradicts open blockers" in _validation_error(tmp_path, mutation)
 
 
-def test_partially_ready_requires_each_exact_current_blocker(tmp_path: Path) -> None:
+def test_partially_ready_requires_each_exact_current_course_blocker(tmp_path: Path) -> None:
     for blocker_id in (
-        "BLK-REMOTE-CI",
-        "BLK-CLOUD-PUBLIC-TARGET",
         "BLK-FORMAL-OFFLINE-BUILD",
         "BLK-STUDENT-MANUAL",
         "BLK-CONTROLLER-BROWSER",
@@ -235,14 +276,20 @@ def test_partially_ready_blocker_requires_pending_evidence_and_precise_closure(
     tmp_path: Path,
 ) -> None:
     no_evidence = _replace_table_cell(
-        _report_text(), "## Blocking reasons", "BLK-REMOTE-CI", "Evidence IDs", "-"
+        _report_text(), "## Blocking reasons", "BLK-FORMAL-OFFLINE-BUILD", "Evidence IDs", "-"
     )
     vague = _replace_table_cell(
-        _report_text(), "## Blocking reasons", "BLK-REMOTE-CI", "Closure criteria", "later"
+        _report_text(),
+        "## Blocking reasons",
+        "BLK-FORMAL-OFFLINE-BUILD",
+        "Closure criteria",
+        "later",
     )
 
-    assert "BLK-REMOTE-CI requires evidence" in _validation_error(tmp_path, no_evidence)
-    assert "BLK-REMOTE-CI closure criteria are not precise" in _validation_error(tmp_path, vague)
+    assert "BLK-FORMAL-OFFLINE-BUILD requires evidence" in _validation_error(tmp_path, no_evidence)
+    assert "BLK-FORMAL-OFFLINE-BUILD closure criteria are not precise" in _validation_error(
+        tmp_path, vague
+    )
 
 
 def test_blocker_rejects_valid_but_wrong_owner_or_pending_evidence(tmp_path: Path) -> None:
@@ -416,22 +463,25 @@ def test_product_audit_cannot_claim_browser_pass_without_controller_execution(
 
 
 def test_student_acceptance_and_reflection_remain_unclaimed(tmp_path: Path) -> None:
+    report = load_delivery_report(REPORT_PATH)
+    draft = next(item for item in report.evidence if item.evidence_id == "DEL-903")
+
+    assert draft.result == "student-acceptance=RESERVED; reflection=DRAFT_PRESENT"
+    assert draft.status == "PENDING"
+    assert all(item.status == "RESERVED" for item in report.student_checks)
+
     checked = _replace_table_cell(
         _report_text(), "## Student final checklist", "STU-01", "Status", "COMPLETE"
     )
     assert "STU-01 must remain RESERVED for the student" in _validation_error(tmp_path, checked)
 
     reflection = (ROOT / "REFLECTION.md").read_text(encoding="utf-8")
-    filled_reflection = reflection.replace(
-        "<!-- STUDENT RESPONSE: leave blank until the student writes here -->",
-        "I learned that this project was successful.",
-        1,
-    )
+    filled_reflection = reflection + "\n学生最终验收：MUSEECHO V1 READY。\n"
     reflection_path = tmp_path / "REFLECTION.md"
     reflection_path.write_text(filled_reflection, encoding="utf-8")
     report = load_delivery_report(REPORT_PATH, reflection_path=reflection_path)
 
-    with pytest.raises(DeliveryValidationError, match="student reflection template was filled"):
+    with pytest.raises(DeliveryValidationError, match="student reflection draft does not match"):
         validate_delivery_report(report, repo_root=ROOT, now=NOW)
 
 
@@ -443,7 +493,267 @@ def test_current_status_documents_reject_stale_task23_or_task24_blocker(tmp_path
     assert "Task 24 audit cannot remain a current blocker" in _validation_error(tmp_path, blocker)
 
 
-def test_checker_cli_accepts_the_committed_delivery_report() -> None:
+def _validate_with_course_document_mutation(tmp_path: Path, name: str, old: str, new: str) -> None:
+    report = load_delivery_report(REPORT_PATH)
+    repository_copy = tmp_path / f"{name}-{old}"
+    required_paths = {
+        "README.md",
+        "PLAN.md",
+        "AGENT_LOG.md",
+        "BLOCKERS.md",
+        "REFLECTION_NOTES.md",
+        "COURSE_DELIVERY_CHECKLIST.md",
+        *(evidence.path for evidence in report.evidence),
+    }
+    for relative_path in required_paths:
+        source = ROOT / relative_path
+        destination = repository_copy / relative_path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, destination)
+
+    path = repository_copy / name
+    original = path.read_text(encoding="utf-8")
+    assert old in original
+    path.write_text(original.replace(old, new), encoding="utf-8")
+    validate_delivery_report(report, repo_root=repository_copy, now=NOW)
+
+
+FINAL_CI_MARKER = (
+    "<!-- FINAL-CI-RELATIONSHIP: "
+    "implementation-sha=0674f74f4097e46cee98c4715a62ad5aa55101cf; "
+    "run=31966788273; "
+    "jobs=quality:success,e2e:success,distribution:success; "
+    "github=required; gitlab=supplemental-not-run; "
+    "reconciliation=docs-only-requires-separate-final-sha-publication-ci -->"
+)
+FINAL_CI_STATEMENT = (
+    "Any later docs-only reconciliation is not product implementation evidence and requires "
+    "its own separate final-SHA publication/CI gate before Task 6 can be complete."
+)
+
+
+def _repository_copy(tmp_path: Path, label: str) -> Path:
+    report = load_delivery_report(REPORT_PATH)
+    repository_copy = tmp_path / label
+    required_paths = {
+        "README.md",
+        "PLAN.md",
+        "AGENT_LOG.md",
+        "BLOCKERS.md",
+        "REFLECTION_NOTES.md",
+        "COURSE_DELIVERY_CHECKLIST.md",
+        *(evidence.path for evidence in report.evidence),
+    }
+    for relative_path in required_paths:
+        source = ROOT / relative_path
+        destination = repository_copy / relative_path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, destination)
+    return repository_copy
+
+
+def _validate_course_document_text(tmp_path: Path, name: str, text: str, *, label: str) -> None:
+    repository_copy = _repository_copy(tmp_path, label)
+    (repository_copy / name).write_text(text, encoding="utf-8")
+    report = load_delivery_report(REPORT_PATH)
+    validate_delivery_report(report, repo_root=repository_copy, now=NOW)
+
+
+def _repository_copy_with_relationship_contracts(tmp_path: Path, label: str) -> Path:
+    repository_copy = _repository_copy(tmp_path, label)
+    for name in ("PLAN.md", "README.md", "COURSE_DELIVERY_CHECKLIST.md"):
+        path = repository_copy / name
+        text = path.read_text(encoding="utf-8")
+        text = re.sub(r"(?m)^<!-- FINAL-CI-RELATIONSHIP: .+ -->\n?", "", text)
+        text = text.replace(FINAL_CI_STATEMENT + "\n", "")
+        path.write_text(
+            text.rstrip() + f"\n\n{FINAL_CI_MARKER}\n{FINAL_CI_STATEMENT}\n",
+            encoding="utf-8",
+        )
+    return repository_copy
+
+
+def _relationship_validation_error(
+    tmp_path: Path, name: str, old: str, new: str, field: str
+) -> str:
+    repository_copy = _repository_copy_with_relationship_contracts(
+        tmp_path, f"relationship-{name}-{field}"
+    )
+    path = repository_copy / name
+    text = path.read_text(encoding="utf-8")
+    assert old in text
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    report = load_delivery_report(REPORT_PATH)
+    with pytest.raises(DeliveryValidationError) as caught:
+        validate_delivery_report(report, repo_root=repository_copy, now=NOW)
+    return str(caught.value)
+
+
+def _visible_relationship_validation_error(
+    tmp_path: Path, name: str, old: str, new: str, field: str
+) -> str:
+    repository_copy = _repository_copy(tmp_path, f"visible-relationship-{name}-{field}")
+    path = repository_copy / name
+    text = path.read_text(encoding="utf-8")
+    visible, marker_and_rest = text.split(FINAL_CI_MARKER, maxsplit=1)
+    assert old in visible
+    mutated = visible.replace(old, new, 1) + FINAL_CI_MARKER + marker_and_rest
+    assert FINAL_CI_MARKER in mutated
+    path.write_text(mutated, encoding="utf-8")
+    report = load_delivery_report(REPORT_PATH)
+    with pytest.raises(DeliveryValidationError) as caught:
+        validate_delivery_report(report, repo_root=repository_copy, now=NOW)
+    return str(caught.value)
+
+
+def test_delivery_evidence_index_rejects_descending_observed_timestamps(
+    tmp_path: Path,
+) -> None:
+    mutation = _swap_table_rows(_report_text(), "## Evidence index", "DEL-004", "DEL-005")
+
+    assert "evidence index must be oldest-to-newest" in _validation_error(tmp_path, mutation)
+
+
+def test_agent_log_summary_and_detailed_records_reject_reverse_order(tmp_path: Path) -> None:
+    summary_first = "### Retained TASK 21 / Tencent Cloud delivery scripts (local-only) summary"
+    summary_second = "### Retained TASK 21 / review fix round 1 summary"
+    agent_log = (ROOT / "AGENT_LOG.md").read_text(encoding="utf-8")
+    swapped = (
+        agent_log.replace(summary_first, "SUMMARY-SWAP", 1)
+        .replace(summary_second, summary_first, 1)
+        .replace("SUMMARY-SWAP", summary_second, 1)
+    )
+    with pytest.raises(DeliveryValidationError, match="summary records must be oldest-to-newest"):
+        _validate_course_document_text(
+            tmp_path, "AGENT_LOG.md", swapped, label="agent-log-summary-reverse"
+        )
+
+    reverse_detail = agent_log.replace(
+        "## 2026-08-08T03:21:59+08:00",
+        "## 2026-08-17T03:21:59+08:00",
+        1,
+    )
+    with pytest.raises(DeliveryValidationError, match="detailed records must be oldest-to-newest"):
+        _validate_course_document_text(
+            tmp_path, "AGENT_LOG.md", reverse_detail, label="agent-log-detail-reverse"
+        )
+
+
+@pytest.mark.parametrize("name", ("PLAN.md", "README.md", "COURSE_DELIVERY_CHECKLIST.md"))
+@pytest.mark.parametrize(
+    ("field", "old", "new"),
+    (
+        (
+            "implementation-sha",
+            "implementation-sha=0674f74f4097e46cee98c4715a62ad5aa55101cf",
+            "implementation-sha=966d403196e838d4b0589b410d684376e092e55c",
+        ),
+        ("run", "run=31966788273", "run=31966788274"),
+        ("quality", "quality:success", "quality:failed"),
+        ("e2e", "e2e:success", "e2e:missing"),
+        ("distribution", "distribution:success", "distribution:failed"),
+        ("github", "github=required", "github=supplemental"),
+        ("gitlab", "gitlab=supplemental-not-run", "gitlab=required"),
+        (
+            "reconciliation",
+            "reconciliation=docs-only-requires-separate-final-sha-publication-ci",
+            "reconciliation=inherits-product-run",
+        ),
+        (
+            "statement",
+            FINAL_CI_STATEMENT,
+            "The later docs-only reconciliation inherits the product implementation run.",
+        ),
+    ),
+)
+def test_course_documents_reject_each_broken_final_ci_relationship(
+    tmp_path: Path, name: str, field: str, old: str, new: str
+) -> None:
+    error = _relationship_validation_error(tmp_path, name, old, new, field)
+
+    assert f"{name} final-CI relationship has invalid {field}" in error
+
+
+@pytest.mark.parametrize(
+    ("name", "field", "old", "new"),
+    (
+        ("PLAN.md", "run", "`31966788273`", "`31966788274`"),
+        (
+            "PLAN.md",
+            "implementation-sha",
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`",
+            "`966d403196e838d4b0589b410d684376e092e55c`",
+        ),
+        ("PLAN.md", "jobs", "passed GitHub quality", "failed GitHub quality"),
+        ("README.md", "run", "`31966788273`", "`31966788274`"),
+        (
+            "README.md",
+            "implementation-sha",
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`",
+            "`966d403196e838d4b0589b410d684376e092e55c`",
+        ),
+        ("README.md", "jobs", "passed GitHub quality", "failed GitHub quality"),
+        ("COURSE_DELIVERY_CHECKLIST.md", "run", "`31966788273`", "`31966788274`"),
+        (
+            "COURSE_DELIVERY_CHECKLIST.md",
+            "implementation-sha",
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`",
+            "`966d403196e838d4b0589b410d684376e092e55c`",
+        ),
+        (
+            "COURSE_DELIVERY_CHECKLIST.md",
+            "jobs",
+            "quality/E2E/distribution 全绿",
+            "quality/E2E/distribution 未全绿",
+        ),
+    ),
+)
+def test_course_documents_reject_visible_final_ci_drift_with_marker_unchanged(
+    tmp_path: Path, name: str, field: str, old: str, new: str
+) -> None:
+    error = _visible_relationship_validation_error(tmp_path, name, old, new, field)
+
+    assert f"{name} visible final-CI relationship has invalid {field}" in error
+
+
+def test_course_status_documents_reject_stale_draft_and_final_ci_claims(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(
+        DeliveryValidationError,
+        match="PLAN.md current status must describe the student-authored reflection draft",
+    ):
+        _validate_with_course_document_mutation(
+            tmp_path, "PLAN.md", "student-authored", "blank student"
+        )
+
+    for name in ("PLAN.md", "README.md", "COURSE_DELIVERY_CHECKLIST.md"):
+        with pytest.raises(
+            DeliveryValidationError,
+            match=f"{name} final-CI relationship has invalid implementation-sha",
+        ):
+            _validate_with_course_document_mutation(
+                tmp_path,
+                name,
+                "0674f74f4097e46cee98c4715a62ad5aa55101cf",
+                "unverified-final-sha",
+            )
+
+
+def test_checker_cli_accepts_the_committed_delivery_report(tmp_path: Path) -> None:
+    expected = (
+        "delivery-sections=17; evidence=17; blockers=3; readiness=MUSEECHO V1 PARTIALLY READY"
+    )
+    report = load_delivery_report(REPORT_PATH)
+    evidence = next(item for item in report.evidence if item.evidence_id == "DEL-007")
+
+    assert EVIDENCE_CONTRACTS["DEL-007"].result == expected
+    assert evidence.result == expected
+    mutation = _report_text().replace(expected, expected.replace("blockers=3", "blockers=5"), 1)
+    assert "DEL-007 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
     completed = subprocess.run(
         [sys.executable, "scripts/check_delivery_report.py", "DELIVERY_REPORT.md"],
         cwd=ROOT,

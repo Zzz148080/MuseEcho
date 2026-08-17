@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -19,12 +20,13 @@ from scripts.check_engineering_audit import (
     validate_audit,
 )
 from scripts.image_vulnerability_audit import (
-    build_runtime_boundary_manifest as real_runtime_boundary_manifest,
+    build_runtime_boundary_manifest,
+    normalized_file_digest,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_PATH = ROOT / "docs" / "audits" / "ENGINEERING_AUDIT.md"
-NOW = datetime(2026, 8, 13, tzinfo=UTC)
+NOW = datetime(2026, 8, 17, tzinfo=UTC)
 DOMAIN_HEADING = "## Domain coverage"
 EVIDENCE_HEADING = "## Evidence index"
 FINDING_HEADING = "## Findings"
@@ -124,11 +126,48 @@ def _duplicate_table_row(text: str, heading: str, key: str, *, new_key: str | No
     raise AssertionError(f"missing fixture row: {heading} / {key}")
 
 
+def _swap_table_rows(text: str, heading: str, first_key: str, second_key: str) -> str:
+    lines = text.splitlines()
+    start, end = _table_bounds(lines, heading)
+    indexes = {lines[index].split("|")[1].strip(): index for index in range(start + 2, end)}
+    first_index = indexes[first_key]
+    second_index = indexes[second_key]
+    lines[first_index], lines[second_index] = lines[second_index], lines[first_index]
+    return "\n".join(lines) + "\n"
+
+
 def _validation_error(tmp_path: Path, text: str) -> str:
     audit = load_audit(_write_audit(tmp_path, text))
     with pytest.raises(AuditValidationError) as caught:
         validate_audit(audit, repo_root=ROOT, now=NOW)
     return str(caught.value)
+
+
+def _require_historical_policy_git() -> None:
+    git = shutil.which("git")
+    if git is None:
+        pytest.skip("historical policy integration requires Git")
+    object_name = f"{checker.SECURITY_POLICY_SOURCE_COMMIT}^{{commit}}"
+    completed = subprocess.run(
+        [git, "cat-file", "-e", object_name],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=10,
+    )
+    missing_object = (
+        completed.returncode == 128
+        and completed.stderr.strip() == f"fatal: Not a valid object name {object_name}"
+    )
+    if missing_object:
+        pytest.skip("historical policy integration requires the retained Git object database")
+    if completed.returncode != 0:
+        pytest.fail(
+            f"unexpected Git prerequisite failure (exit={completed.returncode}): "
+            f"{completed.stderr.strip() or '<no stderr>'}",
+            pytrace=False,
+        )
 
 
 def test_domain_contract_is_the_complete_fixed_set() -> None:
@@ -201,6 +240,12 @@ def test_evidence_schema_and_time_fail_closed(
     mutation = _replace_table_cell(_audit_text(), EVIDENCE_HEADING, "E003", column, value)
 
     assert expected in _validation_error(tmp_path, mutation)
+
+
+def test_evidence_index_rejects_descending_observed_timestamps(tmp_path: Path) -> None:
+    mutation = _swap_table_rows(_audit_text(), EVIDENCE_HEADING, "E001", "E002")
+
+    assert "evidence index must be oldest-to-newest" in _validation_error(tmp_path, mutation)
 
 
 @pytest.mark.parametrize(
@@ -524,29 +569,80 @@ def test_security_manifest_rejects_coherent_audit_only_field_rewrites(
     )
 
 
-def test_security_manifest_recomputes_current_runtime_boundary(
+def test_security_manifest_recomputes_historical_policy_runtime_boundary(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def drifted_runtime_boundary(repository_root: Path) -> dict[str, str]:
-        manifest = real_runtime_boundary_manifest(repository_root)
-        manifest["src/museecho/runtime.py"] = "0" * 64
-        return manifest
+    policy = json.loads((ROOT / checker.SECURITY_POLICY_SNAPSHOT_PATH).read_text(encoding="utf-8"))
+    policy["runtime_boundary"]["src/museecho/runtime.py"] = "0" * 64
+    path = tmp_path / "task23-image-vulnerability-policy.json"
+    path.write_text(json.dumps(policy), encoding="utf-8")
+
+    monkeypatch.setattr(checker, "SECURITY_POLICY_SNAPSHOT_PATH", str(path))
+    errors: list[str] = []
+
+    checker._validate_security_manifest(ROOT, errors)
+
+    assert "security manifest runtime boundary does not match historical policy snapshot" in errors
+
+
+def test_historical_security_manifest_validation_is_independent_of_current_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def drifted_current_runtime_boundary(_repository_root: Path) -> dict[str, str]:
+        return {"src/museecho/runtime.py": "0" * 64}
 
     monkeypatch.setattr(
-        checker, "build_runtime_boundary_manifest", drifted_runtime_boundary, raising=False
+        checker,
+        "build_runtime_boundary_manifest",
+        drifted_current_runtime_boundary,
+        raising=False,
     )
+    errors: list[str] = []
 
-    assert "security manifest runtime boundary does not match current source" in _validation_error(
-        tmp_path, _audit_text()
-    )
+    checker._validate_security_manifest(ROOT, errors)
+
+    assert "security manifest runtime boundary does not match current source" not in errors
+
+
+def test_historical_policy_source_tree_recreates_the_frozen_source_boundary() -> None:
+    _require_historical_policy_git()
+    policy = json.loads((ROOT / checker.SECURITY_POLICY_SNAPSHOT_PATH).read_text(encoding="utf-8"))
+
+    with checker._verified_historical_source_tree(ROOT, policy) as source_root:
+        assert build_runtime_boundary_manifest(source_root) == policy["runtime_boundary"]
+        assert {
+            path: normalized_file_digest(source_root / path) for path in policy["evidence_files"]
+        } == policy["evidence_files"]
+
+
+@pytest.mark.parametrize(
+    ("commit", "expected"),
+    (
+        ("0" * 40, "historical policy source is unavailable"),
+        (
+            "bc98c1bb522e0d53808b7af1ce2d638cafece2e2",
+            "historical policy source policy does not match the snapshot",
+        ),
+    ),
+)
+def test_historical_policy_source_commit_fails_closed(
+    monkeypatch: pytest.MonkeyPatch, commit: str, expected: str
+) -> None:
+    _require_historical_policy_git()
+    policy = json.loads((ROOT / checker.SECURITY_POLICY_SNAPSHOT_PATH).read_text(encoding="utf-8"))
+    monkeypatch.setattr(checker, "SECURITY_POLICY_SOURCE_COMMIT", commit)
+
+    with pytest.raises(AuditValidationError, match=expected):
+        with checker._verified_historical_source_tree(ROOT, policy):
+            pass
 
 
 def test_audit_generated_time_cannot_be_future_dated(tmp_path: Path) -> None:
-    mutation = _audit_text().replace(
-        "- **Generated at UTC:** `2026-08-12T",
-        "- **Generated at UTC:** `2999-08-12T",
-        1,
+    text = _audit_text()
+    generated_line = next(
+        line for line in text.splitlines() if line.startswith("- **Generated at UTC:**")
     )
+    mutation = text.replace(generated_line, "- **Generated at UTC:** `2999-08-12T19:15:00Z`", 1)
 
     assert "audit generated time is future-dated" in _validation_error(tmp_path, mutation)
 
@@ -763,14 +859,24 @@ def test_current_acceptance_evidence_is_a_fixed_engineering_contract(tmp_path: P
         ".venv\\Scripts\\python.exe scripts/check_acceptance_matrix.py "
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md"
     )
-    collected_count = 44
-    expected_result = f"{collected_count} passed; 40 items validated PASS=34 PARTIAL=6 FAIL=0"
+    collected_count = 48
+    expected_result = f"{collected_count} passed; 40 items validated PASS=36 PARTIAL=4 FAIL=0"
 
     assert checker.FIXED_EVIDENCE_CONTRACTS["E030"] == (
         "CURRENT_COMMAND",
         expected_command,
         "docs/audits/FUNCTIONAL_AUDIT.md",
         expected_result,
+    )
+
+    assert checker.FIXED_EVIDENCE_CONTRACTS["E038"] == (
+        "IMPLEMENTATION_BOUNDARY_COMMAND",
+        "gh run view 31966788273 --repo Zzz148080/MuseEcho --json "
+        "status,conclusion,headBranch,headSha,jobs,url",
+        ".github/workflows/ci.yml",
+        "Final product/CI implementation SHA 0674f74f4097e46cee98c4715a62ad5aa55101cf "
+        "on codex/expand-common-audio-formats passed quality (5m43s), e2e (3m10s), "
+        "and distribution (7m30s) in run 31966788273",
     )
 
     mutation = _replace_table_cell(
@@ -794,6 +900,44 @@ def test_current_dual_platform_type_evidence_is_a_fixed_engineering_contract(
     mutation = _replace_table_cell(_audit_text(), EVIDENCE_HEADING, "E012", column, value)
 
     assert "E012 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
+
+def test_current_engineering_gates_do_not_recast_pre_feature_image_evidence() -> None:
+    contracts = checker.FIXED_EVIDENCE_CONTRACTS
+
+    assert "mypy each passed 47 source files" in contracts["E012"][3]
+    assert "museecho-task3-verification-env:latest" in contracts["E013"][1]
+    assert contracts["E022"][0] == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert "pre-feature task 23 image" in contracts["E022"][3].lower()
+
+
+def test_841_test_evidence_is_a_historical_implementation_boundary(
+    tmp_path: Path,
+) -> None:
+    audit = load_audit(AUDIT_PATH)
+    evidence = next(item for item in audit.evidence if item.evidence_id == "E013")
+
+    assert checker.FIXED_EVIDENCE_CONTRACTS["E013"][0] == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert evidence.kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
+    assert "predates 7f8412b" in evidence.result
+    mutation = _replace_table_cell(
+        _audit_text(), EVIDENCE_HEADING, "E013", "Kind", "CURRENT_COMMAND"
+    )
+    assert "E013 does not match its fixed evidence contract" in _validation_error(
+        tmp_path, mutation
+    )
+
+
+def test_pre_feature_image_audit_cannot_be_recast_as_current_runtime_evidence(
+    tmp_path: Path,
+) -> None:
+    mutation = _replace_table_cell(
+        _audit_text(), EVIDENCE_HEADING, "E022", "Kind", "CURRENT_COMMAND"
+    )
+
+    assert "E022 does not match its fixed evidence contract" in _validation_error(
         tmp_path, mutation
     )
 

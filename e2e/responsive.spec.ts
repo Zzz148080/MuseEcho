@@ -18,18 +18,26 @@ test('desktop, tablet, and mobile layouts stay readable and keyboard operable', 
     )
     expect(overflow).toBeLessThanOrEqual(0)
 
-    const question = await page.locator('.question-panel').boundingBox()
+    const audioPlayer = await page.locator('.audio-player').boundingBox()
+    const musicDna = await page.locator('.music-dna').boundingBox()
     const retention = await page.locator('.retention-panel').boundingBox()
-    expect(question).not.toBeNull()
+    expect(audioPlayer).not.toBeNull()
+    expect(musicDna).not.toBeNull()
     expect(retention).not.toBeNull()
-    if (!question || !retention) continue
+    if (!audioPlayer || !musicDna || !retention) continue
     if (viewport.stacked) {
-      expect(retention.y).toBeGreaterThan(question.y + question.height - 2)
-      expect(Math.abs(retention.x - question.x)).toBeLessThanOrEqual(2)
+      expect(musicDna.y).toBeGreaterThan(audioPlayer.y + audioPlayer.height - 2)
+      expect(Math.abs(musicDna.x - audioPlayer.x)).toBeLessThanOrEqual(2)
     } else {
-      expect(Math.abs(retention.y - question.y)).toBeLessThanOrEqual(2)
-      expect(retention.x).toBeGreaterThan(question.x + question.width - 2)
+      expect(Math.abs(musicDna.y - audioPlayer.y)).toBeLessThanOrEqual(2)
+      expect(musicDna.x).toBeGreaterThan(audioPlayer.x + audioPlayer.width - 2)
     }
+    expect(retention.y).toBeGreaterThan(
+      Math.max(
+        audioPlayer.y + audioPlayer.height,
+        musicDna.y + musicDna.height,
+      ) - 2,
+    )
   }
 
   const start = page.getByRole('slider', { name: '片段开始' })

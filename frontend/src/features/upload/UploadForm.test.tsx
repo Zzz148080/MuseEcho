@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../api/client'
 import type { UploadAccepted } from '../../api/types'
-import { UploadForm } from './UploadForm'
+import { UploadForm, validateFile } from './UploadForm'
 
 const accepted: UploadAccepted = {
   analysis_id: '00000000-0000-4000-8000-000000000001',
@@ -12,6 +12,39 @@ const accepted: UploadAccepted = {
 }
 
 describe('UploadForm', () => {
+  it('uses an exact-suffix chooser and rejects adjacent MP4 and OGA formats', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    const onUpload = vi.fn().mockResolvedValue(accepted)
+    render(<UploadForm onUpload={onUpload} />)
+
+    const input = screen.getByLabelText(/音频文件/)
+    expect(input).toHaveAttribute(
+      'accept',
+      '.wav,.mp3,.flac,.m4a,.aac,.ogg,.opus',
+    )
+
+    for (const file of [
+      new File(['video'], 'track.mp4', { type: 'audio/mp4' }),
+      new File(['audio'], 'track.oga', { type: 'audio/ogg' }),
+    ]) {
+      await user.upload(input, file)
+      expect(screen.getByRole('alert')).toHaveTextContent(/不支持.*音频格式/)
+      expect(onUpload).not.toHaveBeenCalled()
+    }
+  })
+
+  it.each([
+    'track.wav',
+    'track.mp3',
+    'track.flac',
+    'track.m4a',
+    'track.aac',
+    'track.ogg',
+    'track.opus',
+  ])('preflights the supported %s suffix as an upload candidate', (filename) => {
+    expect(validateFile(new File(['audio'], filename))).toBeNull()
+  })
+
   it('does not upload until legal-use and retention consent is checked', async () => {
     const user = userEvent.setup()
     const onUpload = vi.fn().mockResolvedValue(accepted)
@@ -34,24 +67,25 @@ describe('UploadForm', () => {
     expect(onUpload).toHaveBeenCalledTimes(1)
   })
 
-  it('preflights file type and the 30 MB limit before calling the server', async () => {
+  it('accepts exactly 100 MB and rejects the first byte above it', async () => {
     const user = userEvent.setup({ applyAccept: false })
     const onUpload = vi.fn().mockResolvedValue(accepted)
     render(<UploadForm onUpload={onUpload} />)
 
-    await user.upload(
-      screen.getByLabelText(/音频文件/),
-      new File(['audio'], 'track.flac', { type: 'audio/flac' }),
-    )
-
-    expect(screen.getByRole('alert')).toHaveTextContent(/仅支持 WAV 或 MP3/)
-    expect(onUpload).not.toHaveBeenCalled()
+    const boundary = new File(['audio'], 'boundary.mp3', {
+      type: 'audio/mpeg',
+    })
+    Object.defineProperty(boundary, 'size', { value: 100 * 1024 * 1024 })
+    expect(validateFile(boundary)).toBeNull()
 
     const oversized = new File(['audio'], 'track.mp3', { type: 'audio/mpeg' })
-    Object.defineProperty(oversized, 'size', { value: 30 * 1024 * 1024 + 1 })
+    Object.defineProperty(oversized, 'size', {
+      value: 100 * 1024 * 1024 + 1,
+    })
     await user.upload(screen.getByLabelText(/音频文件/), oversized)
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/不能超过 30 MB/)
+    expect(screen.getByRole('alert')).toHaveTextContent(/不能超过 100 MB/)
+    expect(onUpload).not.toHaveBeenCalled()
   })
 
   it('shows only progress reported by the upload transport', async () => {

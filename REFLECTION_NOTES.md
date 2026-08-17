@@ -5,7 +5,7 @@
 <!-- TASK23-CURRENT-STATUS:START -->
 ## Task 23 compatibility status (superseded by Task 24)
 
-The Functional Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and
+The Functional Audit is **31 PASS / 9 PARTIAL / 0 FAIL** and
 `PARTIALLY_READY`. Task 23 PR #1 merged after GitHub quality, E2E, and
 distribution passed. Its implementation boundary is retained here for the Task
 23 regression contract; the current branch tip and authoritative status are in
@@ -17,13 +17,15 @@ the Task 24 block below. At Task 23 closure, the blocker keys were `GitLab`,
 ## Task 24 current status
 
 `MUSEECHO V1 PARTIALLY READY`. Task 24's Product Audit, fixed 17-section
-Delivery Report, validator, tests, and blank student reflection template are
-complete. Task 24 is not a blocker. Task 23 PR #1 is merged with all three
-GitHub jobs green. Task 24 run `31687703913` also passed all three jobs at
-implementation head `de5bc6f`. GitLab, cloud/public/target-server smoke and
-rollback, formal offline build ENG-010, trusted-certificate controller
-browser observation, and student gates remain open. Older statements below are
-historical timeline evidence.
+Delivery Report, validator and tests are complete. Task 24 is not a blocker.
+Task 23 PR #1 is merged with all three GitHub jobs green. Task 24 run
+`31687703913` at implementation head `de5bc6f` remains historical evidence.
+Final GitHub evidence is closed by run `31973968704` at exact SHA
+`09a51b495178450ec4c0869aa72962c942ccea83`, with quality, E2E, and distribution
+all successful. Per `COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent
+Cloud/public deployment are deferred follow-up work. Formal offline source build
+ENG-010, controller-browser product review, and student gates remain open. Older
+statements below are historical timeline evidence.
 <!-- TASK24-CURRENT-STATUS:END -->
 
 ## 2026-08-13 — TASK 24 / 客观交付材料

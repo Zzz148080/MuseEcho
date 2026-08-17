@@ -5,13 +5,11 @@ import { Button } from '../components/Button'
 import { Panel } from '../components/Panel'
 import { AnalysisProgress } from '../features/jobs/AnalysisProgress'
 import type { StatusLoader } from '../features/jobs/useAnalysisStatus'
-import type { ExplanationTransport } from '../features/explanations/QuestionPanel'
 import type { DeleteTransport } from '../features/privacy/RetentionPanel'
 import type { ResultLoader } from '../features/workspace/useAnalysisResult'
 import { UploadForm } from '../features/upload/UploadForm'
 
 export interface AnalysisPageProps {
-  ask?: ExplanationTransport
   loadResult?: ResultLoader
   loadStatus?: StatusLoader
   removeAnalysis?: DeleteTransport
@@ -19,7 +17,6 @@ export interface AnalysisPageProps {
 }
 
 export function AnalysisPage({
-  ask,
   loadResult,
   loadStatus,
   removeAnalysis,
@@ -74,7 +71,7 @@ export function AnalysisPage({
             </h1>
           </div>
           <p className="intro-copy">
-            MuseEcho 将可验证的音频证据整理到同一条时间线上。证据不足时，结果会明确标记为 unknown。
+            沿着时间线聆听节奏、动态强弱与局部和声，发现歌曲的变化。
           </p>
         </section>
 
@@ -87,7 +84,6 @@ export function AnalysisPage({
             <div className="active-analysis">
               <AnalysisProgress
                 analysisId={analysisId}
-                ask={ask}
                 loadResult={loadResult}
                 loadStatus={loadStatus}
                 onDeleted={finishDeletion}

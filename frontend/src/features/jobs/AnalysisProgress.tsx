@@ -4,7 +4,6 @@ import { Button } from '../../components/Button'
 import { ErrorNotice } from '../../components/ErrorNotice'
 import { AnalysisWorkspace } from '../workspace/AnalysisWorkspace'
 import type { ResultLoader } from '../workspace/useAnalysisResult'
-import type { ExplanationTransport } from '../explanations/QuestionPanel'
 import type { DeleteTransport } from '../privacy/RetentionPanel'
 import {
   statusPollInterval,
@@ -16,7 +15,7 @@ const stageLabels: Record<AnalysisStage, string> = {
   queued: '等待分析',
   validating: '验证音频',
   decoding: '解码音频',
-  rhythm: '分析节奏与能量',
+  rhythm: '分析节奏与动态',
   tonality: '分析调性',
   structure: '分析段落结构',
   chords: '分析和弦',
@@ -27,15 +26,8 @@ const stageLabels: Record<AnalysisStage, string> = {
   expired: '分析已到期',
 }
 
-const sourceKindLabels = {
-  real: '真实上传',
-  demo: '演示数据',
-  synthetic_test: '合成测试数据',
-} as const
-
 export interface AnalysisProgressProps {
   analysisId: string
-  ask?: ExplanationTransport
   loadResult?: ResultLoader
   loadStatus?: StatusLoader
   onDeleted?: () => void
@@ -44,7 +36,6 @@ export interface AnalysisProgressProps {
 
 export function AnalysisProgress({
   analysisId,
-  ask,
   loadResult,
   loadStatus,
   onDeleted,
@@ -77,7 +68,7 @@ export function AnalysisProgress({
     >
       <div className="analysis-progress__heading" aria-live="polite">
         <div>
-          <p className="eyebrow">后端真实阶段</p>
+          <p className="eyebrow">分析进度</p>
           <h2>{stageLabels[status.stage]}</h2>
         </div>
         <span className="edition-mark">{percentage}%</span>
@@ -93,26 +84,13 @@ export function AnalysisProgress({
 
       <dl className="status-metadata">
         <div>
-          <dt>任务编号</dt>
-          <dd><code>{status.analysis_id}</code></dd>
-        </div>
-        <div>
-          <dt>剩余等待时间</dt>
-          <dd>服务端未提供可靠估算</dd>
-        </div>
-        <div>
           <dt>保留期限</dt>
           <dd>{formatExpiry(status.expires_at)}</dd>
-        </div>
-        <div>
-          <dt>数据来源</dt>
-          <dd>{sourceKindLabels[status.source_kind]}</dd>
         </div>
       </dl>
       {status.stage === 'complete' ? (
         <AnalysisWorkspace
           analysisId={analysisId}
-          ask={ask}
           expiresAt={status.expires_at}
           loadResult={loadResult}
           onDeleted={onDeleted}

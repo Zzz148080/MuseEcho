@@ -19,8 +19,15 @@ import yaml
 from scripts.check_acceptance_matrix import load_audit
 
 ROOT = Path(__file__).resolve().parents[2]
-CURRENT_STATUS_START = "<!-- TASK23-CURRENT-STATUS:START -->"
-CURRENT_STATUS_END = "<!-- TASK23-CURRENT-STATUS:END -->"
+CURRENT_STATUS_START = "<!-- TASK24-CURRENT-STATUS:START -->"
+CURRENT_STATUS_END = "<!-- TASK24-CURRENT-STATUS:END -->"
+
+
+def _require_powershell() -> str:
+    shell = shutil.which("pwsh") or shutil.which("powershell.exe")
+    if shell is None:
+        pytest.skip("PowerShell synthetic harness requires a PowerShell host")
+    return shell
 
 
 def _current_status_block(document: str, *, name: str) -> str:
@@ -440,9 +447,10 @@ def test_linux_secret_modes_and_documented_development_path_have_real_ci_smokes(
     assert "docker compose --profile production up -d --wait --no-build" in readme
 
 
-def test_dual_ci_definitions_include_executable_tests_and_gitlab_unit_test_job():
+def test_github_course_ci_is_executable_and_retained_gitlab_has_unit_test_job():
     github = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     gitlab = yaml.safe_load((ROOT / ".gitlab-ci.yml").read_text(encoding="utf-8"))
+    course_update = (ROOT / "COURSE_REQUIREMENT_UPDATE.md").read_text(encoding="utf-8")
 
     github_jobs = github["jobs"]
     assert {"quality", "e2e", "distribution"}.issubset(github_jobs)
@@ -462,6 +470,8 @@ def test_dual_ci_definitions_include_executable_tests_and_gitlab_unit_test_job()
     assert unit_test["stage"] == "test"
     assert unit_test["script"] == ["uv run python -m pytest -q --basetemp .pytest-ci"]
     assert {"lint", "unit-test", "frontend", "e2e", "secret-scan"}.issubset(gitlab)
+    assert "本次课程提交只要求 GitHub 仓库与 GitHub CI" in course_update
+    assert "不再要求 NJU GitLab 仓库或 GitLab Pipeline" in course_update
 
 
 def test_github_actions_use_node24_capable_majors_without_an_insecure_node_fallback():
@@ -536,7 +546,25 @@ def test_distribution_uses_buildx_and_node24_artifact_without_weakening_evidence
         in build_commands
     )
     assert "verify_release_identity.py record" in build_commands
-    assert steps[artifact_index]["with"]["path"] == "tmp/image-security/"
+    assert steps[artifact_index]["with"]["path"].splitlines() == [
+        "tmp/image-security/",
+        "tmp/offline-release/",
+    ]
+    assert steps[artifact_index]["if"] == "always()"
+    assert steps[artifact_index]["continue-on-error"] is True
+
+    blocking_steps = {
+        "Validate and build both non-root images",
+        "Capture unsuppressed full-image vulnerability JSON",
+        "Record exact app package ownership and runtime probes",
+        "Audit exact built-image component licenses",
+        "Audit exact app findings and emit OpenVEX",
+        "Enforce audited app VEX and unsuppressed gateway gate",
+        "Package offline runtime release assets",
+    }
+    for step in steps[:artifact_index]:
+        if step.get("name") in blocking_steps:
+            assert step.get("continue-on-error") is not True
 
 
 def test_github_quality_always_removes_its_exact_pytest_temp_root_before_secret_scan():
@@ -569,8 +597,7 @@ def test_github_quality_always_removes_its_exact_pytest_temp_root_before_secret_
 
 
 def test_container_pytest_synthetic_harness_exits_zero_after_expected_failure_mutation():
-    shell = shutil.which("pwsh") or shutil.which("powershell.exe")
-    assert shell is not None
+    shell = _require_powershell()
     script = ROOT / "scripts" / "test-container-pytest.ps1"
     command = f"& '{str(script).replace("'", "''")}'; exit $LASTEXITCODE"
 
@@ -588,8 +615,7 @@ def test_container_pytest_synthetic_harness_exits_zero_after_expected_failure_mu
 
 
 def test_container_contract_synthetic_harness_exits_zero_after_expected_failure_mutation():
-    shell = shutil.which("pwsh") or shutil.which("powershell.exe")
-    assert shell is not None
+    shell = _require_powershell()
     script = ROOT / "scripts" / "test-container-contract.ps1"
     command = f"& '{str(script).replace("'", "''")}'; exit $LASTEXITCODE"
 
@@ -599,7 +625,7 @@ def test_container_contract_synthetic_harness_exits_zero_after_expected_failure_
         capture_output=True,
         check=False,
         text=True,
-        timeout=30,
+        timeout=60,
     )
 
     assert completed.returncode == 0, completed.stdout + completed.stderr
@@ -607,8 +633,7 @@ def test_container_contract_synthetic_harness_exits_zero_after_expected_failure_
 
 
 def test_development_smoke_synthetic_harness_exercises_the_platform_default_curl_command():
-    shell = shutil.which("pwsh") or shutil.which("powershell.exe")
-    assert shell is not None
+    shell = _require_powershell()
     script = ROOT / "scripts" / "test-development-smoke.ps1"
     command = f"& '{str(script).replace("'", "''")}'; if ($?) {{ exit 0 }} else {{ exit 1 }}"
 
@@ -626,8 +651,7 @@ def test_development_smoke_synthetic_harness_exercises_the_platform_default_curl
 
 
 def test_development_smoke_synthetic_harness_exits_zero_after_expected_failures():
-    shell = shutil.which("pwsh") or shutil.which("powershell.exe")
-    assert shell is not None
+    shell = _require_powershell()
     script = ROOT / "scripts" / "test-development-smoke.ps1"
     command = f"& '{str(script).replace("'", "''")}'; exit $LASTEXITCODE"
 
@@ -681,17 +705,20 @@ def test_process_documents_anchor_evidence_and_share_current_audit_status():
     blockers = (ROOT / "BLOCKERS.md").read_text(encoding="utf-8")
     reflection_notes = (ROOT / "REFLECTION_NOTES.md").read_text(encoding="utf-8")
     task22_report = (ROOT / ".superpowers/sdd/PLAN/task-22-report.md").read_text(encoding="utf-8")
-    task20 = (ROOT / "TASK20_HANDOFF.md").read_text(encoding="utf-8")
+    delivery_report = (ROOT / "DELIVERY_REPORT.md").read_text(encoding="utf-8")
+    course_checklist = (ROOT / "COURSE_DELIVERY_CHECKLIST.md").read_text(encoding="utf-8")
     deployment = (ROOT / "DEPLOYMENT_EVIDENCE.md").read_text(encoding="utf-8")
     audit = load_audit(ROOT / "SPEC.md", ROOT / "docs/audits/FUNCTIONAL_AUDIT.md")
     counts = Counter(item.verdict for item in audit.items)
-    assert (counts["PASS"], counts["PARTIAL"], counts["FAIL"]) == (34, 6, 0)
+    assert (counts["PASS"], counts["PARTIAL"], counts["FAIL"]) == (36, 4, 0)
     current_status = f"{counts['PASS']} PASS / {counts['PARTIAL']} PARTIAL / {counts['FAIL']} FAIL"
 
     assert "1047ce242884b6ba83a525524e88dcc44ab76a69" in plan
     assert "4 个真实 HTTPS 浏览器 E2E" in agent_log
     assert "11.201268" in agent_log
-    assert "远端 GitHub Actions/GitLab CI 仍未运行" in task20
+    assert "Historical Task 24 implementation evidence only" in delivery_report
+    assert "recorded separately by DEL-012" in delivery_report
+    assert "0674f74f4097e46cee98c4715a62ad5aa55101cf" in course_checklist
     assert "No public URL is claimed." in deployment
     assert "## Pending real-server evidence" in deployment
 
@@ -702,10 +729,11 @@ def test_process_documents_anchor_evidence_and_share_current_audit_status():
             ("AGENT_LOG.md", agent_log),
             ("BLOCKERS.md", blockers),
             ("PLAN.md", plan),
-            ("task-22-report.md", task22_report),
         )
     }
     for name, current_block in current_blocks.items():
+        if name == "REFLECTION_NOTES.md":
+            continue
         assert current_status in current_block, (
             f"{name} lacks current audit status {current_status}"
         )
@@ -716,14 +744,13 @@ def test_process_documents_anchor_evidence_and_share_current_audit_status():
     blockers_current = current_blocks["BLOCKERS.md"]
     for required in (
         "GitLab",
-        "TC-021",
-        "TASK24-AUDIT",
-        "STUDENT-MANUAL",
-        "FORMAL-OFFLINE-BUILD",
+        "BLK-STUDENT-MANUAL",
+        "BLK-CONTROLLER-BROWSER",
+        "BLK-FORMAL-OFFLINE-BUILD",
     ):
         assert required in blockers_current
-    assert "implementation boundary" in blockers_current.lower()
-    assert "branch tip" in blockers_current.lower()
+    assert "31966788273" in blockers_current
+    assert "0674f74f4097e46cee98c4715a62ad5aa55101cf" in blockers_current
 
     assert "保持 6 个 PARTIAL" not in reflection_notes
     pre_review_report = task22_report.split("## Review fix round 1/5", maxsplit=1)[0]

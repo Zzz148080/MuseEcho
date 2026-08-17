@@ -26,6 +26,7 @@ from museecho.analysis.decode import (
     probe_audio,
 )
 from museecho.application.uploads import _validate_audio_signature
+from museecho.audio_formats import audio_format_for_suffix
 from tests.fixtures.audio_factory import (
     encode_mp3,
     write_chord_progression_wav,
@@ -78,13 +79,127 @@ def test_real_mp3_decodes_to_controlled_mono_pcm(tmp_path: Path):
         ffmpeg_executable=_find_tool("ffmpeg"),
     )
 
-    _validate_audio_signature(mp3_path)
+    _validate_audio_signature(mp3_path, audio_format_for_suffix(mp3_path.suffix))
     decoded = _decode(mp3_path, target_sample_rate=16_000)
 
     assert decoded.sample_rate == 16_000
     assert decoded.channels == 1
     assert decoded.duration_seconds == pytest.approx(1.25, abs=0.05)
     assert max(abs(value) for value in decoded.samples) > 0.1
+
+
+@pytest.mark.parametrize(
+    ("suffix", "encoder_arguments"),
+    (
+        (".wav", ("-c:a", "pcm_s16le")),
+        (".mp3", ("-c:a", "mp3")),
+        (".flac", ("-c:a", "flac")),
+        ("-aac.m4a", ("-c:a", "aac")),
+        ("-alac.m4a", ("-c:a", "alac")),
+        (".aac", ("-c:a", "aac", "-f", "adts")),
+        (".ogg", ("-c:a", "libvorbis")),
+        (".opus", ("-c:a", "libopus")),
+    ),
+)
+def test_real_common_audio_formats_validate_and_decode(
+    tmp_path: Path, suffix: str, encoder_arguments: tuple[str, ...]
+):
+    source = write_sine_wav(tmp_path / "source.wav", duration_seconds=0.25)
+    encoded = tmp_path / f"encoded{suffix}"
+    completed = subprocess.run(
+        [
+            _find_tool("ffmpeg"),
+            "-v",
+            "error",
+            "-nostdin",
+            "-i",
+            str(source),
+            *encoder_arguments,
+            "-y",
+            str(encoded),
+        ],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        check=False,
+        timeout=30,
+    )
+    assert completed.returncode == 0, completed.stderr.decode(errors="replace")
+
+    _validate_audio_signature(encoded, audio_format_for_suffix(encoded.suffix))
+    decoded = _decode(encoded)
+
+    assert decoded.sample_rate == 22_050
+    assert decoded.channels == 1
+    assert decoded.duration_seconds == pytest.approx(0.25, abs=0.08)
+    assert max(abs(value) for value in decoded.samples) > 0.05
+
+
+def test_real_mp3_with_attached_cover_art_decodes_to_controlled_mono_pcm(tmp_path: Path):
+    source = write_sine_wav(tmp_path / "source.wav", duration_seconds=1.0)
+    audio = encode_mp3(
+        source,
+        tmp_path / "source.mp3",
+        ffmpeg_executable=_find_tool("ffmpeg"),
+    )
+    artwork = tmp_path / "cover.jpg"
+    attached = tmp_path / "with-cover.mp3"
+    cover = subprocess.run(
+        [
+            _find_tool("ffmpeg"),
+            "-v",
+            "error",
+            "-nostdin",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=black:s=32x32:d=0.1",
+            "-frames:v",
+            "1",
+            "-y",
+            str(artwork),
+        ],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        check=False,
+        timeout=30,
+    )
+    assert cover.returncode == 0, cover.stderr.decode(errors="replace")
+    mux = subprocess.run(
+        [
+            _find_tool("ffmpeg"),
+            "-v",
+            "error",
+            "-nostdin",
+            "-i",
+            str(audio),
+            "-i",
+            str(artwork),
+            "-map",
+            "0:a:0",
+            "-map",
+            "1:v:0",
+            "-c:a",
+            "copy",
+            "-c:v",
+            "mjpeg",
+            "-disposition:v:0",
+            "attached_pic",
+            "-y",
+            str(attached),
+        ],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        check=False,
+        timeout=30,
+    )
+    assert mux.returncode == 0, mux.stderr.decode(errors="replace")
+
+    _validate_audio_signature(attached, audio_format_for_suffix(attached.suffix))
+    decoded = _decode(attached)
+
+    assert decoded.sample_rate == 22_050
+    assert decoded.channels == 1
+    assert decoded.duration_seconds == pytest.approx(1.0, abs=0.05)
 
 
 @pytest.mark.parametrize(
@@ -121,7 +236,7 @@ def test_real_uncompressed_pcm_wav_widths_remain_supported(tmp_path: Path, codec
     )
     assert completed.returncode == 0, completed.stderr.decode(errors="replace")
 
-    _validate_audio_signature(encoded)
+    _validate_audio_signature(encoded, audio_format_for_suffix(encoded.suffix))
     decoded = _decode(encoded)
 
     assert decoded.duration_seconds == pytest.approx(0.1, abs=0.03)
@@ -150,7 +265,7 @@ def test_real_ima_adpcm_wav_is_rejected_by_decoder_allowlist(tmp_path: Path):
     )
     assert completed.returncode == 0, completed.stderr.decode(errors="replace")
 
-    with pytest.raises(InvalidAudioError, match="valid WAV or MP3"):
+    with pytest.raises(InvalidAudioError):
         probe_audio(encoded, ffprobe_executable=_find_tool("ffprobe"))
 
 
@@ -238,18 +353,30 @@ class ScriptedRunner:
         return next(self._results)
 
 
-def _probe_json(*, duration: float, format_name: str = "wav") -> bytes:
+def _probe_json(
+    *, duration: float, format_name: str = "wav", codec_name: str = "pcm_s16le"
+) -> bytes:
     return json.dumps(
         {
             "streams": [
                 {
                     "codec_type": "audio",
+                    "codec_name": codec_name,
                     "sample_rate": "44100",
                     "channels": 2,
                     "duration": str(duration),
                 }
             ],
             "format": {"format_name": format_name, "duration": str(duration)},
+        }
+    ).encode()
+
+
+def _probe_streams_json(*, format_name: str, streams: list[dict[str, object]]) -> bytes:
+    return json.dumps(
+        {
+            "streams": streams,
+            "format": {"format_name": format_name, "duration": "1.0"},
         }
     ).encode()
 
@@ -293,21 +420,120 @@ def test_decode_uses_bounded_mono_float_pipeline(tmp_path: Path):
     assert decode_timeout == 90.0
     probe_arguments = runner.calls[0][0]
     assert probe_arguments[probe_arguments.index("-protocol_whitelist") + 1] == "file,pipe"
-    assert probe_arguments[probe_arguments.index("-format_whitelist") + 1] == "wav,mp3"
-    assert probe_arguments[probe_arguments.index("-codec_whitelist") + 1] == (
-        "pcm_u8,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,mp3float,mp3"
+    assert (
+        probe_arguments[probe_arguments.index("-format_whitelist") + 1]
+        == (decode_arguments[decode_arguments.index("-format_whitelist") + 1])
     )
+    assert (
+        probe_arguments[probe_arguments.index("-codec_whitelist") + 1]
+        == (decode_arguments[decode_arguments.index("-codec_whitelist") + 1])
+    )
+    assert "-select_streams" not in probe_arguments
     assert probe_arguments.index("-protocol_whitelist") < len(probe_arguments) - 1
     assert decode_arguments[decode_arguments.index("-protocol_whitelist") + 1] == "file,pipe"
-    assert decode_arguments[decode_arguments.index("-format_whitelist") + 1] == "wav,mp3"
+    assert decode_arguments[decode_arguments.index("-format_whitelist") + 1] == (
+        "wav,mp3,flac,mov,mp4,m4a,3gp,3g2,mj2,aac,ogg"
+    )
     assert decode_arguments[decode_arguments.index("-codec_whitelist") + 1] == (
-        "pcm_u8,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,mp3float,mp3"
+        "pcm_u8,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,"
+        "mp3float,mp3,flac,aac,alac,vorbis,opus,mjpeg,png"
     )
     assert decode_arguments.index("-protocol_whitelist") < decode_arguments.index("-i")
     assert decode_arguments.index("-format_whitelist") < decode_arguments.index("-i")
     assert decode_arguments.index("-codec_whitelist") < decode_arguments.index("-i")
     assert stdout_limit == 32_000
     assert stderr_limit == 64 * 1024
+
+
+@pytest.mark.parametrize(
+    ("suffix", "format_name", "audio_codec", "cover_codec"),
+    (
+        (".mp3", "mp3", "mp3", "mjpeg"),
+        (".flac", "flac", "flac", "png"),
+    ),
+)
+def test_probe_accepts_supported_attached_cover_art(
+    tmp_path: Path,
+    suffix: str,
+    format_name: str,
+    audio_codec: str,
+    cover_codec: str,
+):
+    input_path = write_corrupt_audio(tmp_path / f"placeholder{suffix}")
+    payload = _probe_streams_json(
+        format_name=format_name,
+        streams=[
+            {
+                "codec_type": "audio",
+                "codec_name": audio_codec,
+                "sample_rate": "44100",
+                "channels": 2,
+                "duration": "1.0",
+                "disposition": {"attached_pic": 0},
+            },
+            {
+                "codec_type": "video",
+                "codec_name": cover_codec,
+                "disposition": {"attached_pic": 1},
+            },
+        ],
+    )
+
+    probe = probe_audio(input_path, runner=ScriptedRunner(CommandResult(0, payload, b"")))
+
+    assert probe.format_name == format_name
+    assert probe.codec_name == audio_codec
+
+
+@pytest.mark.parametrize(
+    "streams",
+    (
+        [
+            {
+                "codec_type": "audio",
+                "codec_name": "aac",
+                "sample_rate": "44100",
+                "channels": 2,
+                "duration": "1.0",
+                "disposition": {"attached_pic": 0},
+            },
+            {
+                "codec_type": "video",
+                "codec_name": "h264",
+                "disposition": {"attached_pic": 0},
+            },
+        ],
+        [
+            {
+                "codec_type": "audio",
+                "codec_name": "aac",
+                "sample_rate": "44100",
+                "channels": 2,
+                "duration": "1.0",
+                "disposition": {"attached_pic": 0},
+            },
+            {
+                "codec_type": "audio",
+                "codec_name": "ac3",
+                "sample_rate": "44100",
+                "channels": 2,
+                "duration": "1.0",
+                "disposition": {"attached_pic": 0},
+            },
+        ],
+    ),
+)
+def test_probe_rejects_m4a_with_video_or_unapproved_audio_stream(
+    tmp_path: Path, streams: list[dict[str, object]]
+):
+    input_path = write_corrupt_audio(tmp_path / "placeholder.m4a")
+    payload = _probe_streams_json(
+        format_name="mov,mp4,m4a,3gp,3g2,mj2",
+        streams=streams,
+    )
+
+    with pytest.raises(InvalidAudioError, match="invalid metadata"):
+        probe_audio(input_path, runner=ScriptedRunner(CommandResult(0, payload, b"")))
 
 
 def test_decode_rejects_output_beyond_configured_duration(tmp_path: Path):

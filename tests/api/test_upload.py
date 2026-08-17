@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import io
+import shutil
 import struct
+import subprocess
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -11,14 +13,17 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from museecho import audio_formats
 from museecho.analysis.decode import AudioDurationLimitError, AudioProbe, InvalidAudioError
 from museecho.api.analyses import install_analyses_api
+from museecho.application import uploads as upload_module
 from museecho.application.uploads import (
     FFmpegAudioValidator,
     UploadSubmissionService,
 )
 from museecho.domain.models import AccessGrant, EncryptedAudioMetadata, IssuedAccess
 from museecho.domain.status import AnalysisJob
+from tests.fixtures.audio_factory import write_sine_wav
 
 
 class MemoryRepository:
@@ -57,6 +62,49 @@ class RecordingStore:
         self.deleted.append(metadata.analysis_id)
 
 
+class GeneratedByteStream:
+    def __init__(self, size: int) -> None:
+        self.remaining = size
+        self.largest_chunk = 0
+
+    def read(self, size: int = -1) -> bytes:
+        if size <= 0:
+            raise AssertionError("generated stream requires bounded reads")
+        chunk_size = min(size, self.remaining)
+        self.remaining -= chunk_size
+        self.largest_chunk = max(self.largest_chunk, chunk_size)
+        return b"x" * chunk_size
+
+
+class CountingStore:
+    def __init__(self) -> None:
+        self.writes: list[tuple[uuid.UUID, int, str]] = []
+        self.deleted: list[uuid.UUID] = []
+        self.largest_chunk = 0
+
+    def write(
+        self, analysis_id: uuid.UUID, source: io.BufferedIOBase, media_type: str
+    ) -> EncryptedAudioMetadata:
+        plaintext_size = 0
+        while chunk := source.read(64 * 1024):
+            self.largest_chunk = max(self.largest_chunk, len(chunk))
+            plaintext_size += len(chunk)
+        self.writes.append((analysis_id, plaintext_size, media_type))
+        return EncryptedAudioMetadata(
+            analysis_id=analysis_id,
+            cipher_path=f"{analysis_id}.meaf",
+            wrapped_data_key=b"wrapped",
+            chunk_size=1024,
+            chunk_count=1,
+            plaintext_size=plaintext_size,
+            media_type=media_type,
+            sha256="0" * 64,
+        )
+
+    def delete(self, metadata: EncryptedAudioMetadata) -> None:
+        self.deleted.append(metadata.analysis_id)
+
+
 class RecordingAccessService:
     def issue(self, analysis_id: uuid.UUID, expires_at: datetime) -> IssuedAccess:
         now = datetime.now(timezone.utc)
@@ -84,7 +132,7 @@ def _client(
     tmp_path: Path,
     validator: Any,
     *,
-    max_bytes: int = 30 * 1024 * 1024,
+    max_bytes: int = upload_module.DEFAULT_MAX_UPLOAD_BYTES,
     max_body_bytes: int | None = None,
 ) -> tuple[TestClient, MemoryRepository, RecordingStore, RecordingQueue]:
     repository = MemoryRepository()
@@ -108,9 +156,49 @@ def _client(
     return TestClient(app, base_url="https://museecho.test"), repository, store, queue
 
 
-def _valid_probe(path: Path) -> AudioProbe:
+def _valid_probe(path: Path, _audio_format: Any) -> AudioProbe:
     assert path.is_file()
-    return AudioProbe("wav", 1.0, 22_050, 1)
+    return AudioProbe("wav", 1.0, 22_050, 1, "pcm_s16le")
+
+
+def _find_tool(name: str) -> str:
+    discovered = shutil.which(name) or shutil.which(f"{name}.exe")
+    if discovered:
+        return discovered
+    pytest.fail(f"{name} is required for real upload integration tests", pytrace=False)
+
+
+def _encode_audio(source: Path, destination: Path, *arguments: str) -> Path:
+    completed = subprocess.run(
+        [
+            _find_tool("ffmpeg"),
+            "-v",
+            "error",
+            "-nostdin",
+            "-i",
+            str(source),
+            *arguments,
+            "-y",
+            str(destination),
+        ],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        check=False,
+        timeout=30,
+    )
+    assert completed.returncode == 0, completed.stderr.decode(errors="replace")
+    return destination
+
+
+def _run_ffmpeg(*arguments: str) -> None:
+    completed = subprocess.run(
+        [_find_tool("ffmpeg"), "-v", "error", "-nostdin", *arguments],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        check=False,
+        timeout=30,
+    )
+    assert completed.returncode == 0, completed.stderr.decode(errors="replace")
 
 
 def _wave_from_format_data(format_data: bytes) -> bytes:
@@ -134,6 +222,12 @@ def _minimal_wave(*, format_tag: int = 1, bits_per_sample: int = 16) -> bytes:
         bits_per_sample,
     )
     return _wave_from_format_data(format_chunk)
+
+
+def test_every_registered_audio_format_has_a_signature_validator() -> None:
+    assert upload_module.registered_signature_validator_kinds() == frozenset(
+        audio_format.validator_kind for audio_format in audio_formats.AUDIO_FORMATS
+    )
 
 
 def _extensible_wave(
@@ -193,10 +287,10 @@ def test_rejects_mp3_name_with_non_audio_bytes(tmp_path: Path):
 def test_rejects_oversized_upload_before_validation(tmp_path: Path):
     validated = False
 
-    def validator(path: Path) -> AudioProbe:
+    def validator(path: Path, audio_format: Any) -> AudioProbe:
         nonlocal validated
         validated = True
-        return _valid_probe(path)
+        return _valid_probe(path, audio_format)
 
     client, repository, store, queue = _client(tmp_path, validator, max_bytes=8)
     response = client.post(
@@ -214,7 +308,10 @@ def test_rejects_oversized_upload_before_validation(tmp_path: Path):
 
 def test_rejects_unsupported_extension_without_storing(tmp_path: Path):
     client, repository, store, queue = _client(tmp_path, _valid_probe)
-    response = client.post("/api/analyses", files={"file": ("track.flac", b"audio", "audio/flac")})
+    response = client.post(
+        "/api/analyses",
+        files={"file": ("track.wma", b"audio", "audio/x-ms-wma")},
+    )
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "unsupported_audio"
@@ -223,9 +320,148 @@ def test_rejects_unsupported_extension_without_storing(tmp_path: Path):
     assert queue.submitted == []
 
 
+@pytest.mark.parametrize(
+    ("filename", "format_name", "codec_name", "canonical_media_type"),
+    (
+        ("track.wav", "wav", "pcm_s16le", "audio/wav"),
+        ("track.mp3", "mp3", "mp3", "audio/mpeg"),
+        ("track.flac", "flac", "flac", "audio/flac"),
+        ("track.m4a", "mov,mp4,m4a,3gp,3g2,mj2", "aac", "audio/mp4"),
+        ("track.m4a", "mov,mp4,m4a,3gp,3g2,mj2", "alac", "audio/mp4"),
+        ("track.aac", "aac", "aac", "audio/aac"),
+        ("track.ogg", "ogg", "vorbis", "audio/ogg"),
+        ("track.opus", "ogg", "opus", "audio/opus"),
+    ),
+)
+def test_supported_suffix_requires_exact_probe_pairing_and_stores_canonical_media_type(
+    tmp_path: Path,
+    filename: str,
+    format_name: str,
+    codec_name: str,
+    canonical_media_type: str,
+):
+    probe = AudioProbe(format_name, 1.0, 22_050, 1, codec_name)
+    client, repository, store, queue = _client(tmp_path, lambda _, __: probe)
+
+    response = client.post(
+        "/api/analyses",
+        files={"file": (filename, b"validated audio", "application/octet-stream")},
+    )
+
+    assert response.status_code == 202
+    analysis_id = uuid.UUID(response.json()["analysis_id"])
+    assert analysis_id in repository.jobs
+    assert store.writes == [(analysis_id, b"validated audio", canonical_media_type)]
+    assert queue.submitted == [analysis_id]
+
+
+def test_supported_suffix_rejects_wrong_codec_pairing_before_persistence(tmp_path: Path):
+    probe = AudioProbe("mov,mp4,m4a,3gp,3g2,mj2", 1.0, 22_050, 2, "ac3")
+    client, repository, store, queue = _client(tmp_path, lambda _, __: probe)
+
+    response = client.post(
+        "/api/analyses",
+        files={"file": ("track.m4a", b"unapproved audio", "audio/mp4")},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_audio"
+    assert repository.jobs == {}
+    assert store.writes == []
+    assert queue.submitted == []
+
+
+def test_real_mislabeled_audio_is_rejected_before_persistence(tmp_path: Path):
+    source = write_sine_wav(tmp_path / "source.wav", duration_seconds=0.1)
+    flac = _encode_audio(source, tmp_path / "source.flac", "-c:a", "flac")
+    client, repository, store, queue = _client(
+        tmp_path / "uploads",
+        FFmpegAudioValidator(
+            ffprobe_executable=_find_tool("ffprobe"),
+            ffmpeg_executable=_find_tool("ffmpeg"),
+        ),
+    )
+
+    response = client.post(
+        "/api/analyses",
+        files={"file": ("renamed.mp3", flac.read_bytes(), "audio/mpeg")},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_audio"
+    assert repository.jobs == {}
+    assert store.writes == []
+    assert queue.submitted == []
+
+
+@pytest.mark.parametrize("unapproved_stream", ("video", "ac3"))
+def test_real_m4a_unapproved_stream_is_rejected_before_persistence(
+    tmp_path: Path, unapproved_stream: str
+):
+    source = write_sine_wav(tmp_path / "source.wav", duration_seconds=0.1)
+    encoded = tmp_path / f"with-{unapproved_stream}.m4a"
+    if unapproved_stream == "video":
+        _run_ffmpeg(
+            "-i",
+            str(source),
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=black:s=32x32:d=0.1",
+            "-map",
+            "0:a:0",
+            "-map",
+            "1:v:0",
+            "-c:a",
+            "aac",
+            "-c:v",
+            "mpeg4",
+            "-shortest",
+            "-f",
+            "mp4",
+            "-y",
+            str(encoded),
+        )
+    else:
+        _run_ffmpeg(
+            "-i",
+            str(source),
+            "-map",
+            "0:a:0",
+            "-map",
+            "0:a:0",
+            "-c:a:0",
+            "aac",
+            "-c:a:1",
+            "ac3",
+            "-f",
+            "mp4",
+            "-y",
+            str(encoded),
+        )
+    client, repository, store, queue = _client(
+        tmp_path / "uploads",
+        FFmpegAudioValidator(
+            ffprobe_executable=_find_tool("ffprobe"),
+            ffmpeg_executable=_find_tool("ffmpeg"),
+        ),
+    )
+
+    response = client.post(
+        "/api/analyses",
+        files={"file": ("track.m4a", encoded.read_bytes(), "audio/mp4")},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_audio"
+    assert repository.jobs == {}
+    assert store.writes == []
+    assert queue.submitted == []
+
+
 def test_rejects_extension_that_does_not_match_detected_format(tmp_path: Path):
     client, repository, store, queue = _client(
-        tmp_path, lambda _: AudioProbe("wav", 1.0, 22_050, 1)
+        tmp_path, lambda _, __: AudioProbe("wav", 1.0, 22_050, 1)
     )
     response = client.post(
         "/api/analyses", files={"file": ("renamed.mp3", b"RIFFdata", "audio/mpeg")}
@@ -239,7 +475,7 @@ def test_rejects_extension_that_does_not_match_detected_format(tmp_path: Path):
 
 
 def test_rejects_audio_over_duration_limit(tmp_path: Path):
-    def reject(_: Path) -> AudioProbe:
+    def reject(_: Path, _audio_format: Any) -> AudioProbe:
         raise AudioDurationLimitError("audio duration exceeds the supported limit")
 
     client, _, store, queue = _client(tmp_path, reject)
@@ -271,9 +507,9 @@ def test_valid_upload_returns_202_random_id_and_capability_cookies(tmp_path: Pat
 def test_repeated_uploads_are_isolated_jobs(tmp_path: Path):
     observed_paths: list[Path] = []
 
-    def validator(path: Path) -> AudioProbe:
+    def validator(path: Path, audio_format: Any) -> AudioProbe:
         observed_paths.append(path)
-        return _valid_probe(path)
+        return _valid_probe(path, audio_format)
 
     client, repository, store, queue = _client(tmp_path, validator)
     first = client.post("/api/analyses", files={"file": ("same.wav", b"first", "audio/wav")})
@@ -356,10 +592,62 @@ def test_ffmpeg_validator_requires_probe_and_successful_decode(tmp_path: Path, m
     monkeypatch.setattr(uploads, "probe_audio", fake_probe)
     monkeypatch.setattr(uploads, "decode_audio", fake_decode)
 
-    result = FFmpegAudioValidator()(source)
+    result = FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(source.suffix))
 
     assert result == probe
     assert calls == ["probe", "decode"]
+
+
+def test_ffmpeg_validator_accepts_zero_padded_pcm_format(tmp_path: Path, monkeypatch):
+    from museecho.application import uploads
+    from museecho.domain.models import DecodedAudio
+
+    canonical_format = _minimal_wave()[20:36]
+    source = tmp_path / "zero-padded.wav"
+    source.write_bytes(_wave_from_format_data(canonical_format + b"\x00\x00" + bytes(22)))
+    calls: list[str] = []
+    probe = AudioProbe("wav", 1.0, 8_000, 1)
+    monkeypatch.setattr(
+        uploads,
+        "probe_audio",
+        lambda *_args, **_kwargs: calls.append("probe") or probe,
+    )
+    monkeypatch.setattr(
+        uploads,
+        "decode_audio",
+        lambda *_args, **_kwargs: (
+            calls.append("decode") or DecodedAudio(b"\x00\x00\x00\x00", 8_000, 1)
+        ),
+    )
+
+    assert FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(".wav")) == probe
+    assert calls == ["probe", "decode"]
+
+
+def test_ffmpeg_validator_rejects_nonzero_zero_padded_pcm_format_before_audio_tools(
+    tmp_path: Path, monkeypatch
+):
+    from museecho.application import uploads
+
+    canonical_format = _minimal_wave()[20:36]
+    source = tmp_path / "nonzero-padded.wav"
+    source.write_bytes(_wave_from_format_data(canonical_format + b"\x00\x00" + bytes(21) + b"\x01"))
+    calls: list[str] = []
+    monkeypatch.setattr(
+        uploads,
+        "probe_audio",
+        lambda *_args, **_kwargs: calls.append("probe"),
+    )
+    monkeypatch.setattr(
+        uploads,
+        "decode_audio",
+        lambda *_args, **_kwargs: calls.append("decode"),
+    )
+
+    with pytest.raises(InvalidAudioError, match="signature"):
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(".wav"))
+
+    assert calls == []
 
 
 @pytest.mark.parametrize("subformat_tag", (0x0001, 0x0003))
@@ -393,7 +681,10 @@ def test_ffmpeg_validator_accepts_extensible_valid_precision_and_extension_paddi
         ),
     )
 
-    assert FFmpegAudioValidator()(source) == probe
+    assert (
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(source.suffix))
+        == probe
+    )
     assert calls == ["probe", "decode"]
 
 
@@ -417,7 +708,7 @@ def test_ffmpeg_validator_rejects_free_format_layer_three_before_audio_tools(
     )
 
     with pytest.raises(InvalidAudioError, match="signature"):
-        FFmpegAudioValidator()(source)
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(source.suffix))
 
     assert calls == []
 
@@ -460,7 +751,7 @@ def test_ffmpeg_validator_rejects_ambiguous_signatures_before_audio_tools(
     monkeypatch.setattr(uploads, "decode_audio", fake_decode)
 
     with pytest.raises(InvalidAudioError, match="signature"):
-        FFmpegAudioValidator()(source)
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(".mp3"))
 
     assert calls == []
 
@@ -486,7 +777,7 @@ def test_ffmpeg_validator_rejects_extensible_precision_outside_container_before_
     )
 
     with pytest.raises(InvalidAudioError, match="signature"):
-        FFmpegAudioValidator()(source)
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(source.suffix))
 
     assert calls == []
 
@@ -511,7 +802,7 @@ def test_ffmpeg_validator_rejects_short_extensible_format_before_audio_tools(
     )
 
     with pytest.raises(InvalidAudioError, match="signature"):
-        FFmpegAudioValidator()(source)
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(source.suffix))
 
     assert calls == []
 
@@ -543,7 +834,7 @@ def test_ffmpeg_validator_rejects_inconsistent_wave_format_lengths_before_audio_
     )
 
     with pytest.raises(InvalidAudioError, match="signature"):
-        FFmpegAudioValidator()(source)
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(source.suffix))
 
     assert calls == []
 
@@ -575,7 +866,7 @@ def test_ffmpeg_validator_rejects_compressed_or_ambiguous_wave_before_audio_tool
     )
 
     with pytest.raises(InvalidAudioError, match="signature"):
-        FFmpegAudioValidator()(source)
+        FFmpegAudioValidator()(source, audio_formats.audio_format_for_suffix(source.suffix))
 
     assert calls == []
 
@@ -583,10 +874,10 @@ def test_ffmpeg_validator_rejects_compressed_or_ambiguous_wave_before_audio_tool
 def test_request_body_limit_runs_before_multipart_parsing(tmp_path: Path):
     validated = False
 
-    def validator(path: Path) -> AudioProbe:
+    def validator(path: Path, audio_format: Any) -> AudioProbe:
         nonlocal validated
         validated = True
-        return _valid_probe(path)
+        return _valid_probe(path, audio_format)
 
     client, repository, store, queue = _client(
         tmp_path,
@@ -611,10 +902,10 @@ def test_request_body_limit_runs_before_multipart_parsing(tmp_path: Path):
 def test_chunked_request_without_content_length_is_still_capped(tmp_path: Path):
     validated = False
 
-    def validator(path: Path) -> AudioProbe:
+    def validator(path: Path, audio_format: Any) -> AudioProbe:
         nonlocal validated
         validated = True
-        return _valid_probe(path)
+        return _valid_probe(path, audio_format)
 
     client, repository, store, queue = _client(
         tmp_path,
@@ -720,7 +1011,7 @@ def test_validation_is_serialized_across_service_instances(tmp_path: Path, monke
 
     def validate(validator: FFmpegAudioValidator, path: Path) -> None:
         try:
-            validator(path)
+            validator(path, audio_formats.audio_format_for_suffix(path.suffix))
         except BaseException as exc:
             failures.append(exc)
 
@@ -802,3 +1093,106 @@ def test_resource_limits_can_be_lowered_but_not_raised(tmp_path: Path):
             passthrough,
             max_body_bytes=DEFAULT_MAX_UPLOAD_REQUEST_BYTES + 1,
         )
+
+
+def test_default_upload_limit_accepts_exact_boundary_and_rejects_first_byte_above(
+    tmp_path: Path,
+):
+    repository = MemoryRepository()
+    store = CountingStore()
+    queue = RecordingQueue()
+    validated_sizes: list[int] = []
+
+    def validator(path: Path, audio_format: Any) -> AudioProbe:
+        validated_sizes.append(path.stat().st_size)
+        return _valid_probe(path, audio_format)
+
+    service = UploadSubmissionService(
+        repository=repository,
+        audio_store=store,
+        access_service=RecordingAccessService(),
+        queue=queue,
+        temp_root=tmp_path,
+        validator=validator,
+    )
+    exact_limit = 100 * 1024 * 1024
+    accepted_source = GeneratedByteStream(exact_limit)
+
+    submitted = service.submit(
+        accepted_source,
+        filename="exact-limit.wav",
+        media_type="audio/wav",
+    )
+
+    assert submitted.job.id in repository.jobs
+    assert store.writes == [(submitted.job.id, exact_limit, "audio/wav")]
+    assert queue.submitted == [submitted.job.id]
+    assert validated_sizes == [exact_limit]
+    assert accepted_source.largest_chunk <= 64 * 1024
+    assert store.largest_chunk <= 64 * 1024
+    assert list(tmp_path.iterdir()) == []
+
+    persisted_jobs = repository.jobs.copy()
+    persisted_writes = store.writes.copy()
+    queued_jobs = queue.submitted.copy()
+    rejected_source = GeneratedByteStream(exact_limit + 1)
+
+    with pytest.raises(upload_module.UploadTooLargeError):
+        service.submit(
+            rejected_source,
+            filename="over-limit.wav",
+            media_type="audio/wav",
+        )
+
+    assert repository.jobs == persisted_jobs
+    assert store.writes == persisted_writes
+    assert queue.submitted == queued_jobs
+    assert validated_sizes == [exact_limit]
+    assert rejected_source.largest_chunk <= 64 * 1024
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_default_request_limit_accepts_100_mib_file_boundary_and_rejects_next_byte():
+    import asyncio
+
+    from starlette.types import Message
+
+    from museecho.api.analyses import UploadBodyLimitMiddleware
+
+    allowed_request_bytes = 100 * 1024 * 1024 + 64 * 1024
+    downstream_calls = 0
+
+    async def downstream(_scope, _receive, send):
+        nonlocal downstream_calls
+        downstream_calls += 1
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    async def receive() -> Message:
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def exercise(content_length: int) -> list[Message]:
+        sent: list[Message] = []
+
+        async def send(message: Message) -> None:
+            sent.append(message)
+
+        scope = {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/analyses",
+            "headers": [(b"content-length", str(content_length).encode("ascii"))],
+        }
+        await UploadBodyLimitMiddleware(downstream)(scope, receive, send)
+        return sent
+
+    accepted = asyncio.run(exercise(allowed_request_bytes))
+    rejected = asyncio.run(exercise(allowed_request_bytes + 1))
+
+    assert downstream_calls == 1
+    assert [
+        message["status"] for message in accepted if message["type"] == "http.response.start"
+    ] == [204]
+    assert [
+        message["status"] for message in rejected if message["type"] == "http.response.start"
+    ] == [413]

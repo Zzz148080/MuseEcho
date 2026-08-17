@@ -11,6 +11,12 @@ _MINIMUM_BPM = 40.0
 _MAXIMUM_BPM = 240.0
 _RMS_BLOCK_SAMPLES = 1_000_000
 _BEAT_CONTEXT_SECONDS = 4.0
+_TENTATIVE_MINIMUM_DURATION_SECONDS = 30.0
+_TENTATIVE_THRESHOLD_RATIO = 0.75
+_TENTATIVE_CONFIDENCE_MARGIN = 0.05
+_TENTATIVE_ACCENT_RATIO = 0.5
+_TENTATIVE_HALF_TEMPO_BPM = 150.0
+_TENTATIVE_HALF_CONFIDENCE_TOLERANCE = 0.02
 
 
 @dataclass(frozen=True)
@@ -18,7 +24,7 @@ class RhythmEstimate:
     bpm: float | None
     confidence: float | None
     beat_positions_seconds: tuple[float, ...]
-    algorithm: str = "librosa-onset-beat-periodicity-v1"
+    algorithm: str = "librosa-onset-beat-periodicity-v3"
 
 
 def estimate_rhythm(
@@ -63,9 +69,8 @@ def estimate_rhythm(
         sample_rate=rhythm_sample_rate,
         hop_length=rhythm_hop_length,
     )
-    if onset_periodicity < minimum_onset_periodicity:
+    if not math.isfinite(bpm) or bpm <= 0.0:
         return _unknown_rhythm()
-
     frames = _chunked_beat_frames(
         onset_envelope,
         bpm=bpm,
@@ -75,20 +80,36 @@ def estimate_rhythm(
     )
     if frames.size < 3:
         return _unknown_rhythm()
-    if _beat_accent_imbalance(onset_envelope, frames) > maximum_beat_accent_imbalance:
-        return _unknown_rhythm()
-    times = np.asarray(
-        librosa.frames_to_time(
-            frames,
-            sr=rhythm_sample_rate,
-            hop_length=rhythm_hop_length,
-        ),
-        dtype=np.float64,
+    times = _beat_times(
+        frames,
+        sample_rate=rhythm_sample_rate,
+        hop_length=rhythm_hop_length,
+        duration_seconds=duration_seconds,
     )
-    times = times[(times >= 0.0) & (times <= duration_seconds)]
     if times.size < 3:
         return _unknown_rhythm()
-
+    accent_imbalance = _beat_accent_imbalance(onset_envelope, frames)
+    if accent_imbalance > maximum_beat_accent_imbalance and bpm / 2.0 >= _MINIMUM_BPM:
+        half_bpm = bpm / 2.0
+        half_frames = _chunked_beat_frames(
+            onset_envelope,
+            bpm=half_bpm,
+            sample_rate=rhythm_sample_rate,
+            hop_length=rhythm_hop_length,
+            chunk_seconds=chunk_seconds,
+        )
+        half_times = _beat_times(
+            half_frames,
+            sample_rate=rhythm_sample_rate,
+            hop_length=rhythm_hop_length,
+            duration_seconds=duration_seconds,
+        )
+        half_imbalance = _beat_accent_imbalance(onset_envelope, half_frames)
+        if half_times.size >= 3 and half_imbalance < accent_imbalance:
+            bpm = half_bpm
+            frames = half_frames
+            times = half_times
+            accent_imbalance = half_imbalance
     confidence = _rhythm_confidence(
         onset_envelope,
         frames,
@@ -97,13 +118,83 @@ def estimate_rhythm(
         bpm=bpm,
         periodicity_quality=periodicity_quality,
     )
-    if confidence < minimum_confidence:
+    if (
+        onset_periodicity >= minimum_onset_periodicity
+        and accent_imbalance <= maximum_beat_accent_imbalance
+        and confidence >= minimum_confidence
+    ):
+        return RhythmEstimate(
+            bpm=bpm,
+            confidence=confidence,
+            beat_positions_seconds=tuple(float(value) for value in times),
+        )
+
+    tentative_periodicity = minimum_onset_periodicity * _TENTATIVE_THRESHOLD_RATIO
+    tentative_confidence = max(0.0, minimum_confidence - _TENTATIVE_CONFIDENCE_MARGIN)
+    tentative_accent = maximum_beat_accent_imbalance * _TENTATIVE_ACCENT_RATIO
+    if (
+        duration_seconds < max(minimum_duration_seconds, _TENTATIVE_MINIMUM_DURATION_SECONDS)
+        or onset_periodicity < tentative_periodicity
+    ):
+        return _unknown_rhythm()
+
+    if bpm >= _TENTATIVE_HALF_TEMPO_BPM and bpm / 2.0 >= _MINIMUM_BPM:
+        half_bpm = bpm / 2.0
+        half_frames = _chunked_beat_frames(
+            onset_envelope,
+            bpm=half_bpm,
+            sample_rate=rhythm_sample_rate,
+            hop_length=rhythm_hop_length,
+            chunk_seconds=chunk_seconds,
+        )
+        half_times = _beat_times(
+            half_frames,
+            sample_rate=rhythm_sample_rate,
+            hop_length=rhythm_hop_length,
+            duration_seconds=duration_seconds,
+        )
+        if half_times.size >= 3:
+            half_imbalance = _beat_accent_imbalance(onset_envelope, half_frames)
+            half_confidence = _rhythm_confidence(
+                onset_envelope,
+                half_frames,
+                half_times,
+                duration_seconds=duration_seconds,
+                bpm=half_bpm,
+                periodicity_quality=periodicity_quality,
+            )
+            if (
+                half_imbalance <= tentative_accent
+                and half_confidence >= tentative_confidence
+                and half_confidence >= confidence - _TENTATIVE_HALF_CONFIDENCE_TOLERANCE
+            ):
+                bpm = half_bpm
+                frames = half_frames
+                times = half_times
+                accent_imbalance = half_imbalance
+                confidence = half_confidence
+
+    if accent_imbalance > tentative_accent or confidence < tentative_confidence:
         return _unknown_rhythm()
     return RhythmEstimate(
         bpm=bpm,
         confidence=confidence,
         beat_positions_seconds=tuple(float(value) for value in times),
     )
+
+
+def _beat_times(
+    frames: NDArray[np.int64],
+    *,
+    sample_rate: float,
+    hop_length: int,
+    duration_seconds: float,
+) -> NDArray[np.float64]:
+    times = np.asarray(
+        librosa.frames_to_time(frames, sr=sample_rate, hop_length=hop_length),
+        dtype=np.float64,
+    )
+    return times[(times >= 0.0) & (times <= duration_seconds)]
 
 
 def _bounded_signal_rms(samples: NDArray[np.float32]) -> float:

@@ -13,17 +13,23 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import MappingProxyType
 from typing import BinaryIO, ParamSpec, Protocol, TypeVar
 
 from museecho.analysis.decode import AudioProbe, InvalidAudioError, decode_audio, probe_audio
+from museecho.audio_formats import (
+    AUDIO_FORMATS,
+    AudioFormat,
+    ValidatorKind,
+    audio_format_for_suffix,
+    probe_matches_audio_format,
+)
 from museecho.domain.models import EncryptedAudioMetadata, IssuedAccess
 from museecho.domain.status import AnalysisJob
 
-DEFAULT_MAX_UPLOAD_BYTES = 30 * 1024 * 1024
+DEFAULT_MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 DEFAULT_MAX_DURATION_SECONDS = 600.0
 COPY_CHUNK_BYTES = 64 * 1024
-_ALLOWED_EXTENSIONS = {".wav": "wav", ".mp3": "mp3"}
-_CANONICAL_MEDIA_TYPES = {"wav": "audio/wav", "mp3": "audio/mpeg"}
 _UPLOAD_TEMP_PREFIX = "museecho-upload-"
 _UPLOAD_OWNER_MARKER = ".owner"
 _UPLOAD_OWNER_BYTES = b"MuseEcho temporary plaintext v1\n"
@@ -132,8 +138,8 @@ class FFmpegAudioValidator:
         self._ffmpeg_executable = ffmpeg_executable
 
     @_serialized_validation
-    def __call__(self, path: Path) -> AudioProbe:
-        _validate_audio_signature(path)
+    def __call__(self, path: Path, audio_format: AudioFormat) -> AudioProbe:
+        _validate_audio_signature(path, audio_format)
         probe = probe_audio(
             path,
             max_duration_seconds=self._max_duration_seconds,
@@ -148,38 +154,169 @@ class FFmpegAudioValidator:
         return probe
 
 
-def _validate_audio_signature(path: Path) -> None:
+def _validate_audio_signature(path: Path, audio_format: AudioFormat) -> None:
     try:
         with path.open("rb") as source:
             header = source.read(12)
-            if len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WAVE":
-                _validate_wave_format(source, header)
-                return
-            if header[:3] == b"ID3":
-                if len(header) < 10 or header[3] not in (2, 3, 4) or header[4] == 0xFF:
-                    raise InvalidAudioError("audio file signature is invalid")
-                allowed_flags = {2: 0xC0, 3: 0xE0, 4: 0xF0}[header[3]]
-                if header[5] & ~allowed_flags or any(value & 0x80 for value in header[6:10]):
-                    raise InvalidAudioError("audio file signature is invalid")
-                tag_size = 0
-                for value in header[6:10]:
-                    tag_size = (tag_size << 7) | value
-                frame_offset = 10 + tag_size
-                if header[3] == 4 and header[5] & 0x10:
-                    source.seek(frame_offset)
-                    footer = source.read(10)
-                    if footer[:3] != b"3DI" or footer[3:] != header[3:10]:
-                        raise InvalidAudioError("audio file signature is invalid")
-                    frame_offset += 10
-            else:
-                frame_offset = 0
-            source.seek(0, os.SEEK_END)
-            file_size = source.tell()
-            _validate_layer_three_frames(source, frame_offset, file_size)
+            _SIGNATURE_VALIDATORS[audio_format.validator_kind](source, header)
     except InvalidAudioError:
         raise
     except OSError:
         raise InvalidAudioError("audio file signature could not be read") from None
+
+
+def _validate_wave_signature(source: BinaryIO, header: bytes) -> None:
+    if len(header) < 12 or header[:4] != b"RIFF" or header[8:12] != b"WAVE":
+        raise InvalidAudioError("audio file signature is invalid")
+    _validate_wave_format(source, header)
+
+
+def _validate_flac_header(source: BinaryIO, header: bytes) -> None:
+    if header[:4] != b"fLaC":
+        raise InvalidAudioError("audio file signature is invalid")
+    _validate_flac_signature(source)
+
+
+def _validate_iso_bmff_header(source: BinaryIO, header: bytes) -> None:
+    if len(header) < 12 or header[4:8] != b"ftyp":
+        raise InvalidAudioError("audio file signature is invalid")
+    _validate_iso_bmff_signature(source, header)
+
+
+def _validate_adts_header(source: BinaryIO, header: bytes) -> None:
+    if len(header) < 7 or header[0] != 0xFF or header[1] & 0xF6 != 0xF0:
+        raise InvalidAudioError("audio file signature is invalid")
+    _validate_adts_signature(source)
+
+
+def _validate_ogg_header(source: BinaryIO, header: bytes) -> None:
+    if header[:4] != b"OggS":
+        raise InvalidAudioError("audio file signature is invalid")
+    _validate_ogg_signature(source)
+
+
+def _validate_mp3_signature(source: BinaryIO, header: bytes) -> None:
+    if header[:3] == b"ID3":
+        if len(header) < 10 or header[3] not in (2, 3, 4) or header[4] == 0xFF:
+            raise InvalidAudioError("audio file signature is invalid")
+        allowed_flags = {2: 0xC0, 3: 0xE0, 4: 0xF0}[header[3]]
+        if header[5] & ~allowed_flags or any(value & 0x80 for value in header[6:10]):
+            raise InvalidAudioError("audio file signature is invalid")
+        tag_size = 0
+        for value in header[6:10]:
+            tag_size = (tag_size << 7) | value
+        frame_offset = 10 + tag_size
+        if header[3] == 4 and header[5] & 0x10:
+            source.seek(frame_offset)
+            footer = source.read(10)
+            if footer[:3] != b"3DI" or footer[3:] != header[3:10]:
+                raise InvalidAudioError("audio file signature is invalid")
+            frame_offset += 10
+    else:
+        frame_offset = 0
+    source.seek(0, os.SEEK_END)
+    _validate_layer_three_frames(source, frame_offset, source.tell())
+
+
+def _validate_flac_signature(source: BinaryIO) -> None:
+    source.seek(0, os.SEEK_END)
+    file_size = source.tell()
+    position = 4
+    first = True
+    found_last = False
+    while position + 4 <= file_size:
+        source.seek(position)
+        block_header = source.read(4)
+        block_type = block_header[0] & 0x7F
+        block_length = int.from_bytes(block_header[1:4], "big")
+        if first and (block_type != 0 or block_length != 34):
+            raise InvalidAudioError("audio file signature is invalid")
+        if block_type == 127 or position + 4 + block_length > file_size:
+            raise InvalidAudioError("audio file signature is invalid")
+        position += 4 + block_length
+        first = False
+        if block_header[0] & 0x80:
+            found_last = True
+            break
+    if first or not found_last or position >= file_size:
+        raise InvalidAudioError("audio file signature is invalid")
+
+
+def _validate_iso_bmff_signature(source: BinaryIO, header: bytes) -> None:
+    source.seek(0, os.SEEK_END)
+    file_size = source.tell()
+    box_size = int.from_bytes(header[:4], "big")
+    header_size = 8
+    if box_size == 1:
+        source.seek(8)
+        extended = source.read(8)
+        if len(extended) != 8:
+            raise InvalidAudioError("audio file signature is invalid")
+        box_size = int.from_bytes(extended, "big")
+        header_size = 16
+    if box_size < header_size + 8 or box_size > file_size:
+        raise InvalidAudioError("audio file signature is invalid")
+    source.seek(header_size)
+    brands = source.read(box_size - header_size)
+    if len(brands) < 8 or (len(brands) - 8) % 4:
+        raise InvalidAudioError("audio file signature is invalid")
+    allowed_brands = {b"M4A ", b"M4B ", b"isom", b"iso2", b"mp41", b"mp42", b"qt  "}
+    compatible_brands = (brands[index : index + 4] for index in range(8, len(brands), 4))
+    declared_brands = {brands[:4], *compatible_brands}
+    if not declared_brands & allowed_brands:
+        raise InvalidAudioError("audio file signature is invalid")
+
+
+def _validate_adts_signature(source: BinaryIO) -> None:
+    source.seek(0, os.SEEK_END)
+    file_size = source.tell()
+    position = 0
+    frame_count = 0
+    while position < file_size:
+        if position + 7 > file_size:
+            raise InvalidAudioError("audio file signature is invalid")
+        source.seek(position)
+        header = source.read(7)
+        if header[0] != 0xFF or header[1] & 0xF6 != 0xF0:
+            raise InvalidAudioError("audio file signature is invalid")
+        sample_rate_index = (header[2] >> 2) & 0x0F
+        channel_configuration = ((header[2] & 1) << 2) | (header[3] >> 6)
+        header_size = 7 if header[1] & 1 else 9
+        frame_size = ((header[3] & 3) << 11) | (header[4] << 3) | (header[5] >> 5)
+        if (
+            sample_rate_index >= 13
+            or channel_configuration == 0
+            or frame_size < header_size
+            or position + frame_size > file_size
+        ):
+            raise InvalidAudioError("audio file signature is invalid")
+        position += frame_size
+        frame_count += 1
+    if frame_count < 2:
+        raise InvalidAudioError("audio file signature is invalid")
+
+
+def _validate_ogg_signature(source: BinaryIO) -> None:
+    source.seek(0)
+    header = source.read(27)
+    if len(header) != 27 or header[:4] != b"OggS" or header[4] != 0 or not header[5] & 0x02:
+        raise InvalidAudioError("audio file signature is invalid")
+    segment_count = header[26]
+    lacing = source.read(segment_count)
+    if len(lacing) != segment_count or not lacing:
+        raise InvalidAudioError("audio file signature is invalid")
+    packet_size = 0
+    complete = False
+    for value in lacing:
+        packet_size += value
+        if value < 255:
+            complete = True
+            break
+    packet = source.read(packet_size)
+    if not complete or len(packet) != packet_size:
+        raise InvalidAudioError("audio file signature is invalid")
+    if not (packet.startswith(b"\x01vorbis") or packet.startswith(b"OpusHead")):
+        raise InvalidAudioError("audio file signature is invalid")
 
 
 def _validate_wave_format(source: BinaryIO, header: bytes) -> None:
@@ -238,8 +375,10 @@ def _validate_pcm_wave_format(format_data: bytes) -> None:
         format_tag = struct.unpack_from("<I", subformat)[0]
         if not 0 < valid_bits <= bits_per_sample:
             raise InvalidAudioError("audio file signature is invalid")
-    elif len(format_data) not in (16, 18) or (
-        len(format_data) == 18 and struct.unpack_from("<H", format_data, 16)[0] != 0
+    elif len(format_data) != 16 and (
+        len(format_data) < 18
+        or struct.unpack_from("<H", format_data, 16)[0] != 0
+        or any(format_data[18:])
     ):
         raise InvalidAudioError("audio file signature is invalid")
 
@@ -324,6 +463,29 @@ def _validate_layer_three_frames(source: BinaryIO, frame_offset: int, file_size:
         raise InvalidAudioError("audio file signature is invalid")
 
 
+_SIGNATURE_VALIDATORS = MappingProxyType(
+    {
+        ValidatorKind.WAVE: _validate_wave_signature,
+        ValidatorKind.MP3: _validate_mp3_signature,
+        ValidatorKind.FLAC: _validate_flac_header,
+        ValidatorKind.ISO_BMFF: _validate_iso_bmff_header,
+        ValidatorKind.ADTS: _validate_adts_header,
+        ValidatorKind.OGG_VORBIS: _validate_ogg_header,
+        ValidatorKind.OGG_OPUS: _validate_ogg_header,
+    }
+)
+
+
+def registered_signature_validator_kinds() -> frozenset[ValidatorKind]:
+    return frozenset(_SIGNATURE_VALIDATORS)
+
+
+if registered_signature_validator_kinds() != frozenset(
+    audio_format.validator_kind for audio_format in AUDIO_FORMATS
+):
+    raise RuntimeError("audio format registry has incomplete signature validator coverage")
+
+
 class UploadSubmissionService:
     def __init__(
         self,
@@ -333,7 +495,7 @@ class UploadSubmissionService:
         access_service: UploadAccessService,
         queue: AnalysisQueue,
         temp_root: Path,
-        validator: Callable[[Path], AudioProbe] | None = None,
+        validator: Callable[[Path, AudioFormat], AudioProbe] | None = None,
         max_bytes: int = DEFAULT_MAX_UPLOAD_BYTES,
         access_ttl: timedelta = timedelta(hours=24),
         clock: Callable[[], datetime] | None = None,
@@ -362,16 +524,20 @@ class UploadSubmissionService:
             _write_upload_owner_marker(isolated_directory)
             isolated_path = isolated_directory / uuid.uuid4().hex
             _copy_bounded(source, isolated_path, self._max_bytes)
-            probe = self._validator(isolated_path)
-            detected_formats = set(probe.format_name.split(","))
-            if expected_format not in detected_formats:
+            probe = self._validator(isolated_path, expected_format)
+            if not probe_matches_audio_format(
+                expected_format,
+                format_name=probe.format_name,
+                codec_name=probe.codec_name,
+            ):
                 from museecho.analysis.decode import InvalidAudioError
 
-                raise InvalidAudioError("file extension does not match detected audio format")
-            canonical_media_type = _CANONICAL_MEDIA_TYPES[expected_format]
+                raise InvalidAudioError(
+                    "file extension does not match detected audio format and codec"
+                )
             return self._persist_validated(
                 isolated_path,
-                canonical_media_type=canonical_media_type,
+                canonical_media_type=expected_format.canonical_media_type,
             )
 
     def _persist_validated(
@@ -473,7 +639,7 @@ def _is_link(path: Path) -> bool:
     return path.is_symlink() or _is_junction(path)
 
 
-def _expected_format(filename: str) -> str:
+def _expected_format(filename: str) -> AudioFormat:
     if (
         not filename
         or "\x00" in filename
@@ -482,14 +648,14 @@ def _expected_format(filename: str) -> str:
         or "\\" in filename
         or Path(filename).name != filename
     ):
-        raise UnsupportedAudioError("only unambiguous WAV and MP3 filenames are supported")
+        raise UnsupportedAudioError("only unambiguous supported audio filenames are accepted")
     path = Path(filename)
     if not path.stem or path.stem == ".":
-        raise UnsupportedAudioError("only unambiguous WAV and MP3 filenames are supported")
+        raise UnsupportedAudioError("only unambiguous supported audio filenames are accepted")
     try:
-        return _ALLOWED_EXTENSIONS[path.suffix.lower()]
+        return audio_format_for_suffix(path.suffix)
     except KeyError:
-        raise UnsupportedAudioError("only WAV and MP3 uploads are supported") from None
+        raise UnsupportedAudioError("audio filename extension is not supported") from None
 
 
 def _copy_bounded(source: BinaryIO, destination: Path, max_bytes: int) -> None:

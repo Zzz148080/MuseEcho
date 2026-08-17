@@ -13,14 +13,14 @@
     "tar_sha256": "c45998dfa5bc6c733799b036f07d64ebce081f23a4cd7497bcb323f72bb7e25e",
     "tuple_sha256": "4ab629f0f3b74d2357fcf19d195831c37adbee645d881e9a3fb4605224de35ba",
     "vex_gate_exit": 0,
-    "vex_sha256": "76b539cb0b71dbb6339150f322eaf049207d862d66a209fdb97bf64245c7afaa"
+    "vex_sha256": "5a99f65ff2876867117e257903df87a63c0821c614ea82a88d61ccbef833f372"
   },
   "boundary": {
     "build_kind": "controlled_current_source_derivation_from_task20_final",
     "formal_dockerfile_build_exit": 1,
     "formal_dockerfile_build_reason": "locked pip and apt BuildKit layers unavailable under network none",
-    "policy_sha256": "f0210dd1e4c441c51dc183ef31764872ad75ed88973249ab8b4cfc4d52916d91",
-    "runtime_boundary_sha256": "74c3ee936529f49df7a220aa6bcecb089278fd4b26d5a797792a3a08c5d43fa4",
+    "policy_sha256": "2ccccb86f5efe5f40f3af16dcd210abe85977bb3213ccb29235758966164a004",
+    "runtime_boundary_sha256": "4dc93b5c783978818ff5f3bc03b663897f310589dc451c297db7952dedc5bb2a",
     "task20_base_daemon_image_id": "sha256:96cd900d6c17c360b01665362330aca8ef032b0d4d1f140659a52265ce47f39c"
   },
   "gateway": {

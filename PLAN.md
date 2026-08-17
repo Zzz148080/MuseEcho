@@ -2,7 +2,7 @@
 
 > **执行者必读：** 实施本计划时必须使用 `superpowers:executing-plans`；每个功能或缺陷修复必须先使用 `superpowers:test-driven-development`，完成前必须使用 `superpowers:verification-before-completion`。独立任务使用隔离 worktree、独立分支和 PR；每个任务依次通过规格符合性审查与代码质量审查。
 
-**目标：** 构建一个可在腾讯云 Lighthouse 单机部署的 MuseEcho V1：用户上传合法 WAV/MP3 后，系统用真实 CPU DSP/MIR 生成带置信度的节奏、能量、调性、结构和和弦事实，并通过同步可视化、确定性乐理引擎和 Evidence-first 问答帮助用户理解音乐。
+**目标：** 构建一个可在腾讯云 Lighthouse 单机部署的 MuseEcho V1：用户上传合法 WAV、MP3、FLAC、M4A、AAC、OGG 或 OPUS 后，系统用真实 CPU DSP/MIR 生成带置信度的节奏、能量、调性、结构和和弦事实，并通过同步可视化、确定性乐理引擎和 Evidence-first 问答帮助用户理解音乐。
 
 **架构：** React/Vite/TypeScript 前端与 FastAPI/Python 后端组成模块化单体；SQLite 保存任务和结构化结果，单进程队列串行执行分析；音频以逐分析密钥的分块 AEAD 密文保存最多 24 小时。LLM 只解释通过白名单和置信度门槛的证据，无 Key 或调用失败时使用确定性回退。
 
@@ -10,7 +10,7 @@
 
 <!-- TASK23-CURRENT-STATUS:START -->
 > **Task 23 compatibility status (superseded by Task 24):** The Functional
-> Audit is **34 PASS / 6 PARTIAL / 0 FAIL** and `PARTIALLY_READY`. Task 23 PR #1
+> Audit is **31 PASS / 9 PARTIAL / 0 FAIL** and `PARTIALLY_READY`. Task 23 PR #1
 > merged after GitHub quality, E2E, and distribution passed. Its implementation
 > boundary is retained for the Task 23 regression contract; the current branch
 > tip and authoritative status are in the Task 24 block below. At Task 23
@@ -20,14 +20,21 @@
 
 <!-- TASK24-CURRENT-STATUS:START -->
 > **Task 24 current status:** `MUSEECHO V1 PARTIALLY READY`. The Product Audit,
-> fixed 17-section Delivery Report, fail-closed validator, and blank student
-> reflection template are complete, so Task 24 itself is not a blocker. Task 23
-> PR #1 merged at `79d87f4`; Task 24 run `31687703913` also passed GitHub
-> quality, E2E, and distribution at head `de5bc6f`. GitLab,
-> cloud/public/target-server smoke and
-> rollback, formal offline build ENG-010, trusted-certificate controller browser
-> observation, and student gates remain open.
+> fixed 17-section Delivery Report, fail-closed validator, and student-authored
+> reflection draft are present, so Task 24 itself is not a blocker. The current
+> Functional Audit is **36 PASS / 4 PARTIAL / 0 FAIL**. Task 23 PR #1 merged at
+> `79d87f4`; PR #3 run `31966788273` passed GitHub quality (5m43s), E2E
+> (3m10s), and distribution (7m30s) on exact final product/CI implementation SHA
+> `0674f74f4097e46cee98c4715a62ad5aa55101cf`. Per
+> `COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent Cloud/public deployment
+> are deferred follow-up work. `DEL-011` remains historical Task 24 evidence;
+> `DEL-012` records the final implementation run. Formal offline build ENG-010,
+> local product review, and student gates remain open; no GitLab, Release,
+> cloud-deployment, or student-acceptance completion is claimed.
 <!-- TASK24-CURRENT-STATUS:END -->
+
+<!-- FINAL-CI-RELATIONSHIP: implementation-sha=0674f74f4097e46cee98c4715a62ad5aa55101cf; run=31966788273; jobs=quality:success,e2e:success,distribution:success; github=required; gitlab=supplemental-not-run; reconciliation=docs-only-requires-separate-final-sha-publication-ci -->
+Any later docs-only reconciliation is not product implementation evidence and requires its own separate final-SHA publication/CI gate before Task 6 can be complete.
 
 ## 0. 当前门禁与真实性约束
 
@@ -270,7 +277,7 @@ def test_ciphertext_does_not_contain_plaintext(store, tmp_path):
 
 ### 任务 6：流式上传、真实校验与单并发任务队列
 
-**目标：** 限制 30 MB/10 分钟，拒绝伪扩展名、损坏和不支持文件，并以真实阶段状态提交串行分析任务。
+**历史初始目标：** 限制 30 MB/10 分钟，拒绝伪扩展名、损坏和不支持文件，并以真实阶段状态提交串行分析任务。当前范围已由后续兼容性计划扩展为 100 MiB/10 分钟与七种受支持格式，权威边界以 `SPEC.md` §5.1 和本计划的“Task 24 后维护记录”为准。
 
 **文件：** 新建 `src/museecho/application/uploads.py`、`src/museecho/application/queue.py`、`src/museecho/api/analyses.py`、`tests/api/test_upload.py`、`tests/unit/test_queue.py`。
 
@@ -315,7 +322,7 @@ def test_decode_normalizes_to_target_rate(sine_wav):
 
 **实现：** FFprobe 先检查，FFmpeg 限制通道、采样率和输出时长；捕获超时与退出码并映射领域错误；factory 生成正弦、节拍器、大/小三和弦、和弦进行、分段能量、静音、极短和损坏样本。
 
-**GREEN 条件：** WAV/MP3 均解码到目标形状；坏文件、超时、超限明确失败；夹具哈希稳定。
+**历史 GREEN 条件：** WAV/MP3 均解码到目标形状；坏文件、超时、超限明确失败；夹具哈希稳定。后续七种格式的当前验收边界见“Task 24 后维护记录”所列计划与 `SPEC.md` §5.1。
 
 **重构：** 子进程运行器可注入，stderr 经过长度限制和路径脱敏。
 
@@ -561,7 +568,7 @@ it('does not upload until legal-use and retention consent is checked', async () 
 
 **RED：** `npm --prefix frontend test -- --run src/features/upload`，预期组件不存在。
 
-**实现：** WAV/MP3、30MB 客户端预检但以后端为准；明确合法使用确认、24h 加密保留与删除说明；上传进度和后端阶段分开；TanStack Query 轮询真实 status，刷新用 Cookie+URL ID 恢复；失败显示稳定错误码的友好文本。
+**历史实现：** WAV/MP3、30MB 客户端预检但以后端为准；明确合法使用确认、24h 加密保留与删除说明；上传进度和后端阶段分开；TanStack Query 轮询真实 status，刷新用 Cookie+URL ID 恢复；失败显示稳定错误码的友好文本。当前格式与大小边界已由后续维护提交扩展，见“Task 24 后维护记录”。
 
 **GREEN 条件：** 未同意不可上传；错误与重试可访问；进度不会用计时器伪造；终态停止轮询。
 
@@ -706,7 +713,7 @@ bash deploy/tencent-cloud/install.sh --check-only
 
 **实现：** 脚本检查 Linux/2vCPU/4GB/磁盘，创建 `/srv/museecho/data` 与 `/etc/museecho/secrets`，只开放 22/80/443，说明 SSH 密钥与禁用密码登录，部署固定镜像 digest，健康失败自动回滚；备份只含必要数据库/元数据并记录加密边界。由用户提供真实云账号、域名、DNS 和 SSH 授权后才执行外部变更。
 
-**GREEN 条件：** 本地 shellcheck/check-only 通过；真实服务器上 HTTPS、健康、上传、分析、播放、Q&A、删除、24h 清理与回滚演练有时间戳证据；至少尝试不同大陆网络。未获得云授权时准确记录 blocker，不伪造公网完成或阻止可继续的审计工作。
+**后续 GREEN 条件：** 本地 shellcheck/check-only 通过；真实服务器上 HTTPS、健康、上传、分析、播放、Q&A、删除、24h 清理与回滚演练有时间戳证据；至少尝试不同大陆网络。本次课程提交不以云授权或公网 URL 为门禁，依据见 `COURSE_REQUIREMENT_UPDATE.md`；执行前仍不得伪造公网完成。
 
 **重构：** 部署参数集中、幂等、秘密不作为参数或日志输出。
 
@@ -808,6 +815,41 @@ def test_delivery_status_matches_evidence(report):
 **并行：** 否。**依赖：** T23。**对应验收标准：** AC-A 至 AC-F、完整 DoD、Product Audit、最终 Verification 与学生保留验收。**分支：** `audit/24-product-delivery`。**计划提交：** `docs: publish verified MuseEcho delivery report`。**实际状态：** Task 24 文档、validator 与 TDD mutation suite 已实现；Product Audit 的 13 个产品域均机器可读。控制器真实到达健康 HTTPS 边界，但浏览器在渲染前因内部 CA 未受信而停止，因此如实保持 `CERT_TRUST_BLOCKED`；Task 24 本身不再是 blocker。最终结论为 `MUSEECHO V1 PARTIALLY READY`，精确剩余门禁记录在 `DELIVERY_REPORT.md`；实际提交哈希在提交后记录于 Task 24 report，不在提交内自指。
 
 **Task 24 implementation commit:** `d4b1245e056a5017b9e3d71dbd086f6f28d6f55c` (`docs: publish verified MuseEcho delivery report`).
+
+## 3.1 Task 24 后维护记录
+
+以下改动发生在 Task 24 交付报告的实现边界之后。它们以对应的设计/计划文档和细粒度 Git
+提交为准，不能倒填为 Task 24 已验证的远端 CI、公开发行或部署证据；合并前仍须由实际执行者
+在 `AGENT_LOG.md` 记录使用的 Skill、关键 context、人工干预和真实验证结果。
+
+| 范围 | 设计/计划材料 | 已有提交 | 当前文档动作 |
+| --- | --- | --- | --- |
+| 结果呈现可信度与交互细化 | `docs/superpowers/specs/2026-08-14-trustworthy-result-presentation-design.md`、`docs/superpowers/plans/2026-08-14-trustworthy-result-presentation.md` | `fad42f1`、`b13ae55` | 不改变外部交付状态。 |
+| MP3 封面和常见音频格式 | `docs/superpowers/specs/2026-08-13-mp3-cover-art-validation.md`、`docs/superpowers/specs/2026-08-14-common-audio-format-support-design.md`、`docs/superpowers/plans/2026-08-14-common-audio-format-support.md` | `9582d70`、`32ed7c5`、`6554167`、`99c9169` | 服务端注册表/签名/容器/编解码器校验与浏览器选择器同步扩展至 WAV、MP3、FLAC、M4A、AAC、OGG、OPUS；未支持格式未被纳入。 |
+| 上传上限调整为 100 MiB | `docs/superpowers/specs/2026-08-14-100mb-upload-limit-design.md`、`docs/superpowers/plans/2026-08-14-100mb-upload-limit.md` | `12ec7f3`、`9521ca8`、`df41f14`、`0d9888f`、`8369662` | 当前产品边界是 100 MiB（不是十进制 100 MB）；上传 API、前端预检及超限回归覆盖该精确边界。 |
+| Broadcast WAV 零填充兼容性 | `docs/superpowers/specs/2026-08-14-broadcast-wav-zero-padding-design.md`、`docs/superpowers/plans/2026-08-14-broadcast-wav-zero-padding.md` | `b07b32c`、`0a75c1e` | 属于 WAV 支持边界的一部分，不扩大未支持格式。 |
+| 按需解密播放与 Range 支持 | 当前 API/播放器实现及对应单元测试 | `7f8412b` | `/api/analyses/{id}/audio` 维持单 Range 语义，并以 1 MiB 分块流式读取；播放器补充就绪、跳转、等待、停滞和错误状态，不把 Range 支持扩展为多 Range。 |
+| FLAC 解码与节奏估计修复 | `tests/integration/test_decode.py`、`tests/unit/analysis/test_signal_features.py` | `7f8412b` | FLAC 仅允许受控 attached-picture（MJPEG/PNG）并保持全部流校验；节奏算法升至 `librosa-onset-beat-periodicity-v3`，对弱八分与长曲目歧义尝试保守半速节拍，仍可回退 `unknown`。 |
+| v0.1.0 离线运行发行 | `docs/superpowers/specs/2026-08-17-offline-runtime-release-design.md`、`docs/superpowers/plans/2026-08-17-offline-runtime-release.md` | `8b08796`、`eac26c5`、`b16191f`、`2a01107`、`bbcb139` | 已完成接收端 Verify/Import/Start/Smoke/Stop、runtime-only Compose、current release identity no-build smoke、打包器和 CI 合约；正式 Release、Tag、main CI 与下载后真实资产复验尚待后续步骤，不提前记为发布成功。 |
+
+**最终维护闭环：** 结果呈现、常见格式、100 MiB、Broadcast WAV、流式播放、FLAC/节奏修复、
+Linux 格式修复、历史证据绑定与 current-image 分发策略依次完成。PR #3 GitHub run
+`31966788273` 在 exact SHA `0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过 quality、E2E 和
+distribution；这是最终产品/CI 实现边界，不把随后仅修改交付记录的 reconciliation commit 伪装成
+第二次产品运行。公开 registry/Release、正式离线构建 ENG-010、GitLab supplemental pipeline、
+腾讯云/可信 TLS/目标机验证及学生人工验收仍未闭环，最终状态继续为 `PARTIALLY READY`。
+
+### 3.2 v0.1.0 离线运行 Release（2026-08-17）
+
+- **批准边界：** 用户选择先完成离线运行包并授权自动工作到正式 Release 发布成功；设计明确
+  排除部署和 current-source Dockerfile 断网重建。
+- **TDD：** 接收端测试先因 `offline-runtime.ps1` 不存在失败；current identity smoke 先因只
+  接受 Task 23 legacy manifest 失败；打包测试先因 packager 不存在失败；CI 合约随后以 3 个
+  精确失败证明两条质量门、distribution 打包步骤和双目录 artifact 尚未接线。对应最小实现后，
+  synthetic runtime、packaging、legacy/current no-build 和 13 项 identity/CI 聚焦测试转绿。
+- **阶段真值：** `release/offline-runtime/`、`prepare-offline-release.ps1` 与 CI retention 已实现，
+  但当前仍是 `READY_FOR_RELEASE`。只有最终 main CI 的 tar 被下载、断网 Smoke、打 Tag、上传四项
+  Release 资产并回读校验后，才能回填 `RELEASED`。
 
 ## 4. 计划验收清单
 

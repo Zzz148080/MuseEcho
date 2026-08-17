@@ -72,7 +72,7 @@ DOD_FRAGMENTS = (
     "Docker runtime",
     "Secret audit",
     "合理 Git/PR 历史",
-    "双 CI 配置",
+    "合理 Git/PR 历史、GitHub CI、全过程文档",
     "全过程文档",
     "三轮 Audit",
     "无已知 Critical bug 和 High security issue",
@@ -81,8 +81,7 @@ DOD_FRAGMENTS = (
 )
 REQUIRED_OPEN_BLOCKERS = (
     "TC-021",
-    "REMOTE-CI",
-    "TASK24-AUDIT",
+    "FORMAL-OFFLINE-BUILD",
     "STUDENT-MANUAL",
 )
 VALID_VERDICTS = {"PASS", "PARTIAL", "FAIL"}
@@ -108,6 +107,7 @@ COMMIT_HASH = re.compile(r"^[0-9a-f]{40}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 TASK19_EVIDENCE_COMMIT = "1047ce242884b6ba83a525524e88dcc44ab76a69"
+TASK19_EVIDENCE_TREE = "835981d848f42b1dfda147d25aed606c4d249f35"
 TASK19_HISTORICAL_BOUNDARY_SHA256 = (
     "063f1dd0e3b9a27aa7772e3e2320e681facd7df2ff9e58e8e9e3c204f02bdc5d"
 )
@@ -145,7 +145,11 @@ class EvidenceContract:
 EVIDENCE_CONTRACTS = {
     "E001": EvidenceContract(
         kind="CURRENT_COMMAND",
-        command="npm.cmd --prefix frontend test -- --run",
+        command=(
+            "npm.cmd --prefix frontend test -- --run; "
+            "npm.cmd --prefix frontend run typecheck; "
+            "npm.cmd --prefix frontend run build"
+        ),
         path="frontend/src",
         coverage_ids=(
             "AC-A-3",
@@ -163,7 +167,7 @@ EVIDENCE_CONTRACTS = {
             "DOD-06",
             "DOD-07",
         ),
-        result="vitest-files=12; vitest-tests=66",
+        result="vitest-files=12; vitest-tests=78; typecheck=pass; build-modules=95",
         exit_code_raw="0",
     ),
     "E002": EvidenceContract(
@@ -225,10 +229,12 @@ EVIDENCE_CONTRACTS = {
         supports_pass=False,
     ),
     "E008": EvidenceContract(
-        kind="CURRENT_COMMAND",
+        kind="IMPLEMENTATION_BOUNDARY_COMMAND",
         command=(
             "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
-            "scripts/container-pytest.ps1 -Image museecho-app:task23-review1"
+            "scripts/container-pytest.ps1 -Image museecho-task3-verification-env:latest; "
+            r".venv\Scripts\python.exe -m pytest "
+            "tests/unit/test_task20_final_delivery_contract.py -q"
         ),
         path="tests",
         coverage_ids=(
@@ -253,11 +259,11 @@ EVIDENCE_CONTRACTS = {
             "DOD-14",
             "DOD-15",
         ),
-        result="pytest-tests=755; skipped=1",
+        result="container-pytest=841; container-skipped=7; powershell-host-pytest=20",
         exit_code_raw="0",
     ),
     "E009": EvidenceContract(
-        kind="CURRENT_COMMAND",
+        kind="IMPLEMENTATION_BOUNDARY_COMMAND",
         command=(
             "powershell.exe -NoProfile -ExecutionPolicy Bypass -File "
             "scripts/container-smoke.ps1 -NoBuild -ReleaseManifest "
@@ -274,6 +280,7 @@ EVIDENCE_CONTRACTS = {
         coverage_ids=("AC-E-1", "AC-E-3", "AC-F-1", "AC-F-3", "DOD-07", "DOD-08"),
         result="no-build=trusted-identity+real-wav+restart+ciphertext+image-history+cleanup",
         exit_code_raw="0",
+        supports_pass=False,
     ),
     "E010": EvidenceContract(
         kind="CURRENT_COMMAND",
@@ -286,7 +293,7 @@ EVIDENCE_CONTRACTS = {
         ),
         path="scripts/check_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-07"),
-        result=("ruff-files=93; mypy-src-files=46; mypy-linux-src-files=46; mypy-checker-files=1"),
+        result=("ruff-files=96; mypy-src-files=47; mypy-linux-src-files=47; mypy-checker-files=1"),
         exit_code_raw="0",
     ),
     "E011": EvidenceContract(
@@ -329,8 +336,45 @@ EVIDENCE_CONTRACTS = {
         ),
         path="tests/unit/test_acceptance_matrix.py",
         coverage_ids=("AC-F-1", "DOD-15"),
-        result="pytest-tests=44; pass=34; partial=6; fail=0",
+        result="pytest-tests=48; pass=36; partial=4; fail=0",
         exit_code_raw="0",
+    ),
+    "E901": EvidenceContract(
+        kind="IMPLEMENTATION_BOUNDARY_COMMAND",
+        command=(
+            "gh run view 31966788273 --repo Zzz148080/MuseEcho --json "
+            "status,conclusion,headBranch,headSha,jobs,url"
+        ),
+        path=".github/workflows/ci.yml",
+        coverage_ids=("AC-F-1", "DOD-07", "DOD-08", "DOD-10"),
+        result=(
+            "run=31966788273; head=0674f74f4097e46cee98c4715a62ad5aa55101cf; "
+            "branch=codex/expand-common-audio-formats; quality=success; e2e=success; "
+            "distribution=success"
+        ),
+        exit_code_raw="0",
+    ),
+    "E903": EvidenceContract(
+        kind="CURRENT_COMMAND",
+        command="python scripts/check_delivery_report.py DELIVERY_REPORT.md",
+        path="docs/audits/PRODUCT_AUDIT.md",
+        coverage_ids=("AC-F-6", "DOD-13"),
+        result=("product-items=13; delivery-sections=17; blockers=3; readiness=PARTIALLY_READY"),
+        exit_code_raw="0",
+    ),
+    "E907": EvidenceContract(
+        kind="IMPLEMENTATION_BOUNDARY_COMMAND",
+        command=(
+            "docker build --pull=false --network none --tag museecho-app:task23-formal-offline ."
+        ),
+        path="Dockerfile",
+        coverage_ids=("DOD-08",),
+        result=(
+            "formal-offline-build=failed; reason=locked-pip-and-apt-buildkit-cache-unavailable; "
+            "release-identity=NOT_RUN"
+        ),
+        exit_code_raw="1",
+        supports_pass=False,
     ),
     "E902": EvidenceContract(
         kind="CURRENT_COMMAND",
@@ -720,34 +764,64 @@ def _validate_task19_historical_boundary(
     issues: list[str],
 ) -> None:
     if SHA256.fullmatch(record.boundary_sha256) is None:
-        issues.append("E004 current boundary SHA256 is missing or invalid")
-    else:
-        current_boundary = _current_boundary_sha256(repo_root)
-        if record.boundary_sha256 != current_boundary:
-            issues.append("E004 current boundary SHA256 does not match repository content")
+        issues.append("E004 historical boundary SHA256 is missing or invalid")
+    elif record.boundary_sha256 != TASK19_HISTORICAL_BOUNDARY_SHA256:
+        issues.append("E004 historical boundary SHA256 does not match its exact commit")
 
-    plan_path = repo_root / "PLAN.md"
-    if not plan_path.is_file() or TASK19_EVIDENCE_COMMIT not in plan_path.read_text(
-        encoding="utf-8"
-    ):
-        issues.append("E004 authoritative PLAN anchor does not confirm its exact commit")
+    if record.commit != TASK19_EVIDENCE_COMMIT:
+        issues.append("E004 historical commit does not match its exact evidence commit")
+        return
 
     if shutil.which("git") is None:
+        issues.append("E004 exact historical commit/tree is unavailable")
         return
-    historical_boundary = _historical_boundary_sha256(repo_root, TASK19_EVIDENCE_COMMIT)
-    if historical_boundary != TASK19_HISTORICAL_BOUNDARY_SHA256:
-        issues.append("E004 historical boundary does not match its exact commit")
-    anchor = subprocess.run(
-        ["git", "show", f"{TASK19_EVIDENCE_COMMIT}:AGENT_LOG.md"],
+
+    tree = subprocess.run(
+        ["git", "rev-parse", "--verify", f"{record.commit}^{{tree}}"],
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=10,
+    )
+    if tree.returncode != 0:
+        issues.append("E004 exact historical commit/tree is unavailable")
+        return
+    if tree.stdout.strip() != TASK19_EVIDENCE_TREE:
+        issues.append("E004 historical tree does not match its exact commit")
+        return
+
+    historical_boundary = _historical_boundary_sha256(repo_root, record.commit)
+    if historical_boundary is None:
+        issues.append("E004 exact historical commit/tree is unavailable")
+    elif historical_boundary != record.boundary_sha256:
+        issues.append("E004 historical boundary SHA256 does not match its exact commit")
+
+    historical_plan = subprocess.run(
+        ["git", "show", f"{record.commit}:PLAN.md"],
         cwd=repo_root,
         capture_output=True,
         check=False,
         text=True,
         encoding="utf-8",
-        timeout=30,
+        timeout=10,
     )
-    if anchor.returncode != 0 or not all(
-        fragment in anchor.stdout for fragment in ("真实浏览器 `4 passed`", "11.201268")
+    if historical_plan.returncode != 0 or not all(
+        fragment in historical_plan.stdout for fragment in ("任务 19", "实际提交", "9ad408c")
+    ):
+        issues.append("E004 historical PLAN anchor does not expose the Task 19 commit")
+
+    historical_log = subprocess.run(
+        ["git", "show", f"{record.commit}:AGENT_LOG.md"],
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+        text=True,
+        encoding="utf-8",
+        timeout=10,
+    )
+    if historical_log.returncode != 0 or not all(
+        fragment in historical_log.stdout for fragment in ("真实浏览器 `4 passed`", "11.201268")
     ):
         issues.append("E004 historical AGENT_LOG anchor does not expose the claimed results")
 
@@ -786,6 +860,8 @@ def validate_audit(
     evidence_by_id: dict[str, EvidenceRecord] = {}
     fingerprints: dict[tuple[str, ...], str] = {}
     evidence_exit_codes: dict[str, int | None] = {}
+    prior_observed_at: datetime | None = None
+    prior_evidence_id: str | None = None
     for record in audit.evidence:
         evidence_by_id.setdefault(record.evidence_id, record)
         if re.fullmatch(r"E\d{3}", record.evidence_id) is None:
@@ -809,6 +885,13 @@ def validate_audit(
         if observed_at is None:
             issues.append(f"{record.evidence_id} has invalid UTC timestamp")
         else:
+            if prior_observed_at is not None and observed_at < prior_observed_at:
+                issues.append(
+                    "evidence index must be oldest-to-newest: "
+                    f"{record.evidence_id} is older than preceding {prior_evidence_id}"
+                )
+            prior_observed_at = observed_at
+            prior_evidence_id = record.evidence_id
             if observed_at > now:
                 issues.append(f"{record.evidence_id} is future-dated")
             if generated_at is not None and observed_at > generated_at:
@@ -894,7 +977,7 @@ def validate_audit(
             ):
                 issues.append(f"{blocker_id} cannot be RESOLVED with NOT_RUN evidence")
             else:
-                issues.append(f"{blocker_id} must remain OPEN in the Task 22 audit")
+                issues.append(f"{blocker_id} must remain OPEN in the tracked audit")
 
     referenced_blockers: set[str] = set()
     referenced_evidence: set[str] = set()

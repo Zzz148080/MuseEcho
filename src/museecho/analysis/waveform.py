@@ -27,8 +27,10 @@ def extract_waveform(
     maximums: list[float] = []
     for index in range(actual_bucket_count):
         bucket = samples[boundaries[index] : boundaries[index + 1]]
-        minimums.append(float(np.min(bucket)))
-        maximums.append(float(np.max(bucket)))
+        # Lossy codecs may reconstruct samples slightly outside the normalised
+        # PCM range.  The visual contract is deliberately bounded to [-1, 1].
+        minimums.append(float(np.clip(np.min(bucket), -1.0, 1.0)))
+        maximums.append(float(np.clip(np.max(bucket), -1.0, 1.0)))
     duration_seconds = samples.size / sample_rate
     return WaveformSeries(
         resolution_seconds=float(duration_seconds / actual_bucket_count),

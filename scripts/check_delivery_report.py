@@ -36,12 +36,10 @@ EXPECTED_SECTION_TITLES = (
 EXPECTED_SECTION_IDS = tuple(item[0] for item in EXPECTED_SECTION_TITLES)
 EXPECTED_PRODUCT_AUDIT_IDS = tuple(f"PA-{index:02d}" for index in range(1, 14))
 EXPECTED_STUDENT_CHECK_IDS = tuple(f"STU-{index:02d}" for index in range(1, 7))
-EXPECTED_EVIDENCE_IDS = tuple(f"DEL-{index:03d}" for index in range(1, 12)) + tuple(
+EXPECTED_EVIDENCE_IDS = tuple(f"DEL-{index:03d}" for index in range(1, 13)) + tuple(
     f"DEL-{index:03d}" for index in range(900, 905)
 )
 REQUIRED_BLOCKER_IDS = (
-    "BLK-REMOTE-CI",
-    "BLK-CLOUD-PUBLIC-TARGET",
     "BLK-FORMAL-OFFLINE-BUILD",
     "BLK-STUDENT-MANUAL",
     "BLK-CONTROLLER-BROWSER",
@@ -59,6 +57,7 @@ SECTION_CONTRACTS = {
             "DEL-009",
             "DEL-010",
             "DEL-011",
+            "DEL-012",
             "DEL-900",
             "DEL-901",
             "DEL-902",
@@ -87,6 +86,7 @@ SECTION_CONTRACTS = {
             "DEL-009",
             "DEL-010",
             "DEL-011",
+            "DEL-012",
             "DEL-900",
             "DEL-901",
             "DEL-904",
@@ -94,21 +94,28 @@ SECTION_CONTRACTS = {
     ),
     "DR-11": ("PARTIAL", ("DEL-001", "DEL-003", "DEL-004", "DEL-901", "DEL-902")),
     "DR-12": ("VERIFIED", ("DEL-001",)),
-    "DR-13": ("VERIFIED", ("DEL-001", "DEL-002", "DEL-003", "DEL-004")),
+    "DR-13": ("VERIFIED", ("DEL-001", "DEL-002", "DEL-003", "DEL-004", "DEL-012")),
     "DR-14": (
         "PARTIAL",
-        ("DEL-001", "DEL-002", "DEL-003", "DEL-004", "DEL-011", "DEL-900", "DEL-902"),
+        (
+            "DEL-001",
+            "DEL-002",
+            "DEL-003",
+            "DEL-004",
+            "DEL-011",
+            "DEL-012",
+            "DEL-900",
+            "DEL-902",
+        ),
     ),
     "DR-15": ("PARTIAL", ("DEL-001", "DEL-002", "DEL-901")),
     "DR-16": ("PARTIAL", ("DEL-001", "DEL-002", "DEL-003", "DEL-902")),
     "DR-17": ("VERIFIED", ("DEL-001",)),
 }
 BLOCKER_CONTRACTS = {
-    "BLK-REMOTE-CI": ("Repository owner", ("DEL-900",)),
-    "BLK-CLOUD-PUBLIC-TARGET": ("Deployment owner", ("DEL-901",)),
     "BLK-FORMAL-OFFLINE-BUILD": ("Build environment owner", ("DEL-902",)),
     "BLK-STUDENT-MANUAL": ("Student", ("DEL-903",)),
-    "BLK-CONTROLLER-BROWSER": ("Task 24 controller", ("DEL-904",)),
+    "BLK-CONTROLLER-BROWSER": ("Student / product reviewer", ("DEL-904",)),
 }
 PRODUCT_DOMAINS = (
     "onboarding",
@@ -150,10 +157,107 @@ EXPECTED_PRODUCT_METHOD = (
     "implementation boundary only."
 )
 EXPECTED_DELIVERY_NARRATIVE_SHA256 = (
-    "8a0cf0399a6cb3857994f58f0a5f13e446b81f1349128fec9916f50800294ee1"
+    "8c0200afe51917f0cd800d7c47522230b371277a9bc2136fd13bff94e18a580e"
 )
 EXPECTED_PRODUCT_NARRATIVE_SHA256 = (
     "0a3acbf4202eca3f1b69adb941d8a2e797a06e216e2453c53083b05fdf3a3ee1"
+)
+FINAL_IMPLEMENTATION_SHA_BOUNDARY = "0674f74f4097e46cee98c4715a62ad5aa55101cf"
+FINAL_CI_RUN = "31966788273"
+FINAL_CI_MARKER_PREFIX = "<!-- FINAL-CI-RELATIONSHIP: "
+FINAL_CI_MARKER_SUFFIX = " -->"
+FINAL_CI_STATEMENT = (
+    "Any later docs-only reconciliation is not product implementation evidence and requires "
+    "its own separate final-SHA publication/CI gate before Task 6 can be complete."
+)
+EXPECTED_FINAL_CI_RELATIONSHIP = {
+    "implementation-sha": FINAL_IMPLEMENTATION_SHA_BOUNDARY,
+    "run": FINAL_CI_RUN,
+    "quality": "success",
+    "e2e": "success",
+    "distribution": "success",
+    "github": "required",
+    "gitlab": "supplemental-not-run",
+    "reconciliation": "docs-only-requires-separate-final-sha-publication-ci",
+}
+VISIBLE_FINAL_CI_CONTRACTS = {
+    "PLAN.md": {
+        "run": ("PR #3 run `31966788273`",),
+        "implementation-sha": (
+            "on exact final product/CI implementation SHA "
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`.",
+        ),
+        "jobs": (
+            "PR #3 run `31966788273` passed GitHub quality (5m43s), E2E (3m10s), "
+            "and distribution (7m30s) on exact final product/CI implementation SHA "
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`.",
+        ),
+        "github": ("passed GitHub quality (5m43s), E2E (3m10s), and distribution (7m30s)",),
+        "gitlab": (
+            "GitLab and Tencent Cloud/public deployment are deferred follow-up work.",
+            "no GitLab, Release, cloud-deployment, or student-acceptance completion is claimed.",
+        ),
+        "reconciliation": (FINAL_CI_STATEMENT,),
+    },
+    "README.md": {
+        "run": ("PR #3 run `31966788273`",),
+        "implementation-sha": (
+            "on exact final product/CI implementation SHA "
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`.",
+        ),
+        "jobs": (
+            "PR #3 run `31966788273` passed GitHub quality (5m43s), E2E (3m10s), "
+            "and distribution (7m30s) on exact final product/CI implementation SHA "
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf`.",
+        ),
+        "github": ("passed GitHub quality (5m43s), E2E (3m10s), and distribution (7m30s)",),
+        "gitlab": (
+            "GitLab and Tencent Cloud/public deployment are deferred follow-up work, "
+            "not course submission gates.",
+            "未发生的 GitLab、Release、云部署、学生验收写成完成。",
+        ),
+        "reconciliation": (
+            FINAL_CI_STATEMENT,
+            "后续文档 reconciliation 不改变产品架构或把未发生的",
+        ),
+    },
+    "COURSE_DELIVERY_CHECKLIST.md": {
+        "run": (
+            "PR #3 run `31966788273` 在 final implementation SHA "
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过。",
+            "`DEL-012` 记录 run `31966788273` 在 SHA `0674f74f4097e46cee98c4715a62ad5aa55101cf`",
+        ),
+        "implementation-sha": (
+            "PR #3 run `31966788273` 在 final implementation SHA "
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过。",
+            "`DEL-012` 记录 run `31966788273` 在 SHA `0674f74f4097e46cee98c4715a62ad5aa55101cf`",
+        ),
+        "jobs": (
+            "`DEL-012` 记录 run `31966788273` 在 SHA "
+            "`0674f74f4097e46cee98c4715a62ad5aa55101cf` 的 "
+            "quality/E2E/distribution 全绿。",
+        ),
+        "github": ("本次课程只要求 GitHub；",),
+        "gitlab": ("GitLab 配置保留为 supplemental 后续材料。",),
+        "reconciliation": (
+            FINAL_CI_STATEMENT,
+            "文档 reconciliation commit 不冒充第二次产品验证。",
+        ),
+    },
+}
+AGENT_LOG_SUMMARY_HEADINGS = (
+    "### Retained TASK 21 / Tencent Cloud delivery scripts (local-only) summary",
+    "### Retained TASK 21 / review fix round 1 summary",
+    "### Retained TASK 22 / Functional Audit 与验收缺口闭环 summary",
+    "### Retained TASK 23 / final review fix wave round 19/20 summary",
+    "### Retained TASK 24 / Product Audit and delivery report summary",
+    "### Current post-Task-24 maintenance summary",
+)
+AGENT_LOG_SUMMARY_START = "## Retained Task 21–24 summary chronology"
+AGENT_LOG_DETAIL_START = "## Detailed dated implementation log"
+EXPECTED_DEL_011_SUMMARY = (
+    "Historical Task 24 implementation evidence only; it cannot verify the final PR SHA, "
+    "which is recorded separately by DEL-012."
 )
 
 
@@ -188,7 +292,7 @@ EVIDENCE_CONTRACTS = {
         "scripts/check_acceptance_matrix.py SPEC.md docs/audits/FUNCTIONAL_AUDIT.md",
         "docs/audits/FUNCTIONAL_AUDIT.md",
         "DR-01, DR-03, DR-10, DR-13, DR-14, DR-15, DR-16",
-        "acceptance-items=40; pass=34; partial=6; fail=0; readiness=PARTIALLY_READY",
+        "acceptance-items=40; pass=36; partial=4; fail=0; readiness=PARTIALLY_READY",
         "0",
         "PASS",
     ),
@@ -241,7 +345,7 @@ EVIDENCE_CONTRACTS = {
         "scripts/check_delivery_report.py DELIVERY_REPORT.md",
         "DELIVERY_REPORT.md",
         "DR-01, DR-10",
-        "delivery-sections=17; evidence=16; blockers=5; readiness=MUSEECHO V1 PARTIALLY READY",
+        "delivery-sections=17; evidence=17; blockers=3; readiness=MUSEECHO V1 PARTIALLY READY",
         "0",
         "PASS",
     ),
@@ -285,6 +389,18 @@ EVIDENCE_CONTRACTS = {
         "0",
         "PASS",
     ),
+    "DEL-012": EvidenceContract(
+        "IMPLEMENTATION_BOUNDARY_COMMAND",
+        "gh run view 31966788273 --repo Zzz148080/MuseEcho --json "
+        "status,conclusion,headBranch,headSha,jobs,url",
+        ".github/workflows/ci.yml",
+        "DR-01, DR-10, DR-13, DR-14",
+        "run=31966788273; head=0674f74f4097e46cee98c4715a62ad5aa55101cf; "
+        "branch=codex/expand-common-audio-formats; quality=success (5m43s); "
+        "e2e=success (3m10s); distribution=success (7m30s)",
+        "0",
+        "PASS",
+    ),
     "DEL-900": EvidenceContract(
         "EXTERNAL_NOT_RUN",
         "NOT RUN: GitLab has no Task 24 pipeline",
@@ -292,7 +408,7 @@ EVIDENCE_CONTRACTS = {
         "DR-01, DR-10, DR-14",
         "gitlab=NOT_RUN",
         "NOT_RUN",
-        "PENDING",
+        "DEFERRED",
     ),
     "DEL-901": EvidenceContract(
         "EXTERNAL_NOT_RUN",
@@ -302,7 +418,7 @@ EVIDENCE_CONTRACTS = {
         "DR-01, DR-09, DR-11, DR-15",
         "cloud=NOT_RUN; public-smoke=NOT_RUN; target-server=NOT_RUN; rollback=NOT_RUN",
         "NOT_RUN",
-        "PENDING",
+        "DEFERRED",
     ),
     "DEL-902": EvidenceContract(
         "EXTERNAL_NOT_RUN",
@@ -316,11 +432,11 @@ EVIDENCE_CONTRACTS = {
     ),
     "DEL-903": EvidenceContract(
         "EXTERNAL_NOT_RUN",
-        "NOT RUN: student must personally complete the final acceptance checklist and write "
-        "REFLECTION.md",
+        "NOT RUN: student must personally complete the final acceptance checklist and sign "
+        "the existing REFLECTION.md draft",
         "REFLECTION.md",
         "DR-01, DR-02, DR-03, DR-09, DR-10",
-        "student-acceptance=RESERVED; reflection=BLANK_TEMPLATE",
+        "student-acceptance=RESERVED; reflection=DRAFT_PRESENT",
         "NOT_RUN",
         "PENDING",
     ),
@@ -363,37 +479,9 @@ PRODUCT_EVIDENCE_CONTRACTS = {
     ),
 }
 
-EXPECTED_REFLECTION_TEMPLATE = """# MuseEcho Student Reflection
-
-This file is reserved for the student's own reflection. An agent must not fill,
-summarize, approve, or sign any response.
-
-## 1. What I built and why
-
-<!-- STUDENT RESPONSE: leave blank until the student writes here -->
-
-## 2. Evidence I personally checked
-
-<!-- STUDENT RESPONSE: leave blank until the student writes here -->
-
-## 3. What failed or remained incomplete
-
-<!-- STUDENT RESPONSE: leave blank until the student writes here -->
-
-## 4. Engineering decisions and trade-offs
-
-<!-- STUDENT RESPONSE: leave blank until the student writes here -->
-
-## 5. What I would improve next
-
-<!-- STUDENT RESPONSE: leave blank until the student writes here -->
-
-## Student sign-off
-
-- Name: <!-- STUDENT ONLY: leave blank -->
-- Date: <!-- STUDENT ONLY: leave blank -->
-- Final status accepted: <!-- STUDENT ONLY: leave blank -->
-"""
+EXPECTED_REFLECTION_DRAFT_SHA256 = (
+    "a20aa48434e3d8f56e39767def0a777ff3714491f68769b7d951601f6ed3616b"
+)
 
 
 class DeliveryValidationError(ValueError):
@@ -773,6 +861,73 @@ def _validate_current_status_documents(repo_root: Path, errors: list[str]) -> No
             errors.append("Task 24 audit cannot remain a current blocker")
 
 
+def validate_course_status_documents(repo_root: Path) -> tuple[str, ...]:
+    errors: list[str] = []
+    documents = ("PLAN.md", "README.md", "COURSE_DELIVERY_CHECKLIST.md")
+    text_by_name = {name: (repo_root / name).read_text(encoding="utf-8") for name in documents}
+    plan_block = (
+        text_by_name["PLAN.md"]
+        .split(CURRENT_STATUS_START, maxsplit=1)[1]
+        .split(CURRENT_STATUS_END, maxsplit=1)[0]
+    )
+    normalized_plan_block = re.sub(r"\s+", " ", plan_block.replace(">", " "))
+    if "student-authored reflection draft" not in normalized_plan_block:
+        errors.append("PLAN.md current status must describe the student-authored reflection draft")
+    for name, text in text_by_name.items():
+        marker_lines = [
+            line
+            for line in text.splitlines()
+            if line.startswith(FINAL_CI_MARKER_PREFIX) and line.endswith(FINAL_CI_MARKER_SUFFIX)
+        ]
+        observed: dict[str, str] = {}
+        if len(marker_lines) == 1:
+            payload = marker_lines[0][len(FINAL_CI_MARKER_PREFIX) : -len(FINAL_CI_MARKER_SUFFIX)]
+            for segment in payload.split(";"):
+                if "=" not in segment:
+                    continue
+                key, value = (part.strip() for part in segment.split("=", maxsplit=1))
+                if key == "jobs":
+                    for job in value.split(","):
+                        if ":" in job:
+                            job_name, job_status = (
+                                part.strip() for part in job.split(":", maxsplit=1)
+                            )
+                            observed[job_name] = job_status
+                else:
+                    observed[key] = value
+        for field, expected in EXPECTED_FINAL_CI_RELATIONSHIP.items():
+            if observed.get(field) != expected:
+                errors.append(f"{name} final-CI relationship has invalid {field}")
+        if text.count(FINAL_CI_STATEMENT) != 1:
+            errors.append(f"{name} final-CI relationship has invalid statement")
+        visible_text = "\n".join(
+            line for line in text.splitlines() if not line.startswith(FINAL_CI_MARKER_PREFIX)
+        )
+        normalized_visible_text = re.sub(r"\s+", " ", visible_text.replace(">", " "))
+        for field, required_fragments in VISIBLE_FINAL_CI_CONTRACTS[name].items():
+            if any(fragment not in normalized_visible_text for fragment in required_fragments):
+                errors.append(f"{name} visible final-CI relationship has invalid {field}")
+
+    agent_log = (repo_root / "AGENT_LOG.md").read_text(encoding="utf-8")
+    if AGENT_LOG_SUMMARY_START not in agent_log or AGENT_LOG_DETAIL_START not in agent_log:
+        errors.append("AGENT_LOG.md chronology collection markers are missing")
+    else:
+        summary = agent_log.split(AGENT_LOG_SUMMARY_START, maxsplit=1)[1].split(
+            AGENT_LOG_DETAIL_START, maxsplit=1
+        )[0]
+        observed_headings = tuple(line for line in summary.splitlines() if line.startswith("### "))
+        if observed_headings != AGENT_LOG_SUMMARY_HEADINGS:
+            errors.append("AGENT_LOG.md summary records must be oldest-to-newest")
+        detail = agent_log.split(AGENT_LOG_DETAIL_START, maxsplit=1)[1]
+        detail_dates = [
+            datetime.strptime(match, "%Y-%m-%d").date()
+            for match in re.findall(r"(?m)^## (\d{4}-\d{2}-\d{2})", detail)
+        ]
+        if any(later < earlier for earlier, later in zip(detail_dates, detail_dates[1:])):
+            errors.append("AGENT_LOG.md detailed records must be oldest-to-newest")
+    return tuple(errors)
+
+
 def validate_delivery_report(
     report: DeliveryReport, *, repo_root: Path, now: datetime | None = None
 ) -> None:
@@ -805,6 +960,9 @@ def validate_delivery_report(
         errors.append("delivery sections are out of order")
 
     evidence_by_id = {item.evidence_id: item for item in report.evidence}
+    task24_ci_evidence = evidence_by_id.get("DEL-011")
+    if task24_ci_evidence is None or task24_ci_evidence.summary != EXPECTED_DEL_011_SUMMARY:
+        errors.append("DEL-011 must remain historical Task 24 implementation evidence")
     for section, (expected_id, expected_title) in zip(
         report.sections, EXPECTED_SECTION_TITLES, strict=False
     ):
@@ -833,6 +991,8 @@ def validate_delivery_report(
         errors.append(f"duplicate evidence ids: {', '.join(duplicate_evidence)}")
     if unexpected_evidence:
         errors.append(f"unexpected evidence ids: {', '.join(unexpected_evidence)}")
+    prior_observed_at: datetime | None = None
+    prior_evidence_id: str | None = None
     for report_evidence in report.evidence:
         if report_evidence.kind not in VALID_EVIDENCE_KINDS:
             errors.append(f"{report_evidence.evidence_id} has invalid evidence kind")
@@ -841,8 +1001,16 @@ def validate_delivery_report(
         observed_at = _parse_utc(report_evidence.observed_at_raw)
         if observed_at is None:
             errors.append(f"{report_evidence.evidence_id} has invalid observed UTC")
-        elif observed_at > now or (generated_at is not None and observed_at > generated_at):
-            errors.append(f"{report_evidence.evidence_id} has an impossible observed UTC")
+        else:
+            if prior_observed_at is not None and observed_at < prior_observed_at:
+                errors.append(
+                    "evidence index must be oldest-to-newest: "
+                    f"{report_evidence.evidence_id} is older than preceding {prior_evidence_id}"
+                )
+            prior_observed_at = observed_at
+            prior_evidence_id = report_evidence.evidence_id
+            if observed_at > now or (generated_at is not None and observed_at > generated_at):
+                errors.append(f"{report_evidence.evidence_id} has an impossible observed UTC")
         contract = EVIDENCE_CONTRACTS.get(report_evidence.evidence_id)
         observed_contract = EvidenceContract(
             report_evidence.kind,
@@ -912,8 +1080,11 @@ def validate_delivery_report(
             errors.append(f"{student_check.check_id} must cite the reserved student evidence")
         if student_check.student_record != "-":
             errors.append(f"{student_check.check_id} student record must remain blank")
-    if report.reflection_text.replace("\r\n", "\n") != EXPECTED_REFLECTION_TEMPLATE:
-        errors.append("student reflection template was filled or altered")
+    reflection_digest = hashlib.sha256(
+        report.reflection_text.replace("\r\n", "\n").encode("utf-8")
+    ).hexdigest()
+    if reflection_digest != EXPECTED_REFLECTION_DRAFT_SHA256:
+        errors.append("student reflection draft does not match the retained course record")
 
     product_ids = tuple(item.item_id for item in report.product_audit_items)
     if product_ids != EXPECTED_PRODUCT_AUDIT_IDS:
@@ -975,6 +1146,7 @@ def validate_delivery_report(
         errors.append("product audit narrative does not match the fixed contract")
 
     _validate_current_status_documents(repo_root, errors)
+    errors.extend(validate_course_status_documents(repo_root))
     if errors:
         raise DeliveryValidationError(
             "delivery report validation failed:\n- " + "\n- ".join(dict.fromkeys(errors))

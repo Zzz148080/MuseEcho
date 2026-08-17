@@ -191,3 +191,26 @@ matrix `28 PASS / 12 PARTIAL / 0 FAIL`.
 Coherent audit-only mutations fail. A source, image, raw, VEX, policy,
 inventory, release, DB, or tool identity change requires fresh offline
 evidence. Historical green output cannot make a current acceptance item pass.
+
+## ADR-012：GitHub Release 区分离线运行与离线源码重建
+
+**Context**
+课程接收方需要从 Release 稳定复现 MuseEcho，但正式 Dockerfile 在 `--network none` 下仍缺少
+完整 Node、Python、Go、APT/APK 构建材料，`ENG-010` 不能被已有镜像或 BuildKit cache 命中掩盖。
+同时，GitHub 单个 Release asset 存在体积边界，app 与 gateway 不适合伪装成单一小型安装包。
+
+**Options**
+1. 只发布源码并让接收方联网构建；2. 把两个已审计镜像 tar 与运行工具包分开发布；3. 在证据不足
+时宣称已完成断网源码重建。
+
+**Decision**
+采用选项 2。两个 tar 必须来自同一次绿色 main distribution 作业，并由同一
+`release-images.json`、许可证、raw scan、VEX 和 gate 绑定。小型 zip 只包含 runtime Compose、
+PowerShell 接收端、manifest、no-build smoke 和说明；`SHA256SUMS.txt` 跨资产固定下载字节。
+接收端在 `docker load` 前验 tar hash，导入后验 daemon image ID，Compose 同时使用
+`pull_policy: never` 与 `--no-build`。
+
+**Consequences**
+教师下载四项资产后可以断网校验、导入、真实 WAV smoke 和网页体验；首次下载仍需要网络。
+Release 关闭的是“离线运行发行”缺口，不关闭 `ENG-010`，也不产生 registry digest、云部署、
+受信公网 TLS 或目标服务器证据。
