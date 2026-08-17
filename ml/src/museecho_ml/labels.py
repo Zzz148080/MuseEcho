@@ -51,6 +51,8 @@ _OUT_OF_VOCABULARY_QUALITIES = {
     "min6",
     "m6",
     "9",
+    "maj9",
+    "min9",
     "add9",
 }
 _HARTE_INTERVAL_LIST = re.compile(r"^\((?:\*?[#b]{0,2}\d+)(?:,\*?[#b]{0,2}\d+)*\)$")

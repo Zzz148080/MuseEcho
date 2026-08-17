@@ -110,9 +110,10 @@ def test_shipped_candidate_registry_only_approves_evidenced_training_data() -> N
     }
     assert {
         record.dataset_id for record in registry.records if record.status is LicenseStatus.APPROVED
-    } == {"schubert-winterreise"}
+    } == {"rwc-popular", "schubert-winterreise"}
+    assert registry.require_training_approval("rwc-popular").training_allowed is True
     assert registry.require_training_approval("schubert-winterreise").training_allowed is True
-    for dataset_id in ("isophonics", "mcgill-billboard", "rwc-popular"):
+    for dataset_id in ("isophonics", "mcgill-billboard"):
         with pytest.raises(PermissionError, match="approved"):
             registry.require_training_approval(dataset_id)
 
@@ -183,6 +184,22 @@ def test_winterreise_adapter_reads_official_semicolon_shorthand_format(
     )
 
     assert [item.chord.display_symbol for item in result.intervals] == ["Fmaj7", "G7/B"]
+
+
+def test_rwc_adapter_reads_official_semicolon_time_columns(tmp_path: Path) -> None:
+    _write_wav(tmp_path / "track.wav")
+    (tmp_path / "track.csv").write_text(
+        "t_start;t_end;chord\n"
+        "0.0;1.0;Ab:min\n"
+        "1.0;2.0;Gb:maj6\n",
+        encoding="utf-8",
+    )
+
+    result = RwcAdapter(dataset_id="fixture").adapt(
+        _source(tmp_path, "track.csv"), tmp_path
+    )
+
+    assert [item.chord.display_symbol for item in result.intervals] == ["G#m", "X"]
 
 
 def test_adapter_rejects_source_paths_outside_declared_dataset_root(tmp_path: Path) -> None:

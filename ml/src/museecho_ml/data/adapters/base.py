@@ -80,13 +80,18 @@ class CsvChordAdapter(DatasetAdapter):
             delimiter = ";" if header.count(";") > header.count(",") else ","
             reader = csv.DictReader(source, delimiter=delimiter)
             fieldnames = set(reader.fieldnames or ())
+            start_column = "start" if "start" in fieldnames else "t_start"
+            end_column = "end" if "end" in fieldnames else "t_end"
             chord_column = "chord" if "chord" in fieldnames else "shorthand"
-            if not {"start", "end", chord_column}.issubset(fieldnames):
+            if not {start_column, end_column, chord_column}.issubset(fieldnames):
                 raise ValueError(
-                    "annotation interval CSV must contain start, end, and chord or shorthand"
+                    "annotation interval CSV must contain start/end or t_start/t_end "
+                    "and chord or shorthand"
                 )
             for line_number, row in enumerate(reader, start=2):
-                yield _interval(row["start"], row["end"], row[chord_column], line_number)
+                yield _interval(
+                    row[start_column], row[end_column], row[chord_column], line_number
+                )
 
 
 def _interval(start: str, end: str, chord: str, line_number: int) -> ChordInterval:

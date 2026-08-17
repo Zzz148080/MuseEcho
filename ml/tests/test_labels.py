@@ -68,6 +68,8 @@ def test_no_chord_and_unsupported_states_remain_distinct(raw: str, state: str) -
         "C:maj6",
         "C:min6",
         "C:9",
+        "C:maj9",
+        "C:min9",
         "C:add9",
         "C:(3,5,b7,b9)",
         "C:(b9)",

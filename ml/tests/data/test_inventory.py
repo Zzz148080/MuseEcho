@@ -5,12 +5,14 @@ from pathlib import Path
 
 import pytest
 
+from museecho_ml.data.adapters.rwc import discover_rwc_sources
 from museecho_ml.data.adapters.winterreise import (
     WinterreiseAdapter,
     discover_winterreise_sources,
 )
-from museecho_ml.data.inventory import build_inventory
+from museecho_ml.data.inventory import build_inventory, manifest_sha256
 from museecho_ml.data.registry import DatasetRegistry
+from museecho_ml.data.rwc_inventory import generate_rwc_inventory
 from museecho_ml.data.winterreise_inventory import generate_winterreise_inventory
 
 
@@ -41,6 +43,30 @@ def _winterreise_fixture(root: Path) -> None:
         stem = f"Schubert_D911-01_{performance}"
         _write_wav(audio_root / f"{stem}.wav")
         _write_annotation(annotation_root / f"{stem}.csv", chord)
+
+
+def _rwc_fixture(root: Path) -> tuple[Path, Path]:
+    audio_root = root / "rwc-audio"
+    annotations_root = root / "rwc-annotations"
+    _write_wav(audio_root / "nested" / "RWC_P001.wav")
+    chord_path = (
+        annotations_root
+        / "01_annotations_preprocessed"
+        / "chords"
+        / "RWC-P"
+        / "RWC_P001.csv"
+    )
+    chord_path.parent.mkdir(parents=True, exist_ok=True)
+    chord_path.write_text(
+        "t_start;t_end;chord\n0.0;1.0;N\n1.0;2.0;Bb:maj7\n",
+        encoding="utf-8",
+    )
+    (annotations_root / "metadata.csv").write_text(
+        "RWCID;CollID;PieceNo;Title;Artist;duration\n"
+        "RWC_P001;P;1;Fixture Song;Fixture Artist;2.0\n",
+        encoding="utf-8",
+    )
+    return audio_root, annotations_root
 
 
 def test_winterreise_discovery_pairs_only_packaged_audio_and_annotations(
@@ -105,6 +131,40 @@ def test_winterreise_discovery_rejects_missing_paired_annotation(tmp_path: Path)
 
     with pytest.raises(ValueError, match="annotation"):
         discover_winterreise_sources(tmp_path)
+
+
+def test_rwc_discovery_pairs_audio_annotations_and_metadata(tmp_path: Path) -> None:
+    audio_root, annotations_root = _rwc_fixture(tmp_path)
+
+    sources = discover_rwc_sources(audio_root, annotations_root)
+
+    assert len(sources) == 1
+    assert sources[0].track_id == "RWC_P001"
+    assert sources[0].work_id == "RWC_P001"
+    assert sources[0].cover_group_id == "RWC_P001"
+    assert sources[0].artist_id == "Fixture Artist"
+    assert sources[0].duration_seconds == 2.0
+
+
+def test_rwc_inventory_uses_license_gate_and_official_csv(tmp_path: Path) -> None:
+    audio_root, annotations_root = _rwc_fixture(tmp_path)
+    registry = DatasetRegistry.load(
+        Path(__file__).resolve().parents[3]
+        / "docs"
+        / "ml"
+        / "dataset-registry.example.json"
+    )
+
+    manifest, report = generate_rwc_inventory(
+        tmp_path, audio_root, annotations_root, registry
+    )
+
+    assert manifest["dataset_id"] == "rwc-popular"
+    assert manifest["dataset_version"] == "2026-02-16 re-release"
+    assert report["track_count"] == 1
+    assert report["qualities"]["N"]["duration_seconds"] == 1.0
+    assert report["qualities"]["maj7"]["duration_seconds"] == 1.0
+    assert report["manifest_sha256"] == manifest_sha256(manifest)
 
 
 def test_formal_winterreise_manifest_requires_registry_approval(tmp_path: Path) -> None:

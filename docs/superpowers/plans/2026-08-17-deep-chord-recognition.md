@@ -120,9 +120,14 @@
 
 **接口：** 每个适配器把用户合法持有的本地音频与标注转换为统一 manifest，不负责绕过登录、购买、许可证或访问控制。
 
-- [ ] **步骤 1：逐项完成数据源许可调查**
+- [x] **步骤 1：逐项完成数据源许可调查**
 
 对 Isophonics、McGill Billboard、RWC Popular Music 和 Schubert Winterreise 分别记录标注许可、音频取得方式、可否用于模型训练、可否发布权重和引用要求。状态只能是 `approved`、`blocked` 或 `needs-review`。
+
+调查结论已记录在 `docs/ml/dataset-registry.example.json`：Winterreise 获准本地训练；
+RWC-P 音频与官方标注均为 CC-BY-NC-4.0，在用户确认非商业比赛与私有云训练后获准用于该
+范围；Isophonics 与 McGill Billboard 因许可/官方来源不足继续保持 `needs-review`。模型权重
+发布权与训练许可分离，未被本步骤自动放行。
 
 - [x] **步骤 2：编写 manifest 合同测试**
 

@@ -34,10 +34,10 @@
       "name": "RWC Music Database: Popular Music",
       "version": "2026-02-16 re-release",
       "source_url": "https://zenodo.org/records/18656623",
-      "status": "needs-review",
+      "status": "approved",
       "annotation_license": "CC-BY-NC-4.0; the official curated annotation repository includes RWC-P chord annotations",
-      "audio_license": "CC-BY-NC-4.0; non-commercial scope for this competition and cloud processing still needs review",
-      "training_allowed": null,
+      "audio_license": "CC-BY-NC-4.0; user confirmed non-commercial competition use and private-cloud processing",
+      "training_allowed": true,
       "weights_distribution_allowed": null,
       "citation": "Goto et al. (ISMIR 2002/2003); Mueller et al. (TISMIR 2025); Balke et al. (TISMIR 2026)",
       "reviewed_at": "2026-08-18",
@@ -45,7 +45,9 @@
         "https://zenodo.org/api/records/18656623",
         "https://staff.aist.go.jp/m.goto/RWC-MDB/",
         "https://github.com/rwc-music/rwc-annotations/blob/main/LICENSE",
-        "https://github.com/rwc-music/rwc-annotations/blob/main/README.md"
+        "https://github.com/rwc-music/rwc-annotations/blob/main/README.md",
+        "rwc-annotations commit:0a1a6c31dbe73a7f5d44f7caef8cd0999402a4c2",
+        "user confirmed non-commercial competition use and private cloud training on 2026-08-18"
       ]
     },
     {
