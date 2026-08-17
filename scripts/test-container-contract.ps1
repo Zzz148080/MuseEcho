@@ -235,6 +235,31 @@ exit 0
         }
     }
 
+    function Invoke-CurrentReleaseNoBuild {
+        param([Parameter(Mandatory = $true)][string]$Manifest)
+        [System.IO.File]::WriteAllText($dockerLog, '', [Text.UTF8Encoding]::new($false))
+        $env:MUSEECHO_FAKE_DOCKER_MODE = 'success'
+        $savedErrorPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            $output = & $shell -NoProfile -ExecutionPolicy Bypass `
+                -File (Join-Path $offlineScripts 'container-smoke.ps1') `
+                -TaskTempParent $offlineTempParent -NoBuild `
+                -DockerCommand $fakeDocker -CurlCommand $fakeCurl `
+                -ReleaseManifest $Manifest 2>&1 | Out-String
+            $exitCode = $LASTEXITCODE
+        } finally {
+            $ErrorActionPreference = $savedErrorPreference
+        }
+        return [pscustomobject]@{
+            ExitCode = $exitCode
+            Output = $output
+            DockerLog = if (Test-Path -LiteralPath $dockerLog) {
+                Get-Content -Raw -LiteralPath $dockerLog
+            } else { '' }
+        }
+    }
+
     $offline = Invoke-OfflineNoBuild
     if ($offline.ExitCode -ne 0) {
         throw "trusted no-build smoke contract failed`n$($offline.Output)`n$($offline.DockerLog)"
@@ -248,6 +273,49 @@ exit 0
     }
     if ([regex]::Matches($offline.DockerLog, '(?m)^container inspect ').Count -ne 4) {
         throw "no-build smoke did not verify both running identities after both starts`n$($offline.DockerLog)"
+    }
+
+    $currentReleaseManifest = Join-Path $fixtureRoot 'current-release-images.json'
+    [System.IO.File]::WriteAllText(
+        $currentReleaseManifest,
+        ([ordered]@{
+            schema_version = 1
+            images = [ordered]@{
+                app = [ordered]@{
+                    image_id = $appDaemonId
+                    tar_sha256 = ('a' * 64)
+                }
+                gateway = [ordered]@{
+                    image_id = $gatewayDaemonId
+                    tar_sha256 = ('b' * 64)
+                }
+            }
+        } | ConvertTo-Json -Depth 4),
+        [Text.UTF8Encoding]::new($false)
+    )
+    $currentRelease = Invoke-CurrentReleaseNoBuild -Manifest $currentReleaseManifest
+    if ($currentRelease.ExitCode -ne 0) {
+        throw "current release identity no-build smoke failed`n$($currentRelease.Output)"
+    }
+    if ($currentRelease.DockerLog -match '(?m)^compose .* build(?: |$)') {
+        throw "current release identity smoke invoked a build`n$($currentRelease.DockerLog)"
+    }
+
+    $malformedCurrentManifest = Join-Path $fixtureRoot 'malformed-release-images.json'
+    [System.IO.File]::WriteAllText(
+        $malformedCurrentManifest,
+        ((Get-Content -Raw -LiteralPath $currentReleaseManifest).Replace($appDaemonId, 'not-an-image-id')),
+        [Text.UTF8Encoding]::new($false)
+    )
+    $malformedCurrent = Invoke-CurrentReleaseNoBuild -Manifest $malformedCurrentManifest
+    if (
+        $malformedCurrent.ExitCode -eq 0 -or
+        $malformedCurrent.Output -notmatch 'app release image id'
+    ) {
+        throw "current release smoke accepted a malformed image identity`n$($malformedCurrent.Output)"
+    }
+    if ($malformedCurrent.DockerLog -match '(?m)^compose .* up ') {
+        throw "malformed current release identity reached Compose up`n$($malformedCurrent.DockerLog)"
     }
 
     $wrongTag = Invoke-OfflineNoBuild -Mode 'wrong-app-tag'

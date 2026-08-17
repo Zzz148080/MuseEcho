@@ -13,7 +13,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
-$requiredFiles = @('Dockerfile', 'compose.yaml', 'Caddyfile')
+$requiredFiles = if ($NoBuild) { @('compose.yaml') } else { @('Dockerfile', 'compose.yaml', 'Caddyfile') }
 $taskTempParentPath = [System.IO.Path]::GetFullPath($TaskTempParent)
 $smokeRoot = [System.IO.Path]::GetFullPath(
     (Join-Path $taskTempParentPath "museecho-container-smoke-$PID-$([System.IO.Path]::GetRandomFileName())")
@@ -64,9 +64,42 @@ function Assert-ImageId {
     }
 }
 
+function Assert-Digest {
+    param(
+        [Parameter(Mandatory = $true)][string]$Value,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+    if ($Value -notmatch '^[0-9a-f]{64}$') {
+        throw "$Label must be a lowercase sha256 digest"
+    }
+}
+
 function Read-TrustedReleaseIdentity {
     if (-not $ReleaseManifest -or -not (Test-Path -LiteralPath $ReleaseManifest -PathType Leaf)) {
         throw 'no-build smoke requires a trusted release manifest'
+    }
+    try {
+        $manifest = Get-Content -Raw -LiteralPath $ReleaseManifest | ConvertFrom-Json
+    } catch {
+        throw 'trusted release manifest is not valid JSON'
+    }
+    if ($manifest.schema_version -eq 1 -and $manifest.images) {
+        $names = @($manifest.images.PSObject.Properties.Name | Sort-Object)
+        if ($names.Count -ne 2 -or $names[0] -ne 'app' -or $names[1] -ne 'gateway') {
+            throw 'release image identity must contain exactly app and gateway'
+        }
+        Assert-ImageId -Value $manifest.images.app.image_id -Label 'app release image id'
+        Assert-ImageId -Value $manifest.images.gateway.image_id -Label 'gateway release image id'
+        Assert-Digest -Value $manifest.images.app.tar_sha256 -Label 'app release tar digest'
+        Assert-Digest -Value $manifest.images.gateway.tar_sha256 -Label 'gateway release tar digest'
+        if ($manifest.images.app.image_id -eq $manifest.images.gateway.image_id) {
+            throw 'app and gateway must not share image identities'
+        }
+        $script:ExpectedAppDaemonImageId = [string]$manifest.images.app.image_id
+        $script:ExpectedAppConfigImageId = [string]$manifest.images.app.image_id
+        $script:ExpectedGatewayDaemonImageId = [string]$manifest.images.gateway.image_id
+        $script:ExpectedGatewayConfigImageId = [string]$manifest.images.gateway.image_id
+        return
     }
     $expected = [ordered]@{
         AppDaemon = $ExpectedAppDaemonImageId
@@ -84,11 +117,6 @@ function Read-TrustedReleaseIdentity {
         $ExpectedAppConfigImageId -eq $ExpectedGatewayDaemonImageId
     ) {
         throw 'app and gateway must not share image identities'
-    }
-    try {
-        $manifest = Get-Content -Raw -LiteralPath $ReleaseManifest | ConvertFrom-Json
-    } catch {
-        throw 'trusted release manifest is not valid JSON'
     }
     if (
         $manifest.schema_version -ne 1 -or
