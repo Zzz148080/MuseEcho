@@ -830,6 +830,7 @@ def test_delivery_status_matches_evidence(report):
 | Broadcast WAV 零填充兼容性 | `docs/superpowers/specs/2026-08-14-broadcast-wav-zero-padding-design.md`、`docs/superpowers/plans/2026-08-14-broadcast-wav-zero-padding.md` | `b07b32c`、`0a75c1e` | 属于 WAV 支持边界的一部分，不扩大未支持格式。 |
 | 按需解密播放与 Range 支持 | 当前 API/播放器实现及对应单元测试 | `7f8412b` | `/api/analyses/{id}/audio` 维持单 Range 语义，并以 1 MiB 分块流式读取；播放器补充就绪、跳转、等待、停滞和错误状态，不把 Range 支持扩展为多 Range。 |
 | FLAC 解码与节奏估计修复 | `tests/integration/test_decode.py`、`tests/unit/analysis/test_signal_features.py` | `7f8412b` | FLAC 仅允许受控 attached-picture（MJPEG/PNG）并保持全部流校验；节奏算法升至 `librosa-onset-beat-periodicity-v3`，对弱八分与长曲目歧义尝试保守半速节拍，仍可回退 `unknown`。 |
+| v0.1.0 离线运行发行 | `docs/superpowers/specs/2026-08-17-offline-runtime-release-design.md`、`docs/superpowers/plans/2026-08-17-offline-runtime-release.md` | `8b08796`、`eac26c5`、`b16191f`、`2a01107`、`bbcb139` | 已完成接收端 Verify/Import/Start/Smoke/Stop、runtime-only Compose、current release identity no-build smoke、打包器和 CI 合约；正式 Release、Tag、main CI 与下载后真实资产复验尚待后续步骤，不提前记为发布成功。 |
 
 **最终维护闭环：** 结果呈现、常见格式、100 MiB、Broadcast WAV、流式播放、FLAC/节奏修复、
 Linux 格式修复、历史证据绑定与 current-image 分发策略依次完成。PR #3 GitHub run
@@ -837,6 +838,18 @@ Linux 格式修复、历史证据绑定与 current-image 分发策略依次完�
 distribution；这是最终产品/CI 实现边界，不把随后仅修改交付记录的 reconciliation commit 伪装成
 第二次产品运行。公开 registry/Release、正式离线构建 ENG-010、GitLab supplemental pipeline、
 腾讯云/可信 TLS/目标机验证及学生人工验收仍未闭环，最终状态继续为 `PARTIALLY READY`。
+
+### 3.2 v0.1.0 离线运行 Release（2026-08-17）
+
+- **批准边界：** 用户选择先完成离线运行包并授权自动工作到正式 Release 发布成功；设计明确
+  排除部署和 current-source Dockerfile 断网重建。
+- **TDD：** 接收端测试先因 `offline-runtime.ps1` 不存在失败；current identity smoke 先因只
+  接受 Task 23 legacy manifest 失败；打包测试先因 packager 不存在失败；CI 合约随后以 3 个
+  精确失败证明两条质量门、distribution 打包步骤和双目录 artifact 尚未接线。对应最小实现后，
+  synthetic runtime、packaging、legacy/current no-build 和 13 项 identity/CI 聚焦测试转绿。
+- **阶段真值：** `release/offline-runtime/`、`prepare-offline-release.ps1` 与 CI retention 已实现，
+  但当前仍是 `READY_FOR_RELEASE`。只有最终 main CI 的 tar 被下载、断网 Smoke、打 Tag、上传四项
+  Release 资产并回读校验后，才能回填 `RELEASED`。
 
 ## 4. 计划验收清单
 

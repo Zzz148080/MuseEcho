@@ -19,11 +19,13 @@ the Task 24 block below. At Task 23 closure, the blocker keys were `GitLab`,
 `MUSEECHO V1 PARTIALLY READY`. Task 24's Product Audit, fixed 17-section
 Delivery Report, validator and tests are complete. Task 24 is not a blocker.
 Task 23 PR #1 is merged with all three GitHub jobs green. Task 24 run
-`31687703913` also passed all three jobs at implementation head `de5bc6f`.
-Per `COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent Cloud/public deployment
-are deferred follow-up work. Final GitHub evidence, formal offline build ENG-010,
-local product review, and student gates remain open. Older statements below are
-historical timeline evidence.
+`31687703913` at implementation head `de5bc6f` remains historical evidence.
+Final GitHub evidence is closed by run `31973968704` at exact SHA
+`09a51b495178450ec4c0869aa72962c942ccea83`, with quality, E2E, and distribution
+all successful. Per `COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent
+Cloud/public deployment are deferred follow-up work. Formal offline source build
+ENG-010, controller-browser product review, and student gates remain open. Older
+statements below are historical timeline evidence.
 <!-- TASK24-CURRENT-STATUS:END -->
 
 ## 2026-08-13 — TASK 24 / 客观交付材料

@@ -553,3 +553,27 @@ retain their existing source order.
 - Final reconciliation updated tracked delivery/audit records and validator contracts, while
   student reflection and acceptance text remained untouched. Ignored `tmp/` cleanup is local-only
   and is not represented as a tracked GitHub deletion.
+
+## 2026-08-17 — v0.1.0 offline runtime Release candidate
+
+- **Skills and approval:** `using-superpowers`, `brainstorming`, `writing-plans`,
+  `executing-plans`, `using-git-worktrees`, `test-driven-development`,
+  `systematic-debugging`, and `verification-before-completion` were applied. The
+  user approved an offline runtime package and automatic continuation through
+  formal Release publication. Work remained on the existing PR #3 feature
+  branch so its integration history would not be split.
+- **Scope:** Added a runtime-only Compose file and PowerShell Verify/Import/Start/
+  Smoke/Stop receiver, current `release-images.json` support in trusted no-build
+  smoke, deterministic file-selection packaging, checksums, reproduction
+  guidance, and CI retention. Startup forbids builds and pulls; Stop preserves
+  encrypted data. No cloud deployment or offline source-build claim was added.
+- **TDD evidence:** receiver missing RED → synthetic runtime GREEN; current
+  identity legacy-only RED → legacy/current contract GREEN; packager missing RED
+  → packaging GREEN; CI contract 3 failed → 3 passed. The combined identity/CI
+  focus returned 13 passed. Formal Release publication and downloaded-asset
+  smoke remain future evidence at this checkpoint.
+- **Windows baseline note:** full local `verify.ps1` stopped at Ruff format because
+  eight pre-existing files contain mixed CRLF/LF working-tree bytes under global
+  `core.autocrlf=true`; Git-filtered hashes exactly equal HEAD, so no unrelated
+  source formatting was committed. Linux CI remains the authoritative format
+  gate for normalized repository bytes.

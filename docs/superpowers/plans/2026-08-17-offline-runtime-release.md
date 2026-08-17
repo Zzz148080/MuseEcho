@@ -294,10 +294,10 @@ git commit -m "build: package audited offline runtime assets"
 - [ ] **Step 1: Write or update failing delivery-contract tests**
 
 Add behavioral document contract assertions only where an existing checker
-consumes the documents. The required meaning is:
+consumes the documents. Before publication, the required meaning is:
 
 ```text
-offline-runtime=RELEASED
+offline-runtime=READY_FOR_RELEASE
 offline-source-build=BLOCKED:ENG-010
 deployment=NOT_RUN
 ```

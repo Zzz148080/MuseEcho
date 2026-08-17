@@ -315,6 +315,11 @@ Compose、命令行、截图、日志、Git 历史或前端变量。`scripts/sec
 
 ## 分发与 CI
 
+正式 GitHub Release 的接收方复现入口见 [`RELEASE_REPRODUCTION.md`](RELEASE_REPRODUCTION.md)。
+`v0.1.0` 发行合同由两个经过同一 distribution 作业审计的镜像 tar、离线运行工具包和
+`SHA256SUMS.txt` 组成；工具包强制 `pull_policy: never` 与 `--no-build`。这只解决接收方断网
+导入和运行，不关闭 `ENG-010` 所指的 current-source Dockerfile 断网重建。
+
 `Dockerfile` 的 `app` 与 `gateway` target 组成发行物。GitHub Actions 与 GitLab CI 都执行
 Python/TypeScript 静态检查、后端/前端测试、构建、真实 HTTPS E2E、确定性许可证策略、
 Secret 审计、Docker 构建和镜像漏洞门；GitLab 的后端测试 job 固定名为 `unit-test`。

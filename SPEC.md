@@ -560,3 +560,8 @@ GitHub Actions 运行 backend tests、frontend tests、integration tests、lint�
 - 当前结论仍为 `MUSEECHO V1 PARTIALLY READY`：正式 current-source offline Dockerfile rebuild
   ENG-010、公开 registry/Release、腾讯云/可信公网 TLS/目标机验证、本地人工产品复核和学生本人
   最终验收均未被这次 GitHub 成功替代。
+- 2026-08-17 新增的 `v0.1.0` 离线运行发行合同只允许发布同一 distribution 作业产生并审计的
+  app/gateway tar、release identity、校验表和 no-build 工具包。接收方下载完成后可以断网校验、
+  导入、Smoke 和运行；该能力不得改写为 current-source Dockerfile 的断网重建，也不得关闭
+  `ENG-010`。在 GitHub Release 页面、Tag、main SHA 和四项资产被实际验证前，状态只能是
+  `READY_FOR_RELEASE`，不能提前写成已发布。
