@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from museecho_ml.evaluation.metrics import (
@@ -10,7 +13,10 @@ from museecho_ml.evaluation.metrics import (
     quality_f1_report,
     weighted_chord_scores,
 )
+from museecho_ml.evaluation.report import EvaluationConfig, evaluate_track
 from museecho_ml.labels import parse_annotation
+
+ML_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _interval(start: float, end: float, chord: str, confidence: float = 1.0) -> ScoredChordInterval:
@@ -105,3 +111,49 @@ def test_quality_f1_is_duration_weighted_and_macro_averaged() -> None:
     }
     assert report["per_quality"]["min"]["f1"] == pytest.approx(2 / 3)
     assert report["macro_f1"] == pytest.approx(2 / 3)
+
+
+def test_metrics_reject_prediction_gaps_instead_of_inflating_scores() -> None:
+    reference = (_interval(0, 2, "C:maj"),)
+    prediction = (_interval(0, 1, "C:maj"), _interval(1.5, 2, "C:maj"))
+
+    with pytest.raises(ValueError, match="continuous"):
+        weighted_chord_scores(reference, prediction)
+
+
+def test_track_report_combines_versioned_metrics_deterministically() -> None:
+    reference = (_interval(0, 1, "C:maj"), _interval(1, 2, "G:7"))
+    prediction = (
+        _interval(0, 1, "C:maj", 0.9),
+        _interval(1, 2, "D:7", 0.8),
+    )
+    config = EvaluationConfig(
+        boundary_tolerance_seconds=0.05,
+        ece_bin_count=10,
+        publication_threshold=0.85,
+    )
+
+    first = evaluate_track("fixture-track", reference, prediction, config)
+    second = evaluate_track("fixture-track", reference, prediction, config)
+
+    assert first == second
+    assert first["track_id"] == "fixture-track"
+    assert first["weighted_scores"]["exact_quality"] == 0.5
+    assert first["boundary"]["f1"] == 1.0
+    assert first["segmentation"] == {"reference_events": 2, "predicted_events": 2}
+    assert first["published"] == {"precision": 1.0, "coverage": 0.5}
+
+
+def test_evaluation_config_matches_versioned_file() -> None:
+    payload = json.loads(
+        (ML_ROOT / "configs" / "evaluation-v1.json").read_text(encoding="utf-8")
+    )
+
+    assert payload == {
+        "schema_version": 1,
+        "evaluation_version": "1.0.0",
+        "boundary_tolerance_seconds": 0.05,
+        "ece_bin_count": 15,
+        "publication_threshold": 0.85,
+        "exact_match_includes_bass": False,
+    }

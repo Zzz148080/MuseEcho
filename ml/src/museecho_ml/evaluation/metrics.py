@@ -30,8 +30,7 @@ def weighted_chord_scores(
     reference: Sequence[ScoredChordInterval],
     prediction: Sequence[ScoredChordInterval],
 ) -> dict[str, float]:
-    _validate_timeline(reference, "reference")
-    _validate_timeline(prediction, "prediction")
+    _validate_comparable(reference, prediction)
     total_duration = sum(item.end_seconds - item.start_seconds for item in reference)
     root_correct = 0.0
     exact_correct = 0.0
@@ -151,8 +150,7 @@ def precision_coverage(
 ) -> dict[str, float]:
     if not math.isfinite(threshold) or not 0 <= threshold <= 1:
         raise ValueError("publication threshold must be within [0, 1]")
-    _validate_timeline(reference, "reference")
-    _validate_timeline(prediction, "prediction")
+    _validate_comparable(reference, prediction)
     total_duration = sum(item.end_seconds - item.start_seconds for item in reference)
     published_duration = 0.0
     correct_duration = 0.0
@@ -169,8 +167,7 @@ def precision_coverage(
 def quality_f1_report(
     reference: Sequence[ScoredChordInterval], prediction: Sequence[ScoredChordInterval]
 ) -> dict[str, object]:
-    _validate_timeline(reference, "reference")
-    _validate_timeline(prediction, "prediction")
+    _validate_comparable(reference, prediction)
     true_positive: dict[str, float] = {}
     false_positive: dict[str, float] = {}
     false_negative: dict[str, float] = {}
@@ -216,10 +213,23 @@ def _validate_timeline(items: Sequence[ScoredChordInterval], name: str) -> None:
     if not items:
         raise ValueError(f"{name} timeline cannot be empty")
     previous_end = 0.0
-    for item in items:
+    for index, item in enumerate(items):
         if item.start_seconds < previous_end:
             raise ValueError(f"{name} timeline intervals overlap")
+        if index > 0 and not math.isclose(item.start_seconds, previous_end, abs_tol=1e-9):
+            raise ValueError(f"{name} timeline must be continuous")
         previous_end = item.end_seconds
+
+
+def _validate_comparable(
+    reference: Sequence[ScoredChordInterval], prediction: Sequence[ScoredChordInterval]
+) -> None:
+    _validate_timeline(reference, "reference")
+    _validate_timeline(prediction, "prediction")
+    if not math.isclose(
+        reference[0].start_seconds, prediction[0].start_seconds, abs_tol=1e-9
+    ) or not math.isclose(reference[-1].end_seconds, prediction[-1].end_seconds, abs_tol=1e-9):
+        raise ValueError("reference and prediction timelines must cover the same extent")
 
 
 def _aligned_segments(

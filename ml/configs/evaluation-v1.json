@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "evaluation_version": "1.0.0",
+  "boundary_tolerance_seconds": 0.05,
+  "ece_bin_count": 15,
+  "publication_threshold": 0.85,
+  "exact_match_includes_bass": false
+}

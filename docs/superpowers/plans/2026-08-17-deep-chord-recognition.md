@@ -217,9 +217,13 @@ PCM 裁剪近重复和必填 group metadata；切分单位固定为连通作品�
 匹配、按时长 Macro-F1、ECE 和 published precision/coverage 手算反例约束实现。`N/X` 的
 完整报告口径仍随步骤 2 的统一报告器完成。
 
-- [ ] **步骤 2：实现评测器**
+- [x] **步骤 2：实现评测器**
 
 报告 root、maj/min、triads、sevenths、精确首发词表、Macro-F1、边界 F1、过/欠分段、ECE 和 precision/coverage。
+
+已实现版本化 `evaluation-v1` 单曲报告：root、maj/min、triads、sevenths、精确性质、逐性质
+时长加权 P/R/F1 与 Macro-F1、一对一边界 F1、事件数、ECE 和阈值 precision/coverage。
+评测时间轴必须连续且参考/预测同起止，缺口不能从分母消失。跨曲聚合与 legacy 预测生成随步骤 3 完成。
 
 - [ ] **步骤 3：封装并运行 legacy**
 
