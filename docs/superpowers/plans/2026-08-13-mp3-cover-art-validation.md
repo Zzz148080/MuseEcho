@@ -1,99 +1,99 @@
-# MP3 Cover-art Validation Implementation Plan
+# MP3 封面图验证实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **供自主执行者使用：** 必需子技能：使用 superpowers:executing-plans 逐项实施本计划。步骤使用复选框（`- [ ]`）语法跟踪。
 
-**Goal:** Accept otherwise-valid MP3 files that contain an embedded cover-art stream, while retaining the existing fail-closed audio-decoding policy.
+**目标：** 接受其他方面均有效但包含内嵌封面图流的 MP3 文件，同时保留现有的音频解码失败关闭策略。
 
-**Architecture:** `ffprobe` must inspect the selected first audio stream without requiring every non-audio stream to satisfy the audio codec whitelist. `ffmpeg` remains unchanged: it maps `0:a:0`, disables video, and retains the strict audio decoder whitelist before producing bounded PCM. A real integration fixture carrying MJPEG cover art protects the behavior.
+**架构：** `ffprobe` 必须检查选中的第一个音频流，而不要求每个非音频流都满足音频编解码器白名单。`ffmpeg` 保持不变：映射 `0:a:0`、禁用视频，并在生成有界 PCM 前保留严格的音频解码器白名单。一个携带 MJPEG 封面图的真实集成夹具用于保护该行为。
 
-**Tech Stack:** Python 3.12, pytest, FFmpeg/FFprobe, Docker Linux app image.
+**技术栈：** Python 3.12、pytest、FFmpeg/FFprobe、Docker Linux 应用镜像。
 
-## Global Constraints
+## 全局约束
 
-- Support only WAV and MP3, maximum 30 MiB and 600 seconds.
-- Retain `file,pipe` protocol and audio decoder allowlists for decoding.
-- Do not add dependencies or download tools.
-- Verify in the existing Linux container image and through the live Edge frontend.
+- 只支持 WAV 和 MP3，最大 30 MiB、600 秒。
+- 解码时保留 `file,pipe` 协议和音频解码器白名单。
+- 不增加依赖，也不下载工具。
+- 在现有 Linux 容器镜像中并通过真实 Edge 前端验证。
 
 ---
 
-### Task 1: Probe audio streams without rejecting embedded artwork
+### 任务 1：探测音频流时不拒绝内嵌封面图
 
-**Files:**
-- Modify: `src/museecho/analysis/decode.py:375-405`
-- Modify: `tests/integration/test_decode.py`
+**文件：**
+- 修改：`src/museecho/analysis/decode.py:375-405`
+- 修改：`tests/integration/test_decode.py`
 
-**Interfaces:**
-- Consumes: `probe_audio(path, ffprobe_executable=...)`.
-- Produces: an `AudioProbe` for MP3 audio with a non-audio attached-picture stream.
+**接口：**
+- 输入：`probe_audio(path, ffprobe_executable=...)`。
+- 输出：为带有非音频附加图片流的 MP3 音频生成一个 `AudioProbe`。
 
-- [x] **Step 1: Write the failing real integration test**
+- [x] **步骤 1：编写失败的真实集成测试**
 
-Create a short MP3 with an attached MJPEG artwork stream using the existing FFmpeg fixture tools. Call `probe_audio()` and `decode_audio()` on it, asserting a mono decoded duration of approximately one second.
+使用现有 FFmpeg 夹具工具创建一个附带 MJPEG 封面图流的短 MP3。对其调用 `probe_audio()` 和 `decode_audio()`，断言解码为单声道且时长约一秒。
 
-- [x] **Step 2: Run the test to verify it fails**
+- [x] **步骤 2：运行测试并确认失败**
 
-Run the focused integration test in the existing Linux app image. Expected: `InvalidAudioError: file is not valid WAV or MP3 audio` because `ffprobe` currently applies the audio codec whitelist to MJPEG artwork.
+在现有 Linux 应用镜像中运行聚焦集成测试。预期：出现 `InvalidAudioError: file is not valid WAV or MP3 audio`，因为 `ffprobe` 当前把音频编解码器白名单应用到了 MJPEG 封面图。
 
-- [x] **Step 3: Write the minimal implementation**
+- [x] **步骤 3：编写最小实现**
 
-Remove `-codec_whitelist` only from the `ffprobe` metadata command. Keep `-select_streams a:0`; do not change the `ffmpeg` decode command, duration validation, protocol whitelist, format whitelist, mapping, or PCM output limit.
+只从 `ffprobe` 元数据命令中移除 `-codec_whitelist`。保留 `-select_streams a:0`；不要改动 `ffmpeg` 解码命令、时长验证、协议白名单、格式白名单、映射或 PCM 输出上限。
 
-- [x] **Step 4: Run focused and related regression tests**
+- [x] **步骤 4：运行聚焦测试和相关回归测试**
 
-Run the new cover-art integration test and existing decode tests in the locked Linux container. Expected: PASS, while unsupported codecs remain rejected by the actual decoding command.
+在锁定的 Linux 容器中运行新的封面图集成测试和现有解码测试。预期：PASS，同时实际解码命令仍拒绝不支持的编解码器。
 
-- [ ] **Step 5: Commit**
+- [ ] **步骤 5：提交**
 
-Commit the source, test, and plan on `codex/fix-mp3-cover-art` with a focused message.
+在 `codex/fix-mp3-cover-art` 上以聚焦消息提交源代码、测试和计划。
 
-### Task 2: Keep decoded waveform and music-theory payloads within the frontend contract
+### 任务 2：使解码波形和乐理载荷保持在前端契约内
 
-**Files:**
-- Modify: `src/museecho/analysis/waveform.py`
-- Modify: `tests/unit/analysis/test_signal_features.py`
-- Modify: `frontend/src/api/client.ts`
-- Modify: `frontend/src/api/client.test.ts`
+**文件：**
+- 修改：`src/museecho/analysis/waveform.py`
+- 修改：`tests/unit/analysis/test_signal_features.py`
+- 修改：`frontend/src/api/client.ts`
+- 修改：`frontend/src/api/client.test.ts`
 
-- [x] **Step 1: Reproduce the result-read failure with production data**
+- [x] **步骤 1：使用生产数据复现结果读取失败**
 
-An otherwise-complete upload reported “无法读取分析结果”. Server-side output showed small lossy-decoder waveform overshoot, then a double-sharp pitch class (`C##`) rejected by the frontend schema.
+一个原本已完成的上传报告“无法读取分析结果”。服务端输出显示有损解码器波形出现轻微过冲，随后出现被前端 schema 拒绝的重升音级（`C##`）。
 
-- [x] **Step 2: Add focused regression coverage**
+- [x] **步骤 2：增加聚焦回归覆盖**
 
-Add a waveform test that includes values outside `[-1, 1]` and a client-contract fixture containing `A#`, `C##`, and `E#`.
+增加一个包含 `[-1, 1]` 范围外数值的波形测试，以及一个包含 `A#`、`C##` 和 `E#` 的客户端契约夹具。
 
-- [x] **Step 3: Implement the smallest boundary-preserving fixes**
+- [x] **步骤 3：实施最小的边界保持修复**
 
-Clamp only presentation waveform extrema to `[-1, 1]`; accept deterministic one- or two-accidental note spellings without loosening the chord-label contract.
+只把呈现用波形极值钳制到 `[-1, 1]`；接受确定性的一重或二重升降号音名，但不放宽和弦标签契约。
 
-- [x] **Step 4: Verify the focused backend and frontend tests**
+- [x] **步骤 4：验证聚焦后端与前端测试**
 
-The locked Linux image passed the cover-art and waveform regressions; the frontend client suite passed 14 tests. The available offline TypeScript cache lacks `node:fs` declarations, so its unrelated whole-project typecheck remains an explicitly recorded environment limitation.
+锁定的 Linux 镜像通过了封面图和波形回归测试；前端客户端套件通过 14 个测试。可用的离线 TypeScript 缓存缺少 `node:fs` 声明，因此与本变更无关的全项目类型检查仍明确记录为环境限制。
 
-### Task 3: Rebuild and exercise the real browser flow
+### 任务 3：重新构建并运行真实浏览器流程
 
-**Files:**
-- No product files beyond Task 1.
+**文件：**
+- 除任务 1 外不改动产品文件。
 
-**Interfaces:**
-- Consumes: the local development Compose profile and the user-authorized `D:\AI民族音乐\江南烟雨.mp3` file.
-- Produces: a completed result page in the existing Edge tab.
+**接口：**
+- 输入：本地开发 Compose 配置，以及用户授权的 `D:\AI民族音乐\江南烟雨.mp3` 文件。
+- 输出：现有 Edge 标签页中已完成的结果页。
 
-- [x] **Step 1: Build the local app and gateway from the source**
+- [x] **步骤 1：从源代码构建本地应用和网关**
 
-Use the existing Compose development profile without changing dependency manifests.
+使用现有 Compose 开发配置，不改动依赖清单。
 
-- [x] **Step 2: Upload the user-authorized file in Edge**
+- [x] **步骤 2：在 Edge 中上传用户授权的文件**
 
-Select `D:\AI民族音乐\江南烟雨.mp3`, acknowledge the two upload confirmations, and submit it.
+选择 `D:\AI民族音乐\江南烟雨.mp3`，确认两次上传提示，然后提交。
 
-- [x] **Step 3: Verify each live stage**
+- [x] **步骤 3：验证每个实时阶段**
 
-Verify upload acceptance, real status progression, completion, and successful result rendering. Inspect only project logs if a stage fails.
+验证上传接受、真实状态推进、完成和结果成功渲染。仅当某阶段失败时检查项目日志。
 
-- [x] **Step 4: Record outcome**
+- [x] **步骤 4：记录结果**
 
-Observed result: analysis `16366c9e-fdb8-4c18-954d-1000029cbc22` rendered on the real Edge page with a 4:36 player, BPM 117, 542 beats, 3 chords, 168 sections, waveform, and an active A# chord. Selecting the chord moved the player to 3:31 with no page alert.
+观察结果：分析 `16366c9e-fdb8-4c18-954d-1000029cbc22` 已在真实 Edge 页面渲染，包含 4:36 播放器、BPM 117、542 个拍点、3 个和弦、168 个段落、波形，以及一个活动的 A# 和弦。选择该和弦后，播放器跳到 3:31，页面没有警告。
 
-Report the analysis ID, observed final result state, and any remaining browser-control limitation without claiming manual checks that were not performed.
+报告分析 ID、观察到的最终结果状态以及任何剩余浏览器控制限制，不得声称执行了实际未完成的人工检查。

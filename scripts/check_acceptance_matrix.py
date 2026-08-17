@@ -489,7 +489,7 @@ def _refs(value: str) -> tuple[str, ...]:
 
 
 def _metadata(text: str, label: str, issues: list[str]) -> str:
-    pattern = re.compile(rf"^- \*\*{re.escape(label)}:\*\*\s+`([^`]+)`\s*$", re.MULTILINE)
+    pattern = re.compile(rf"^- \*\*{re.escape(label)}\*\*\s+`([^`]+)`\s*$", re.MULTILINE)
     matches = pattern.findall(text)
     if len(matches) != 1:
         issues.append(f"metadata {label!r} must appear exactly once")
@@ -575,84 +575,84 @@ def load_audit(spec_path: Path | str, audit_path: Path | str) -> AcceptanceAudit
     spec = Path(spec_path).read_text(encoding="utf-8")
     text = Path(audit_path).read_text(encoding="utf-8")
     issues: list[str] = []
-    generated_at = _metadata(text, "Generated at UTC", issues)
-    readiness = _metadata(text, "Readiness", issues)
+    generated_at = _metadata(text, "生成时间（UTC）：", issues)
+    readiness = _metadata(text, "就绪度：", issues)
 
     evidence_rows = _table(
         text,
-        "## Evidence index",
+        "## 证据索引",
         (
             "Evidence ID",
-            "Kind",
-            "Command",
-            "Path",
-            "Coverage",
-            "Result",
-            "Boundary SHA256",
-            "Observed at UTC",
-            "Exit code",
+            "类型",
+            "命令",
+            "路径",
+            "覆盖范围",
+            "结果",
+            "边界 SHA256",
+            "观察时间（UTC）",
+            "退出码",
             "Commit",
-            "Summary",
+            "摘要",
         ),
         issues,
     )
     item_rows = _table(
         text,
-        "## Acceptance matrix",
+        "## 验收矩阵",
         (
-            "Item ID",
-            "Verdict",
-            "Importance",
-            "Evidence IDs",
-            "Owner",
-            "Disposition",
-            "Notes",
+            "条目 ID",
+            "结论",
+            "重要性",
+            "Evidence ID",
+            "负责人",
+            "处置",
+            "说明",
         ),
         issues,
     )
     blocker_rows = _table(
         text,
-        "## Open blockers",
-        ("Blocker ID", "Class", "Status", "Owner", "Evidence IDs", "Notes"),
+        "## 开放阻塞项",
+        ("阻塞项 ID", "类别", "状态", "负责人", "Evidence ID", "说明"),
         issues,
     )
 
     evidence = tuple(
         EvidenceRecord(
             evidence_id=row["Evidence ID"],
-            kind=row["Kind"],
-            command=row["Command"],
-            path=row["Path"],
-            coverage_ids=_refs(row["Coverage"]),
-            result=row["Result"],
-            boundary_sha256=row["Boundary SHA256"],
-            observed_at_raw=row["Observed at UTC"],
-            exit_code_raw=row["Exit code"],
+            kind=row["类型"],
+            command=row["命令"],
+            path=row["路径"],
+            coverage_ids=_refs(row["覆盖范围"]),
+            result=row["结果"],
+            boundary_sha256=row["边界 SHA256"],
+            observed_at_raw=row["观察时间（UTC）"],
+            exit_code_raw=row["退出码"],
             commit=row["Commit"],
-            summary=row["Summary"],
+            summary=row["摘要"],
         )
         for row in evidence_rows
     )
     items = tuple(
         AcceptanceItem(
-            item_id=row["Item ID"],
-            verdict=row["Verdict"],
-            importance=row["Importance"],
-            evidence_ids=_refs(row["Evidence IDs"]),
-            owner=row["Owner"],
-            disposition=row["Disposition"],
-            notes=row["Notes"],
+            item_id=row["条目 ID"],
+            verdict=row["结论"],
+            importance=row["重要性"],
+            evidence_ids=_refs(row["Evidence ID"]),
+            owner=row["负责人"],
+            disposition=row["处置"],
+            notes=row["说明"],
         )
         for row in item_rows
     )
     blockers = tuple(
         BlockerRecord(
-            blocker_id=row["Blocker ID"],
-            blocker_class=row["Class"],
-            status=row["Status"],
-            owner=row["Owner"],
-            evidence_ids=_refs(row["Evidence IDs"]),
-            notes=row["Notes"],
+            blocker_id=row["阻塞项 ID"],
+            blocker_class=row["类别"],
+            status=row["状态"],
+            owner=row["负责人"],
+            evidence_ids=_refs(row["Evidence ID"]),
+            notes=row["说明"],
         )
         for row in blocker_rows
     )

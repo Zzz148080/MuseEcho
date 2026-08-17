@@ -1,6 +1,6 @@
 # MuseEcho V1 实施计划
 
-> **执行者必读：** 实施本计划时必须使用 `superpowers:executing-plans`；每个功能或缺陷修复必须先使用 `superpowers:test-driven-development`，完成前必须使用 `superpowers:verification-before-completion`。独立任务使用隔离 worktree、独立分支和 PR；每个任务依次通过规格符合性审查与代码质量审查。
+> **执行者必读：** 实施本计划时必须使用 `superpowers:executing-plans`；每个功能或缺陷修复必须先使用 `superpowers:test-driven-development`，完成前必须使用 `superpowers:verification-before-completion`。独立任务使用隔离工作树、独立分支和 PR；每个任务依次通过规格符合性审查与代码质量审查。
 
 **目标：** 构建一个可在腾讯云 Lighthouse 单机部署的 MuseEcho V1：用户上传合法 WAV、MP3、FLAC、M4A、AAC、OGG 或 OPUS 后，系统用真实 CPU DSP/MIR 生成带置信度的节奏、能量、调性、结构和和弦事实，并通过同步可视化、确定性乐理引擎和 Evidence-first 问答帮助用户理解音乐。
 
@@ -9,37 +9,35 @@
 **技术栈：** Python 3.12、FastAPI、Pydantic、SQLAlchemy 2、Alembic、NumPy、SciPy、librosa、FFmpeg、cryptography、keyring、Typer、pytest、Ruff、mypy；Node 22、React、Vite、TypeScript、TanStack Query、Vitest、Testing Library、Playwright；Docker Compose、Caddy、GitHub Actions、GitLab CI。
 
 <!-- TASK23-CURRENT-STATUS:START -->
-> **Task 23 compatibility status (superseded by Task 24):** The Functional
-> Audit is **31 PASS / 9 PARTIAL / 0 FAIL** and `PARTIALLY_READY`. Task 23 PR #1
-> merged after GitHub quality, E2E, and distribution passed. Its implementation
-> boundary is retained for the Task 23 regression contract; the current branch
-> tip and authoritative status are in the Task 24 block below. At Task 23
-> closure, the blocker keys were `GitLab`, `TC-021`, `TASK24-AUDIT`,
-> `STUDENT-MANUAL`, and `FORMAL-OFFLINE-BUILD`.
+> **任务 23 兼容状态（已由任务 24 取代）：** 功能审计为
+> **31 PASS / 9 PARTIAL / 0 FAIL**，结论为 `PARTIALLY_READY`。GitHub quality、
+> E2E 和分发通过后，任务 23 PR #1 已合并。其实现边界继续作为任务 23
+> 回归合约保留；当前分支顶点和权威状态见下方任务 24 状态块。任务 23 收尾时的阻因键为
+> `GitLab`、`TC-021`、`TASK24-AUDIT`、`STUDENT-MANUAL` 和
+> `FORMAL-OFFLINE-BUILD`。
 <!-- TASK23-CURRENT-STATUS:END -->
 
 <!-- TASK24-CURRENT-STATUS:START -->
-> **Task 24 current status:** `MUSEECHO V1 PARTIALLY READY`. The Product Audit,
-> fixed 17-section Delivery Report, fail-closed validator, and student-authored
-> reflection draft are present, so Task 24 itself is not a blocker. The current
-> Functional Audit is **36 PASS / 4 PARTIAL / 0 FAIL**. Task 23 PR #1 merged at
-> `79d87f4`; PR #3 run `31966788273` passed GitHub quality (5m43s), E2E
-> (3m10s), and distribution (7m30s) on exact final product/CI implementation SHA
-> `0674f74f4097e46cee98c4715a62ad5aa55101cf`. Per
-> `COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent Cloud/public deployment
-> are deferred follow-up work. `DEL-011` remains historical Task 24 evidence;
-> `DEL-012` records the final implementation run. Formal offline build ENG-010,
-> local product review, and student gates remain open; no GitLab, Release,
-> cloud-deployment, or student-acceptance completion is claimed.
+> **任务 24 当前状态：** `MUSEECHO V1 PARTIALLY READY`。产品审计、固定 17 节的
+> 交付报告、失败关闭式校验器和学生撰写的反思草稿均已具备，因此任务 24 本身不再是
+> 阻因。当前功能审计为 **36 PASS / 4 PARTIAL / 0 FAIL**。任务 23 PR #1
+> 合并于 `79d87f4`；PR #3 随后以合并 SHA
+> `d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1` 合入，main run
+> `31997390847` 的 GitHub 质量门、E2E 和分发均通过。GitHub Release
+> `v0.1.0` 已发布四项受校验和约束的离线资产，并完成下载资产的免构建 Smoke。根据
+> `COURSE_REQUIREMENT_UPDATE.md`，GitLab 与腾讯云/公网部署属于后续工作。`DEL-011`
+> 保留为任务 24 历史证据；`DEL-012` 记录最终产品实现 run；`DEL-013` 和 `DEL-014`
+> 分别记录 main CI 与正式 Release。正式当前源码离线重建 `ENG-010`、本地产品复核和
+> 学生门禁仍未完成；本文不声称 GitLab、云端部署或学生验收已经完成。
 <!-- TASK24-CURRENT-STATUS:END -->
 
-<!-- FINAL-CI-RELATIONSHIP: implementation-sha=0674f74f4097e46cee98c4715a62ad5aa55101cf; run=31966788273; jobs=quality:success,e2e:success,distribution:success; github=required; gitlab=supplemental-not-run; reconciliation=docs-only-requires-separate-final-sha-publication-ci -->
-Any later docs-only reconciliation is not product implementation evidence and requires its own separate final-SHA publication/CI gate before Task 6 can be complete.
+<!-- FINAL-CI-RELATIONSHIP: implementation-sha=d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1; run=31997390847; jobs=quality:success,e2e:success,distribution:success; github=required; gitlab=supplemental-not-run; reconciliation=docs-only-after-release; release-tag=v0.1.0; release-assets=4 -->
+已发布的 `v0.1.0` Release 绑定到这一精确 main SHA 和四项经校验和验证的资产；后续仅文档对账需要自己的 CI，但不会改写已发布资产的身份。
 
 ## 0. 当前门禁与真实性约束
 
 - `SPEC.md` 已由用户在 2026-08-08 以原话“好，批准书面SPEC，进行下一步”批准。
-- 本 `PLAN.md` 已由用户在 2026-08-08 以原话“批准 PLAN”批准进入 cold-start；在 corrected cold-start 完成后，用户又以原话“合并到主分支，最后审查修订SPEC和PLAN，批准生成HUMAN_APPROVAL.md”批准最终修订和正式实施。
+- 本 `PLAN.md` 已由用户在 2026-08-08 以原话“批准 PLAN”批准进入冷启动；在修正后的冷启动完成后，用户又以原话“合并到主分支，最后审查修订SPEC和PLAN，批准生成HUMAN_APPROVAL.md”批准最终修订和正式实施。
 - `HUMAN_APPROVAL.md` 仅在下列门禁完成后生成，并引用本次最终 SPEC/PLAN 修订提交：
   1. 用户批准当前 `PLAN.md`（已完成）；
   2. 使用与 Codex 不同类型的全新 Agent，仅凭已批准的 SPEC、PLAN 和必要文件冷启动尝试任务 1–2（已完成）；
@@ -48,13 +46,13 @@ Any later docs-only reconciliation is not product implementation evidence and re
 - 不伪造测试、CI、PR、审查、人工参与、部署或公网可用性证据。
 - `ai4coding-agentos-lab/` 与 `docs/input/` 是未跟踪的课程/旧项目资料，不纳入 MuseEcho 提交。
 
-### 0.1 Cold-start 审查结论
+### 0.1 冷启动审查结论
 
-- OpenCode 使用 `njusehub/deepseek-v4-flash` 在隔离分支 `validation/opencode-cold-start` 尝试任务 1–2，并生成 `COLD_START_REPORT.md`。原始提交 `1a3545d` 因全量 lint、仓储端口、SQLite 外键、领域不变量、UTC 和交付卫生缺陷被拒绝。
+- OpenCode 使用 `njusehub/deepseek-v4-flash` 在隔离分支 `validation/opencode-cold-start` 尝试任务 1–2，并生成 `COLD_START_REPORT.md`。原始提交 `1a3545d` 因全量代码检查、仓储端口、SQLite 外键、领域不变量、UTC 和交付卫生缺陷被拒绝。
 - Codex 按 RED→GREEN 修正上述问题，并补齐 `access_grants`、`encrypted_audio`、原子 `AnalysisResult` 事务、回滚、WAL、状态一致性、有限数/JSON/时长边界、工具锁定和 README；修正提交为 `07d135e`。
-- 三轮独立复审最终确认 Critical、Important、Minor 均为 0；合并前与合并后的主分支验证均为 39 个 Python 测试通过，Ruff、mypy、全新 Alembic upgrade/check 通过，Node 22 容器内前端测试、类型检查与构建通过，npm audit 为 0 漏洞。
-- 用户明确选择把 corrected cold-start 合并到 `main`；合并提交为 `a2d7af5`。这是真实、经审查的 Tasks 1–2 实施，不再要求从头重演；后续实现从任务 3 开始，并继续遵守分支、PR、TDD 和两阶段审查协议。
-- 原始失败、修正过程和命令证据继续保留，不把被拒绝的 13-test 结果冒充最终证据，也不声称尚未发生的 CI、部署或产品验收已经完成。
+- 三轮独立复审最终确认严重、重要、次要问题均为 0；合并前与合并后的主分支验证均为 39 个 Python 测试通过，Ruff、mypy、全新 Alembic 升级/检查通过，Node 22 容器内前端测试、类型检查与构建通过，npm 审计为 0 漏洞。
+- 用户明确选择把修正后的冷启动合并到 `main`；合并提交为 `a2d7af5`。这是真实、经审查的任务 1–2 实施，不再要求从头重演；后续实现从任务 3 开始，并继续遵守分支、PR、TDD 和两阶段审查协议。
+- 原始失败、修正过程和命令证据继续保留，不把被拒绝的 13 项测试结果冒充最终证据，也不声称尚未发生的 CI、部署或产品验收已经完成。
 
 ## 1. 全局工程合同
 
@@ -106,13 +104,13 @@ class ExplanationProvider(Protocol):
 
 ### 1.3 每个任务的执行协议
 
-1. 从最新 `main` 创建命名分支和隔离 worktree。
+1. 从最新 `main` 创建命名分支和隔离工作树。
 2. 只写该任务列出的首个失败测试，运行 RED 命令并保存真实失败摘要。
 3. 写满足测试的最小实现，运行 GREEN 命令。
 4. 在全绿保护下重构，再运行任务最终命令。
 5. 更新 `PLAN.md` 对应任务的真实提交哈希和 `AGENT_LOG.md`；不得预填哈希。
 6. 推送并建 PR；先做规格符合性审查，再做代码质量审查。修复后重新验证。
-7. 合并后删除 worktree；后继任务从更新后的 `main` 开始。
+7. 合并后删除工作树；后继任务从更新后的 `main` 开始。
 
 ## 2. 依赖与并行图
 
@@ -277,7 +275,7 @@ def test_ciphertext_does_not_contain_plaintext(store, tmp_path):
 
 ### 任务 6：流式上传、真实校验与单并发任务队列
 
-**历史初始目标：** 限制 30 MB/10 分钟，拒绝伪扩展名、损坏和不支持文件，并以真实阶段状态提交串行分析任务。当前范围已由后续兼容性计划扩展为 100 MiB/10 分钟与七种受支持格式，权威边界以 `SPEC.md` §5.1 和本计划的“Task 24 后维护记录”为准。
+**历史初始目标：** 限制 30 MB/10 分钟，拒绝伪扩展名、损坏和不支持文件，并以真实阶段状态提交串行分析任务。当前范围已由后续兼容性计划扩展为 100 MiB/10 分钟与七种受支持格式，权威边界以 `SPEC.md` §5.1 和本计划的“任务 24 后维护记录”为准。
 
 **文件：** 新建 `src/museecho/application/uploads.py`、`src/museecho/application/queue.py`、`src/museecho/api/analyses.py`、`tests/api/test_upload.py`、`tests/unit/test_queue.py`。
 
@@ -322,7 +320,7 @@ def test_decode_normalizes_to_target_rate(sine_wav):
 
 **实现：** FFprobe 先检查，FFmpeg 限制通道、采样率和输出时长；捕获超时与退出码并映射领域错误；factory 生成正弦、节拍器、大/小三和弦、和弦进行、分段能量、静音、极短和损坏样本。
 
-**历史 GREEN 条件：** WAV/MP3 均解码到目标形状；坏文件、超时、超限明确失败；夹具哈希稳定。后续七种格式的当前验收边界见“Task 24 后维护记录”所列计划与 `SPEC.md` §5.1。
+**历史 GREEN 条件：** WAV/MP3 均解码到目标形状；坏文件、超时、超限明确失败；夹具哈希稳定。后续七种格式的当前验收边界见“任务 24 后维护记录”所列计划与 `SPEC.md` §5.1。
 
 **重构：** 子进程运行器可注入，stderr 经过长度限制和路径脱敏。
 
@@ -568,7 +566,7 @@ it('does not upload until legal-use and retention consent is checked', async () 
 
 **RED：** `npm --prefix frontend test -- --run src/features/upload`，预期组件不存在。
 
-**历史实现：** WAV/MP3、30MB 客户端预检但以后端为准；明确合法使用确认、24h 加密保留与删除说明；上传进度和后端阶段分开；TanStack Query 轮询真实 status，刷新用 Cookie+URL ID 恢复；失败显示稳定错误码的友好文本。当前格式与大小边界已由后续维护提交扩展，见“Task 24 后维护记录”。
+**历史实现：** WAV/MP3、30MB 客户端预检但以后端为准；明确合法使用确认、24h 加密保留与删除说明；上传进度和后端阶段分开；TanStack Query 轮询真实 status，刷新用 Cookie+URL ID 恢复；失败显示稳定错误码的友好文本。当前格式与大小边界已由后续维护提交扩展，见“任务 24 后维护记录”。
 
 **GREEN 条件：** 未同意不可上传；错误与重试可访问；进度不会用计时器伪造；终态停止轮询。
 
@@ -660,7 +658,7 @@ test('upload to delete completes without console errors', async ({page}) => {
 
 **实现：** E2E 覆盖上传→分析→DNA→地图→播放/拖选→和弦→fallback Q&A→删除；捕获 console/page/network errors；桌面/平板/手机视口；安全用例覆盖越权、CSRF、Range、文件炸弹和日志泄漏。benchmark 生成 5 分钟代表样本，记录 CPU、峰值 RSS、各阶段耗时与环境。
 
-**GREEN 条件：** E2E 全绿且无未解释 console error；安全用例全绿；目标规格机器或等效限额下实测 ≤90s 才标记性能通过，否则如实登记 blocker/优化任务。
+**GREEN 条件：** E2E 全绿且无未解释控制台错误；安全用例全绿；目标规格机器或等效限额下实测 ≤90s 才标记性能通过，否则如实登记阻塞项/优化任务。
 
 **重构：** 共享 E2E 操作封装但不隐藏断言；证据文件只保存命令、版本、摘要和非敏感日志。
 
@@ -711,7 +709,7 @@ bash deploy/tencent-cloud/install.sh --check-only
 
 **RED：** 上述命令预期因脚本不存在失败。
 
-**实现：** 脚本检查 Linux/2vCPU/4GB/磁盘，创建 `/srv/museecho/data` 与 `/etc/museecho/secrets`，只开放 22/80/443，说明 SSH 密钥与禁用密码登录，部署固定镜像 digest，健康失败自动回滚；备份只含必要数据库/元数据并记录加密边界。由用户提供真实云账号、域名、DNS 和 SSH 授权后才执行外部变更。
+**实现：** 脚本检查 Linux/2vCPU/4GB/磁盘，创建 `/srv/museecho/data` 与 `/etc/museecho/secrets`，只开放 22/80/443，说明 SSH 密钥与禁用密码登录，部署固定镜像摘要，健康失败自动回滚；备份只含必要数据库/元数据并记录加密边界。由用户提供真实云账号、域名、DNS 和 SSH 授权后才执行外部变更。
 
 **后续 GREEN 条件：** 本地 shellcheck/check-only 通过；真实服务器上 HTTPS、健康、上传、分析、播放、Q&A、删除、24h 清理与回滚演练有时间戳证据；至少尝试不同大陆网络。本次课程提交不以云授权或公网 URL 为门禁，依据见 `COURSE_REQUIREMENT_UPDATE.md`；执行前仍不得伪造公网完成。
 
@@ -721,7 +719,7 @@ bash deploy/tencent-cloud/install.sh --check-only
 
 **并行：** 否。**依赖：** T20 和用户云端授权。**对应验收标准：** AC-F 公网 URL 与完整 smoke。**分支：** `ops/21-tencent-delivery`。**计划提交：** `ops: deploy verified Tencent Cloud release`。**实际提交：** `1bc9f72`（本地交付脚本、证据与合约测试已完成；公网 URL/完整 smoke 仍受真实云端授权约束，未声称完成）。
 
-### 任务 22：Functional Audit 与验收缺口闭环
+### 任务 22：功能审计与验收缺口闭环
 
 **目标：** 在 T1–T21 完成后逐条以最新客观证据审计 SPEC 验收标准，所有 FAIL 和重要 PARTIAL 转成修复任务并重验。
 
@@ -738,17 +736,17 @@ def test_every_spec_acceptance_item_has_a_verdict_and_evidence(audit):
 
 **RED：** `uv run pytest tests/unit/test_acceptance_matrix.py -q`，预期因审计矩阵/解析器不存在或验收项未覆盖而失败。
 
-**实现：** 从 SPEC AC-A 至 AC-F 和 Definition of Done 建立可追溯矩阵；每项记录 PASS/PARTIAL/FAIL、证据路径/命令/时间、责任任务和备注。FAIL/重要 PARTIAL 不直接改低标准，而是追加边界明确的 TDD 修复子任务、走分支/PR/两阶段审查并重新运行对应验证。
+**实现：** 从 SPEC AC-A 至 AC-F 和完成定义（DoD）建立可追溯矩阵；每项记录 PASS/PARTIAL/FAIL、证据路径/命令/时间、责任任务和备注。FAIL/重要 PARTIAL 不直接降低标准，而是追加边界明确的 TDD 修复子任务、走分支/PR/两阶段审查并重新运行对应验证。
 
-**GREEN 条件：** 无未分类条目；每个 PASS 有当前证据；所有 FAIL 和重要 PARTIAL 已修复并重验，或因真实外部条件准确记录为 blocker，不能声称 READY。
+**GREEN 条件：** 无未分类条目；每个 PASS 有当前证据；所有 FAIL 和重要 PARTIAL 已修复并重验，或因真实外部条件准确记录为阻因，不能声称 READY。
 
 **重构：** 去重证据索引，矩阵生成器不自动把“文件存在”视为功能通过。
 
 **最终命令：** `uv run pytest tests/unit/test_acceptance_matrix.py -q && uv run python scripts/check_acceptance_matrix.py SPEC.md docs/audits/FUNCTIONAL_AUDIT.md`
 
-**并行：** 否。**依赖：** T1–T21。**对应验收标准：** SPEC 全部 AC 与 DoD 的 Functional Audit。**分支：** `audit/22-functional`。**计划提交：** `audit: verify functional acceptance criteria`。**实际提交：** `abb33e036965f877a860ad5916f4b23ea7ffa417`（`audit: verify functional acceptance criteria`）；审查修复轮 1 为 `22d587beb68170ab4af79a7665d1942881700499`（`fix: bind functional audit evidence contracts`）；修复轮 2 为 `86be4968ed3b6abf14c3d058f22409a923e33f1f`（`docs: keep functional audit statistics current`）。**实际状态：** 本地实现与验证完成；修复轮 1 将历史浏览器边界漂移相关项降级后，矩阵为 29 PASS / 11 PARTIAL / 0 FAIL，结论保持 `PARTIALLY_READY`；修复轮 2 将所有 current/final 过程文档统计与该矩阵对齐，并将旧 34/6 输出明确标记为已取代的 pre-review 历史。
+**并行：** 否。**依赖：** T1–T21。**对应验收标准：** SPEC 全部 AC 与 DoD 的功能审计。**分支：** `audit/22-functional`。**计划提交：** `audit: verify functional acceptance criteria`。**实际提交：** `abb33e036965f877a860ad5916f4b23ea7ffa417`（`audit: verify functional acceptance criteria`）；审查修复轮 1 为 `22d587beb68170ab4af79a7665d1942881700499`（`fix: bind functional audit evidence contracts`）；修复轮 2 为 `86be4968ed3b6abf14c3d058f22409a923e33f1f`（`docs: keep functional audit statistics current`）。**实际状态：** 本地实现与验证完成；修复轮 1 将历史浏览器边界漂移相关项降级后，矩阵为 29 PASS / 11 PARTIAL / 0 FAIL，结论保持 `PARTIALLY_READY`；修复轮 2 将所有当前/最终过程文档统计与该矩阵对齐，并将旧 34/6 输出明确标记为已取代的复审前历史。
 
-### 任务 23：Engineering Audit 与高风险缺陷闭环
+### 任务 23：工程审计与高风险缺陷闭环
 
 **目标：** 独立审查架构、类型、依赖、性能、异步、安全、Secret、日志、可观测性、测试隔离、可访问性和可复现构建，清零 Critical 与 High。
 
@@ -771,23 +769,20 @@ def test_engineering_audit_has_no_open_critical_or_high(audit):
 
 **最终命令：** `pwsh -File scripts/verify.ps1; if ($LASTEXITCODE) { exit $LASTEXITCODE }; uv run python scripts/check_engineering_audit.py docs/audits/ENGINEERING_AUDIT.md`
 
-**并行：** 否。**依赖：** T22。**对应验收标准：** AC-E、AC-F 与 DoD 中无 Critical/High、全验证、Secret 和构建要求。**分支：** `audit/23-engineering`。**计划提交：** `audit: close engineering risks`。**实际提交：** `31b2351fcf308b4aeb3ce8b1931afafe3350522d`、`07cf82687df5fa4adba9448c1fbaf1a81871a29e`、严格材料门 `a240f64bcd57a34818356805b9a177086668752c`、最终证据绑定 `f697d13`、合并结果污染修复 `acb2cb09e7c62e104ef64331f105514d6ce3016a`。10 个 finding 为 4 High FIXED、2 Medium FIXED、4 Medium BLOCKED、0 OPEN。**实际状态：** Task 23 严格 completion checker 会读取并复算 retained raw/package/VEX/inventory/tar/release/DB/image 材料；Functional Audit 为 `28 PASS / 12 PARTIAL / 0 FAIL`，锁定 Linux 最终为 `755 passed, 1 skipped`，分支已推送并建立 GitHub 草稿 PR #1。首轮 GitHub Actions 在 `eec6dd0` 上真实失败于 Linux mypy；平台兼容修复已本地 RED→GREEN，待推送后由新远端运行复验。Task 24、正式离线 Dockerfile 重建、GitLab CI、公网/目标机、当前浏览器 E2E 与学生人工验收仍待外部或后续阶段。
+**并行：** 否。**依赖：** T22。**对应验收标准：** AC-E、AC-F 与 DoD 中无严重/高风险问题、全验证、Secret 和构建要求。**分支：** `audit/23-engineering`。**计划提交：** `audit: close engineering risks`。**实际提交：** `31b2351fcf308b4aeb3ce8b1931afafe3350522d`、`07cf82687df5fa4adba9448c1fbaf1a81871a29e`、严格材料门 `a240f64bcd57a34818356805b9a177086668752c`、最终证据绑定 `f697d13`、合并结果污染修复 `acb2cb09e7c62e104ef64331f105514d6ce3016a`。10 个发现为 4 High FIXED、2 Medium FIXED、4 Medium BLOCKED、0 OPEN。**实际状态：** 任务 23 严格完成校验器会读取并复算保留的原始数据/包/VEX/清单/tar/发行/DB/镜像材料；功能审计为 `28 PASS / 12 PARTIAL / 0 FAIL`，锁定 Linux 最终为 `755 passed, 1 skipped`，分支已推送并建立 GitHub 草稿 PR #1。首轮 GitHub Actions 在 `eec6dd0` 上真实失败于 Linux mypy；平台兼容修复已本地 RED→GREEN，待推送后由新远端运行复验。任务 24、正式离线 Dockerfile 重建、GitLab CI、公网/目标机、当前浏览器 E2E 与学生人工验收仍待外部或后续阶段。
 
-**Task 23 review round 1:** Review fixes harden independent RED/GREEN evidence,
-the complete offline security manifest, trusted no-build runtime identities,
-safe 500/background-failure observability, waiting-only queue metrics, and
-cleanup-only reporting. Functional truth is now `28 PASS / 12 PARTIAL / 0 FAIL`;
-frontend type/build remains NOT_RUN, and the locked Linux/current security
-chains must be green before the review follow-up is closed.
+**任务 23 复审第 1 轮：** 复审修复强化了独立 RED/GREEN 证据、完整离线安全清单、可信的
+免构建运行时身份、安全的 500/后台失败可观测性、仅统计等待状态的队列指标和仅清理报告。
+功能审计的事实更新为 `28 PASS / 12 PARTIAL / 0 FAIL`；前端类型检查/构建继续保持
+`NOT_RUN`，锁定的 Linux/当前安全链必须全绿，复审跟进才能关闭。
 
-**Review closure:** The follow-up remained open through the two truthful
-locked-Linux failures. It closed only after the fresh offline security chain,
-trusted no-build smoke, `728 passed` locked Linux run, static/type,
-Secret/license, lifecycle synthetics, and both audit CLIs were green. External,
-browser/frontend-build, remote-CI, and Task 24 work remains open. Review commit:
-`07cf82687df5fa4adba9448c1fbaf1a81871a29e` (`fix: harden engineering audit evidence`).
+**复审收尾：** 跟进项在两次如实记录的锁定 Linux 失败期间保持开放。只有全新的离线安全链、
+可信免构建 Smoke、`728 passed` 的锁定 Linux 运行、静态/类型检查、Secret/许可证、生命周期
+合成测试和两个审计 CLI 全绿后才关闭。外部验证、浏览器/前端构建、远端 CI 和任务 24 工作
+当时仍未完成。复审提交：`07cf82687df5fa4adba9448c1fbaf1a81871a29e`
+（`fix: harden engineering audit evidence`）。
 
-### 任务 24：Product Audit、最终验证与交付报告
+### 任务 24：产品审计、最终验证与交付报告
 
 **目标：** 以首次使用者身份走完整产品流程，修复严重体验问题，随后运行最新全量验证并如实输出 READY 或 PARTIALLY READY。
 
@@ -804,23 +799,23 @@ def test_delivery_status_matches_evidence(report):
 
 **RED：** `uv run pytest tests/unit/test_delivery_report.py -q`，预期报告不存在或状态缺少证据。
 
-**实现：** 用真实浏览器完成首次进入→上传→等待→DNA→结构地图→和弦→片段问答→错误→再次上传，并检查 onboarding/loading/error/empty/hierarchy/readability/interaction/evidence/responsive；严重问题按 TDD 回流修复。然后使用 `verification-before-completion` 从干净状态重跑测试、lint、typecheck、build、Docker、E2E、核心用户流并记录命令/退出码/摘要。`DELIVERY_REPORT.md` 覆盖用户要求的 17 节和学生最终检查表；`REFLECTION.md` 只建模板，不代写学生反思。
+**实现：** 用真实浏览器完成首次进入→上传→等待→DNA→结构地图→和弦→片段问答→错误→再次上传，并检查引导/加载/错误/空状态/层级/可读性/交互/证据/响应式；严重问题按 TDD 回流修复。然后使用 `verification-before-completion` 从干净状态重跑测试、代码检查、类型检查、构建、Docker、E2E、核心用户流并记录命令/退出码/摘要。`DELIVERY_REPORT.md` 覆盖用户要求的 17 节和学生最终检查表；`REFLECTION.md` 只建模板，不代写学生反思。
 
 **GREEN 条件：** 产品审计严重问题已关闭；报告每项结论有最新证据。只有所有 DoD 均满足才写 `MUSEECHO V1 READY`；任一外部条件或验收未完成则写 `MUSEECHO V1 PARTIALLY READY` 并精确列阻因。
 
-**重构：** 把产品回归步骤固化为 Playwright helper，不把主观“看起来不错”转换成 PASS；交付报告引用证据而不复制敏感日志。
+**重构：** 把产品回归步骤固化为 Playwright 辅助函数，不把主观“看起来不错”转换成 PASS；交付报告引用证据而不复制敏感日志。
 
 **最终命令：** `pwsh -File scripts/verify.ps1; if ($LASTEXITCODE) { exit $LASTEXITCODE }; pwsh -File scripts/container-smoke.ps1; if ($LASTEXITCODE) { exit $LASTEXITCODE }; uv run python scripts/check_delivery_report.py DELIVERY_REPORT.md`
 
-**并行：** 否。**依赖：** T23。**对应验收标准：** AC-A 至 AC-F、完整 DoD、Product Audit、最终 Verification 与学生保留验收。**分支：** `audit/24-product-delivery`。**计划提交：** `docs: publish verified MuseEcho delivery report`。**实际状态：** Task 24 文档、validator 与 TDD mutation suite 已实现；Product Audit 的 13 个产品域均机器可读。控制器真实到达健康 HTTPS 边界，但浏览器在渲染前因内部 CA 未受信而停止，因此如实保持 `CERT_TRUST_BLOCKED`；Task 24 本身不再是 blocker。最终结论为 `MUSEECHO V1 PARTIALLY READY`，精确剩余门禁记录在 `DELIVERY_REPORT.md`；实际提交哈希在提交后记录于 Task 24 report，不在提交内自指。
+**并行：** 否。**依赖：** T23。**对应验收标准：** AC-A 至 AC-F、完整 DoD、产品审计、最终验证与学生保留验收。**分支：** `audit/24-product-delivery`。**计划提交：** `docs: publish verified MuseEcho delivery report`。**实际状态：** 任务 24 文档、校验器与 TDD 变异测试套件已实现；产品审计的 13 个产品域均机器可读。控制器真实到达健康 HTTPS 边界，但浏览器在渲染前因内部 CA 未受信而停止，因此如实保持 `CERT_TRUST_BLOCKED`；任务 24 本身不再是阻因。最终结论为 `MUSEECHO V1 PARTIALLY READY`，精确剩余门禁记录在 `DELIVERY_REPORT.md`；实际提交哈希在提交后记录于任务 24 报告，不在提交内自指。
 
-**Task 24 implementation commit:** `d4b1245e056a5017b9e3d71dbd086f6f28d6f55c` (`docs: publish verified MuseEcho delivery report`).
+**任务 24 实现提交：** `d4b1245e056a5017b9e3d71dbd086f6f28d6f55c`（`docs: publish verified MuseEcho delivery report`）。
 
-## 3.1 Task 24 后维护记录
+## 3.1 任务 24 后维护记录
 
-以下改动发生在 Task 24 交付报告的实现边界之后。它们以对应的设计/计划文档和细粒度 Git
-提交为准，不能倒填为 Task 24 已验证的远端 CI、公开发行或部署证据；合并前仍须由实际执行者
-在 `AGENT_LOG.md` 记录使用的 Skill、关键 context、人工干预和真实验证结果。
+以下改动发生在任务 24 交付报告的实现边界之后。它们以对应的设计/计划文档和细粒度 Git
+提交为准，不能倒填为任务 24 已验证的远端 CI、公开发行或部署证据；合并前仍须由实际执行者
+在 `AGENT_LOG.md` 记录使用的技能、关键上下文、人工干预和真实验证结果。
 
 | 范围 | 设计/计划材料 | 已有提交 | 当前文档动作 |
 | --- | --- | --- | --- |
@@ -830,26 +825,30 @@ def test_delivery_status_matches_evidence(report):
 | Broadcast WAV 零填充兼容性 | `docs/superpowers/specs/2026-08-14-broadcast-wav-zero-padding-design.md`、`docs/superpowers/plans/2026-08-14-broadcast-wav-zero-padding.md` | `b07b32c`、`0a75c1e` | 属于 WAV 支持边界的一部分，不扩大未支持格式。 |
 | 按需解密播放与 Range 支持 | 当前 API/播放器实现及对应单元测试 | `7f8412b` | `/api/analyses/{id}/audio` 维持单 Range 语义，并以 1 MiB 分块流式读取；播放器补充就绪、跳转、等待、停滞和错误状态，不把 Range 支持扩展为多 Range。 |
 | FLAC 解码与节奏估计修复 | `tests/integration/test_decode.py`、`tests/unit/analysis/test_signal_features.py` | `7f8412b` | FLAC 仅允许受控 attached-picture（MJPEG/PNG）并保持全部流校验；节奏算法升至 `librosa-onset-beat-periodicity-v3`，对弱八分与长曲目歧义尝试保守半速节拍，仍可回退 `unknown`。 |
-| v0.1.0 离线运行发行 | `docs/superpowers/specs/2026-08-17-offline-runtime-release-design.md`、`docs/superpowers/plans/2026-08-17-offline-runtime-release.md` | `8b08796`、`eac26c5`、`b16191f`、`2a01107`、`bbcb139` | 已完成接收端 Verify/Import/Start/Smoke/Stop、runtime-only Compose、current release identity no-build smoke、打包器和 CI 合约；正式 Release、Tag、main CI 与下载后真实资产复验尚待后续步骤，不提前记为发布成功。 |
+| v0.1.0 离线运行发行 | `docs/superpowers/specs/2026-08-17-offline-runtime-release-design.md`、`docs/superpowers/plans/2026-08-17-offline-runtime-release.md` | `8b08796`、`eac26c5`、`b16191f`、`2a01107`、`bbcb139`、`57ba07b`、`b314c00`、`d99e7b9` | 接收端验证/导入/启动/Smoke/停止、仅运行时 Compose、当前发行身份免构建 Smoke、打包器和 CI 合约均已完成；main CI 全绿，正式 Tag/Release 四项资产已发布，并完成回下载 SHA-256 与真实离线 Smoke。 |
 
 **最终维护闭环：** 结果呈现、常见格式、100 MiB、Broadcast WAV、流式播放、FLAC/节奏修复、
-Linux 格式修复、历史证据绑定与 current-image 分发策略依次完成。PR #3 GitHub run
-`31966788273` 在 exact SHA `0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过 quality、E2E 和
-distribution；这是最终产品/CI 实现边界，不把随后仅修改交付记录的 reconciliation commit 伪装成
-第二次产品运行。公开 registry/Release、正式离线构建 ENG-010、GitLab supplemental pipeline、
-腾讯云/可信 TLS/目标机验证及学生人工验收仍未闭环，最终状态继续为 `PARTIALLY READY`。
+Linux 格式修复、历史证据绑定与当前镜像分发策略依次完成。PR #3 产品实现 run
+`31966788273` 在精确 SHA `0674f74f4097e46cee98c4715a62ad5aa55101cf` 上通过；合并后 main run
+`31997390847` 在 SHA `d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1` 上再次通过，随后 GitHub
+`v0.1.0` 正式离线运行 Release 发布并通过回下载复现。公开 OCI registry、正式当前源码
+断网重建 ENG-010、GitLab 补充流水线、腾讯云/可信 TLS/目标机验证及学生人工验收仍未
+闭环，最终状态继续为 `PARTIALLY READY`。
 
 ### 3.2 v0.1.0 离线运行 Release（2026-08-17）
 
 - **批准边界：** 用户选择先完成离线运行包并授权自动工作到正式 Release 发布成功；设计明确
-  排除部署和 current-source Dockerfile 断网重建。
-- **TDD：** 接收端测试先因 `offline-runtime.ps1` 不存在失败；current identity smoke 先因只
-  接受 Task 23 legacy manifest 失败；打包测试先因 packager 不存在失败；CI 合约随后以 3 个
-  精确失败证明两条质量门、distribution 打包步骤和双目录 artifact 尚未接线。对应最小实现后，
-  synthetic runtime、packaging、legacy/current no-build 和 13 项 identity/CI 聚焦测试转绿。
-- **阶段真值：** `release/offline-runtime/`、`prepare-offline-release.ps1` 与 CI retention 已实现，
-  但当前仍是 `READY_FOR_RELEASE`。只有最终 main CI 的 tar 被下载、断网 Smoke、打 Tag、上传四项
-  Release 资产并回读校验后，才能回填 `RELEASED`。
+  排除部署和当前源码 Dockerfile 断网重建。
+- **TDD：** 接收端测试先因 `offline-runtime.ps1` 不存在失败；当前身份 Smoke 先因只
+  接受任务 23 旧版清单失败；打包测试先因打包器不存在失败；CI 合约随后以 3 个
+  精确失败证明两条质量门、分发打包步骤和双目录制品尚未接线。对应最小实现后，
+  合成运行时、打包、旧版/当前免构建和 13 项身份/CI 聚焦测试转绿。
+- **最终真值：** `release/offline-runtime/`、`prepare-offline-release.ps1` 与 CI 保留策略已实现；
+  main CI 三个作业通过但制品因 Actions 配额未留存。正式资产改由精确 main SHA 的受控
+  本地来源追溯回退方案生成，并对其发行身份、打包校验和与完整免构建 Smoke 重新验证；
+  Tag `v0.1.0` 和四项资产已上传、回读与 SHA-256 校验，因此离线运行发行状态为 `RELEASED`。
+  该结论不声称与未留存 CI tar 字节相同，也不关闭 ENG-010、镜像仓库、GitLab、腾讯云部署或
+  学生验收。
 
 ## 4. 计划验收清单
 
@@ -863,11 +862,51 @@ distribution；这是最终产品/CI 实现边界，不把随后仅修改交付�
 
 ## 5. 实施记录
 
-### Tasks 1–2：工程骨架与领域/SQLite 基线
+以下记录按发生时间从早到晚排列；同日遵循“实现 → 复审 → CI → 合并 → Release → 证据重放”的顺序，未发生的阶段不补写。
 
-- **分支：** `validation/opencode-cold-start`。
-- **RED/审查：** 原始提交 `1a3545d` 的全量 Ruff、仓储/外键/级联、领域不变量、UTC 与干净 checkout 探针失败，未被接受。
-- **GREEN：** 修正提交 `07d135e`；39 个 Python 测试、Ruff、mypy、fresh Alembic upgrade/check、Node 22 前端测试/typecheck/build 和 npm audit 通过。
-- **审查：** 三轮独立复审后 Critical/Important/Minor 均为 0。
-- **合并：** 用户明确选择本地合并；`a2d7af5` 合入 `main`。本次 cold-start 特例没有 PR，已如实记录；任务 3 起恢复独立分支和 PR 协议。
-- **遗留：** Tasks 3–24 未开始；外部 CI、腾讯云部署和最终学生验收仍是未来证据。
+### 2026-08-08：任务 1–2——工程骨架与领域/SQLite 基线
+
+- **实现：** OpenCode 在 `validation/opencode-cold-start` 上产出原始提交 `1a3545d`；该提交因全量 Ruff、仓储/外键/级联、领域不变量、UTC 与干净检出探针失败而未被接受。Codex 按 RED→GREEN 修正，形成提交 `07d135e`。
+- **复审：** 三轮独立复审后严重、重要、次要问题均为 0；39 个 Python 测试、Ruff、mypy、全新 Alembic 升级/检查、Node 22 前端测试/类型检查/构建和 npm 审计均通过。
+- **合并：** 用户明确选择本地合并，`a2d7af5` 合入 `main`。这是无 PR 的冷启动特例；任务 3 起恢复独立分支与 PR 协议。
+
+### 2026-08-08：任务 3–8——访问、Secret、加密音频、上传队列、解码与信号事实
+
+- **实现：** 任务 3 由 `4cc4c88`、`36a0729`、`66b0ed0` 完成；任务 4 由 `b826810`、`3267e86`、`48d5d0f` 完成；任务 5 由 `ad2f0b7`、`db9898d`、`ffa0fe4` 完成；任务 7 由 `7daa96d`、`823d8cb`、`1a692f7` 完成；任务 6 由 `8217cb4`、`c1da09e`、`76a642c`、`622ebe4` 完成；任务 8 由 `f941d53`、`3de45a1`、`d0af694`、`80bda00` 完成。实际顺序中任务 7 先于任务 6 收尾，记录保持真实发生顺序。
+- **复审：** 每项均按任务内 RED/GREEN、规格符合性和代码质量门处理；访问令牌、Secret 输出、分块 AEAD、流式校验、单工作线程队列、FFmpeg 解码及波形/节奏/能量边界均由相应测试约束。
+
+### 2026-08-09：任务 9–19——分析、Evidence、API、前端与系统验证
+
+- **实现：** 任务 9 为 `902a5b8`、`e793097`；任务 10 为 `30d63c1`、`8e6af06`、`8ca8f35`、`31b5388`、`8ac4027`、`1099cd3`、`bae61b1`、`cd5bcb9`、`53f8add`；任务 11 为 `273b39b`、`46b1cd6`；任务 12 为 `c14d87e`、`2e8da87`；任务 13 为 `a59db06`、`20ecd8a`；任务 14–19 分别为 `0b5342e`、`b035b05`、`93ba4f6`、`13a6346`、`b1c55ec` 和 `9ad408c5b51e7d5ff15e3123d72d012df824e6df`。
+- **复审：** 调性、结构、和弦、确定性乐理、Evidence 资格、解释回退、生命周期 API、可访问前端和 E2E/安全/性能边界均完成任务级复审；任务 19 证据提交为 `1047ce242884b6ba83a525524e88dcc44ab76a69`。
+
+### 2026-08-10 至 2026-08-12：任务 20–23——生产交付与两轮审计
+
+- **实现：** 任务 20 从 `70dde35` 起完成生产容器、双 CI 与依赖/Secret 审计，并在多轮安全修复中形成 `f6ad867` 等提交；任务 21 以 `1bc9f72` 完成本地腾讯云交付脚本，但未执行公网部署；任务 22 以 `abb33e036965f877a860ad5916f4b23ea7ffa417`、`22d587beb68170ab4af79a7665d1942881700499`、`86be4968ed3b6abf14c3d058f22409a923e33f1f` 完成功能审计与证据合约修复；任务 23 以 `31b2351fcf308b4aeb3ce8b1931afafe3350522d`、`07cf82687df5fa4adba9448c1fbaf1a81871a29e`、`a240f64bcd57a34818356805b9a177086668752c`、`f697d13`、`acb2cb09e7c62e104ef64331f105514d6ce3016a` 完成工程审计与高风险缺陷闭环。
+- **复审：** 任务 20 的多轮安全复审、任务 22 的功能审计复审和任务 23 的证据真实性复审均保留原始失败与修复边界；未把 `NOT_RUN`、外部阻因或历史材料改写为完成。
+- **CI 与合并：** 任务 23 PR #1 的 GitHub 质量门、E2E 和分发通过后，以合并 SHA `79d87f4170f004f22d9e2c21151f59b757e272a3` 合入。GitLab、腾讯云/公网验证和学生验收仍未执行。
+
+### 2026-08-13：任务 24——产品审计与最终交付报告
+
+- **实现：** 固定 17 节交付报告、失败关闭式校验器、TDD 变异测试套件、13 个机器可读产品域和学生反思草稿均已形成；实现提交为 `d4b1245e056a5017b9e3d71dbd086f6f28d6f55c`。
+- **复审：** 控制器到达健康 HTTPS 边界，但浏览器因内部 CA 未受信而在渲染前停止，故保留 `CERT_TRUST_BLOCKED`，不伪造人工浏览器 PASS。最终状态为 `MUSEECHO V1 PARTIALLY READY`，任务 24 本身不再是阻因。
+
+### 2026-08-14：任务 24 后产品维护
+
+- **实现：** 依次完成结果呈现可信度、常见音频格式、100 MiB 上传边界、Broadcast WAV 零填充、按需解密与单 Range 播放、FLAC 解码和节奏估计修复；提交及对应设计/计划材料见 §3.1。
+- **复审：** 格式注册表、签名/容器/编解码器、前端选择器、上传边界和当前镜像分发策略均以当前测试和审查约束；未扩大到未支持格式，也未改变外部门禁状态。
+
+### 2026-08-16：最终 CI 收尾与交付对账
+
+- **实现：** 发行接收端、仅运行时 Compose、当前发行身份免构建 Smoke、打包器和 CI 合约完成；最终产品/CI 实现 SHA 为 `0674f74f4097e46cee98c4715a62ad5aa55101cf`。
+- **复审：** PR #3 的证据绑定、Linux 格式、当前镜像身份和发行合约完成复核。
+- **CI 与合并：** PR #3 产品实现 run `31966788273` 通过；随后以合并 SHA `d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1` 合入。main run `31997390847` 的质量门、E2E、分发全绿。
+
+### 2026-08-17：v0.1.0 正式 Release
+
+- **Release：** `v0.1.0` 于 `2026-08-17T05:54:50Z` 发布，四项受校验和约束的离线资产均已上传。Actions 配额导致 main CI 制品未留存，因此 Release tar 由精确 main 的本地来源追溯回退方案生成；该路径不声称 Release tar 与未留存的 CI tar 字节相同。
+
+### 2026-08-17：发布后证据重放
+
+- **证据重放：** 四项 Release 资产完成回下载、SHA-256 校验和完整免构建 Smoke。证据直接证明发布字节的发行身份、打包/校验和、下载完整性和离线运行能力；main CI 内部构建的许可证、漏洞与 VEX 结果不作为 Release tar 的逐字节证据。
+- **遗留门禁：** 正式当前源码离线重建 `ENG-010`、公开 OCI registry、GitLab、腾讯云/公网可信 TLS、目标机验证、浏览器人工复核和学生验收仍未完成，最终状态继续为 `MUSEECHO V1 PARTIALLY READY`。

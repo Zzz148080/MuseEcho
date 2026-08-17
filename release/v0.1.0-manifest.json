@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "repository": "Zzz148080/MuseEcho",
+  "tag": "v0.1.0",
+  "target_commit": "d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1",
+  "main_ci_run": 31997390847,
+  "published_at": "2026-08-17T05:54:50Z",
+  "release_url": "https://github.com/Zzz148080/MuseEcho/releases/tag/v0.1.0",
+  "assets": [
+    {
+      "name": "museecho-app.tar",
+      "size": 366037504,
+      "sha256": "f8aaf8369f76bd70304e2770e21e1bfc5f5a45979b63d9eb512e39d58d2fff95"
+    },
+    {
+      "name": "museecho-gateway.tar",
+      "size": 59211776,
+      "sha256": "765a0b089f174ce57e92ffdac8aada6fa24475f0a445a361850e27764f3320a3"
+    },
+    {
+      "name": "museecho-offline-runtime-v0.1.0.zip",
+      "size": 9293,
+      "sha256": "e85248bbee5dd2e4b406f830db02e6547649cc948dbae01b04685882d827f80c"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "size": 275,
+      "sha256": "058ae2c2f641fea7b311bf996c4d51d04fbd6d4b84955ae3dc501b98bf3b8d46"
+    }
+  ],
+  "provenance": {
+    "mode": "local-rebuild-from-exact-main-commit",
+    "source_commit": "d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1",
+    "main_ci_run": 31997390847,
+    "ci_distribution_passed": true,
+    "ci_artifact_retained": false,
+    "retention_failure": "GitHub Actions artifact quota skipped the upload step",
+    "authorization": "user-directed automatic execution through successful formal Release publication",
+    "published_bytes_identity_checksum_smoke_verified": true,
+    "byte_equality_with_unretained_ci_output_claimed": false
+  }
+}

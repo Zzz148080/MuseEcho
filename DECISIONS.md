@@ -1,216 +1,227 @@
-# MuseEcho Architecture Decisions
+# MuseEcho 架构决策
 
 ## ADR-001：CPU 优先的可解释分析基线
 
-**Context**
+**背景**
 V1 必须真实分析任意合法上传，而不是复用演示数据；部署预算和课程周期有限。
 
-**Options**
+**选项**
 1. CPU DSP/MIR 基线；2. 重型预训练模型；3. 限定单一曲风。
 
-**Decision**
-采用 CPU 优先的 DSP/MIR 基线。和弦与结构为 best-effort，必须携带置信度；低置信度为 unknown。
+**决策**
+采用 CPU 优先的 DSP/MIR 基线。和弦与结构尽力而为，必须携带置信度；低置信度为 `unknown`。
 
-**Reason**
+**理由**
 用户选择 A；该方案最容易在 2 vCPU 环境中测试、容器化和解释。
 
-**Consequences**
+**影响**
 复杂和声和曲式的结果可能稀疏；V1 不做分轨和乐器识别。
 
 ## ADR-002：模块化单体
 
-**Context**
+**背景**
 产品需要富交互前端、Python 音频生态、异步任务和低复杂度部署。
 
-**Options**
+**选项**
 1. React/Vite + FastAPI 模块化单体；2. Next.js + FastAPI 双服务；3. HTMX 单体；4. Redis Worker 分布式架构。
 
-**Decision**
+**决策**
 React/Vite/TypeScript 前端由 FastAPI 同一应用镜像托管；分析使用受限进程池，单实例并发 1。
 
-**Reason**
+**理由**
 用户分别选择前端/后端方案 A、任务模型 A，并最终确认整体方案 A。
 
-**Consequences**
-部署与测试简单，但不支持水平扩展；未来通过 repository 和 analysis interfaces 拆分。
+**影响**
+部署与测试简单，但不支持水平扩展；未来通过仓储与分析接口拆分。
 
 ## ADR-003：Evidence First 的 LLM 边界
 
-**Context**
+**背景**
 通用 LLM 无法可靠、可复现地从原始音频生成时间对齐的音乐事实。
 
-**Options**
+**选项**
 1. LLM 生成分析；2. LLM 解释结构化证据；3. 完全无 LLM。
 
-**Decision**
+**决策**
 DSP、MIR 或可追溯专用模型生成事实；确定性乐理引擎计算理论；LLM 只解释白名单证据。
 
-**Reason**
+**理由**
 符合产品 Evidence First 原则。用户质询措辞后批准澄清后的边界。
 
-**Consequences**
-需要版本化 Evidence schema 和 fallback；LLM 输出不能回写事实表。
+**影响**
+需要版本化 Evidence 模式和回退机制；LLM 输出不能回写事实表。
 
 ## ADR-004：无登录、能力令牌访问
 
-**Context**
+**背景**
 V1 需要公网体验，但账户体系属于范围膨胀。
 
-**Options**
+**选项**
 1. 无登录短期访问；2. 单用户库；3. 多用户账户。
 
-**Decision**
+**决策**
 使用不可猜测 Analysis ID + 独立访问令牌，令牌哈希入库并通过 HttpOnly Cookie 使用。
 
-**Reason**
+**理由**
 用户选择 A；兼顾刷新恢复和范围控制。
 
-**Consequences**
+**影响**
 Cookie 丢失后无法恢复结果；不提供分享和长期历史。
 
 ## ADR-005：加密保留音频 24 小时
 
-**Context**
+**背景**
 最初决定分析后立即删除音频，但刷新后播放与时间跳转需要服务端音频。
 
-**Options**
+**选项**
 1. 浏览器本地播放；2. 服务端加密保留 24 小时；3. 不播放。
 
-**Decision**
+**决策**
 采用独立数据密钥的分块 AEAD，加密音频与结果保留最多 24 小时；删除时执行加密擦除。
 
-**Reason**
+**理由**
 用户在冲突被明确指出后选择 B。
 
-**Consequences**
+**影响**
 增加 Range 解密、安全测试和密钥生命周期复杂度；换取刷新后完整播放器体验。
 
 ## ADR-006：Secret 由部署者本地管理
 
-**Context**
+**背景**
 课程要求 Key 安全录入、状态、更新和清除；公网无登录管理页会扩大攻击面。
 
-**Options**
-1. 本地 CLI；2. Web 管理页；3. `.env` only。
+**选项**
+1. 本地 CLI；2. Web 管理页；3. 仅使用 `.env`。
 
-**Decision**
+**决策**
 提供本地 CLI。原生使用系统凭据库，Docker 使用仓库外只读 Secret 文件。
 
-**Reason**
+**理由**
 用户选择 A；避免新增管理员账户和远程 Secret API。
 
-**Consequences**
+**影响**
 部署者需要服务器或本地终端权限；Key 变更属于运维操作。
 
 ## ADR-007：Open Design 引导式单画布与温暖编辑视觉
 
-**Context**
+**背景**
 原始设计强调从 DNA 到结构、和弦和追问的连续体验，不能做成后台管理系统。
 
-**Options**
-布局：引导式单画布、三栏工作台、故事式步骤。视觉：温暖共鸣、深色录音室、清晰分析仪。设计工具：自定义 tokens、Open Design 或不设品牌契约。
+**选项**
+布局：引导式单画布、三栏工作台、故事式步骤。视觉：温暖共鸣、深色录音室、清晰分析仪。设计工具：自定义设计变量、Open Design 或不设品牌契约。
 
-**Decision**
-采用引导式单画布；使用 Open Design `Warm Editorial` 设计系统与 `frontend-design` Skill，并在根目录 `DESIGN.md` 中记录 MuseEcho 的项目级改编。
+**决策**
+采用引导式单画布；使用 Open Design `Warm Editorial` 设计系统与 `frontend-design` 技能，并在根目录 `DESIGN.md` 中记录 MuseEcho 的项目级改编。
 
-**Reason**
+**理由**
 用户终端选择与视觉伴侣点击记录一致；随后用户明确要求 Open Design 可以安装使用。`Warm Editorial` 的暖纸色、陶土色、森林绿、编辑型字体和克制层级与既有方向一致。
 
-**Consequences**
-移动端纵向重排；专业密集信息需要逐级展开。实现必须遵守 `DESIGN.md` 语义 tokens、真实状态、可访问性和反通用 AI 风格要求。
+**影响**
+移动端纵向重排；专业密集信息需要逐级展开。实现必须遵守 `DESIGN.md` 语义设计变量、真实状态、可访问性和反通用 AI 风格要求。
 
 ## ADR-008：腾讯云香港作为最终部署目标
 
-**Context**
+**背景**
 用户无法使用 Fly.io；AutoDL 普通个人实例不适合第三方可访问的课程 WebUI。
 
-**Options**
+**选项**
 1. Fly.io；2. AutoDL；3. 腾讯云 Lighthouse 香港；4. 自有 VPS。
 
-**Decision**
+**决策**
 腾讯云 Lighthouse 中国香港 2 vCPU/4 GB，购买低价域名，Caddy HTTPS，Docker Compose 部署。
 
-**Reason**
+**理由**
 用户明确排除 Fly.io，最终选择腾讯云；腾讯云中国站付款可用且预算约 90 元/月。
 
-**Consequences**
-无需大陆 ICP 备案，但跨境上传质量需三网实测；云账户、域名和付款仍是 human-owned 授权步骤。
+**影响**
+无需大陆 ICP 备案，但跨境上传质量需三网实测；云账户、域名和付款仍是由人负责的授权步骤。
 
-## ADR-009：接受 corrected cold-start 作为 Tasks 1–2 实施基线
+## ADR-009：接受修正后的冷启动作为任务 1–2 实施基线
 
-**Context**
-OpenCode 的原始 cold-start 成功暴露了规约缺口，但其首版代码未通过主 Agent 审查。Codex 随后以测试驱动方式修正全部 Critical/Important 问题，并完成三轮独立复审。
+**背景**
+OpenCode 的原始冷启动成功暴露了规约缺口，但其首版代码未通过主智能体审查。Codex 随后以测试驱动方式修正全部严重/重要问题，并完成三轮独立复审。
 
-**Options**
-1. 仅保留 cold-start 为证据、从头重做 Tasks 1–2；2. 接受经修正与复审的实现；3. 放弃 cold-start 产物。
+**选项**
+1. 仅保留冷启动为证据、从头重做任务 1–2；2. 接受经修正与复审的实现；3. 放弃冷启动产物。
 
-**Decision**
+**决策**
 采用选项 2。用户明确要求把 `validation/opencode-cold-start` 合并到 `main`，合并提交为 `a2d7af5`；后续从任务 3 开始。
 
-**Reason**
-修正提交 `07d135e` 已满足 PLAN 对 Tasks 1–2 的增强合同，合并前后均有最新验证，独立复审无剩余 Critical、Important 或 Minor。重新实现只会伪造或重复已经真实完成的 RED→GREEN 历史。
+**理由**
+修正提交 `07d135e` 已满足 PLAN 对任务 1–2 的增强合同，合并前后均有最新验证，独立复审无剩余严重、重要或次要问题。重新实现只会伪造或重复已经真实完成的 RED→GREEN 历史。
 
-**Consequences**
-保留原始失败和直接合并（无 PR）的真实记录；Tasks 3–24 必须恢复独立分支、PR、TDD、规格审查和代码质量审查，不得把 Tasks 1–2 的证据外推为完整产品完成。
+**影响**
+保留原始失败和直接合并（无 PR）的真实记录；任务 3–24 必须恢复独立分支、PR、TDD、规格审查和代码质量审查，不得把任务 1–2 的证据外推为完整产品完成。
 
-## ADR-010：Engineering Audit 使用固定 finding/evidence 合约与 compact security manifest
+## ADR-010：工程审计使用固定发现/证据合约与精简安全清单
 
-**Context**
-Task 23 必须允许人工阅读审计，同时拒绝通过删除 finding、降低 severity、重写 scan 命令或仅声称文件存在来清零。完整 Trivy raw、tar 和 DB 体积较大，且正式 Dockerfile 依赖层在本机离线 cache 中不可用。
+**背景**
+任务 23 必须允许人工阅读审计，同时拒绝通过删除发现、降低严重程度、重写扫描命令或仅声称文件存在来清零。完整 Trivy 原始数据、tar 和 DB 体积较大，且正式 Dockerfile 依赖层在本机离线缓存中不可用。
 
-**Options**
-1. 只提交 Markdown 结论；2. 跟踪全部 raw/tar/DB；3. 固定 audit schema、finding/evidence 命令和 deterministic compact manifest，同时保留 ignored 原始证据用于本轮复核。
+**选项**
+1. 只提交 Markdown 结论；2. 跟踪全部原始数据/tar/DB；3. 固定审计模式、发现/证据命令和确定性精简清单，同时保留已忽略的原始证据用于本轮复核。
 
-**Decision**
-采用选项 3。Checker 固定 15 域、9 finding、34 evidence ID，解析 compact manifest 的 normalized SHA-256，并交叉当前 vulnerability policy/runtime boundary。Manifest 固定 Trivy image/DB、current audit image、tar/config、raw/package/inventory/VEX/tuple digest、181/67 severity 统计与所有 gate exit。正式 Dockerfile build 失败和受控 current-source 派生身份均作为边界事实记录，派生镜像禁止被描述或推广为 release artifact。
+**决策**
+采用选项 3。校验器固定 15 个域、9 个发现、34 个证据 ID，解析精简清单的规范化 SHA-256，并交叉核对当前漏洞策略/运行时边界。清单固定 Trivy 镜像/DB、当前审计镜像、tar/配置、原始数据/包/清单/VEX/元组摘要、181/67 严重程度统计与所有门禁退出码。正式 Dockerfile 构建失败和受控当前源码派生身份均作为边界事实记录，派生镜像禁止被描述或推广为发行制品。
 
-**Reason**
-该方案能在小型 tracked 证据中阻止 audit-only 虚假改写，又不会把 366MB tar、1.2GB DB 或 1.8MB raw 混入仓库；逐 CVE statement、raw tuple 与当前 source/policy 的真实复核仍在本轮离线链中完成。
+**理由**
+该方案能在小型已跟踪证据中阻止仅修改审计的虚假改写，又不会把 366MB tar、1.2GB DB 或 1.8MB 原始数据混入仓库；逐 CVE 声明、原始元组与当前源码/策略的真实复核仍在本轮离线链中完成。
 
-**Consequences**
-任何 source、policy、scanner DB、image/tar/config、raw tuple 或 VEX 变化都必须重新运行安全链并更新固定 manifest/checker。Compact manifest 不能替代 retained raw 的取证价值；正式发布仍需在具有完整 locked cache 的环境执行 Dockerfile build 和远程 CI。
+**影响**
+任何源码、策略、扫描器 DB、镜像/tar/配置、原始元组或 VEX 变化都必须重新运行安全链并更新固定清单/校验器。精简清单不能替代保留原始数据的取证价值；正式发布仍需在具有完整锁定缓存的环境执行 Dockerfile 构建和远程 CI。
 
-## ADR-011: Review evidence is identity-bound and current-only
+## ADR-011：复审证据必须绑定身份且仅反映当前状态
 
-**Context**
-The first Task 23 audit could be made internally coherent by replacing a
-finding's RED/GREEN commands with unrelated commands. Its no-build path also
-trusted any local SHA identity, and the Functional audit still described a
-Task 22 frontend build as current although it was not run in Task 23.
+**背景**
+首次任务 23 审计可通过用无关命令替换发现项的 RED/GREEN 命令而在内部形成表面一致。
+其免构建路径还信任任意本地 SHA 身份；功能审计也仍把任务 22 的前端构建描述为
+当前证据，尽管任务 23 并未运行该构建。
 
-**Decision**
-Each FIXED finding uses an exact per-finding evidence contract; E020-E025 and
-the complete compact security manifest are fixed and current runtime boundary
-is rebuilt by the real policy builder. No-build requires distinct trusted
-app/gateway daemon and config identities, verifies Compose configuration and
-both running containers after both starts, and uses `--no-build` every time.
-Unrun frontend type/build evidence is `EXTERNAL_NOT_RUN`, yielding the current
-matrix `28 PASS / 12 PARTIAL / 0 FAIL`.
+**决策**
+每个 `FIXED` 发现项使用精确的逐项证据合约；E020–E025 和完整精简安全
+清单固定不变，当前运行时边界由真实策略构建器重建。免构建要求彼此独立且
+可信的 app/gateway daemon 与配置身份，在两次启动后都验证 Compose 配置和两个运行中容器，
+且每次均使用 `--no-build`。未运行的前端类型检查/构建证据记为 `EXTERNAL_NOT_RUN`，当前矩阵因此为
+`28 PASS / 12 PARTIAL / 0 FAIL`。
 
-**Consequences**
-Coherent audit-only mutations fail. A source, image, raw, VEX, policy,
-inventory, release, DB, or tool identity change requires fresh offline
-evidence. Historical green output cannot make a current acceptance item pass.
+**影响**
+仅修改审计而形成表面一致的变异会失败。源码、镜像、原始数据、VEX、策略、清单、
+发行、DB 或工具身份发生变化时，都必须生成新的离线证据。历史绿色输出不能使当前验收项变为
+`PASS`。
 
 ## ADR-012：GitHub Release 区分离线运行与离线源码重建
 
-**Context**
+**背景**
 课程接收方需要从 Release 稳定复现 MuseEcho，但正式 Dockerfile 在 `--network none` 下仍缺少
-完整 Node、Python、Go、APT/APK 构建材料，`ENG-010` 不能被已有镜像或 BuildKit cache 命中掩盖。
-同时，GitHub 单个 Release asset 存在体积边界，app 与 gateway 不适合伪装成单一小型安装包。
+完整 Node、Python、Go、APT/APK 构建材料，`ENG-010` 不能被已有镜像或 BuildKit 缓存命中掩盖。
+同时，GitHub 单个 Release 资产存在体积边界，app 与 gateway 不适合伪装成单一小型安装包。
 
-**Options**
+**选项**
 1. 只发布源码并让接收方联网构建；2. 把两个已审计镜像 tar 与运行工具包分开发布；3. 在证据不足
 时宣称已完成断网源码重建。
 
-**Decision**
-采用选项 2。两个 tar 必须来自同一次绿色 main distribution 作业，并由同一
-`release-images.json`、许可证、raw scan、VEX 和 gate 绑定。小型 zip 只包含 runtime Compose、
-PowerShell 接收端、manifest、no-build smoke 和说明；`SHA256SUMS.txt` 跨资产固定下载字节。
-接收端在 `docker load` 前验 tar hash，导入后验 daemon image ID，Compose 同时使用
+**决策**
+采用选项 2。正常路径要求两个 tar 来自同一次绿色 main 分发作业，并由同一
+`release-images.json`、许可证、原始扫描、VEX 和门禁绑定。小型 zip 只包含运行时 Compose、
+PowerShell 接收端、清单、免构建 Smoke 和说明；`SHA256SUMS.txt` 跨资产固定下载字节。
+接收端在 `docker load` 前验证 tar 哈希，导入后验证 daemon 镜像 ID，Compose 同时使用
 `pull_policy: never` 与 `--no-build`。
 
-**Consequences**
-教师下载四项资产后可以断网校验、导入、真实 WAV smoke 和网页体验；首次下载仍需要网络。
-Release 关闭的是“离线运行发行”缺口，不关闭 `ENG-010`，也不产生 registry digest、云部署、
+`v0.1.0` 的 main run `31997390847` 三个作业均通过，但 Actions 配额跳过制品留存，正常路径
+没有留下可下载的 CI tar。用户已要求自动工作直到正式 Release 成功，因此采用受控来源追溯
+回退方案：从精确 main SHA `d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1` 本地重建，针对候选及发布后
+回下载字节重新执行发行身份、打包、校验和、免构建 Smoke 和清理门。main CI 的
+许可证、漏洞/VEX 门证明配置链在内部构建上通过，但不冒充发布 tar 的直接逐字节证据。证据只
+声明相同源码边界与上述发布字节门，不声明其与未留存 CI tar 逐字节相等。
+
+**影响**
+教师下载四项资产后可以断网校验、导入、真实 WAV Smoke 和网页体验；首次下载仍需要网络。
+Release 关闭的是“离线运行发行”缺口，不关闭 `ENG-010`，也不产生镜像仓库摘要、云部署、
 受信公网 TLS 或目标服务器证据。
+
+**实现状态（2026-08-17）**
+Tag `v0.1.0` 已绑定 main SHA `d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1` 并发布四项资产；
+发布后回下载的两个 tar、zip 和校验表分别与固定 SHA-256 一致，解压后的包完成免构建
+HTTPS/WAV 分析、重启持久化、无持久化明文音频与清理 Smoke。本 ADR 的 `ENG-010`、镜像仓库和
+云部署边界保持不变。`release/v0.1.0-manifest.json` 和可重放验证器固化 Release 事实与上述
+回退边界；原定“从 CI 制品下载并逐字节发布”的验收项因制品未留存而保持未完成。

@@ -1,40 +1,40 @@
-# 100 MB Audio Upload Limit Design
+# 100 MB 音频上传限制设计
 
-## Goal
+## 目标
 
-Raise MuseEcho's accepted audio-file size from 30 MiB to 100 MiB while retaining the existing 10-minute duration limit, bounded streaming behavior, encrypted retention, and format-validation controls.
+将 MuseEcho 接受的音频文件大小从 30 MiB 提高到 100 MiB，同时保留现有的 10 分钟时长限制、有界流式处理行为、加密保留机制和格式验证控制。
 
-## Boundary contract
+## 边界契约
 
-- The application file limit is exactly `100 * 1024 * 1024` bytes.
-- The multipart request-body limit remains the file limit plus the existing 64 KiB request-overhead allowance.
-- A file of exactly 100 MiB is accepted for validation; the first byte above 100 MiB is rejected.
-- Requests with an oversized `Content-Length` are rejected before multipart parsing.
-- Requests without a usable `Content-Length` remain bounded while streaming and cannot bypass the request-body limit.
-- The maximum decoded duration remains 600 seconds. Codec, demuxer, protocol, decode-timeout, and PCM-memory controls remain unchanged.
+- 应用文件限制严格为 `100 * 1024 * 1024` 字节。
+- multipart 请求体限制仍为文件限制加上现有的 64 KiB 请求开销余量。
+- 恰好 100 MiB 的文件可进入验证；超过 100 MiB 的第一个字节即被拒绝。
+- `Content-Length` 超限的请求在 multipart 解析前被拒绝。
+- 没有可用 `Content-Length` 的请求仍在流式传输期间受限，无法绕过请求体限制。
+- 最大解码时长仍为 600 秒。编解码器、解复用器、协议、解码超时和 PCM 内存控制均保持不变。
 
-## Architecture and data flow
+## 架构与数据流
 
-The server continues to own the authoritative limit through `DEFAULT_MAX_UPLOAD_BYTES`. `UploadBodyLimitMiddleware` derives its multipart ceiling from that value, and `UploadSubmissionService` copies the uploaded stream to its isolated plaintext staging file in bounded chunks before validation and encrypted persistence. FastAPI/Starlette may spool multipart input to disk, so the application does not require a 100 MiB in-memory request buffer.
+服务端继续通过 `DEFAULT_MAX_UPLOAD_BYTES` 掌握权威限制。`UploadBodyLimitMiddleware` 从该值派生 multipart 上限；`UploadSubmissionService` 先以有界分块方式将上传流复制到隔离的明文暂存文件，再进行验证和加密持久化。FastAPI/Starlette 可能将 multipart 输入暂存到磁盘，因此应用不需要在内存中缓冲完整的 100 MiB 请求。
 
-The browser uses the same numeric limit for immediate preflight and presents 100 MB in all upload and server-error messages. The browser check remains advisory: the server enforces both the complete request-body ceiling and the extracted file ceiling independently.
+浏览器使用相同的数值限制进行即时预检，并在所有上传和服务端错误消息中显示 100 MB。浏览器检查仍只是提示性措施：服务端独立强制执行完整请求体上限和提取后文件上限。
 
-No Caddy request-body configuration is required because the current gateway has no smaller body cap. The existing data volume remains the storage boundary for multipart spooling, isolated plaintext staging, and encrypted audio.
+无需配置 Caddy 请求体限制，因为当前网关没有更小的请求体上限。现有数据卷仍是 multipart 暂存、隔离明文暂存和加密音频的存储边界。
 
-## Error handling
+## 错误处理
 
-Oversized requests continue to return HTTP 413 with `upload_too_large`. Oversized extracted files continue to be deleted with their isolated temporary directory, create no analysis job, write no encrypted audio, and enqueue no work. Client copy and retry guidance changes only from 30 MB to 100 MB.
+超限请求继续返回 HTTP 413 和 `upload_too_large`。超限的提取后文件连同其隔离临时目录一起删除，不创建分析任务、不写入加密音频、也不入队任何工作。客户端文案和重试指引仅从 30 MB 改为 100 MB。
 
-## Verification
+## 验证
 
-Tests must prove observable behavior at each boundary:
+测试必须证明每个边界上的可观察行为：
 
-1. the browser accepts a file at exactly 100 MiB and rejects 100 MiB plus one byte before transport;
-2. the upload service accepts a configured ceiling of 100 MiB and still rejects any configured ceiling above the supported maximum;
-3. the API middleware accepts the derived 100 MiB-plus-overhead ceiling, rejects larger `Content-Length` requests, and bounds chunked requests without `Content-Length`;
-4. existing cleanup, zero-byte, unsupported-format, 10-minute duration, and encrypted-storage tests remain green;
-5. user-facing specifications describe 100 MB consistently, and the acceptance/audit contracts remain internally valid.
+1. 浏览器在传输前接受恰好 100 MiB 的文件，并拒绝 100 MiB 加一个字节的文件；
+2. 上传服务接受配置为 100 MiB 的上限，并继续拒绝任何高于受支持最大值的配置上限；
+3. API 中间件接受派生出的 100 MiB 加开销上限，拒绝更大的 `Content-Length` 请求，并约束没有 `Content-Length` 的分块请求；
+4. 现有清理、零字节、不支持格式、10 分钟时长和加密存储测试继续为 GREEN；
+5. 面向用户的规格统一描述 100 MB，且验收/审计契约保持内部一致。
 
-## Operational impact
+## 运维影响
 
-A concurrent upload can temporarily occupy space in multipart spooling, isolated plaintext staging, and encrypted storage. Deployment capacity planning should therefore allow roughly 200–300 MiB of transient disk per active maximum-size upload. The target 70 GB data disk and 10-minute duration ceiling remain compatible with this limit; no new dependency or infrastructure component is introduced.
+一个并发上传可能同时占用 multipart 暂存、隔离明文暂存和加密存储空间。因此部署容量规划应为每个活动的最大尺寸上传预留约 200–300 MiB 临时磁盘空间。目标 70 GB 数据盘和 10 分钟时长上限仍与此限制兼容；不会引入新的依赖或基础设施组件。

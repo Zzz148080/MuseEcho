@@ -26,10 +26,10 @@ from scripts.image_vulnerability_audit import (
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_PATH = ROOT / "docs" / "audits" / "ENGINEERING_AUDIT.md"
-NOW = datetime(2026, 8, 17, tzinfo=UTC)
-DOMAIN_HEADING = "## Domain coverage"
-EVIDENCE_HEADING = "## Evidence index"
-FINDING_HEADING = "## Findings"
+NOW = datetime(2026, 8, 18, tzinfo=UTC)
+DOMAIN_HEADING = "## 领域覆盖"
+EVIDENCE_HEADING = "## 证据索引"
+FINDING_HEADING = "## 发现项"
 
 EXPECTED_DOMAIN_SET = {
     "architecture-boundaries",
@@ -227,11 +227,11 @@ def test_same_evidence_cannot_be_reindexed(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("column", "value", "expected"),
     (
-        ("Command", "-", "E003 requires command"),
-        ("Path", "-", "E003 requires path"),
-        ("Result", "-", "E003 requires result"),
-        ("Exit code", "-", "E003 has invalid exit code"),
-        ("Observed at UTC", "2999-01-01T00:00:00Z", "E003 is future-dated"),
+        ("命令", "-", "E003 requires command"),
+        ("路径", "-", "E003 requires path"),
+        ("结果", "-", "E003 requires result"),
+        ("退出码", "-", "E003 has invalid exit code"),
+        ("观察时间（UTC）", "2999-01-01T00:00:00Z", "E003 is future-dated"),
     ),
 )
 def test_evidence_schema_and_time_fail_closed(
@@ -251,8 +251,8 @@ def test_evidence_index_rejects_descending_observed_timestamps(tmp_path: Path) -
 @pytest.mark.parametrize(
     ("column", "value", "expected"),
     (
-        ("Severity", "Important", "ENG-001 has invalid severity"),
-        ("Status", "DONE", "ENG-001 has invalid status"),
+        ("严重级别", "Important", "ENG-001 has invalid severity"),
+        ("状态", "DONE", "ENG-001 has invalid status"),
     ),
 )
 def test_finding_schema_fails_closed(
@@ -264,29 +264,26 @@ def test_finding_schema_fails_closed(
 
 
 def test_fixed_finding_requires_real_red_and_green_evidence(tmp_path: Path) -> None:
-    mutation = _replace_table_cell(
-        _audit_text(), FINDING_HEADING, "ENG-001", "Evidence IDs", "E003"
-    )
+    mutation = _replace_table_cell(_audit_text(), FINDING_HEADING, "ENG-001", "Evidence ID", "E003")
 
     assert "ENG-001 FIXED requires RED and GREEN evidence" in _validation_error(tmp_path, mutation)
 
 
 def test_verified_evidence_gap_requires_not_run_and_current_green(tmp_path: Path) -> None:
-    mutation = _replace_table_cell(_audit_text(), FINDING_HEADING, "ENG-006", "Status", "VERIFIED")
+    mutation = _replace_table_cell(_audit_text(), FINDING_HEADING, "ENG-006", "状态", "VERIFIED")
     mutation = _replace_table_cell(
         mutation,
         FINDING_HEADING,
         "ENG-006",
-        "Disposition",
-        "VERIFIED: implementation-boundary CI executed the formerly unavailable "
-        "frontend and browser gates.",
+        "处置",
+        "VERIFIED：实现边界 CI 执行了先前不可用的前端和浏览器门禁。",
     )
     verified = load_audit(_write_audit(tmp_path, mutation))
 
     validate_audit(verified, repo_root=ROOT, now=NOW)
 
     without_not_run = _replace_table_cell(
-        mutation, FINDING_HEADING, "ENG-006", "Evidence IDs", "E037"
+        mutation, FINDING_HEADING, "ENG-006", "Evidence ID", "E037"
     )
     assert "ENG-006 VERIFIED requires historical NOT_RUN and current GREEN evidence" in (
         _validation_error(tmp_path, without_not_run)
@@ -299,7 +296,7 @@ def test_verified_gap_uses_implementation_boundary_green_not_branch_tip_evidence
     finding = next(item for item in audit.findings if item.finding_id == "ENG-006")
 
     assert evidence.kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
-    assert "implementation boundary" in evidence.result.lower()
+    assert "实现边界" in evidence.result
     assert "exact-head" not in finding.description.lower()
     assert "exact head" not in finding.disposition.lower()
 
@@ -308,7 +305,7 @@ def test_old_current_command_kind_cannot_recast_e037_as_branch_tip_evidence(
     tmp_path: Path,
 ) -> None:
     mutation = _replace_table_cell(
-        _audit_text(), EVIDENCE_HEADING, "E037", "Kind", "CURRENT_COMMAND"
+        _audit_text(), EVIDENCE_HEADING, "E037", "类型", "CURRENT_COMMAND"
     )
 
     assert "E037 does not match its fixed evidence contract" in _validation_error(
@@ -317,24 +314,24 @@ def test_old_current_command_kind_cannot_recast_e037_as_branch_tip_evidence(
 
 
 def test_verified_evidence_gap_cannot_masquerade_as_fixed_without_red(tmp_path: Path) -> None:
-    mutation = _replace_table_cell(_audit_text(), FINDING_HEADING, "ENG-006", "Status", "FIXED")
+    mutation = _replace_table_cell(_audit_text(), FINDING_HEADING, "ENG-006", "状态", "FIXED")
 
     assert "ENG-006 FIXED requires RED and GREEN evidence" in _validation_error(tmp_path, mutation)
 
 
 def test_verified_evidence_gap_rejects_unrelated_not_run_record(tmp_path: Path) -> None:
     mutation = _replace_table_cell(
-        _audit_text(), EVIDENCE_HEADING, "E015", "Command", "NOT RUN: unrelated tool missing"
+        _audit_text(), EVIDENCE_HEADING, "E015", "命令", "NOT RUN: unrelated tool missing"
     )
     mutation = _replace_table_cell(
-        mutation, EVIDENCE_HEADING, "E015", "Path", "scripts/check_engineering_audit.py"
+        mutation, EVIDENCE_HEADING, "E015", "路径", "scripts/check_engineering_audit.py"
     )
     mutation = _replace_table_cell(
         mutation,
         EVIDENCE_HEADING,
         "E015",
-        "Result",
-        "Unrelated unavailable command cannot establish the browser evidence gap.",
+        "结果",
+        "无关的不可用命令无法建立浏览器证据缺口。",
     )
 
     assert "E015 does not match its fixed evidence contract" in _validation_error(
@@ -347,18 +344,18 @@ def test_verified_evidence_gap_rejects_unrelated_current_green_record(tmp_path: 
         _audit_text(),
         EVIDENCE_HEADING,
         "E037",
-        "Command",
+        "命令",
         "gh run view 99999999999 --repo Zzz148080/MuseEcho --json conclusion,jobs,url,headSha",
     )
     mutation = _replace_table_cell(
-        mutation, EVIDENCE_HEADING, "E037", "Path", "frontend/package.json"
+        mutation, EVIDENCE_HEADING, "E037", "路径", "frontend/package.json"
     )
     mutation = _replace_table_cell(
         mutation,
         EVIDENCE_HEADING,
         "E037",
-        "Result",
-        "Unrelated successful frontend package metadata inspection completed.",
+        "结果",
+        "已完成无关的前端包元数据检查。",
     )
 
     assert "E037 does not match its fixed evidence contract" in _validation_error(
@@ -386,22 +383,22 @@ def test_each_fixed_finding_rejects_coherent_unrelated_red_green_evidence(
             mutation,
             EVIDENCE_HEADING,
             evidence_id,
-            "Command",
+            "命令",
             f"python -c print-unrelated-{finding_id.lower()}",
         )
         mutation = _replace_table_cell(
             mutation,
             EVIDENCE_HEADING,
             evidence_id,
-            "Path",
+            "路径",
             "scripts/check_engineering_audit.py",
         )
         mutation = _replace_table_cell(
             mutation,
             EVIDENCE_HEADING,
             evidence_id,
-            "Result",
-            f"unrelated coherent evidence exit={exit_code}",
+            "结果",
+            f"无关但内部一致的证据 exit={exit_code}",
         )
 
     assert (
@@ -418,7 +415,7 @@ def test_each_fixed_finding_rejects_unrelated_evidence_coverage(
     tmp_path: Path, finding_id: str
 ) -> None:
     mutation = _replace_table_cell(
-        _audit_text(), FINDING_HEADING, finding_id, "Evidence IDs", "E001, E012"
+        _audit_text(), FINDING_HEADING, finding_id, "Evidence ID", "E001, E012"
     )
 
     assert f"{finding_id} evidence coverage does not match its fixed contract" in _validation_error(
@@ -429,10 +426,10 @@ def test_each_fixed_finding_rejects_unrelated_evidence_coverage(
 def test_accepted_finding_requires_specific_reason_owner_and_review_condition(
     tmp_path: Path,
 ) -> None:
-    mutation = _replace_table_cell(_audit_text(), FINDING_HEADING, "ENG-004", "Status", "ACCEPTED")
-    mutation = _replace_table_cell(mutation, FINDING_HEADING, "ENG-004", "Owner", "-")
-    mutation = _replace_table_cell(mutation, FINDING_HEADING, "ENG-004", "Disposition", "accepted")
-    mutation = _replace_table_cell(mutation, FINDING_HEADING, "ENG-004", "Review condition", "-")
+    mutation = _replace_table_cell(_audit_text(), FINDING_HEADING, "ENG-004", "状态", "ACCEPTED")
+    mutation = _replace_table_cell(mutation, FINDING_HEADING, "ENG-004", "负责人", "-")
+    mutation = _replace_table_cell(mutation, FINDING_HEADING, "ENG-004", "处置", "已接受")
+    mutation = _replace_table_cell(mutation, FINDING_HEADING, "ENG-004", "复审条件", "-")
 
     error = _validation_error(tmp_path, mutation)
     assert "ENG-004 ACCEPTED requires a specific risk rationale" in error
@@ -441,10 +438,8 @@ def test_accepted_finding_requires_specific_reason_owner_and_review_condition(
 
 
 def test_blocked_finding_requires_real_external_condition(tmp_path: Path) -> None:
-    mutation = _replace_table_cell(
-        _audit_text(), FINDING_HEADING, "ENG-007", "Disposition", "internal follow-up"
-    )
-    mutation = _replace_table_cell(mutation, FINDING_HEADING, "ENG-007", "Evidence IDs", "E003")
+    mutation = _replace_table_cell(_audit_text(), FINDING_HEADING, "ENG-007", "处置", "内部后续")
+    mutation = _replace_table_cell(mutation, FINDING_HEADING, "ENG-007", "Evidence ID", "E003")
 
     assert "ENG-007 BLOCKED requires a real external condition" in _validation_error(
         tmp_path, mutation
@@ -452,13 +447,13 @@ def test_blocked_finding_requires_real_external_condition(tmp_path: Path) -> Non
 
 
 def test_open_critical_or_high_fails_closed(tmp_path: Path) -> None:
-    mutation = _replace_table_cell(_audit_text(), FINDING_HEADING, "ENG-001", "Status", "OPEN")
+    mutation = _replace_table_cell(_audit_text(), FINDING_HEADING, "ENG-001", "状态", "OPEN")
 
     assert "OPEN Critical/High findings: ENG-001" in _validation_error(tmp_path, mutation)
 
 
 def test_finding_severity_cannot_be_downgraded_in_the_audit(tmp_path: Path) -> None:
-    mutation = _replace_table_cell(_audit_text(), FINDING_HEADING, "ENG-001", "Severity", "Medium")
+    mutation = _replace_table_cell(_audit_text(), FINDING_HEADING, "ENG-001", "严重级别", "Medium")
 
     assert "ENG-001 does not match its fixed finding contract" in _validation_error(
         tmp_path, mutation
@@ -467,10 +462,10 @@ def test_finding_severity_cannot_be_downgraded_in_the_audit(tmp_path: Path) -> N
 
 def test_file_existence_cannot_masquerade_as_verification(tmp_path: Path) -> None:
     mutation = _replace_table_cell(
-        _audit_text(), EVIDENCE_HEADING, "E003", "Kind", "FILE_EXISTENCE"
+        _audit_text(), EVIDENCE_HEADING, "E003", "类型", "FILE_EXISTENCE"
     )
     mutation = _replace_table_cell(
-        mutation, EVIDENCE_HEADING, "E003", "Command", "Test-Path tests/deploy"
+        mutation, EVIDENCE_HEADING, "E003", "命令", "Test-Path tests/deploy"
     )
 
     assert "E003 cannot use file existence as executed verification" in _validation_error(
@@ -483,13 +478,13 @@ def test_scan_audit_and_release_verification_cannot_be_rewritten_as_vacuous_succ
     tmp_path: Path, evidence_id: str
 ) -> None:
     mutation = _replace_table_cell(
-        _audit_text(), EVIDENCE_HEADING, evidence_id, "Command", "python -c pass"
+        _audit_text(), EVIDENCE_HEADING, evidence_id, "命令", "python -c pass"
     )
     mutation = _replace_table_cell(
-        mutation, EVIDENCE_HEADING, evidence_id, "Result", "exit=0; findings=0"
+        mutation, EVIDENCE_HEADING, evidence_id, "结果", "exit=0；发现项=0"
     )
     mutation = _replace_table_cell(
-        mutation, EVIDENCE_HEADING, evidence_id, "Path", "scripts/check_engineering_audit.py"
+        mutation, EVIDENCE_HEADING, evidence_id, "路径", "scripts/check_engineering_audit.py"
     )
 
     assert f"{evidence_id} does not match its fixed evidence contract" in _validation_error(
@@ -502,7 +497,7 @@ def test_security_domain_coverage_cannot_omit_a_gate(tmp_path: Path) -> None:
         _audit_text(),
         DOMAIN_HEADING,
         "runtime-image-vulnerabilities",
-        "Evidence IDs",
+        "Evidence ID",
         "E020, E022, E023, E024, E025",
     )
 
@@ -640,9 +635,9 @@ def test_historical_policy_source_commit_fails_closed(
 def test_audit_generated_time_cannot_be_future_dated(tmp_path: Path) -> None:
     text = _audit_text()
     generated_line = next(
-        line for line in text.splitlines() if line.startswith("- **Generated at UTC:**")
+        line for line in text.splitlines() if line.startswith("- **生成时间（UTC）：**")
     )
-    mutation = text.replace(generated_line, "- **Generated at UTC:** `2999-08-12T19:15:00Z`", 1)
+    mutation = text.replace(generated_line, "- **生成时间（UTC）：** `2999-08-12T19:15:00Z`", 1)
 
     assert "audit generated time is future-dated" in _validation_error(tmp_path, mutation)
 
@@ -838,7 +833,7 @@ def test_formal_dockerfile_offline_build_blocker_cannot_be_deleted(tmp_path: Pat
     assert "missing findings: ENG-010" in _validation_error(tmp_path, mutation)
 
 
-@pytest.mark.parametrize(("column", "value"), (("Severity", "Low"), ("Status", "FIXED")))
+@pytest.mark.parametrize(("column", "value"), (("严重级别", "Low"), ("状态", "FIXED")))
 def test_formal_dockerfile_offline_build_blocker_cannot_be_downgraded_or_fake_fixed(
     tmp_path: Path, column: str, value: str
 ) -> None:
@@ -860,7 +855,7 @@ def test_current_acceptance_evidence_is_a_fixed_engineering_contract(tmp_path: P
         "SPEC.md docs/audits/FUNCTIONAL_AUDIT.md"
     )
     collected_count = 48
-    expected_result = f"{collected_count} passed; 40 items validated PASS=36 PARTIAL=4 FAIL=0"
+    expected_result = f"{collected_count} 个测试通过；验证 40 个条目：PASS=36、PARTIAL=4、FAIL=0"
 
     assert checker.FIXED_EVIDENCE_CONTRACTS["E030"] == (
         "CURRENT_COMMAND",
@@ -874,13 +869,13 @@ def test_current_acceptance_evidence_is_a_fixed_engineering_contract(tmp_path: P
         "gh run view 31966788273 --repo Zzz148080/MuseEcho --json "
         "status,conclusion,headBranch,headSha,jobs,url",
         ".github/workflows/ci.yml",
-        "Final product/CI implementation SHA 0674f74f4097e46cee98c4715a62ad5aa55101cf "
-        "on codex/expand-common-audio-formats passed quality (5m43s), e2e (3m10s), "
-        "and distribution (7m30s) in run 31966788273",
+        "`codex/expand-common-audio-formats` 上最终产品/CI 实现 SHA "
+        "`0674f74f4097e46cee98c4715a62ad5aa55101cf` 在 run `31966788273` 中通过 "
+        "quality（5m43s）、e2e（3m10s）和 distribution（7m30s）",
     )
 
     mutation = _replace_table_cell(
-        _audit_text(), EVIDENCE_HEADING, "E030", "Result", "36 passed; stale current result"
+        _audit_text(), EVIDENCE_HEADING, "E030", "结果", "36 个测试通过；陈旧当前结果"
     )
     assert "E030 does not match its fixed evidence contract" in _validation_error(
         tmp_path, mutation
@@ -890,8 +885,8 @@ def test_current_acceptance_evidence_is_a_fixed_engineering_contract(tmp_path: P
 @pytest.mark.parametrize(
     ("column", "value"),
     (
-        ("Command", "python -c pass"),
-        ("Result", "forged static quality gates passed"),
+        ("命令", "python -c pass"),
+        ("结果", "伪造的静态质量门通过"),
     ),
 )
 def test_current_dual_platform_type_evidence_is_a_fixed_engineering_contract(
@@ -907,10 +902,10 @@ def test_current_dual_platform_type_evidence_is_a_fixed_engineering_contract(
 def test_current_engineering_gates_do_not_recast_pre_feature_image_evidence() -> None:
     contracts = checker.FIXED_EVIDENCE_CONTRACTS
 
-    assert "mypy each passed 47 source files" in contracts["E012"][3]
+    assert "mypy 各通过 47 个源文件" in contracts["E012"][3]
     assert "museecho-task3-verification-env:latest" in contracts["E013"][1]
     assert contracts["E022"][0] == "IMPLEMENTATION_BOUNDARY_COMMAND"
-    assert "pre-feature task 23 image" in contracts["E022"][3].lower()
+    assert "功能前任务 23 镜像" in contracts["E022"][3]
 
 
 def test_841_test_evidence_is_a_historical_implementation_boundary(
@@ -921,9 +916,9 @@ def test_841_test_evidence_is_a_historical_implementation_boundary(
 
     assert checker.FIXED_EVIDENCE_CONTRACTS["E013"][0] == "IMPLEMENTATION_BOUNDARY_COMMAND"
     assert evidence.kind == "IMPLEMENTATION_BOUNDARY_COMMAND"
-    assert "predates 7f8412b" in evidence.result
+    assert "本证据早于 `7f8412b`" in evidence.result
     mutation = _replace_table_cell(
-        _audit_text(), EVIDENCE_HEADING, "E013", "Kind", "CURRENT_COMMAND"
+        _audit_text(), EVIDENCE_HEADING, "E013", "类型", "CURRENT_COMMAND"
     )
     assert "E013 does not match its fixed evidence contract" in _validation_error(
         tmp_path, mutation
@@ -934,7 +929,7 @@ def test_pre_feature_image_audit_cannot_be_recast_as_current_runtime_evidence(
     tmp_path: Path,
 ) -> None:
     mutation = _replace_table_cell(
-        _audit_text(), EVIDENCE_HEADING, "E022", "Kind", "CURRENT_COMMAND"
+        _audit_text(), EVIDENCE_HEADING, "E022", "类型", "CURRENT_COMMAND"
     )
 
     assert "E022 does not match its fixed evidence contract" in _validation_error(

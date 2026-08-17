@@ -1,45 +1,45 @@
-# MuseEcho v0.1.0 Offline Runtime Release Implementation Plan
+# MuseEcho v0.1.0 离线运行时 Release 实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **供自主执行者使用：** 必需子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐项实施本计划。步骤使用复选框（`- [ ]`）语法跟踪。
 
-**Goal:** Publish a formal `v0.1.0` GitHub Release whose audited app and gateway image archives can be verified, imported, smoked, and run without builds or pulls.
+**目标：** 发布正式的 `v0.1.0` GitHub Release；其应用和网关镜像归档具备 identity/checksum/no-build Smoke 证据，可在不构建、不拉取的情况下验证、导入、Smoke 和运行。
 
-**Architecture:** The existing distribution job remains the image producer and security gate. A small PowerShell receiver script verifies the existing release identity manifest, loads the exact image tars, and starts a runtime-only Compose file; a maintainer script packages those files and checksums without rebuilding images. The final Release is populated only from the green `main` distribution artifact.
+**架构：** 现有 `distribution` 作业仍是必需的构建/安全门禁。一个小型 PowerShell 接收脚本验证 Release identity 清单、加载镜像 tar，并启动仅包含运行时内容的 Compose 文件；维护者脚本在不重建镜像的情况下打包这些文件和校验和。GitHub Actions 配额导致本应为 GREEN 的最终 `main` 制品未被保留，因此已发布 Release 使用任务 6 中记录并获用户授权的来源回退：从精确 GREEN main SHA 重建，针对这些字节重新执行 Release identity、打包/校验和、no-build Smoke 和下载验证；不得声称其与不可用 CI tar 字节相等，也不得声称许可证/漏洞/VEX 是这些发布字节的直接证据。
 
-**Tech Stack:** PowerShell 7/Windows PowerShell 5.1, Docker Engine/Desktop, Docker Compose v2, GitHub Actions, Python release-identity verifier, Markdown, Git/GitHub Release.
+**技术栈：** PowerShell 7/Windows PowerShell 5.1、Docker Engine/Desktop、Docker Compose v2、GitHub Actions、Python Release identity 验证器、Markdown、Git/GitHub Release。
 
-## Global Constraints
+**当前状态（2026-08-17）：** 任务 1–4 的实现与复审、PR CI、合并及随后 main CI、获批的本地来源回退、Release 发布和下载证据重放均已按此顺序完成。由于 Actions 未保留制品，原计划下载精确 main 制品的步骤仍明确为未完成。任务 6 步骤 4 是本文档对账；步骤 5 仍未完成，须等待其 PR CI 及随后 main CI 通过，并确认重新读取的已发布资产未变化。
 
-- Release version is exactly `v0.1.0`; it is neither draft nor prerelease.
-- Runtime assets are `museecho-app.tar`, `museecho-gateway.tar`, `museecho-offline-runtime-v0.1.0.zip`, and `SHA256SUMS.txt`.
-- Receiver startup never builds or pulls; Compose uses `pull_policy: never` and every `up` uses `--no-build`.
-- Release image bytes come from one green `main` distribution job and retain its `release-images.json` identity.
-- The default receiver flow preserves the encrypted data volume and never exposes a volume-deletion switch.
-- No third-party model key is required.
-- `ENG-010` remains `BLOCKED`: offline runtime is not offline source rebuilding.
-- Existing Task 23 evidence remains historical and is not rewritten as current Release evidence.
-- `REFLECTION.md` changes are limited to the previously authorized stale GitHub-evidence sentence and objective Release facts; subjective student conclusions are not rewritten.
+## 全局约束
+
+- Release 版本严格为 `v0.1.0`；既不是草稿，也不是预发布。
+- 运行时资产为 `museecho-app.tar`、`museecho-gateway.tar`、`museecho-offline-runtime-v0.1.0.zip` 和 `SHA256SUMS.txt`。
+- 接收者启动流程绝不构建或拉取；Compose 使用 `pull_policy: never`，每次 `up` 均使用 `--no-build`。
+- Release 镜像的源代码与策略边界是精确的 GREEN `main` SHA。由于其 Actions 制品未保留，已发布镜像字节来自记录在案的本地来源回退，并保留自身已验证的 `release-images.json` identity；不声称其与不可用 CI tar 字节相等。
+- 默认接收流程保留加密数据卷，绝不公开删除数据卷的开关。
+- 不需要第三方模型密钥。
+- `ENG-010` 仍为 `BLOCKED`：离线运行时不等于离线源代码重建。
+- 现有任务 23 证据保留为历史证据，不重写为当前 Release 证据。
+- `REFLECTION.md` 变更仅限此前获准修正的过时 GitHub 证据句和客观 Release 事实；不重写学生主观结论。
 
 ---
 
-### Task 1: Receiver runtime contract
+### 任务 1：接收者运行时契约
 
-**Files:**
-- Create: `release/offline-runtime/offline-runtime.ps1`
-- Create: `release/offline-runtime/compose.yaml`
-- Create: `release/offline-runtime/README.md`
-- Create: `release/offline-runtime/release-version.txt`
-- Create: `scripts/test-offline-runtime.ps1`
+**文件：**
+- 创建：`release/offline-runtime/offline-runtime.ps1`
+- 创建：`release/offline-runtime/compose.yaml`
+- 创建：`release/offline-runtime/README.md`
+- 创建：`release/offline-runtime/release-version.txt`
+- 创建：`scripts/test-offline-runtime.ps1`
 
-**Interfaces:**
-- Consumes: `release-images.json`, `museecho-app.tar`, and `museecho-gateway.tar` in one artifact directory.
-- Produces: `offline-runtime.ps1 -Action Verify|Import|Start|Smoke|Stop` and a runtime-only Compose project named `museecho-offline`.
+**接口：**
+- 输入：同一制品目录中的 `release-images.json`、`museecho-app.tar` 和 `museecho-gateway.tar`。
+- 输出：`offline-runtime.ps1 -Action Verify|Import|Start|Smoke|Stop`，以及名为 `museecho-offline` 的仅运行时 Compose 项目。
 
-- [ ] **Step 1: Write the receiver RED test**
+- [x] **步骤 1：编写接收者 RED 测试**
 
-Create a task-temp fixture containing two small archive stand-ins, a literal
-schema-v1 release identity, a fake Docker executable, and the real receiver
-script. The test must assert observable behavior:
+创建一个任务临时夹具，其中包含两个小型归档替身、字面 schema-v1 Release identity、假 Docker 可执行文件和真实接收者脚本。测试必须断言可观察行为：
 
 ```powershell
 $verify = Invoke-Receiver -Action Verify
@@ -55,23 +55,21 @@ $key = [Convert]::FromBase64String((Get-Content -Raw "$secretRoot/audio-kek"))
 if ($key.Length -ne 32) { throw 'receiver did not generate a 32-byte KEK' }
 ```
 
-Add separate fixture runs proving a modified tar fails before any Docker call,
-a wrong loaded app image ID fails before Compose, and `Stop` omits `--volumes`.
+增加独立夹具运行，证明修改后的 tar 会在任何 Docker 调用前失败，错误的已加载应用镜像 ID 会在 Compose 前失败，并且 `Stop` 不包含 `--volumes`。
 
-- [ ] **Step 2: Run the receiver test and verify RED**
+- [x] **步骤 2：运行接收者测试并确认 RED**
 
-Run:
+运行：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-offline-runtime.ps1
 ```
 
-Expected: non-zero with `offline-runtime.ps1` or its actions missing. The
-failure must occur before the fake Docker success path can satisfy assertions.
+预期：由于缺少 `offline-runtime.ps1` 或其操作而以非零状态退出。失败必须发生在假 Docker 成功路径可能满足断言之前。
 
-- [ ] **Step 3: Implement the minimal receiver and Compose runtime**
+- [x] **步骤 3：实施最小接收者和 Compose 运行时**
 
-The receiver validates the manifest and archive hashes before import:
+接收者在导入前验证清单和归档哈希：
 
 ```powershell
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
@@ -85,30 +83,20 @@ foreach ($name in @('app', 'gateway')) {
 }
 ```
 
-`Import` runs `docker load --input` for each verified tar and compares
-`docker image inspect --format '{{.Id}}'` with the manifest. `Start` creates the
-external Secret only if absent, then runs:
+`Import` 对每个已验证 tar 运行 `docker load --input`，并将 `docker image inspect --format '{{.Id}}'` 与清单比较。`Start` 仅在外部 Secret 不存在时创建它，然后运行：
 
 ```powershell
 docker compose --file $composePath --project-name museecho-offline config --quiet
 docker compose --file $composePath --project-name museecho-offline up --detach --wait --no-build
 ```
 
-The Compose file contains no `build` key, uses `pull_policy: never`, binds only
-`127.0.0.1:${MUSEECHO_HTTPS_PORT:-4173}:8443`, mounts the Secret directory
-read-only, and retains the existing non-root/read-only/cap-drop health boundary.
-`Stop` runs `down --remove-orphans` without `--volumes`. `Smoke` imports first
-and invokes the bundled `scripts/container-smoke.ps1 -NoBuild` with the current
-release manifest.
+Compose 文件不包含 `build` 键，使用 `pull_policy: never`，只绑定 `127.0.0.1:${MUSEECHO_HTTPS_PORT:-4173}:8443`，以只读方式挂载 Secret 目录，并保留现有的非 root/只读/cap-drop 健康边界。`Stop` 运行不带 `--volumes` 的 `down --remove-orphans`。`Smoke` 先导入，再使用当前 Release 清单调用工具包内的 `scripts/container-smoke.ps1 -NoBuild`。
 
-- [ ] **Step 4: Run receiver GREEN and mutation probes**
+- [x] **步骤 4：运行接收者 GREEN 和变异探针**
 
-Run the same test command. Expected: `Offline runtime synthetic tests passed.`
-Then temporarily change the fake app ID and a tar byte through the test's own
-fixture modes; each run must fail on its named contract and leave no fixture
-residue.
+运行同一测试命令。预期：`Offline runtime synthetic tests passed.`。随后通过测试自身的夹具模式临时修改假应用 ID 和一个 tar 字节；每次运行都必须在对应契约处失败，且不留下夹具残留。
 
-- [ ] **Step 5: Commit Task 1**
+- [x] **步骤 5：提交任务 1**
 
 ```powershell
 git add -- release/offline-runtime scripts/test-offline-runtime.ps1
@@ -117,19 +105,19 @@ git commit -m "feat: add verified offline runtime loader"
 
 ---
 
-### Task 2: Current release identity no-build smoke
+### 任务 2：当前 Release identity 的 no-build Smoke
 
-**Files:**
-- Modify: `scripts/container-smoke.ps1`
-- Modify: `scripts/test-container-contract.ps1`
+**文件：**
+- 修改：`scripts/container-smoke.ps1`
+- 修改：`scripts/test-container-contract.ps1`
 
-**Interfaces:**
-- Consumes: legacy Task 23 security manifests or current `release-images.json` manifests.
-- Produces: one no-build smoke entrypoint that derives current app/gateway IDs from `images.<name>.image_id` while preserving legacy validation.
+**接口：**
+- 输入：旧版任务 23 安全清单或当前 `release-images.json` 清单。
+- 输出：单一 no-build Smoke 入口；从 `images.<name>.image_id` 派生当前应用/网关 ID，同时保留旧版验证。
 
-- [ ] **Step 1: Add failing current-manifest tests**
+- [x] **步骤 1：增加失败的当前清单测试**
 
-Extend the synthetic contract with this literal current manifest:
+用以下字面当前清单扩展合成契约：
 
 ```powershell
 [ordered]@{
@@ -141,40 +129,29 @@ Extend the synthetic contract with this literal current manifest:
 } | ConvertTo-Json -Depth 4
 ```
 
-Invoke `container-smoke.ps1 -NoBuild -ReleaseManifest <path>` without the four
-legacy expected-ID arguments. Assert success, then mutate one ID to a malformed
-value and assert failure before Compose `up`.
+在不提供四个旧版预期 ID 参数的情况下调用 `container-smoke.ps1 -NoBuild -ReleaseManifest <path>`。断言成功；随后把一个 ID 变为畸形值，并断言在 Compose `up` 前失败。
 
-- [ ] **Step 2: Verify RED**
+- [x] **步骤 2：确认 RED**
 
-Run:
+运行：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-container-contract.ps1
 ```
 
-Expected: the current manifest fails because the existing smoke requires four
-legacy IDs and reads `app.daemon_image_id`.
+预期：当前清单失败，因为现有 Smoke 要求四个旧版 ID，并读取 `app.daemon_image_id`。
 
-- [ ] **Step 3: Implement dual-schema identity parsing**
+- [x] **步骤 3：实现双 schema identity 解析**
 
-Add one parser that returns the expected daemon IDs. For the current schema it
-validates exactly `app` and `gateway`, both lowercase SHA-256 image IDs, and
-rejects duplicate IDs. For the legacy schema retain every existing
-daemon/config comparison. Only the derived daemon IDs are used for Docker tag
-and running-container inspection.
+增加一个返回预期 daemon ID 的解析器。对于当前 schema，它严格验证 `app` 和 `gateway`，二者均为小写 SHA-256 镜像 ID，并拒绝重复 ID。对于旧版 schema，保留每个现有 daemon/config 比较。只有派生出的 daemon ID 用于检查 Docker tag 和运行中容器。
 
-When `-NoBuild` is set, require only `compose.yaml`; retain Dockerfile and
-Caddyfile requirements for build-mode smoke. This allows the generated runtime
-kit to carry no build inputs.
+设置 `-NoBuild` 时，只要求 `compose.yaml`；构建模式 Smoke 仍要求 Dockerfile 和 Caddyfile。这样生成的运行时工具包无需携带构建输入。
 
-- [ ] **Step 4: Verify GREEN and legacy compatibility**
+- [x] **步骤 4：确认 GREEN 和旧版兼容性**
 
-Run the contract script. Expected: both legacy and current-manifest paths pass;
-wrong tag, swapped identity, duplicate identity, malformed identity, and runtime
-drift probes all fail closed inside the harness.
+运行契约脚本。预期：旧版路径和当前清单路径均通过；错误 tag、互换 identity、重复 identity、畸形 identity 和运行时漂移探针均在测试框架内以失败关闭。
 
-- [ ] **Step 5: Commit Task 2**
+- [x] **步骤 5：提交任务 2**
 
 ```powershell
 git add -- scripts/container-smoke.ps1 scripts/test-container-contract.ps1
@@ -183,22 +160,20 @@ git commit -m "test: accept audited release identity in no-build smoke"
 
 ---
 
-### Task 3: Maintainer packaging and CI retention
+### 任务 3：维护者打包与 CI 保留
 
-**Files:**
-- Create: `scripts/prepare-offline-release.ps1`
-- Create: `scripts/test-prepare-offline-release.ps1`
-- Modify: `.github/workflows/ci.yml`
+**文件：**
+- 创建：`scripts/prepare-offline-release.ps1`
+- 创建：`scripts/test-prepare-offline-release.ps1`
+- 修改：`.github/workflows/ci.yml`
 
-**Interfaces:**
-- Consumes: `-Version 0.1.0`, `-EvidenceDirectory tmp/image-security`, and both audited tar files plus `release-images.json`.
-- Produces: `tmp/offline-release/museecho-offline-runtime-v0.1.0.zip` and `tmp/offline-release/SHA256SUMS.txt`.
+**接口：**
+- 输入：`-Version 0.1.0`、`-EvidenceDirectory tmp/image-security`，以及两个待验证 tar 文件和 `release-images.json`。
+- 输出：`tmp/offline-release/museecho-offline-runtime-v0.1.0.zip` 和 `tmp/offline-release/SHA256SUMS.txt`。
 
-- [ ] **Step 1: Write packaging RED test**
+- [x] **步骤 1：编写打包 RED 测试**
 
-Use small valid Docker-save fixture tars already supported by
-`tests/unit/test_release_identity.py`, or generate literal single-image tar
-fixtures in task-temp. Invoke the real packaging script and assert:
+使用 `tests/unit/test_release_identity.py` 已支持的小型有效 Docker-save 夹具 tar，或在任务临时目录中生成字面单镜像 tar 夹具。调用真实打包脚本并断言：
 
 ```powershell
 $zip = Join-Path $output 'museecho-offline-runtime-v0.1.0.zip'
@@ -210,26 +185,21 @@ foreach ($path in $required) {
 }
 ```
 
-Parse `SHA256SUMS.txt` and independently hash both input tars and the zip.
-Mutate the identity manifest tar digest and assert packaging fails without an
-output zip.
+解析 `SHA256SUMS.txt`，并独立计算两个输入 tar 和 zip 的哈希。修改 identity 清单中的 tar 摘要，断言打包失败且不生成输出 zip。
 
-- [ ] **Step 2: Run packaging test and verify RED**
+- [x] **步骤 2：运行打包测试并确认 RED**
 
-Run:
+运行：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-prepare-offline-release.ps1
 ```
 
-Expected: non-zero because the packaging script does not exist.
+预期：由于打包脚本尚不存在而以非零状态退出。
 
-- [ ] **Step 3: Implement deterministic packaging**
+- [x] **步骤 3：实施确定性打包**
 
-The script validates `Version` against `^\d+\.\d+\.\d+$`, calls the existing
-Python identity verifier against both tars, stages only the six specified kit
-files, writes `v$Version` with UTF-8 no BOM, creates the zip, and emits sorted
-lowercase checksums in this format:
+脚本用 `^\d+\.\d+\.\d+$` 验证 `Version`，针对两个 tar 调用现有 Python identity 验证器，只暂存六个指定工具包文件，以不带 BOM 的 UTF-8 写入 `v$Version`，创建 zip，并按以下格式生成排序后的小写校验和：
 
 ```text
 <64 lowercase hex>  museecho-app.tar
@@ -237,14 +207,11 @@ lowercase checksums in this format:
 <64 lowercase hex>  museecho-offline-runtime-v0.1.0.zip
 ```
 
-Task-temp staging is removed in `finally`; output files are replaced only
-inside the explicitly resolved output directory.
+任务临时暂存目录在 `finally` 中删除；仅在显式解析的输出目录中替换输出文件。
 
-- [ ] **Step 4: Add packaging gates to CI**
+- [x] **步骤 4：向 CI 增加打包门禁**
 
-Run both synthetic PowerShell tests in `quality`. In `distribution`, after all
-identity/license/vulnerability/VEX gates, run the packaging script and change
-the existing retained artifact path to:
+在 `quality` 中运行两个合成 PowerShell 测试。在 `distribution` 中，所有 identity/许可证/漏洞/VEX 门禁通过后运行打包脚本，并将现有保留制品的路径改为：
 
 ```yaml
 path: |
@@ -252,15 +219,13 @@ path: |
   tmp/offline-release/
 ```
 
-Keep `continue-on-error` only on evidence retention; packaging itself blocks
-the job.
+仅证据保留使用 `continue-on-error`；打包本身会阻断作业。
 
-- [ ] **Step 5: Verify GREEN**
+- [x] **步骤 5：确认 GREEN**
 
-Run both PowerShell tests, YAML parse/contract tests, release identity unit
-tests, and `git diff --check`. Expected: zero failures and no temp residue.
+运行两个 PowerShell 测试、YAML 解析/契约测试、Release identity 单元测试和 `git diff --check`。预期：零失败，且没有临时残留。
 
-- [ ] **Step 6: Commit Task 3**
+- [x] **步骤 6：提交任务 3**
 
 ```powershell
 git add -- scripts/prepare-offline-release.ps1 scripts/test-prepare-offline-release.ps1 .github/workflows/ci.yml
@@ -269,32 +234,31 @@ git commit -m "build: package audited offline runtime assets"
 
 ---
 
-### Task 4: Pre-release documentation and delivery contracts
+### 任务 4：Release 前文档与交付契约
 
-**Files:**
-- Modify: `README.md`
-- Create: `RELEASE_REPRODUCTION.md`
-- Modify: `SPEC.md`
-- Modify: `PLAN.md`
-- Modify: `DECISIONS.md`
-- Modify: `AGENT_LOG.md`
-- Modify: `BLOCKERS.md`
-- Modify: `COURSE_DELIVERY_CHECKLIST.md`
-- Modify: `DELIVERY_REPORT.md`
-- Modify: `REFLECTION.md`
-- Modify: `REFLECTION_NOTES.md`
-- Modify as required by existing validators: `docs/audits/FUNCTIONAL_AUDIT.md`
-- Modify as required by existing validators: `docs/audits/ENGINEERING_AUDIT.md`
-- Test: existing delivery, acceptance, engineering, and final-contract tests
+**文件：**
+- 修改：`README.md`
+- 创建：`RELEASE_REPRODUCTION.md`
+- 修改：`SPEC.md`
+- 修改：`PLAN.md`
+- 修改：`DECISIONS.md`
+- 修改：`AGENT_LOG.md`
+- 修改：`BLOCKERS.md`
+- 修改：`COURSE_DELIVERY_CHECKLIST.md`
+- 修改：`DELIVERY_REPORT.md`
+- 修改：`REFLECTION.md`
+- 修改：`REFLECTION_NOTES.md`
+- 现有验证器要求时修改：`docs/audits/FUNCTIONAL_AUDIT.md`
+- 现有验证器要求时修改：`docs/audits/ENGINEERING_AUDIT.md`
+- 测试：现有交付、验收、工程和最终契约测试
 
-**Interfaces:**
-- Consumes: implemented receiver/package behavior and the known Release URL `https://github.com/Zzz148080/MuseEcho/releases/tag/v0.1.0`.
-- Produces: consistent wording that distinguishes offline runtime PASS from offline source-build BLOCKED.
+**接口：**
+- 输入：已实现的接收者/打包行为，以及已知 Release URL `https://github.com/Zzz148080/MuseEcho/releases/tag/v0.1.0`。
+- 输出：一致区分离线运行时 PASS 与离线源代码构建 BLOCKED 的措辞。
 
-- [ ] **Step 1: Write or update failing delivery-contract tests**
+- [x] **步骤 1：编写或更新失败的交付契约测试**
 
-Add behavioral document contract assertions only where an existing checker
-consumes the documents. Before publication, the required meaning is:
+仅在现有检查器会读取文档的位置增加行为文档契约断言。发布前所需含义为：
 
 ```text
 offline-runtime=READY_FOR_RELEASE
@@ -302,36 +266,23 @@ offline-source-build=BLOCKED:ENG-010
 deployment=NOT_RUN
 ```
 
-The checker must reject text that deletes `ENG-010`, calls the runtime kit an
-offline source build, or claims cloud deployment.
+检查器必须拒绝删除 `ENG-010`、把运行时工具包称为离线源代码构建或声称已完成云部署的文本。
 
-- [ ] **Step 2: Verify documentation RED**
+- [x] **步骤 2：确认文档为 RED**
 
-Run focused delivery/acceptance/engineering tests. Expected: failure because
-the current documents still say no Release exists and the stale reflection
-lines still call final GitHub evidence open.
+运行聚焦交付/验收/工程测试。预期：失败，因为当前文档仍称不存在 Release，过时的反思记录也仍称最终 GitHub 证据待完成。
 
-- [ ] **Step 3: Update the full project timeline**
+- [x] **步骤 3：更新完整项目时间线**
 
-Document recipient prerequisites, four assets, three receiver commands,
-localhost CA warning, retained data behavior, no provider key requirement, and
-the exact release boundary. Update status blocks in chronological order. Keep
-`MUSEECHO V1 PARTIALLY READY` while student/manual and `ENG-010` gates remain.
+记录接收者先决条件、四项资产、三个接收者命令、localhost CA 警告、数据保留行为、不需要供应商密钥，以及精确 Release 边界。按时间顺序更新状态块。当学生/人工门禁和 `ENG-010` 仍存在时，保持 `MUSEECHO V1 PARTIALLY READY`。
 
-In `REFLECTION.md`, replace only the previously authorized stale sentence so
-final GitHub evidence is closed by run `31973968704` at SHA `09a51b4...`, while
-formal offline source build and student/manual gates remain open. In
-`REFLECTION_NOTES.md`, retain run `31687703913` as historical, add final run
-`31973968704`, and close only final GitHub evidence. Release evidence is added
-as an objective dated note after publication, not as a subjective conclusion.
+在 `REFLECTION.md` 中，只替换此前获准修正的过时客观句：最终 GitHub 证据由合并 SHA `d99e7b95...` 上的 main run `31997390847` 关闭，而正式离线源代码构建及学生/人工门禁仍未关闭。在 `REFLECTION_NOTES.md` 中，保留 run `31687703913` 和产品 run `31966788273` 作为历史边界，增加 main run `31997390847`，并只关闭最终 GitHub/Release 证据。Release 证据是带日期的客观记录，不是重写后的主观结论。
 
-- [ ] **Step 4: Verify documentation GREEN**
+- [x] **步骤 4：确认文档为 GREEN**
 
-Run the delivery validator, acceptance validator, engineering checker, focused
-unit tests, secret scan, and `git diff --check`. Expected: all pass with the
-same non-READY boundaries.
+运行交付验证器、验收验证器、工程检查器、聚焦单元测试、Secret 扫描和 `git diff --check`。预期：全部通过，且非 READY 边界不变。
 
-- [ ] **Step 5: Commit Task 4**
+- [x] **步骤 5：提交任务 4**
 
 ```powershell
 git add -- README.md RELEASE_REPRODUCTION.md SPEC.md PLAN.md DECISIONS.md AGENT_LOG.md BLOCKERS.md COURSE_DELIVERY_CHECKLIST.md DELIVERY_REPORT.md REFLECTION.md REFLECTION_NOTES.md docs/audits
@@ -340,85 +291,67 @@ git commit -m "docs: prepare v0.1.0 offline runtime release"
 
 ---
 
-### Task 5: Full verification, PR integration, and main evidence
+### 任务 5：完整验证、PR 集成与 main 证据
 
-**Files:**
-- No intended source changes; fixes follow TDD if verification exposes defects.
+**文件：**
+- 不计划修改源代码；如果验证暴露缺陷，则按 TDD 修复。
 
-**Interfaces:**
-- Consumes: Tasks 1-4 commits.
-- Produces: green feature PR and green merged `main` run whose distribution artifact supplies Release assets.
+**接口：**
+- 输入：任务 1–4 的提交。
+- 输出：GREEN 功能 PR 和 GREEN 的已合并 `main` 运行，用于确立源代码/策略边界；保留的 distribution 制品在可用时提供 Release 资产，否则必须使用明确记录的来源回退。
 
-- [ ] **Step 1: Verify the full branch**
+- [x] **步骤 1：验证完整分支**
 
-Run the repository's PowerShell verification gates, Python suite, frontend
-tests/build, E2E typecheck, container contracts, secret scan, and a real Docker
-distribution build. Run the no-build smoke against the produced current
-`release-images.json`. Record exact counts, image IDs, tar hashes, and exit
-codes.
+运行仓库的 PowerShell 验证门禁、Python 套件、前端测试/构建、E2E 类型检查、容器契约、Secret 扫描和真实 Docker distribution 构建。针对生成的当前 `release-images.json` 运行 no-build Smoke。记录精确计数、镜像 ID、tar 哈希和退出码。
 
-- [ ] **Step 2: Review the final diff and push**
+- [x] **步骤 2：复审最终差异并推送**
 
-Confirm no generated tar, zip, key, cache, database, or temporary evidence is
-tracked. Push `codex/expand-common-audio-formats` without force.
+确认没有生成的 tar、zip、密钥、缓存、数据库或临时证据被跟踪。以非强制方式推送 `codex/expand-common-audio-formats`。
 
-- [ ] **Step 3: Retarget and complete PR #3**
+- [x] **步骤 3：重新设定 PR #3 的目标并完成它**
 
-Retarget PR #3 from `codex/fix-mp3-cover-art` to `main`, inspect the expanded
-compare, mark it ready, and wait for `quality`, `e2e`, and `distribution` to
-reach successful conclusions on the exact head SHA. Fix any failure through
-systematic debugging and TDD, then repeat.
+将 PR #3 的目标从 `codex/fix-mp3-cover-art` 改为 `main`，检查扩大的比较范围，标记为可审阅，并等待精确 head SHA 上的 `quality`、`e2e` 和 `distribution` 达到成功终态。通过系统化调试和 TDD 修复任何失败，然后重复验证。
 
-- [ ] **Step 4: Merge and verify main**
+- [x] **步骤 4a：合并并验证 main CI**
 
-Merge PR #3 using the repository's allowed merge method. Wait for the `main`
-CI run on the resulting merge SHA to pass all three jobs. Download the
-`image-vulnerability-evidence` artifact from this exact run and verify its
-release identity and offline assets locally.
+使用仓库允许的合并方式合并 PR #3。等待所得合并 SHA 上的 `main` CI 运行通过全部三个作业。
+
+- [ ] **步骤 4b：下载精确 main 制品（未完成）**
+
+`image-vulnerability-evidence` 上传因 GitHub Actions 制品配额被跳过。没有留下可下载的 CI tar，因此无法获得 CI 内部 tar 与 Release 的精确字节 identity，也不作此声明。任务 6 记录另行获准的来源回退。
 
 ---
 
-### Task 6: Publish v0.1.0 and reconcile final evidence
+### 任务 6：发布 v0.1.0 并对账最终证据
 
-**Files:**
-- Create locally for GitHub body: `tmp/release-v0.1.0-notes.md` (never tracked)
-- Modify after publication: the Task 4 delivery/status documents that carry current Release evidence
+**文件：**
+- 为 GitHub 正文在本地创建：`tmp/release-v0.1.0-notes.md`（绝不跟踪）
+- 发布后修改：任务 4 中承载当前 Release 证据的交付/状态文档
 
-**Interfaces:**
-- Consumes: exact green `main` SHA and its downloaded distribution artifact.
-- Produces: formal GitHub Release URL, tag, assets, checksums, and post-release documentation commit.
+**接口：**
+- 输入：精确 GREEN `main` SHA，以及其保留的 distribution 制品；若因保留失败而不可用，则输入一个经明确授权的来源回退，且必须具有 Release identity、打包/校验和、no-build Smoke 和发布后下载验证。
+- 输出：正式 GitHub Release URL、tag、资产、校验和及发布后文档提交。
 
-- [ ] **Step 1: Prepare and verify release assets**
+- [ ] **步骤 1a：从保留的最终 main 制品准备（未完成）**
 
-Extract the final `main` artifact into task-temp. Verify both tars with
-`verify_release_identity.py`, verify every `SHA256SUMS.txt` entry, expand the
-runtime zip, and run `offline-runtime.ps1 -Action Smoke` using the downloaded
-assets. Confirm the smoke reaches `complete` and cleans up.
+最终 `main` 制品无法提取，因为保留步骤因配额被跳过。这条计划中的来源路径保持未完成，不得事后描述为成功。
 
-- [ ] **Step 2: Create the tag and formal Release**
+- [x] **步骤 1b：执行获批的精确 main 本地来源 fallback**
 
-Create annotated tag `v0.1.0` at the verified `main` SHA. Publish a non-draft,
-non-prerelease Release titled `MuseEcho v0.1.0` and upload exactly the four
-assets. Release notes begin with recipient reproduction commands and state that
-cloud deployment and offline source rebuilding are not included.
+从精确 GREEN main SHA `d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1` 重建，然后重新执行 Release identity、打包、`SHA256SUMS.txt` 每个条目以及完整 no-build Smoke。只发布该已验证的本地资产集。再次下载发布字节，重复哈希/identity/Smoke 验证，并记录 GREEN main 的许可证/漏洞/VEX 门禁适用于其内部构建，而不能证明发布 tar 字节；不声称发布字节与不可用 CI 输出相等。
 
-- [ ] **Step 3: Verify GitHub publication**
+- [x] **步骤 2：创建 tag 和正式 Release**
 
-Read the Release back from GitHub. Confirm tag target, published state, asset
-names, asset sizes, and downloadable bytes. Re-hash downloaded copies and
-compare them to `SHA256SUMS.txt`.
+在已验证的 `main` SHA 上创建带注释 tag `v0.1.0`。发布标题为 `MuseEcho v0.1.0` 的非草稿、非预发布 Release，并恰好上传四项资产。Release 说明以接收者复现命令开头，并注明不包含云部署和离线源代码重建。
 
-- [ ] **Step 4: Reconcile post-release documents**
+- [x] **步骤 3：验证 GitHub 发布**
 
-Append the exact Release URL, tag target SHA, main CI run ID, publication UTC
-time, and asset hashes/sizes to the objective delivery timeline. Preserve
-`ENG-010`, deployment, and student/manual boundaries. Commit and push this
-documentation-only reconciliation through a PR to `main` if branch protection
-requires it.
+从 GitHub 重新读取 Release。确认 tag 目标、发布状态、资产名称、资产大小和可下载字节。重新计算下载副本哈希，并与 `SHA256SUMS.txt` 比较。
 
-- [ ] **Step 5: Run final evidence verification**
+- [x] **步骤 4：对账发布后文档**
 
-Wait for the post-release documentation CI to pass. Confirm the GitHub Release
-still targets the original audited main SHA, all four assets remain available,
-the repository tree contains no generated assets/secrets, and every current
-document names the same Release status and remaining blockers.
+向客观交付时间线追加精确 Release URL、解引用后的 tag 目标 SHA、main CI run ID、发布 UTC 时间，以及资产哈希/大小。记录 Actions 配额导致的来源 fallback，并明确避免声称与未保留 CI 输出字节相等。增加失败关闭的证据重放验证器和字段绑定清单。保留 `ENG-010`、部署及学生/人工边界。通过 PR 将此次对账提交并推送到 `main`。
+
+- [ ] **步骤 5：运行最终证据验证**
+
+等待发布后文档 CI 通过。确认 GitHub Release 仍指向原始 GREEN main SHA，全部四项资产仍可用，仓库树不包含生成的资产/Secret，且每份当前文档均写明相同的 Release 状态和剩余阻塞项。

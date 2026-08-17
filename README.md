@@ -1,39 +1,40 @@
 # MuseEcho
 
 <!-- TASK24-CURRENT-STATUS:START -->
-## Task 24 current status
+## 任务 24 当前状态
 
-Current delivery status is `MUSEECHO V1 PARTIALLY READY`. Task 24 now provides
-the Product Audit, 17-section delivery report, and strict validator; Task 24
-itself is no longer a blocker. `REFLECTION.md` is now under the student's
-personal revision and has not been used to claim final student acceptance.
-Task 23 PR #1 is merged with GitHub quality, E2E, and distribution green.
-The current Functional Audit is **36 PASS / 4 PARTIAL / 0 FAIL**. PR #3 run
-`31966788273` passed GitHub quality (5m43s), E2E (3m10s), and distribution
-(7m30s) on exact final product/CI implementation SHA
-`0674f74f4097e46cee98c4715a62ad5aa55101cf`. Per
-`COURSE_REQUIREMENT_UPDATE.md`, GitLab and Tencent Cloud/public deployment are
-deferred follow-up work, not course submission gates. Remaining gates are
-formal offline build ENG-010, local product review, and student acceptance;
-no Release publication or cloud deployment is claimed.
+当前交付状态为 `MUSEECHO V1 PARTIALLY READY`。任务 24 已提供产品审计、固定 17 节的
+交付报告和严格校验器；任务 24 本身不再是阻因。`REFLECTION.md` 正由学生本人修改，
+且未被用于声称学生最终验收已经完成。任务 23 PR #1 已合并，GitHub 质量门、E2E 和分发
+均为绿色。当前功能审计为 **36 PASS / 4 PARTIAL / 0 FAIL**。PR #3 以合并 SHA
+`d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1` 合入；main run `31997390847`
+的 GitHub 质量门、E2E 和分发均通过。GitHub Release `v0.1.0` 已发布四项受校验和
+约束的离线资产，回下载包也完成免构建 HTTPS/WAV/持久化/隐私 Smoke。根据
+`COURSE_REQUIREMENT_UPDATE.md`，GitLab 与腾讯云/公网部署属于后续工作，不是课程提交门禁。
+剩余门禁为正式当前源码离线重建 `ENG-010`、本地产品复核和学生验收；本文不声称 GitLab、
+云端部署或学生验收已经完成。
 <!-- TASK24-CURRENT-STATUS:END -->
 
-<!-- FINAL-CI-RELATIONSHIP: implementation-sha=0674f74f4097e46cee98c4715a62ad5aa55101cf; run=31966788273; jobs=quality:success,e2e:success,distribution:success; github=required; gitlab=supplemental-not-run; reconciliation=docs-only-requires-separate-final-sha-publication-ci -->
-Any later docs-only reconciliation is not product implementation evidence and requires its own separate final-SHA publication/CI gate before Task 6 can be complete.
+<!-- FINAL-CI-RELATIONSHIP: implementation-sha=d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1; run=31997390847; jobs=quality:success,e2e:success,distribution:success; github=required; gitlab=supplemental-not-run; reconciliation=docs-only-after-release; release-tag=v0.1.0; release-assets=4 -->
+已发布的 `v0.1.0` Release 绑定到这一精确 main SHA 和四项经校验和验证的资产；后续仅文档对账需要自己的 CI，但不会改写已发布资产的身份。
 
-## Project timeline and verified GitHub boundary
+## 项目时间线与已验证的 GitHub 边界
 
-- 2026-08-08 至 2026-08-13：从批准的 SPEC/PLAN、cold-start 修复和 Tasks 3–24 逐步完成
+- 2026-08-08 至 2026-08-13：从批准的 SPEC/PLAN、冷启动修复和任务 3–24 逐步完成
   能力访问、加密生命周期、DSP/MIR、Evidence-first 解释、React 工作区、Docker/CI、部署手册及
-  三轮审计；Task 23 PR #1 和 Task 24 implementation boundary 的历史证据继续保留。
-- 2026-08-14 至 2026-08-16：在 Task 24 后按细粒度提交完成可信结果呈现、七种常见音频格式、
+  三轮审计；任务 23 PR #1 和任务 24 实现边界的历史证据继续保留。
+- 2026-08-14 至 2026-08-16：在任务 24 后按细粒度提交完成可信结果呈现、七种常见音频格式、
   100 MiB 上限、Broadcast WAV、按需解密 Range 播放、FLAC attached-picture 与节奏修复，随后闭合
-  Linux formatter、历史证据、pre-push Docker 和 current-image 漏洞策略漂移。
+  Linux 格式化、预推送 Docker、历史证据和当前镜像漏洞策略漂移。
 - 2026-08-16：PR #3 的最终产品/CI 实现 SHA
   `0674f74f4097e46cee98c4715a62ad5aa55101cf` 由 GitHub run
   [`31966788273`](https://github.com/Zzz148080/MuseEcho/actions/runs/31966788273)
-  同时通过 quality、E2E、distribution。后续文档 reconciliation 不改变产品架构或把未发生的
-  GitLab、Release、云部署、学生验收写成完成。
+  同时通过质量门、E2E、分发。
+- 2026-08-17：PR #3 合并为 main SHA `d99e7b95f83f0f5cd6867bd10bacc274e6d2a0e1`，main
+  run [`31997390847`](https://github.com/Zzz148080/MuseEcho/actions/runs/31997390847)
+  通过质量门、E2E、分发；正式 GitHub `v0.1.0` Release 发布四项资产并完成回下载
+  SHA-256 与离线免构建全流程复现。后续文档对账不改变产品架构或把未发生的
+  GitLab、云部署、学生验收写成完成。
 
 MuseEcho V1 是一款 Evidence First（证据优先）的交互式音乐理解应用。它用确定性的
 DSP/MIR 管线分析用户上传的 WAV、MP3、FLAC、M4A、AAC、OGG 或 OPUS，生成节拍、能量、调性、结构、和弦、波形和确定性
@@ -88,11 +89,16 @@ DSP/MIR 管线分析用户上传的 WAV、MP3、FLAC、M4A、AAC、OGG 或 OPUS�
 - `tests/`：单元、API、集成、安全、性能测试。
 - `e2e/`：真实 HTTPS 浏览器测试。
 - `migrations/`：Alembic 迁移。
-- `scripts/`：统一验证、Secret 审计、容器 smoke 与性能基准。
+- `scripts/`：统一验证、Secret 审计、容器 Smoke 与性能基准。
+- `release/offline-runtime/`：正式离线运行包的仅运行时 Compose、接收端脚本与版本文件；
+  只允许验证/导入/启动/Smoke/停止，不包含源码构建路径。
 - `docs/`：设计与验证资料；`SPEC.md`、`PLAN.md` 是批准的产品和实施基线。
-- `DELIVERY_REPORT.md`：Task 24 的固定 17 节交付结论、证据、精确阻因和学生保留检查表。
-- `docs/audits/PRODUCT_AUDIT.md`：机器可读的产品审计矩阵；控制器已真实到达健康 HTTPS 边界，但因内部 CA 未受信而保持 `CERT_TRUST_BLOCKED`。
-- `REFLECTION.md`：学生本人撰写与最终确认的反思报告；不作为自动化或 Agent 完成声明的替代品。
+- `DELIVERY_REPORT.md`：任务 24 的固定 17 节交付结论、证据、精确阻因和学生保留检查表。
+- `docs/audits/`：功能、工程、产品三轮机器可读审计；产品审计控制器已真实到达
+  健康 HTTPS 边界，但因内部 CA 未受信而保持 `CERT_TRUST_BLOCKED`。
+- `RELEASE_REPRODUCTION.md`：教师/复核者下载 GitHub `v0.1.0` 四项资产后的校验、Smoke 和网页
+  体验入口。
+- `REFLECTION.md`：学生本人撰写与最终确认的反思报告；不作为自动化或智能体完成声明的替代品。
 
 ## 环境要求
 
@@ -241,7 +247,7 @@ docker compose --profile production down
 docker compose --profile production down --volumes
 ```
 
-可重现身份来自 digest 锁定的基础镜像、不可变仓库快照/精确包版本、固定时间戳和
+可重现身份来自摘要锁定的基础镜像、不可变仓库快照/精确包版本、固定时间戳和
 `rewrite-timestamp=true`，不来自 pull 策略。重建后必须重新记录 `release-images.json`，并让
 同一 tar 身份贯穿原始扫描、inventory、audit、gate 与发行。
 
@@ -265,9 +271,9 @@ curl.exe --fail --silent --show-error --insecure https://localhost:4173/api/heal
 ```
 
 `powershell.exe -File scripts\development-smoke.ps1` 会执行同一 development profile，真实访问
-HTTPS 前端和同源 API，并在成功或失败后清理其独立容器、网络、卷与 task-temp Secret。
+HTTPS 前端和同源 API，并在成功或失败后清理其独立容器、网络、卷与任务临时 Secret。
 
-完整容器 smoke 会在 OS task-temp 中创建 Secret 和 Compose override（仅覆盖 smoke 的固定
+完整容器 Smoke 会在 OS 任务临时目录中创建 Secret 和 Compose override（仅覆盖 Smoke 的固定
 Secret bind）、构建镜像、上传真实 WAV、等待分析、重启验证持久性并检查持久卷无明文音频；
 成功或失败都会校验容器、卷与精确临时目录的清理：
 
@@ -277,7 +283,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\container-smoke.
 
 ## 第三方模型凭据
 
-模型完全可选；未配置时所有解释走确定性 fallback。启用时必须同时设置：
+模型完全可选；未配置时所有解释走确定性回退。启用时必须同时设置：
 
 ```text
 MUSEECHO_PROVIDER_BASE_URL=https://provider.example/v1
@@ -286,61 +292,64 @@ MUSEECHO_PROVIDER_SECRET_FILE=/run/secrets/provider-key
 ```
 
 容器外本地运行时，Secret 路径必须是仓库外的绝对只读文件。不得把 API Key 写入 `.env`、
-Compose、命令行、截图、日志、Git 历史或前端变量。`scripts/secret-scan.ps1` 扫描 tracked
-与未忽略的 untracked 文件、高置信凭据模式、凭据赋值中的高熵值和禁止路径，读取失败会
+Compose、命令行、截图、日志、Git 历史或前端变量。`scripts/secret-scan.ps1` 扫描已跟踪
+与未忽略的未跟踪文件、高置信凭据模式、凭据赋值中的高熵值和禁止路径，读取失败会
 关闭门禁；但它不能代替平台侧密钥轮换与使用日志审计。
 
 ## 安全边界
 
 - 原始音频只在有界临时目录短暂出现，持久化为每文件随机数据密钥的 AES-GCM 分块密文。
 - 音频 KEK 和模型 API Key 分离；启动时验证 Secret 路径与只读属性。
-- 访问 token 只存 Argon2id 哈希，cookie 为 Secure/HttpOnly/SameSite；写操作还需同源与
-  CSRF token。
+- 访问令牌只存 Argon2id 哈希，Cookie 为 Secure/HttpOnly/SameSite；写操作还需同源与
+  CSRF 令牌。
 - 上传体、解码时间、时长、响应大小、LLM 超时和引用集合均有硬限制。
 - 上传解码只接受严格容器/编解码器配对：WAV 中的受限 PCM/IEEE float、常规 MP3、FLAC、
   M4A 中的 AAC/ALAC、ADTS AAC、Ogg/Vorbis 和 Ogg/Opus。浏览器 MIME 或后缀只是预检，
-  服务器会独立核对签名、容器、全部媒体流与 codec；DRM 和专有加密下载均失败关闭。
-  `ffprobe` 与 `ffmpeg` 共用从格式注册表派生的精确 format/codec allowlist 和 `file,pipe`
-  protocol allowlist。
+  服务器会独立核对签名、容器、全部媒体流与编解码器；DRM 和专有加密下载均失败关闭。
+  `ffprobe` 与 `ffmpeg` 共用从格式注册表派生的精确格式/编解码器白名单和 `file,pipe`
+  协议白名单。
 - WAVEFORMATEXTENSIBLE 仅在 `cbSize >= 22`、声明扩展字节有界、`0 < valid_bits <=
   container_bits`、GUID/速率/通道/block-align/byte-rate 全部一致时接受。MP3 仅支持可由非零
   bitrate index 计算帧大小的常规 MPEG Layer III；V1 明确拒绝 free-format (`0000`) MP3，因为
   锁定 FFmpeg 5.1.9 拒绝了该端到端流，不能将所有 MP3 子类型称为受支持。
 - Caddy 是唯一公开入口；FastAPI 不应直接暴露公网。
-- 镜像 CI 先保存不带 suppression 的完整 Trivy JSON，再核对每个 finding tuple、PURL、
-  package/version/status/severity、完整 dpkg 文件清单、镜像内运行时探针，以及全部 `src/`、
+- 镜像 CI 先保存不带抑制项的完整 Trivy JSON，再核对每个发现元组、PURL、
+  包/版本/状态/严重程度、完整 dpkg 文件清单、镜像内运行时探针，以及全部 `src/`、
   Docker/Compose、配置和依赖锁文件哈希；随后只应用逐 CVE、逐产品且有代码/测试/权威来源
   支撑的 OpenVEX。任何新增、缺失或变化条目都会关闭门禁，失败时仍保留原始审计证据；不
-  使用 `--ignore-unfixed`、status/package 过滤或 blanket ignore。
+  使用 `--ignore-unfixed`、状态/包过滤或全局忽略。
 
 ## 分发与 CI
 
 正式 GitHub Release 的接收方复现入口见 [`RELEASE_REPRODUCTION.md`](RELEASE_REPRODUCTION.md)。
-`v0.1.0` 发行合同由两个经过同一 distribution 作业审计的镜像 tar、离线运行工具包和
-`SHA256SUMS.txt` 组成；工具包强制 `pull_policy: never` 与 `--no-build`。这只解决接收方断网
-导入和运行，不关闭 `ENG-010` 所指的 current-source Dockerfile 断网重建。
+`v0.1.0` 发行合同由精确绿色 main SHA 的受控本地回退方案生成的两个镜像 tar、离线运行
+工具包和 `SHA256SUMS.txt` 组成；main CI 的三个作业通过，但制品因 Actions 配额未留存，
+因此不声称 Release tar 与 CI 内未留存 tar 字节相同。发布字节以自己的发行身份、下载
+校验和与完整免构建 Smoke 绑定；工具包强制 `pull_policy: never` 与 `--no-build`。这只解决
+接收方断网导入和运行，不关闭 `ENG-010` 所指的当前源码 Dockerfile 断网重建。
 
-`Dockerfile` 的 `app` 与 `gateway` target 组成发行物。GitHub Actions 与 GitLab CI 都执行
+`Dockerfile` 的 `app` 与 `gateway` 目标组成发行物。GitHub Actions 与 GitLab CI 都执行
 Python/TypeScript 静态检查、后端/前端测试、构建、真实 HTTPS E2E、确定性许可证策略、
-Secret 审计、Docker 构建和镜像漏洞门；GitLab 的后端测试 job 固定名为 `unit-test`。
+Secret 审计、Docker 构建和镜像漏洞门；GitLab 的后端测试作业固定名为 `unit-test`。
 `uv run python scripts/license_audit.py` 会要求 `uv.lock` 名称/版本、两个 npm lock 的完整
-SHA-256 inventory，以及固定容器、构建工具、Go replacement 和 OS 包清单与人工复核策略
+SHA-256 清单，以及固定容器、构建工具、Go 替换项和 OS 包清单与人工复核策略
 精确一致，并拒绝重复 Python 名称或显式审批集合外的许可证。发行阶段还会从最终 app 镜像
 记录全部已安装 Debian/Python 组件，从最终 gateway 镜像记录全部 Alpine 组件，并用
 `go version -m` 记录 Caddy 实际链接的全部 Go 模块；`release-license-policy.json` 对每个精确
 身份、版本、Go sum、许可证元数据哈希和 Caddy 二进制哈希逐项审批，任何新增、缺失、版本、
-许可证或哈希漂移都会失败并保留 inventory 证据。`scripts/container-pytest.ps1` 可用现有 app
+许可证或哈希漂移都会失败并保留清单证据。`scripts/container-pytest.ps1` 可用现有 app
 镜像的 FFmpeg 运行完整 Python 套件：仓库和现有 pytest 模块只读挂载、网络关闭，不向生产
 镜像加入测试工具。本地配置通过不代表远端 CI 已运行，只有对应提交的真实流水线结果才能
 作为远端证据。
 
 ### 发行状态与获取方式
 
-课程要求容器发行物提供公开 registry 地址、精确镜像 digest 和一条可执行的获取/运行命令。
-当前项目**尚未发布**可供提交者以外使用的公开 OCI 镜像；因此不能将上面的本机构建步骤表述为
-已完成的公开分发。正式发行前，发布者必须推送 app 与 gateway 的不可变 digest，更新腾讯云
-release 配置，并在目标机器按 `DEPLOYMENT_EVIDENCE.md` 完成受信 TLS smoke。公网部署是后续计划，
-不作为本次课程提交门禁，详见 `COURSE_REQUIREMENT_UPDATE.md`。
+正式 GitHub [`v0.1.0`](https://github.com/Zzz148080/MuseEcho/releases/tag/v0.1.0)
+已发布，可由接收方下载两个镜像 tar、离线工具包和 `SHA256SUMS.txt` 后按
+`RELEASE_REPRODUCTION.md` 断网导入与运行。它是离线运行发行，不是公开 OCI 镜像仓库：当前仍未
+发布可用 `docker pull` 获取的 app/gateway 镜像仓库摘要，也未执行腾讯云受信 TLS Smoke。
+若后续需要镜像仓库或公网部署，发布者仍须推送不可变摘要、更新腾讯云发行配置，并按
+`DEPLOYMENT_EVIDENCE.md` 留存目标机证据；这些是后续计划，不是本次课程提交门禁。
 
 ## 部署
 
@@ -357,11 +366,11 @@ release 配置，并在目标机器按 `DEPLOYMENT_EVIDENCE.md` 完成受信 TLS
 - 结构标签是可解释的相似段落标识，不等同于曲式学人工定论。
 - 分析队列是单进程单工作线程，不是多租户横向扩展系统。
 - 当前锁定的 Debian/FFmpeg 运行时在原始 Trivy 0.70.0 扫描中仍有 181 个无修复版本的
-  HIGH/CRITICAL package 条目。发布门禁不会隐藏这份原始 inventory；它仅在精确 package
+  HIGH/CRITICAL 包条目。发布门禁不会隐藏这份原始清单；它仅在精确包
   文件与执行边界均未漂移时应用 67 条逐 CVE `not_affected` 结论。获得可用上游修复后仍应
-  优先升级运行时并删除不再需要的 VEX statement。
+  优先升级运行时并删除不再需要的 VEX 声明。
 - MP3 支持不包括 free-format bitrate index `0000`；仅支持可计算帧长度的常规 MPEG Layer III。
-- 内部 CA 只适合本地 smoke；公网证书和腾讯云运行证据在 Task 21 完成。
+- 内部 CA 只适合本地 Smoke；公网证书和腾讯云运行证据留待任务 21 完成。
 - LLM 可用性、计费和第三方数据处理由用户选择的平台负责；MuseEcho 不把原始音频发送给
   LLM。
 
