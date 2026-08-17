@@ -68,7 +68,7 @@
 
 运行 ML 单测，并使用 `rg` 确认 `src/museecho` 没有导入 PyTorch 或训练包。
 
-- [ ] **步骤 5：提交**
+- [x] **步骤 5：提交**
 
 提交消息：`build: establish isolated chord ml workspace`
 
@@ -83,19 +83,19 @@
 
 **接口：** `parse_annotation(raw) -> CanonicalChord`；`CanonicalChord.transpose(semitones)`；标签可编码为 root/quality/bass heads 并无损 round-trip。
 
-- [ ] **步骤 1：固定接受和拒绝样例**
+- [x] **步骤 1：固定接受和拒绝样例**
 
 覆盖 Harte 风格标签、转位、等音、`N`、`X`、七和弦、挂留和弦、超出词表标签及恶意/畸形输入。
 
-- [ ] **步骤 2：运行 RED**
+- [x] **步骤 2：运行 RED**
 
 运行：`uv run --project ml pytest -q ml/tests/test_labels.py`
 
-- [ ] **步骤 3：实现规范化与分层编码**
+- [x] **步骤 3：实现规范化与分层编码**
 
 首发性质严格使用 SPEC 词表。`aug/dim7/6/9/add9` 等映射为 `X` 并保留转换原因，不静默映射成大小三和弦。
 
-- [ ] **步骤 4：增加性质覆盖和移调性质测试**
+- [x] **步骤 4：增加性质覆盖和移调性质测试**
 
 对所有 12 个根音、所有首发 quality 和全部合法 bass 运行 encode/decode/transpose round-trip。
 
