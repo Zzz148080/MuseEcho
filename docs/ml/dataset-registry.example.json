@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "datasets": [
+    {
+      "dataset_id": "isophonics",
+      "name": "Isophonics reference annotations",
+      "version": "needs-review",
+      "source_url": "https://www.isophonics.net/datasets",
+      "status": "needs-review",
+      "annotation_license": "needs-review",
+      "audio_license": "commercial recordings are not assumed to be included; needs-review",
+      "training_allowed": null,
+      "weights_distribution_allowed": null,
+      "citation": "needs-review",
+      "reviewed_at": null,
+      "review_evidence": []
+    },
+    {
+      "dataset_id": "mcgill-billboard",
+      "name": "McGill Billboard chord analysis dataset",
+      "version": "needs-review",
+      "source_url": "https://ddmal.music.mcgill.ca/research/The_McGill_Billboard_Project_(Chord_Analysis_Dataset)/",
+      "status": "needs-review",
+      "annotation_license": "needs-review",
+      "audio_license": "commercial recordings are not assumed to be included; needs-review",
+      "training_allowed": null,
+      "weights_distribution_allowed": null,
+      "citation": "needs-review",
+      "reviewed_at": null,
+      "review_evidence": []
+    },
+    {
+      "dataset_id": "rwc-popular",
+      "name": "RWC Music Database: Popular Music",
+      "version": "2026-02-16 re-release",
+      "source_url": "https://zenodo.org/records/18656623",
+      "status": "needs-review",
+      "annotation_license": "maintained separately at https://github.com/rwc-music/rwc-annotations; needs-review",
+      "audio_license": "CC-BY-NC-4.0; non-commercial scope for this competition and cloud processing still needs review",
+      "training_allowed": null,
+      "weights_distribution_allowed": null,
+      "citation": "Goto et al. (ISMIR 2002/2003); Mueller et al. (TISMIR 2025); Balke et al. (TISMIR 2026)",
+      "reviewed_at": "2026-08-18",
+      "review_evidence": [
+        "https://zenodo.org/api/records/18656623",
+        "https://staff.aist.go.jp/m.goto/RWC-MDB/"
+      ]
+    },
+    {
+      "dataset_id": "schubert-winterreise",
+      "name": "Schubert Winterreise Dataset",
+      "version": "2.1",
+      "source_url": "https://zenodo.org/records/10839767",
+      "status": "approved",
+      "annotation_license": "CC-BY-3.0",
+      "audio_license": "CC-BY-3.0; the SC06 performance must not be redistributed in modified form; other included sources are stated as Public Domain",
+      "training_allowed": true,
+      "weights_distribution_allowed": null,
+      "citation": "Weiss, Zalkow, Arifi-Mueller, Mueller, Koops, Volk, and Grohganz: Schubert Winterreise Dataset v2.1",
+      "reviewed_at": "2026-08-18",
+      "review_evidence": [
+        "https://zenodo.org/api/records/10839767",
+        "https://creativecommons.org/licenses/by/3.0/legalcode",
+        "Schubert_Winterreise_Dataset_v2-1.zip md5:591c377c6d3db522fd159b8b70180978 size:517380038"
+      ]
+    }
+  ]
+}

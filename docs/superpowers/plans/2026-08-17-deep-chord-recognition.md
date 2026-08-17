@@ -99,7 +99,7 @@
 
 对所有 12 个根音、所有首发 quality 和全部合法 bass 运行 encode/decode/transpose round-trip。
 
-- [ ] **步骤 5：提交**
+- [x] **步骤 5：提交**
 
 提交消息：`feat: define hierarchical chord vocabulary`
 
@@ -124,11 +124,11 @@
 
 对 Isophonics、McGill Billboard、RWC Popular Music 和 Schubert Winterreise 分别记录标注许可、音频取得方式、可否用于模型训练、可否发布权重和引用要求。状态只能是 `approved`、`blocked` 或 `needs-review`。
 
-- [ ] **步骤 2：编写 manifest 合同测试**
+- [x] **步骤 2：编写 manifest 合同测试**
 
 缺少许可证、哈希、作品 ID、标注版本或本地路径越界时必须失败。测试只使用程序生成的小型音频。
 
-- [ ] **步骤 3：实现只读适配器**
+- [x] **步骤 3：实现只读适配器**
 
 适配器不复制音频到仓库，不修改原数据集；输出规范区间、转换统计和不可解析标签报告。
 

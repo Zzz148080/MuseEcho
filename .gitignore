@@ -34,7 +34,7 @@ ml/checkpoints/
 .env
 .env.*
 !.env.example
-data/
+/data/
 storage/
 secrets/
 *.db

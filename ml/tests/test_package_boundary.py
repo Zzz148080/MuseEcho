@@ -82,3 +82,16 @@ def test_no_large_training_artifacts_are_tracked() -> None:
     tracked = [Path(line) for line in completed.stdout.splitlines() if line]
 
     assert [str(path) for path in tracked if path.suffix.lower() in forbidden_suffixes] == []
+
+
+def test_python_data_packages_are_not_hidden_by_runtime_ignore_rules() -> None:
+    for source in (
+        "ml/src/museecho_ml/data/registry.py",
+        "ml/tests/data/test_adapters.py",
+    ):
+        completed = subprocess.run(
+            ["git", "check-ignore", "--quiet", source],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+        )
+        assert completed.returncode == 1, f"source file is unexpectedly ignored: {source}"
