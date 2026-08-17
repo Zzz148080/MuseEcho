@@ -20,6 +20,16 @@ playwright-report/
 test-results/
 *.tsbuildinfo
 
+# Chord ML datasets and generated artifacts
+ml/data/
+ml/cache/
+ml/runs/
+ml/checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
 # Runtime data and secrets
 .env
 .env.*

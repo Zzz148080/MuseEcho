@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://museecho.local/schemas/chord-model-manifest-v1.json",
+  "title": "MuseEcho chord model manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "model_version",
+    "algorithm",
+    "model_sha256",
+    "feature_config_sha256",
+    "vocabulary_sha256",
+    "calibration_sha256",
+    "input",
+    "outputs",
+    "runtime",
+    "license"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "model_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-z0-9.-]+)?$"
+    },
+    "algorithm": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"
+    },
+    "model_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "feature_config_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "vocabulary_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "calibration_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "dtype", "sample_rate", "hop_length", "frequency_bins"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "dtype": {"const": "float32"},
+        "sample_rate": {"type": "integer", "minimum": 8000, "maximum": 192000},
+        "hop_length": {"type": "integer", "minimum": 1},
+        "frequency_bins": {"type": "integer", "minimum": 12}
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["root_logits", "quality_logits", "bass_logits", "boundary_logits"]
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["onnx_opset", "onnxruntime_minimum"],
+      "properties": {
+        "onnx_opset": {"type": "integer", "minimum": 17},
+        "onnxruntime_minimum": {"type": "string", "minLength": 1}
+      }
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "training_data_summary"],
+      "properties": {
+        "model": {"type": "string", "minLength": 1},
+        "training_data_summary": {"type": "string", "minLength": 1}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

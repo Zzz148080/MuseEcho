@@ -50,21 +50,21 @@
 
 **接口：** 训练项目可独立安装和测试；主产品不导入 `museecho_ml`；大制品路径默认忽略。
 
-- [ ] **步骤 1：编写边界失败测试**
+- [x] **步骤 1：编写边界失败测试**
 
 测试训练包导入、配置目录存在、manifest schema 可解析，并扫描 Git 跟踪候选，拒绝音频、checkpoint、特征缓存和实验数据库。
 
-- [ ] **步骤 2：运行并确认 RED**
+- [x] **步骤 2：运行并确认 RED**
 
 运行：`uv run --project ml pytest -q ml/tests/test_package_boundary.py`
 
 预期：FAIL，因为独立 ML 工程尚不存在。
 
-- [ ] **步骤 3：建立最小训练项目**
+- [x] **步骤 3：建立最小训练项目**
 
 锁定训练、评测、导出依赖。训练依赖不加入主产品的默认 runtime；`models/chords` 只定义制品合同，不提交未通过门禁的模型。
 
-- [ ] **步骤 4：验证 GREEN 和产品隔离**
+- [x] **步骤 4：验证 GREEN 和产品隔离**
 
 运行 ML 单测，并使用 `rg` 确认 `src/museecho` 没有导入 PyTorch 或训练包。
 

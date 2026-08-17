@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "museecho-ml"
+version = "0.1.0"
+description = "Reproducible training and evaluation for MuseEcho chord recognition"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "librosa>=0.11.0,<1",
+    "mir-eval>=0.8.2,<1",
+    "numpy>=2.0.0,<3",
+    "scikit-learn>=1.7.0,<2",
+]
+
+[project.optional-dependencies]
+train = [
+    "torch>=2.8.0,<3",
+]
+export = [
+    "onnx>=1.18.0,<2",
+    "onnxruntime>=1.22.0,<2",
+]
+dev = [
+    "pytest>=9.0.0,<10",
+    "ruff>=0.16.0,<1",
+]
+
+[tool.uv]
+required-version = "==0.11.29"
+build-constraint-dependencies = ["setuptools==80.9.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+cache_dir = "../tmp/ml-pytest-cache"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
