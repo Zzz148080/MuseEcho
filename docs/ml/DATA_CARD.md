@@ -27,7 +27,7 @@ formal training manifest only after `DatasetRegistry.require_training_approval()
 | --- | --- | --- | --- |
 | Isophonics | Pop/rock chord annotations and common evaluation repertoire | `needs-review` | Confirm annotation terms, lawful audio source, training and weight-distribution rights |
 | McGill Billboard | Broader popular-music chord annotations | `needs-review` | Confirm current access, annotation terms, lawful audio source and derived-weight rights |
-| RWC Popular Music | Research recordings with controlled identities | `needs-review` | The 2026 Zenodo re-release is CC-BY-NC-4.0; confirm that the competition, cloud processing and intended model distribution remain non-commercial, then audit the separate annotations repository |
+| RWC Popular Music | Research recordings with controlled identities | `needs-review` | The 2026 Zenodo audio and official curated annotations are CC-BY-NC-4.0; confirm that the competition, cloud processing and intended model distribution remain non-commercial |
 | Schubert Winterreise 2.1 | Classical-domain diversity and aligned annotations | `approved` for local training | Zenodo record 10839767 declares CC-BY-3.0 and includes two performances plus audio chord annotations; model-weight distribution remains a separate review |
 
 The URLs, evidence and unresolved fields are stored in `dataset-registry.example.json`.
@@ -42,8 +42,10 @@ The URLs, evidence and unresolved fields are stored in `dataset-registry.example
   audio-derived features or model weights is not inferred from this decision.
 - RWC was re-released online on 2026-02-16 in Zenodo record `18656623` under `CC-BY-NC-4.0`.
   `RWC-P.zip` is 4,071,840,278 bytes with MD5 `960a11a2d7fb603ad0dae8428f53d4f0`.
-  The record contains audio only and points to a separate annotations repository. It remains
-  `needs-review` until the competition's non-commercial status and annotation terms are fixed.
+  The record contains audio only and points to the official `rwc-music/rwc-annotations`
+  repository. That repository's LICENSE and README both declare `CC-BY-NC-4.0`, and its inventory
+  includes curated RWC-P chord annotations. It remains `needs-review` until the competition,
+  private cloud processing, and intended model/weight distribution are confirmed non-commercial.
 - Isophonics exposes individual Beatles and Queen chord annotation files and identifies the
   Beatles transcription collection as version 1.2, but the reviewed pages did not state an
   explicit reuse license and do not provide the commercial recordings. It remains `needs-review`.

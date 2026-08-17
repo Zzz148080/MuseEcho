@@ -35,7 +35,7 @@
       "version": "2026-02-16 re-release",
       "source_url": "https://zenodo.org/records/18656623",
       "status": "needs-review",
-      "annotation_license": "maintained separately at https://github.com/rwc-music/rwc-annotations; needs-review",
+      "annotation_license": "CC-BY-NC-4.0; the official curated annotation repository includes RWC-P chord annotations",
       "audio_license": "CC-BY-NC-4.0; non-commercial scope for this competition and cloud processing still needs review",
       "training_allowed": null,
       "weights_distribution_allowed": null,
@@ -43,7 +43,9 @@
       "reviewed_at": "2026-08-18",
       "review_evidence": [
         "https://zenodo.org/api/records/18656623",
-        "https://staff.aist.go.jp/m.goto/RWC-MDB/"
+        "https://staff.aist.go.jp/m.goto/RWC-MDB/",
+        "https://github.com/rwc-music/rwc-annotations/blob/main/LICENSE",
+        "https://github.com/rwc-music/rwc-annotations/blob/main/README.md"
       ]
     },
     {
