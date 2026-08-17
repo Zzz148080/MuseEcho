@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "policy_version": "1.0.0",
+  "ratios": {
+    "train": 0.7,
+    "calibration": 0.1,
+    "validation": 0.1,
+    "test": 0.1
+  },
+  "artist_disjoint": false,
+  "near_duplicate_threshold": 0.8,
+  "seed": 20260818
+}

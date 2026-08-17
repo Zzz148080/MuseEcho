@@ -169,13 +169,19 @@ RWC-P 音频与官方标注均为 CC-BY-NC-4.0，在用户确认非商业比赛�
 
 **接口：** `build_split(manifest, policy, seed)` 生成不可变 train/calibration/validation/test 清单和 SHA-256。
 
-- [ ] **步骤 1：编写泄漏反例**
+- [x] **步骤 1：编写泄漏反例**
 
 覆盖同作品不同录音、同 artist、重复音频、裁剪片段和缺失 group metadata。证明简单随机帧切分会失败。
 
-- [ ] **步骤 2：实现元数据分组和音频近重复检测**
+已用确定性测试覆盖作品/cover 合并、可选 artist-disjoint、跨 cover 精确音频哈希冲突、
+PCM 裁剪近重复和必填 group metadata；切分单位固定为连通作品组而非帧。
+
+- [x] **步骤 2：实现元数据分组和音频近重复检测**
 
 先按显式 work/cover group 聚合，再用轻量音频指纹发现遗漏。疑似跨集重复进入人工审计清单，不自动忽略。
+
+已实现作品/cover/可选 artist 连通分组、跨 cover 精确哈希 fail-closed，以及有界内存的
+16-bit PCM shingle 指纹与裁剪包含度评分。真实全库候选清单将在 RWC 下载、校验和盘点完成后生成。
 
 - [ ] **步骤 3：冻结四份清单**
 
