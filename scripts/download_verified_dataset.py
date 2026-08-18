@@ -36,11 +36,14 @@ def _download_once(url: str, partial: Path) -> None:
         mode = "ab" if append else "wb"
         downloaded = offset if append else 0
         total_header = response.headers.get("Content-Length")
-        total = downloaded + int(total_header) if total_header else None
+        response_bytes = int(total_header) if total_header else None
+        total = downloaded + response_bytes if response_bytes is not None else None
+        received = 0
         last_report = downloaded
         with partial.open(mode) as target:
             while chunk := response.read(8 * 1024 * 1024):
                 target.write(chunk)
+                received += len(chunk)
                 downloaded += len(chunk)
                 if downloaded - last_report >= 256 * 1024 * 1024:
                     if total:
@@ -53,6 +56,17 @@ def _download_once(url: str, partial: Path) -> None:
                     else:
                         print(f"downloaded={downloaded}", flush=True)
                     last_report = downloaded
+
+        # Some large-file endpoints can close a response cleanly before sending
+        # the advertised number of bytes.  ``read()`` then returns EOF instead of
+        # raising, so checksum verification would fail without entering the
+        # retry loop.  Treat a short response as a transport error; the next
+        # attempt resumes from the bytes already written above.
+        if response_bytes is not None and received != response_bytes:
+            raise OSError(
+                "incomplete HTTP response: "
+                f"expected {response_bytes} bytes, received {received}"
+            )
 
 
 def download(
