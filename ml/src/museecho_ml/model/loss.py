@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -69,6 +70,33 @@ class ChordTargets:
 
 
 @dataclass(frozen=True)
+class ClassWeights:
+    root: Tensor
+    quality: Tensor
+    bass: Tensor
+
+    def __post_init__(self) -> None:
+        for name, value in (
+            ("root", self.root),
+            ("quality", self.quality),
+            ("bass", self.bass),
+        ):
+            if (
+                value.ndim != 1
+                or not torch.is_floating_point(value)
+                or not torch.isfinite(value).all()
+                or torch.any(value < 0)
+                or not torch.any(value > 0)
+            ):
+                raise ValueError(f"{name} class weights must be finite non-negative values")
+
+    def to(self, device: torch.device) -> ClassWeights:
+        return ClassWeights(
+            self.root.to(device), self.quality.to(device), self.bass.to(device)
+        )
+
+
+@dataclass(frozen=True)
 class LossResult:
     total: Tensor
     root: Tensor
@@ -78,15 +106,32 @@ class LossResult:
 
 
 def multitask_loss(
-    logits: ChordLogits, targets: ChordTargets, config: LossConfig
+    logits: ChordLogits,
+    targets: ChordTargets,
+    config: LossConfig,
+    class_weights: ClassWeights | None = None,
 ) -> LossResult:
     _validate(logits, targets)
+    if class_weights is not None:
+        _validate_class_weights(logits, class_weights)
     valid = targets.mask
     bass_valid = valid & targets.bass_mask
-    root_loss = F.cross_entropy(logits.root[valid], targets.root[valid])
-    quality_loss = F.cross_entropy(logits.quality[valid], targets.quality[valid])
+    root_loss = F.cross_entropy(
+        logits.root[valid],
+        targets.root[valid],
+        weight=None if class_weights is None else class_weights.root,
+    )
+    quality_loss = F.cross_entropy(
+        logits.quality[valid],
+        targets.quality[valid],
+        weight=None if class_weights is None else class_weights.quality,
+    )
     bass_loss = (
-        F.cross_entropy(logits.bass[bass_valid], targets.bass[bass_valid])
+        F.cross_entropy(
+            logits.bass[bass_valid],
+            targets.bass[bass_valid],
+            weight=None if class_weights is None else class_weights.bass,
+        )
         if torch.any(bass_valid)
         else logits.bass.sum() * 0.0
     )
@@ -102,6 +147,67 @@ def multitask_loss(
     if not torch.isfinite(total):
         raise ValueError("multi-task loss must be finite")
     return LossResult(total, root_loss, quality_loss, bass_loss, boundary_loss)
+
+
+def compute_class_weights(
+    targets: Iterable[ChordTargets],
+    *,
+    root_classes: int,
+    quality_classes: int,
+    bass_classes: int,
+) -> ClassWeights:
+    """Compute normalized inverse-frequency weights from train-split targets only."""
+
+    dimensions = (root_classes, quality_classes, bass_classes)
+    if any(type(value) is not int or value <= 0 for value in dimensions):
+        raise ValueError("class-weight dimensions must be positive integers")
+    root_counts = torch.zeros(root_classes, dtype=torch.float64)
+    quality_counts = torch.zeros(quality_classes, dtype=torch.float64)
+    bass_counts = torch.zeros(bass_classes, dtype=torch.float64)
+    found = False
+    for item in targets:
+        if not isinstance(item, ChordTargets):
+            raise ValueError("class weights require ChordTargets items")
+        _accumulate_counts(root_counts, item.root[item.mask])
+        _accumulate_counts(quality_counts, item.quality[item.mask])
+        _accumulate_counts(bass_counts, item.bass[item.mask & item.bass_mask])
+        found = True
+    if not found:
+        raise ValueError("class weights require at least one training target batch")
+    return ClassWeights(
+        _inverse_frequency(root_counts, "root"),
+        _inverse_frequency(quality_counts, "quality"),
+        _inverse_frequency(bass_counts, "bass"),
+    )
+
+
+def _accumulate_counts(counts: Tensor, labels: Tensor) -> None:
+    if labels.dtype != torch.int64 or labels.ndim != 1:
+        raise ValueError("class-weight labels must be one-dimensional int64")
+    if labels.numel() and (torch.any(labels < 0) or torch.any(labels >= len(counts))):
+        raise ValueError("class-weight label is outside its vocabulary")
+    counts += torch.bincount(labels.cpu(), minlength=len(counts)).to(torch.float64)
+
+
+def _inverse_frequency(counts: Tensor, name: str) -> Tensor:
+    present = counts > 0
+    if not torch.any(present):
+        raise ValueError(f"class weights require at least one {name} label")
+    weights = torch.zeros_like(counts, dtype=torch.float32)
+    weights[present] = (counts[present].sum() / (present.sum() * counts[present])).to(
+        torch.float32
+    )
+    return weights
+
+
+def _validate_class_weights(logits: ChordLogits, weights: ClassWeights) -> None:
+    for name, value, classes in (
+        ("root", weights.root, logits.root.shape[-1]),
+        ("quality", weights.quality, logits.quality.shape[-1]),
+        ("bass", weights.bass, logits.bass.shape[-1]),
+    ):
+        if len(value) != classes or value.device != logits.root.device:
+            raise ValueError(f"{name} class weights do not match logits")
 
 
 def _validate(logits: ChordLogits, targets: ChordTargets) -> None:

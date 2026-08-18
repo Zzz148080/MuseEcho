@@ -7,7 +7,12 @@ import pytest
 import torch
 
 from museecho_ml.model.crnn import ChordLogits
-from museecho_ml.model.loss import ChordTargets, LossConfig, multitask_loss
+from museecho_ml.model.loss import (
+    ChordTargets,
+    LossConfig,
+    compute_class_weights,
+    multitask_loss,
+)
 
 ML_ROOT = Path(__file__).resolve().parents[2]
 
@@ -97,3 +102,44 @@ def test_versioned_loss_config_matches_code() -> None:
     )
 
     assert LossConfig.from_dict(payload) == LossConfig()
+
+
+def test_train_split_class_weights_are_inverse_frequency_and_normalized() -> None:
+    original = _targets()
+    root = original.root.clone()
+    root[0, 1] = 0
+    targets = ChordTargets(
+        root=root,
+        quality=original.quality,
+        bass=original.bass,
+        boundary=original.boundary,
+        mask=original.mask,
+        bass_mask=original.bass_mask,
+    )
+
+    weights = compute_class_weights(
+        [targets], root_classes=14, quality_classes=11, bass_classes=14
+    )
+
+    assert weights.root[0] < weights.root[2]
+    assert weights.root[6:].count_nonzero() == 0
+    torch.testing.assert_close(weights.root[root[targets.mask]].mean(), torch.tensor(1.0))
+    result = multitask_loss(_logits(), targets, LossConfig(), weights)
+    assert torch.isfinite(result.total)
+
+
+def test_full_n_x_batch_is_finite_and_has_no_bass_supervision() -> None:
+    targets = _targets(bass_valid=False)
+    targets = ChordTargets(
+        root=torch.tensor([[12, 13, 12, 13], [13, 12, 0, 0]]),
+        quality=torch.tensor([[9, 10, 9, 10], [10, 9, 0, 0]]),
+        bass=torch.tensor([[12, 13, 12, 13], [13, 12, 0, 0]]),
+        boundary=targets.boundary,
+        mask=targets.mask,
+        bass_mask=torch.zeros_like(targets.mask),
+    )
+
+    result = multitask_loss(_logits(), targets, LossConfig())
+
+    assert torch.isfinite(result.total)
+    assert result.bass.item() == 0.0
