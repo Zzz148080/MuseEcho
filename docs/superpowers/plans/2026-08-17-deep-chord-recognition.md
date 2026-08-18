@@ -355,9 +355,9 @@ fail-closed；整数半音移调同步移动 CQT bin、root 和相对 bass。对
 
 阶段进度：`model-crnn-v1` 已实现 main/bass 双 CNN 分支、prefix-mask 的双向 GRU，以及
 root/quality/bass/boundary 四个配置化 head；`multitask-v1` 已实现四项加权损失、空 bass
-监督的显式零损失和严格有限值/类别范围校验。10 项模型/损失测试覆盖 shape、非连续 mask、
-NaN、masked-frame 不变性和有限反向梯度。尚需补齐 train-split 类别权重、全 `N/X` 批次与
-真实 optimizer 参数更新测试后，才勾选步骤 1--4。
+监督的显式零损失和严格有限值/类别范围校验。12 项模型/损失/batch 测试覆盖 shape、非连续
+mask、NaN、masked-frame 不变性、有限反向梯度、变长 padding 与区间对帧标签。真实 AdamW
+单步已证明参数更新；尚需补齐 train-split 类别权重和全 `N/X` 批次后，才勾选步骤 1--4。
 
 - [ ] **步骤 5：提交**
 
@@ -380,6 +380,10 @@ NaN、masked-frame 不变性和有限反向梯度。尚需补齐 train-split 类
 - [ ] **步骤 1：实现两首程序夹具 overfit 门**
 
 训练器必须能在极小数据上把 root/quality loss 显著降低并达到预设准确率，否则不能启动昂贵训练。
+
+阶段进度：已实现版本化 AdamW/gradient-clip CPU `train_step`，并以变长 batch 完成有限 loss、
+有限梯度和真实参数更新 smoke。两首夹具 overfit、checkpoint、scheduler、复现性与 GPU 入口
+仍未完成，因此步骤 1 尚不勾选。
 
 - [ ] **步骤 2：实现 checkpoint 和精确恢复**
 
