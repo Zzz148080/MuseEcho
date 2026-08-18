@@ -74,17 +74,27 @@ class JazznetMidiAdapter(DatasetAdapter):
 def discover_jazznet_sources(
     dataset_root: Path,
     *,
-    audio_root: Path,
+    audio_root: Path | None = None,
+    audio_roots: tuple[Path, ...] = (),
     midi_root: Path,
     metadata_csv: Path,
+    source_types: tuple[str, ...] = ("progression",),
 ) -> tuple[LocalTrackSource, ...]:
     """Pair the bounded Jazznet progression subset and group template variants."""
 
     root = dataset_root.resolve(strict=True)
-    audio_directory = _resolve_within(audio_root, root, directory=True)
+    if (audio_root is None) == (not audio_roots):
+        raise ValueError("Jazznet requires exactly one audio_root input form")
+    requested_audio_roots = (audio_root,) if audio_root is not None else audio_roots
+    audio_directories = tuple(
+        _resolve_within(path, root, directory=True) for path in requested_audio_roots
+    )
     midi_directory = _resolve_within(midi_root, root, directory=True)
     metadata_path = _resolve_within(metadata_csv, root, directory=False)
-    audio_by_stem = _index_unique_files(audio_directory, (".wav",))
+    if not source_types or any(not isinstance(item, str) or not item for item in source_types):
+        raise ValueError("Jazznet source_types must contain non-empty strings")
+    requested_types = set(source_types)
+    audio_by_stem = _index_unique_files_many(audio_directories, (".wav",))
     midi_by_stem = _index_unique_files(midi_directory, (".mid", ".midi"))
 
     sources: list[LocalTrackSource] = []
@@ -95,7 +105,8 @@ def discover_jazznet_sources(
         if not required.issubset(reader.fieldnames or ()):
             raise ValueError("Jazznet metadata is missing progression grouping fields")
         for line_number, row in enumerate(reader, start=2):
-            if row["type"] != "progression":
+            source_type = row["type"].strip()
+            if source_type not in requested_types:
                 continue
             name = row["name"].strip()
             mode = row["mode"].strip()
@@ -108,6 +119,8 @@ def discover_jazznet_sources(
             if audio is None or midi is None:
                 raise ValueError(f"Jazznet audio or MIDI is missing for {name}")
             template_group = f"{mode}:{inversion}"
+            if source_type != "progression":
+                template_group = f"{source_type}:{template_group}"
             sources.append(
                 LocalTrackSource(
                     dataset_id="jazznet",
@@ -172,6 +185,18 @@ def _index_unique_files(root: Path, suffixes: tuple[str, ...]) -> dict[str, Path
         if path.stem in result:
             raise ValueError(f"Jazznet source filename is ambiguous: {path.stem}")
         result[path.stem] = path
+    return result
+
+
+def _index_unique_files_many(
+    roots: tuple[Path, ...], suffixes: tuple[str, ...]
+) -> dict[str, Path]:
+    result: dict[str, Path] = {}
+    for root in roots:
+        for stem, path in _index_unique_files(root, suffixes).items():
+            if stem in result:
+                raise ValueError(f"Jazznet source filename is ambiguous: {stem}")
+            result[stem] = path
     return result
 
 

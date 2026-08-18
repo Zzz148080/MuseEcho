@@ -13,7 +13,7 @@ from museecho_ml.data.adapters.guitarset import (
     GuitarSetAdapter,
     discover_guitarset_sources,
 )
-from museecho_ml.data.adapters.idmt import IdmtChordAdapter
+from museecho_ml.data.adapters.idmt import IdmtChordAdapter, discover_idmt_sources
 from museecho_ml.data.adapters.isophonics import IsophonicsAdapter
 from museecho_ml.data.adapters.jazznet import (
     JazznetMidiAdapter,
@@ -323,6 +323,24 @@ def test_guitarset_discovery_groups_players_and_versions_by_lead_sheet(
     assert {source.artist_id for source in sources} == {"00", "01"}
 
 
+def test_guitarset_discovery_accepts_separate_roots_inside_dataset(
+    tmp_path: Path,
+) -> None:
+    annotations = tmp_path / "annotation-package" / "annotations"
+    audio = tmp_path / "audio-package"
+    annotations.mkdir(parents=True)
+    audio.mkdir()
+    stem = "00_BN1-129-Eb_comp"
+    _write_wav(audio / f"{stem}_mic.wav")
+    (annotations / f"{stem}.jams").write_text("{}", encoding="utf-8")
+
+    sources = discover_guitarset_sources(
+        tmp_path, annotation_root=annotations, audio_root=audio
+    )
+
+    assert [source.track_id for source in sources] == [stem]
+
+
 def test_idmt_adapter_derives_aligned_intervals_from_json_metadata(
     tmp_path: Path,
 ) -> None:
@@ -377,6 +395,45 @@ def test_idmt_adapter_rejects_progression_length_mismatch(tmp_path: Path) -> Non
         IdmtChordAdapter(dataset_id="fixture").adapt(
             _source(tmp_path, "track.json", duration_seconds=4.0), tmp_path
         )
+
+
+def test_idmt_discovery_groups_triplets_and_shared_progressions(tmp_path: Path) -> None:
+    sequence_root = tmp_path / "chord_sequences"
+    sequence_root.mkdir()
+    progressions = {
+        "101": {
+            "anchor": ["C", "G"],
+            "positive": ["D", "A"],
+            "negative": ["F", "C"],
+        },
+        "202": {
+            "anchor": ["F", "C"],
+            "positive": ["E", "B"],
+            "negative": ["A", "E"],
+        },
+    }
+    for seed, triplet in progressions.items():
+        for triplet_type, progression in triplet.items():
+            stem = f"{seed}_{triplet_type}"
+            _write_wav(sequence_root / f"{stem}.wav")
+            (sequence_root / f"{stem}.mid").write_bytes(b"midi")
+            (sequence_root / f"{stem}.json").write_text(
+                json.dumps(
+                    {
+                        "seed": int(seed),
+                        "triplet_type": triplet_type,
+                        "chord_prog": progression,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+    sources = discover_idmt_sources(tmp_path)
+
+    assert len(sources) == 6
+    assert len({source.cover_group_id for source in sources}) == 1
+    shared = [source for source in sources if source.track_id.endswith(("negative", "anchor"))]
+    assert len({source.work_id for source in shared}) < len(shared)
 
 
 def test_jazznet_adapter_reads_chord_boundaries_and_inversion_from_midi(

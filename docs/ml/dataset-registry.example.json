@@ -44,7 +44,7 @@
       "review_evidence": [
         "https://zenodo.org/api/records/7544225",
         "IDMT-SMT-CHORD-SEQUENCES-2.zip md5:998f79d81d3bbb8d396d495d9c6c0232 size:13543282031",
-        "15,000 rendered sequences with WAV, MIDI, JSON and official split CSV; synthetic-only corpus role"
+        "7,500 rendered sequences with WAV, MIDI and JSON; synthetic-only corpus role"
       ]
     },
     {

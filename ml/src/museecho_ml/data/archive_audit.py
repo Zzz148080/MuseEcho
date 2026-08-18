@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import math
 import tarfile
@@ -52,7 +53,7 @@ def _audit_zip(path: Path) -> tuple[list[tuple[str, float]], list[str]]:
         names = sorted(
             item.filename
             for item in archive.infolist()
-            if not item.is_dir() and item.filename.lower().endswith(".wav")
+            if not item.is_dir() and _is_audio_member(item.filename)
         )
         for name in names:
             try:
@@ -66,26 +67,40 @@ def _audit_zip(path: Path) -> tuple[list[tuple[str, float]], list[str]]:
 def _audit_tar(path: Path) -> tuple[list[tuple[str, float]], list[str]]:
     durations: list[tuple[str, float]] = []
     invalid: list[str] = []
-    with tarfile.open(path, mode="r:*") as archive:
-        members = sorted(
-            (
-                member
-                for member in archive.getmembers()
-                if member.isfile() and member.name.lower().endswith(".wav")
-            ),
-            key=lambda member: member.name,
-        )
-        for member in members:
+    # Stream compressed TAR files once. Calling ``getmembers()`` first leaves the
+    # gzip reader at EOF; extracting each earlier member then repeatedly seeks
+    # and re-decompresses the archive, which is prohibitively slow for corpora.
+    with tarfile.open(path, mode="r|*") as archive:
+        for member in archive:
+            if not member.isfile() or not _is_audio_member(member.name):
+                continue
             extracted = archive.extractfile(member)
             if extracted is None:
                 invalid.append(member.name)
                 continue
             try:
                 with closing(extracted):
-                    durations.append((member.name, _wav_duration(extracted)))
+                    # ``tarfile`` stream-mode members are forward-only, while
+                    # ``wave`` seeks while walking RIFF chunks. Buffer only the
+                    # current member so the compressed TAR itself remains a
+                    # single-pass read.
+                    durations.append(
+                        (member.name, _wav_duration(io.BytesIO(extracted.read())))
+                    )
             except (EOFError, OSError, ValueError, wave.Error):
                 invalid.append(member.name)
     return durations, invalid
+
+
+def _is_audio_member(name: str) -> bool:
+    """Identify real WAV payloads, excluding macOS AppleDouble sidecars."""
+
+    path = Path(name.replace("\\", "/"))
+    return (
+        path.suffix.lower() == ".wav"
+        and not path.name.startswith("._")
+        and "__MACOSX" not in path.parts
+    )
 
 
 def _wav_duration(source: BinaryIO) -> float:

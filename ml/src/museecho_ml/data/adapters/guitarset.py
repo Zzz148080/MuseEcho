@@ -86,23 +86,28 @@ def _observations(data: object) -> tuple[tuple[object, object, object], ...]:
     raise ValueError("GuitarSet performed chord data has an unsupported JAMS shape")
 
 
-def discover_guitarset_sources(dataset_root: Path) -> tuple[LocalTrackSource, ...]:
+def discover_guitarset_sources(
+    dataset_root: Path,
+    *,
+    annotation_root: Path | None = None,
+    audio_root: Path | None = None,
+) -> tuple[LocalTrackSource, ...]:
     """Pair mono microphone audio with JAMS and group repeated lead sheets."""
 
     root = dataset_root.resolve(strict=True)
-    annotation_root = root / "annotations"
-    audio_root = root / "audio_mono-mic"
-    if not annotation_root.is_dir() or not audio_root.is_dir():
+    annotations = _resolve_directory(annotation_root or root / "annotations", root)
+    audio = _resolve_directory(audio_root or root / "audio_mono-mic", root)
+    if annotations is None or audio is None:
         raise ValueError("GuitarSet is missing its annotation or mono microphone directory")
 
     sources: list[LocalTrackSource] = []
-    for annotation_path in sorted(annotation_root.glob("*.jams"), key=lambda path: path.name):
+    for annotation_path in sorted(annotations.glob("*.jams"), key=lambda path: path.name):
         match = _TRACK_PATTERN.fullmatch(annotation_path.stem)
         if match is None:
             raise ValueError(f"unexpected GuitarSet annotation filename: {annotation_path.name}")
         candidates = (
-            audio_root / f"{annotation_path.stem}_mic.wav",
-            audio_root / f"{annotation_path.stem}.wav",
+            audio / f"{annotation_path.stem}_mic.wav",
+            audio / f"{annotation_path.stem}.wav",
         )
         audio_paths = [path for path in candidates if path.is_file()]
         if len(audio_paths) != 1:
@@ -123,6 +128,16 @@ def discover_guitarset_sources(dataset_root: Path) -> tuple[LocalTrackSource, ..
     if not sources:
         raise ValueError("GuitarSet does not contain JAMS annotations")
     return tuple(sources)
+
+
+def _resolve_directory(path: Path, root: Path) -> Path | None:
+    try:
+        resolved = path.resolve(strict=True)
+    except OSError:
+        return None
+    if not resolved.is_dir() or not resolved.is_relative_to(root):
+        return None
+    return resolved
 
 
 def _wav_duration_seconds(path: Path) -> float:

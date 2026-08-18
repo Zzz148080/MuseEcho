@@ -25,6 +25,7 @@ def generate_rwc_inventory(
     manifest.update(
         {
             "dataset_version": record.version,
+            "corpus_role": "real-gold",
             "source_url": record.source_url,
             "annotation_license": record.annotation_license,
             "audio_license": record.audio_license,
@@ -34,8 +35,13 @@ def generate_rwc_inventory(
         }
     )
     report = build_inventory(tracks, dataset_root)
-    report["dataset_version"] = record.version
-    report["manifest_sha256"] = manifest_sha256(manifest)
+    report.update(
+        {
+            "dataset_version": record.version,
+            "corpus_role": "real-gold",
+            "manifest_sha256": manifest_sha256(manifest),
+        }
+    )
     return manifest, report
 
 
