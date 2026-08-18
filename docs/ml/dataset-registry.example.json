@@ -30,6 +30,82 @@
       "review_evidence": []
     },
     {
+      "dataset_id": "idmt-smt-chord-sequences",
+      "name": "IDMT-SMT-Chord-Sequences",
+      "version": "1.0.0",
+      "source_url": "https://zenodo.org/records/7544225",
+      "status": "approved",
+      "annotation_license": "CC-BY-4.0; JSON, MIDI and official CSV split metadata are included",
+      "audio_license": "CC-BY-4.0; the official release contains rendered synthetic WAV sequences",
+      "training_allowed": true,
+      "weights_distribution_allowed": true,
+      "citation": "Fraunhofer IDMT: IDMT-SMT-Chord-Sequences dataset",
+      "reviewed_at": "2026-08-18",
+      "review_evidence": [
+        "https://zenodo.org/api/records/7544225",
+        "IDMT-SMT-CHORD-SEQUENCES-2.zip md5:998f79d81d3bbb8d396d495d9c6c0232 size:13543282031",
+        "15,000 rendered sequences with WAV, MIDI, JSON and official split CSV; synthetic-only corpus role"
+      ]
+    },
+    {
+      "dataset_id": "jazznet",
+      "name": "Jazznet",
+      "version": "v1",
+      "source_url": "https://zenodo.org/records/7192653",
+      "status": "approved",
+      "annotation_license": "CC-BY-4.0; metadata and aligned MIDI are included",
+      "audio_license": "CC-BY-4.0; rendered piano chords and progressions are included",
+      "training_allowed": true,
+      "weights_distribution_allowed": true,
+      "citation": "Jazznet v1 dataset and accompanying generation code",
+      "reviewed_at": "2026-08-18",
+      "review_evidence": [
+        "https://zenodo.org/api/records/7192653",
+        "progressions-small.tar.gz md5:01a550cb55f3f4abb634c0481506f9c6 size:1898014414",
+        "chords.tar.gz md5:8039eb8440e4a2a9e18cb72e5f09436d size:388949707",
+        "metadata.tar.gz md5:e14ad79fdb253ff824a97c233c9c4eef size:1981743",
+        "midi.tar.gz md5:e52bee19100484f55ad6bfb9d9191189 size:2795015",
+        "synthetic piano auxiliary role; advertised aggregate hours are not trusted until audio headers are summed"
+      ]
+    },
+    {
+      "dataset_id": "babyslakh",
+      "name": "BabySlakh",
+      "version": "Zenodo record 4603870",
+      "source_url": "https://zenodo.org/records/4603870",
+      "status": "approved",
+      "annotation_license": "CC-BY-4.0; aligned MIDI supplies reproducible weak-label evidence",
+      "audio_license": "CC-BY-4.0; 16 kHz rendered stems and mixes are included",
+      "training_allowed": true,
+      "weights_distribution_allowed": true,
+      "citation": "Manilow et al.: Cutting Music Source Separation Some Slakh",
+      "reviewed_at": "2026-08-18",
+      "review_evidence": [
+        "https://zenodo.org/api/records/4603870",
+        "babyslakh_16k.tar.gz md5:311096dc2bde7d61c97e930edbfc7f78 size:882818115",
+        "20 aligned multitrack songs; weak-label pipeline validation role only"
+      ]
+    },
+    {
+      "dataset_id": "guitarset",
+      "name": "GuitarSet",
+      "version": "1.1.0",
+      "source_url": "https://zenodo.org/records/3371780",
+      "status": "approved",
+      "annotation_license": "CC-BY-4.0; JAMS includes manually verified performed-chord annotations",
+      "audio_license": "CC-BY-4.0; mono microphone recordings are included in the official release",
+      "training_allowed": true,
+      "weights_distribution_allowed": true,
+      "citation": "Xi, Bittner, Pauwels, Ye, and Bello: GuitarSet: A Dataset for Guitar Transcription",
+      "reviewed_at": "2026-08-18",
+      "review_evidence": [
+        "https://zenodo.org/api/records/3371780",
+        "annotation.zip md5:b39b78e63d3446f2e54ddb7a54df9b10 size:39132574",
+        "audio_mono-mic.zip md5:275966d6610ac34999b58426beb119c3 size:656927981",
+        "360 JAMS files inspected; formal adapter selects the single manually verified performed-chord annotation and groups recordings by 30 lead-sheet identities"
+      ]
+    },
+    {
       "dataset_id": "rwc-popular",
       "name": "RWC Music Database: Popular Music",
       "version": "2026-02-16 re-release",

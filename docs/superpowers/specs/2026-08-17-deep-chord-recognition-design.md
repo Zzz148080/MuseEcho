@@ -140,6 +140,31 @@ display_symbol: Cmaj7/E
 
 验证集和测试集不得应用随机增强。增强必须有可关闭的配置和消融实验，禁止用标签不变但音乐语义已改变的增强。
 
+### 5.4 真实黄金集、合成监督集与 A/B 路线门禁
+
+数据集必须显式声明且只能属于以下一种训练角色：
+
+- `real-gold`：真实演奏音频与人工或人工复核的时间对齐和弦标注；当前包括
+  Winterreise、RWC-P 和 GuitarSet；
+- `synthetic-supervised`：由 MIDI/符号序列渲染且有精确标签的音频；当前候选为
+  IDMT-SMT-Chord-Sequences 和 Jazznet；
+- `weak-label-validation`：主要用于验证 MIDI 到和弦弱标签转换，不直接进入正式分数；
+  当前为 BabySlakh；
+- `rejected`：许可、音频或监督标签任一项不足，不能进入训练。WaivOps Lo-Fi Chords
+  的 JSON 不含和弦名或时间边界，属于此类。
+
+路线选择以下载校验、逐音频头时长求和和标签抽检后的数字为准：
+
+- **方案 A（默认）**：当可用 `synthetic-supervised` 音频少于 60.0 小时，先用真实黄金集
+  建立 CRNN 基线；合成数据只作为辅助采样和消融，不改变真实数据门禁；
+- **方案 B（达到门槛时启用）**：当去重后可用 `synthetic-supervised` 音频达到 60.0 小时，
+  执行“合成监督预训练 → 真实黄金集微调”。合成数据不得进入 calibration、validation
+  或 test，也不得计入真实黄金 G1 的作品数和时长。
+
+IDMT 必须按官方 triplet 及其底层和弦序列分组；Jazznet 必须按底层 progression/template
+分组；GuitarSet 的 360 段必须按 30 个 lead-sheet 身份分组。任何一项分组元数据无法恢复时，
+对应数据只能用于 smoke，不能进入正式预训练。
+
 ## 6. 特征与模型架构
 
 ### 6.1 输入
@@ -197,6 +222,16 @@ log-CQT / bass-CQT
 - 模型权重哈希、导出制品哈希和许可证信息。
 
 模型选择只能使用验证集。测试集只在候选模型冻结后运行；同一实验周期不得反复根据测试集结果修改模型。若测试集被用于决策，必须将其降级为验证集并冻结新的测试集。
+
+启用方案 B 时，训练阶段固定为：
+
+1. `B0 synthetic pretrain`：仅使用 synthetic train，学习 root/quality/bass/boundary；
+2. `B1 real-gold finetune`：恢复 B0 encoder，以较小学习率在 real train 上完整微调；
+3. `B2 calibration and selection`：只读 real calibration/validation，拟合温度并选择候选；
+4. `B3 frozen test`：checkpoint、阈值和 manifest 冻结后，只运行一次 real test。
+
+B0 与 B1 必须分别保存优化器、数据清单和指标，不得把两阶段曲线拼接成一次训练；同时保留
+“相同 real train、随机初始化”的方案 A 对照，以证明合成预训练是否真正改善真实音乐泛化。
 
 ## 8. 后处理和置信度
 
@@ -336,7 +371,7 @@ docs/ml/
 | softmax 过度自信 | 错误事实进入产品 | 独立校准集、precision/coverage 门、unknown 回退 |
 | 新词表破坏系统契约 | API 或 UI 丢弃结果 | 先升级 parser/DTO/Evidence/乐理测试，再启用新模型 |
 | 多轮训练污染测试集 | 无法证明泛化 | 验证集选模、候选冻结后只测一次、测试集降级规则 |
-| 合成数据主导 | 真实音乐泛化差 | 合成数据仅用于单测和稀有行为探针，不作为主要成绩 |
+| 合成数据主导 | 真实音乐泛化差 | 只允许预训练；真实集微调、校准、选模和测试；保留无预训练对照 |
 
 ## 15. 完成定义
 

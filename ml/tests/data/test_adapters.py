@@ -5,10 +5,20 @@ import json
 import wave
 from pathlib import Path
 
+import mido
 import pytest
 
 from museecho_ml.data.adapters.billboard import BillboardAdapter
+from museecho_ml.data.adapters.guitarset import (
+    GuitarSetAdapter,
+    discover_guitarset_sources,
+)
+from museecho_ml.data.adapters.idmt import IdmtChordAdapter
 from museecho_ml.data.adapters.isophonics import IsophonicsAdapter
+from museecho_ml.data.adapters.jazznet import (
+    JazznetMidiAdapter,
+    discover_jazznet_sources,
+)
 from museecho_ml.data.adapters.rwc import RwcAdapter
 from museecho_ml.data.adapters.winterreise import WinterreiseAdapter
 from museecho_ml.data.manifest import LocalTrackSource
@@ -26,7 +36,9 @@ def _write_wav(path: Path, duration_seconds: float = 2.0, sample_rate: int = 800
         output.writeframes(b"\x00\x00" * frame_count)
 
 
-def _source(root: Path, annotation_name: str) -> LocalTrackSource:
+def _source(
+    root: Path, annotation_name: str, *, duration_seconds: float = 2.0
+) -> LocalTrackSource:
     return LocalTrackSource(
         dataset_id="fixture",
         track_id="track-001",
@@ -35,7 +47,7 @@ def _source(root: Path, annotation_name: str) -> LocalTrackSource:
         artist_id="artist-001",
         audio_path=root / "track.wav",
         annotation_path=root / annotation_name,
-        duration_seconds=2.0,
+        duration_seconds=duration_seconds,
     )
 
 
@@ -103,14 +115,32 @@ def test_shipped_candidate_registry_only_approves_evidenced_training_data() -> N
     )
 
     assert {record.dataset_id for record in registry.records} == {
+        "babyslakh",
+        "guitarset",
+        "idmt-smt-chord-sequences",
         "isophonics",
+        "jazznet",
         "mcgill-billboard",
         "rwc-popular",
         "schubert-winterreise",
     }
     assert {
         record.dataset_id for record in registry.records if record.status is LicenseStatus.APPROVED
-    } == {"rwc-popular", "schubert-winterreise"}
+    } == {
+        "babyslakh",
+        "guitarset",
+        "idmt-smt-chord-sequences",
+        "jazznet",
+        "rwc-popular",
+        "schubert-winterreise",
+    }
+    assert registry.require_training_approval("babyslakh").training_allowed is True
+    assert registry.require_training_approval("guitarset").training_allowed is True
+    assert (
+        registry.require_training_approval("idmt-smt-chord-sequences").training_allowed
+        is True
+    )
+    assert registry.require_training_approval("jazznet").training_allowed is True
     assert registry.require_training_approval("rwc-popular").training_allowed is True
     assert registry.require_training_approval("schubert-winterreise").training_allowed is True
     for dataset_id in ("isophonics", "mcgill-billboard"):
@@ -200,6 +230,219 @@ def test_rwc_adapter_reads_official_semicolon_time_columns(tmp_path: Path) -> No
     )
 
     assert [item.chord.display_symbol for item in result.intervals] == ["G#m", "X"]
+
+
+def test_guitarset_adapter_uses_verified_performed_chords(tmp_path: Path) -> None:
+    _write_wav(tmp_path / "track.wav")
+    (tmp_path / "track.jams").write_text(
+        json.dumps(
+            {
+                "annotations": [
+                    {
+                        "namespace": "chord",
+                        "annotation_metadata": {"data_source": "lead sheet"},
+                        "data": {
+                            "time": [0.0, 1.0],
+                            "duration": [1.0, 1.0],
+                            "value": ["C:maj", "G:7"],
+                        },
+                    },
+                    {
+                        "namespace": "chord",
+                        "annotation_metadata": {
+                            "data_source": (
+                                "Semi-automatic chord transcription with manual verification"
+                            )
+                        },
+                        "data": [
+                            {
+                                "time": 0.0,
+                                "duration": 1.0,
+                                "value": "C:min7",
+                                "confidence": None,
+                            },
+                            {
+                                "time": 1.0,
+                                "duration": 1.0,
+                                "value": "G:sus2(7)/1",
+                                "confidence": None,
+                            },
+                        ],
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = GuitarSetAdapter(dataset_id="fixture").adapt(
+        _source(tmp_path, "track.jams"), tmp_path
+    )
+
+    assert [item.chord.display_symbol for item in result.intervals] == ["Cm7", "X"]
+    assert result.conversion.out_of_vocabulary_intervals == 1
+
+
+def test_guitarset_discovery_groups_players_and_versions_by_lead_sheet(
+    tmp_path: Path,
+) -> None:
+    annotations = tmp_path / "annotations"
+    audio = tmp_path / "audio_mono-mic"
+    annotations.mkdir()
+    audio.mkdir()
+    for stem in ("00_BN1-129-Eb_comp", "01_BN1-129-Eb_solo"):
+        _write_wav(audio / f"{stem}_mic.wav")
+        (annotations / f"{stem}.jams").write_text(
+            json.dumps(
+                {
+                    "annotations": [
+                        {
+                            "namespace": "chord",
+                            "annotation_metadata": {
+                                "data_source": (
+                                    "Semi-automatic chord transcription with manual verification"
+                                )
+                            },
+                            "data": {
+                                "time": [0.0],
+                                "duration": [2.0],
+                                "value": ["D#:maj"],
+                            },
+                        }
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    sources = discover_guitarset_sources(tmp_path)
+
+    assert len(sources) == 2
+    assert {source.work_id for source in sources} == {"BN1-129-Eb"}
+    assert {source.cover_group_id for source in sources} == {"BN1-129-Eb"}
+    assert {source.artist_id for source in sources} == {"00", "01"}
+
+
+def test_idmt_adapter_derives_aligned_intervals_from_json_metadata(
+    tmp_path: Path,
+) -> None:
+    _write_wav(tmp_path / "track.wav", duration_seconds=4.0)
+    (tmp_path / "track.json").write_text(
+        json.dumps(
+            {
+                "tempo": 120,
+                "meter": [4, 4],
+                "chord_prog": ["C", "E-m", "B-", "F#m"],
+                "chords_per_bar": 2,
+                "duration_in_bars": 2,
+                "midi_instrument": 41,
+                "seed": 123,
+                "triplet_type": "anchor",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = IdmtChordAdapter(dataset_id="fixture").adapt(
+        _source(tmp_path, "track.json", duration_seconds=4.0), tmp_path
+    )
+
+    assert [item.chord.display_symbol for item in result.intervals] == [
+        "C",
+        "D#m",
+        "A#",
+        "F#m",
+    ]
+    assert [
+        (item.start_seconds, item.end_seconds) for item in result.intervals
+    ] == [(0.0, 1.0), (1.0, 2.0), (2.0, 3.0), (3.0, 4.0)]
+
+
+def test_idmt_adapter_rejects_progression_length_mismatch(tmp_path: Path) -> None:
+    _write_wav(tmp_path / "track.wav", duration_seconds=4.0)
+    (tmp_path / "track.json").write_text(
+        json.dumps(
+            {
+                "tempo": 120,
+                "meter": [4, 4],
+                "chord_prog": ["C", "G"],
+                "chords_per_bar": 2,
+                "duration_in_bars": 2,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="progression length"):
+        IdmtChordAdapter(dataset_id="fixture").adapt(
+            _source(tmp_path, "track.json", duration_seconds=4.0), tmp_path
+        )
+
+
+def test_jazznet_adapter_reads_chord_boundaries_and_inversion_from_midi(
+    tmp_path: Path,
+) -> None:
+    _write_wav(tmp_path / "track.wav", duration_seconds=4.0)
+    midi = mido.MidiFile(ticks_per_beat=480)
+    track = mido.MidiTrack()
+    midi.tracks.append(track)
+    track.append(mido.MetaMessage("set_tempo", tempo=1_000_000, time=0))
+    for note in (60, 64, 67, 71):
+        track.append(mido.Message("note_on", note=note, velocity=100, time=0))
+    track.append(mido.Message("note_off", note=60, velocity=0, time=960))
+    for note in (64, 67, 71):
+        track.append(mido.Message("note_off", note=note, velocity=0, time=0))
+    for note in (52, 53, 57, 60):
+        track.append(mido.Message("note_on", note=note, velocity=100, time=0))
+    track.append(mido.Message("note_off", note=52, velocity=0, time=960))
+    for note in (53, 57, 60):
+        track.append(mido.Message("note_off", note=note, velocity=0, time=0))
+    midi.save(tmp_path / "track.mid")
+
+    result = JazznetMidiAdapter(dataset_id="fixture").adapt(
+        _source(tmp_path, "track.mid", duration_seconds=4.0), tmp_path
+    )
+
+    assert [item.chord.display_symbol for item in result.intervals] == [
+        "Cmaj7",
+        "Fmaj7/E",
+    ]
+    assert [
+        (item.start_seconds, item.end_seconds) for item in result.intervals
+    ] == [(0.0, 2.0), (2.0, 4.0)]
+
+
+def test_jazznet_discovery_groups_transposed_templates_together(
+    tmp_path: Path,
+) -> None:
+    audio_root = tmp_path / "audio"
+    midi_root = tmp_path / "midi"
+    audio_root.mkdir()
+    midi_root.mkdir()
+    names = ("C-4-I-IV7-iii-VI7-52", "D-5-I-IV7-iii-VI7-52")
+    for name in names:
+        _write_wav(audio_root / f"{name}.wav")
+        (midi_root / f"{name}.mid").write_bytes(b"fixture")
+    metadata = tmp_path / "small.csv"
+    metadata.write_text(
+        "id,name,type,mode,octave,inversion,split\n"
+        f"1,{names[0]},progression,I-IV7-iii-VI7,4,52,train\n"
+        f"2,{names[1]},progression,I-IV7-iii-VI7,5,52,test\n"
+        "3,C-4-maj7-chord-0,chord,maj7-chord,4,0,train\n",
+        encoding="utf-8",
+    )
+
+    sources = discover_jazznet_sources(
+        tmp_path,
+        audio_root=audio_root,
+        midi_root=midi_root,
+        metadata_csv=metadata,
+    )
+
+    assert [source.track_id for source in sources] == list(names)
+    assert {source.work_id for source in sources} == {"I-IV7-iii-VI7:52"}
+    assert {source.cover_group_id for source in sources} == {"I-IV7-iii-VI7:52"}
+    assert {source.artist_id for source in sources} == {None}
 
 
 def test_adapter_rejects_source_paths_outside_declared_dataset_root(tmp_path: Path) -> None:

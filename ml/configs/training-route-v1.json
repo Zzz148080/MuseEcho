@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "threshold_synthetic_hours": 60.0,
+  "default_route": "A",
+  "route_a": [
+    "real-gold-train"
+  ],
+  "route_b": [
+    "synthetic-supervised-pretrain",
+    "real-gold-finetune",
+    "real-only-calibration-validation",
+    "frozen-real-test"
+  ],
+  "forbidden_evaluation_roles": [
+    "synthetic-supervised",
+    "weak-label-validation"
+  ]
+}

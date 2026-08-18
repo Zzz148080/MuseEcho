@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import wave
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from museecho_ml.data.adapters.winterreise import (
     WinterreiseAdapter,
     discover_winterreise_sources,
 )
+from museecho_ml.data.guitarset_inventory import generate_guitarset_inventory
 from museecho_ml.data.inventory import build_inventory, manifest_sha256
 from museecho_ml.data.registry import DatasetRegistry
 from museecho_ml.data.rwc_inventory import generate_rwc_inventory
@@ -67,6 +69,31 @@ def _rwc_fixture(root: Path) -> tuple[Path, Path]:
         encoding="utf-8",
     )
     return audio_root, annotations_root
+
+
+def _guitarset_fixture(root: Path) -> None:
+    stem = "00_BN1-129-Eb_comp"
+    _write_wav(root / "audio_mono-mic" / f"{stem}_mic.wav")
+    annotation = {
+        "annotations": [
+            {
+                "namespace": "chord",
+                "annotation_metadata": {
+                    "data_source": (
+                        "Semi-automatic chord transcription with manual verification"
+                    )
+                },
+                "data": {
+                    "time": [0.0, 1.0],
+                    "duration": [1.0, 1.0],
+                    "value": ["Eb:maj", "Bb:min7"],
+                },
+            }
+        ]
+    }
+    annotation_path = root / "annotations" / f"{stem}.jams"
+    annotation_path.parent.mkdir(parents=True, exist_ok=True)
+    annotation_path.write_text(json.dumps(annotation), encoding="utf-8")
 
 
 def test_winterreise_discovery_pairs_only_packaged_audio_and_annotations(
@@ -164,6 +191,29 @@ def test_rwc_inventory_uses_license_gate_and_official_csv(tmp_path: Path) -> Non
     assert report["track_count"] == 1
     assert report["qualities"]["N"]["duration_seconds"] == 1.0
     assert report["qualities"]["maj7"]["duration_seconds"] == 1.0
+    assert report["manifest_sha256"] == manifest_sha256(manifest)
+
+
+def test_guitarset_inventory_uses_verified_performance_and_license_gate(
+    tmp_path: Path,
+) -> None:
+    _guitarset_fixture(tmp_path)
+    registry = DatasetRegistry.load(
+        Path(__file__).resolve().parents[3]
+        / "docs"
+        / "ml"
+        / "dataset-registry.example.json"
+    )
+
+    manifest, report = generate_guitarset_inventory(tmp_path, registry)
+
+    assert manifest["dataset_id"] == "guitarset"
+    assert manifest["dataset_version"] == "1.1.0"
+    assert manifest["corpus_role"] == "real-gold"
+    assert report["track_count"] == 1
+    assert report["work_count"] == 1
+    assert report["qualities"]["maj"]["duration_seconds"] == 1.0
+    assert report["qualities"]["min7"]["duration_seconds"] == 1.0
     assert report["manifest_sha256"] == manifest_sha256(manifest)
 
 

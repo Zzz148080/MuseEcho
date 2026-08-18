@@ -163,6 +163,50 @@ RWC-P 音频与官方标注均为 CC-BY-NC-4.0，在用户确认非商业比赛�
 `f015bba`（RWC 官方格式与许可范围）、`81d7a6c`（已校验 RWC-P 真实盘点）。G1 数量检查
 已执行但未通过；完成 Task 3 不表示允许越过 G1 进入正式候选训练。
 
+#### 任务 3A：扩展训练数据并冻结 A/B 路线（执行中）
+
+- [x] **步骤 1：检索并按许可、音频和标签三项筛选**
+
+通过初筛：GuitarSet 1.1.0（真实黄金，约 3 小时）、IDMT-SMT-Chord-Sequences 1.0.0
+（合成监督）、Jazznet v1 精简集（合成钢琴辅助）和 BabySlakh（弱标签管线验证）。WaivOps
+Lo-Fi Chords 的 8000 个 JSON 已实检，只有乐器、速度和拍号，没有和弦或时间边界，因此拒绝
+下载其 28.2 GB 音频，也不把宣传的 54 小时计入训练时长。
+
+GuitarSet 的 360 个真实 JAMS 已完成标注预检：按 30 个 lead-sheet 分组，共 4320 个区间、
+3.0468 小时，无间隙和重叠；`X` 占区间 37.6852%、时长 35.5490%。这暴露并修复了正式 JAMS
+对象列表与早期向量夹具不一致的问题，同时补充了 `minmaj7/11/min11` 等合法但首发词表外标签
+到严格 `X` 映射。
+
+Jazznet small 的 5876 个 progression 已与 MIDI 全量配对预检：12.6839 小时、22831 个和弦
+区间，`X` 占 4.3450%，主要补充 `7/maj7/min7/hdim7`。按 progression mode 与 voicing/template
+编号得到 1674 个防泄漏组，不能直接复用其逐行随机 split。IDMT 下载中归档的 2695 个完整 WAV
+样本推算全量约 54.97 小时；两者合计预计约 67.65 小时，因此方案 B 当前“很可能启用”，但仍
+等待 IDMT 全量音频头与 Jazznet 音频归档校验后才正式冻结。
+
+- [x] **步骤 2：建立可恢复、强校验的串行下载**
+
+`scripts/download_verified_dataset.py` 负责 Range 续传和最终 MD5；
+`scripts/acquire_verified_chord_datasets.py` 固化 Zenodo 官方 URL、字节数和校验值。原始归档、
+部分下载和日志仅位于 ignored 的 `ml/data/downloads`。
+
+- [ ] **步骤 3：实测时长和标签可用率**
+
+不得引用 Jazznet 宣传时长或按文件大小直接换算。逐个读取音频头求和，并报告缺失/损坏音频、
+空标签、`X` 占比、区间覆盖率和分组键完整率。IDMT 的 15000 段必须从官方 CSV/JSON 恢复
+triplet/sequence 分组。
+
+- [ ] **步骤 4：冻结路线决策**
+
+默认方案 A；若 IDMT 与 Jazznet 去重、可监督且通过抽检的合成音频合计达到 60.0 小时，改用
+方案 B：“B0 合成监督预训练 → B1 真实黄金微调 → B2 仅真实验证/校准 → B3 一次真实测试”。
+这是一项混合课程训练修订，不把合成时长计入 G1，也不把 `G1 NOT READY` 改写成通过。
+
+- [ ] **步骤 5：生成分角色 inventory 和 manifest**
+
+GuitarSet 进入 `real-gold`；IDMT/Jazznet 进入独立 `synthetic-supervised`；BabySlakh 保持
+`weak-label-validation`。训练入口必须显式选择角色，禁止把合成样本混入 calibration、
+validation 或 test。
+
 ### 任务 4：实现去重和冻结切分
 
 **文件：**
@@ -357,6 +401,11 @@ GPU 只加速同一训练语义。记录设备、CUDA、驱动和精度模式；
 - [ ] **R0：数据/训练链 smoke**
 
 在极小合法子集验证数据读取、特征、训练、评测和恢复，不报告为模型成绩。
+
+- [ ] **B0（仅方案 B）：合成监督预训练**
+
+在 IDMT/Jazznet 的防泄漏 synthetic train 上预训练同一 CRNN；只用 synthetic validation
+诊断收敛，不据此宣称真实成绩。保存可恢复 checkpoint，随后进入 real-gold 微调。
 
 - [ ] **R1：root + quality 深度基线**
 
