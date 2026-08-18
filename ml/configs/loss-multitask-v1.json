@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "loss_version": "multitask-v1",
+  "root_weight": 1.0,
+  "quality_weight": 1.0,
+  "bass_weight": 0.5,
+  "boundary_weight": 0.25
+}

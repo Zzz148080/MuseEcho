@@ -311,6 +311,12 @@ PCM 裁剪近重复和必填 group metadata；切分单位固定为连通作品�
 
 原子写入，损坏缓存自动拒绝并重算；缓存默认位于仓库外或 ignored 目录。
 
+阶段进度：已实现 `CqtConfig`、log-CQT/bass-CQT、重采样、短音频补齐、有效帧 mask 和内容
+寻址 `.npz` 原子缓存；cache key 绑定音频 SHA-256、完整特征配置和 extractor 版本，损坏条目
+fail-closed；整数半音移调同步移动 CQT bin、root 和相对 bass。对应 12 项特征/缓存/增强测试
+已通过。长音频分块、上下文裁剪、时间伸缩和真实 5 分钟资源测试
+尚未完成，因此步骤 1--3 暂不勾选。
+
 - [ ] **步骤 4：实现标签同步增强**
 
 移调必须同时更新 root/bass；时间伸缩必须同步区间。每项增强有确定性种子、强度上限和可关闭消融开关。
@@ -346,6 +352,12 @@ PCM 裁剪近重复和必填 group metadata；切分单位固定为连通作品�
 - [ ] **步骤 4：小批次前后向验证**
 
 检查梯度有限、参数确实更新、mask 帧不改变 loss。
+
+阶段进度：`model-crnn-v1` 已实现 main/bass 双 CNN 分支、prefix-mask 的双向 GRU，以及
+root/quality/bass/boundary 四个配置化 head；`multitask-v1` 已实现四项加权损失、空 bass
+监督的显式零损失和严格有限值/类别范围校验。10 项模型/损失测试覆盖 shape、非连续 mask、
+NaN、masked-frame 不变性和有限反向梯度。尚需补齐 train-split 类别权重、全 `N/X` 批次与
+真实 optimizer 参数更新测试后，才勾选步骤 1--4。
 
 - [ ] **步骤 5：提交**
 

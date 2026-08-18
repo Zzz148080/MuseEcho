@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "model_version": "crnn-v1",
+  "input_channels": 1,
+  "main_conv_channels": [16, 32],
+  "bass_conv_channels": [8, 16],
+  "gru_hidden_size": 96,
+  "gru_layers": 2,
+  "dropout": 0.2,
+  "bidirectional": true,
+  "root_classes": 14,
+  "quality_classes": 11,
+  "bass_classes": 14
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "feature_version": "1.0.0",
+  "sample_rate": 22050,
+  "hop_length": 512,
+  "fmin_hz": 32.70319566257483,
+  "bins_per_octave": 24,
+  "n_octaves": 6,
+  "bass_octaves": 3,
+  "log_scale": 10.0,
+  "minimum_analysis_seconds": 2.0
+}
