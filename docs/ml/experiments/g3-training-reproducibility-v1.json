@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "gate": "G3",
+  "status": "passed",
+  "source_git_sha": "2fcbdb222076cacf886b3591537ddec404cf4f2d",
+  "config_sha256": "9b37f024dfc7784f062fd90ba9137f654a9e856381cd19fa087598c3fea4a911",
+  "train_manifest_sha256": "581ae22857021420f0638176a624cfd9e616d3ec31ad50b88c248cdd3bdc77fe",
+  "validation_manifest_sha256": "581ae22857021420f0638176a624cfd9e616d3ec31ad50b88c248cdd3bdc77fe",
+  "split_sha256": "1215c79ccc80c5574f2e2584fc8130f2583e793cc7fa5dfaf96453285620bc3e",
+  "seed": 20260820,
+  "device": {
+    "type": "cpu",
+    "precision_mode": "float32",
+    "deterministic_algorithms": true,
+    "python_version": "3.12.13",
+    "torch_version": "2.13.0+cpu",
+    "cuda_available": false
+  },
+  "fixture": {
+    "role": "real-gold train-only overfit gate",
+    "track_ids": [
+      "guitarset:00_BN1-129-Eb_comp",
+      "guitarset:00_BN1-129-Eb_solo"
+    ],
+    "segment_offsets_seconds": [
+      11.162790697674419,
+      11.162790697674419
+    ],
+    "segment_seconds": 4.0,
+    "is_model_score": false
+  },
+  "result": {
+    "runs": 2,
+    "curve_entries": 77,
+    "best_epoch": 46,
+    "stop_reason": "early_stop",
+    "initial_total_loss": 6.449569225311279,
+    "best_total_loss": 0.13007207214832306,
+    "loss_ratio": 0.02016755966241223,
+    "root_accuracy": 1.0,
+    "quality_accuracy": 1.0,
+    "selection_metric": "validation_root_quality_accuracy"
+  },
+  "thresholds": {
+    "maximum_loss_ratio": 0.05,
+    "minimum_root_accuracy": 0.95,
+    "minimum_quality_accuracy": 0.95
+  },
+  "reproducibility": {
+    "reports_byte_identical": true,
+    "artifact_indexes_byte_identical": true,
+    "best_checkpoints_byte_identical": true,
+    "last_checkpoints_byte_identical": true,
+    "training_report_sha256": "d6f406c284cae7ccaeab7962fe758e3735f73f88a39b598de021c3e2835b90c4",
+    "artifact_index_sha256": "f3d797f1aa173ce8b5478356a4548c73b016b35956de014518dded0732abe48c",
+    "best_checkpoint_sha256": "98d36196f4877eadf31cbe609b9e29e5c30b6a66c27ead7bd6d35cba88ed06eb",
+    "last_checkpoint_sha256": "325dcaffb24cdef41b821e92a107d5f09f096404a7a7abbf91c445f702566156",
+    "best_model_state_sha256": "549bbe117bc2a5823b4e1fb0ffa1accc76832b1b8888810a60b4bc5301f5f32f",
+    "interrupted_resume_matches_uninterrupted": true
+  },
+  "verification": {
+    "ml_tests_passed": 179,
+    "ruff_passed": true,
+    "known_warning": "pytest cache directory ACL only"
+  },
+  "limitations": [
+    "This is an overfit and reproducibility gate, not a validation or competition score.",
+    "G1 remains NOT READY at 124 works and 8.9408 hours, below the 500-work and 80-hour targets.",
+    "The local PyTorch build is CPU-only; the CUDA entry is fail-closed and formal GPU training was not attempted."
+  ]
+}

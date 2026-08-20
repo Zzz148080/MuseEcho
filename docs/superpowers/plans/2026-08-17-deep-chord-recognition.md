@@ -398,27 +398,35 @@ NaN、空有效区间、masked-frame 不变性、train-split 逆频率类别权�
 
 **接口：** 单一命令读取不可变配置，完成训练、恢复、验证和制品索引；checkpoint 选择只依据 validation 主指标。
 
-- [ ] **步骤 1：实现两首程序夹具 overfit 门**
+- [x] **步骤 1：实现两首程序夹具 overfit 门**
 
 训练器必须能在极小数据上把 root/quality loss 显著降低并达到预设准确率，否则不能启动昂贵训练。
 
-阶段进度：已实现版本化 AdamW/gradient-clip CPU `train_step`，并以变长 batch 完成有限 loss、
-有限梯度和真实参数更新 smoke。两首夹具 overfit、checkpoint、scheduler、复现性与 GPU 入口
-仍未完成，因此步骤 1 尚不勾选。
+完成证据：从冻结 real-gold train split 选取两首 GuitarSet，在每首首个完整监督区间开始的
+4 秒窗口上完成 overfit。初始/最佳总 loss 为 `6.449569225311279`/`0.13007207214832306`，比例
+`0.02016755966241223`；root 与 quality accuracy 均为 `1.0`，通过 `0.05`/`0.95` 门槛。该结果
+明确标记为训练链门禁，不是 validation 或比赛成绩。
 
-- [ ] **步骤 2：实现 checkpoint 和精确恢复**
+- [x] **步骤 2：实现 checkpoint 和精确恢复**
 
 保存模型、优化器、scheduler、epoch、随机状态、配置和数据哈希；不匹配时拒绝恢复。
 
-- [ ] **步骤 3：验证复现性**
+- [x] **步骤 3：验证复现性**
 
 相同 CPU 配置和种子运行两次，关键曲线和最终 checkpoint 参数在声明容差内一致。
 
-- [ ] **步骤 4：增加 GPU 训练入口**
+- [x] **步骤 4：增加 GPU 训练入口**
 
 GPU 只加速同一训练语义。记录设备、CUDA、驱动和精度模式；CPU smoke 必须始终可运行。
 
-- [ ] **步骤 5：通过 G3 并提交**
+- [x] **步骤 5：通过 G3 并提交**
+
+`checkpoint-v2` 原子保存模型、优化器、scheduler、early-stop、epoch/step、Python/NumPy/
+PyTorch/CUDA RNG、数据生成器及配置/manifest/split 哈希，不匹配时在恢复前拒绝。CPU 的
+partial→resume 与 uninterrupted 最佳参数哈希一致。统一 CLI 读取 `train-smoke.json` 或
+`train-crnn-v1.json`，记录设备、CUDA/驱动/精度元数据；本机为 CPU-only，因此 CUDA 显式
+请求 fail-closed，正式 GPU 训练未运行。两次 G3 CPU 运行的报告、索引、best/last checkpoint
+均逐字节一致，公开证据见 `docs/ml/experiments/g3-training-reproducibility-v1.{json,md}`。
 
 提交消息：`feat: add reproducible chord trainer`
 

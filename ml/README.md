@@ -21,6 +21,20 @@ uv sync --project ml --extra dev
 uv run --project ml pytest -q ml/tests
 ```
 
+Run the versioned two-track G3 overfit/reproducibility gate from the repository root. The output
+directory is ignored by Git; only the path-free public G3 report is committed:
+
+```powershell
+uv run --project ml python -m museecho_ml.training.train `
+  ml/configs/train-smoke.json `
+  --run-dir ml/runs/g3-local
+```
+
+Pass `--resume ml/runs/g3-local/checkpoint-last.pt` to restore the exact optimizer, scheduler,
+early-stop, RNG, counter, configuration, and data identity. `train-crnn-v1.json` documents the
+formal CPU/GPU entry, but the command rejects it while G1 remains `NOT READY`; the G3 report is not
+a model-quality score.
+
 Install the `train` or `export` extras only on machines that perform those jobs.
 
 After generating the three approved real-gold manifests, freeze the leakage-resistant v1 split
