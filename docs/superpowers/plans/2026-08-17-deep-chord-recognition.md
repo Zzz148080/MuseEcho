@@ -281,15 +281,25 @@ split，四份清单均覆盖首发 quality 与 `N/X`，完整重跑后五个制
 时长加权 P/R/F1 与 Macro-F1、一对一边界 F1、事件数、ECE 和阈值 precision/coverage。
 评测时间轴必须连续且参考/预测同起止，缺口不能从分母消失。跨曲聚合与 legacy 预测生成随步骤 3 完成。
 
-- [ ] **步骤 3：封装并运行 legacy**
+- [x] **步骤 3：封装并运行 legacy**
 
 只为评测封装当前识别器，不修改其阈值。记录运行环境、输入清单、算法版本和完整错误分层。
 
-- [ ] **步骤 4：冻结 G2 基线**
+已在 source commit `e354f72` 上运行未修改的 `chroma-triad-viterbi-v1`。validation 为 39 首、
+1.102540 小时，root/exact WCSR 为 0.157891/0.157763；test 为 50 首、1.128187 小时，
+root/exact WCSR 均为 0.209059。完整报告同时记录层级 WCSR、逐质量 P/R/F1、边界、ECE、
+published precision/coverage、分段计数和逐曲明细。
+
+- [x] **步骤 4：冻结 G2 基线**
 
 提交基线报告和预测哈希，不提交测试音频。后续候选使用完全相同评测配置。
 
-- [ ] **步骤 5：提交**
+预测 JSONL SHA-256 为
+`4fb49bd54957afbe60a2c89edef48cd4b214820dc3413f75755e47cd061641e2`；预测保留在忽略的
+`ml/runs`，公开 JSON/Markdown 报告保存在 `docs/ml/experiments`。离线 replay 已从冻结
+manifests、prediction JSONL 与 evaluation-v1 配置逐字段重算并完全匹配正式报告。
+
+- [x] **步骤 5：提交**
 
 提交消息：`test: establish real-music chord baseline`
 

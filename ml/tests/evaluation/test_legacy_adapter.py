@@ -10,6 +10,7 @@ import pytest
 from museecho_ml.evaluation.legacy_adapter import (
     evaluate_legacy_manifest,
     load_evaluation_config,
+    replay_legacy_protocol,
     run_legacy_protocol,
 )
 from museecho_ml.evaluation.report import EvaluationConfig
@@ -248,6 +249,16 @@ def test_run_legacy_protocol_writes_immutable_commit_bound_artifacts(
     assert "fixture-python" in report_path.read_text(encoding="utf-8")
     assert "Legacy baseline v1" in markdown_path.read_text(encoding="utf-8")
     assert "audio_path" not in report_path.read_text(encoding="utf-8")
+    replay = replay_legacy_protocol(
+        manifests,
+        predictions_path=predictions_path,
+        config=EvaluationConfig(publication_threshold=0.85),
+    )
+    assert replay["predictions_sha256"] == first["predictions_sha256"]
+    assert replay["splits"] == {
+        split: first["splits"][split]["evaluation"]
+        for split in ("validation", "test")
+    }
 
     with pytest.raises(FileExistsError, match="baseline artifact"):
         run_legacy_protocol(

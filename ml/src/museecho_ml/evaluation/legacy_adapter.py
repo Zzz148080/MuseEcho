@@ -209,6 +209,99 @@ def run_legacy_protocol(
     return report
 
 
+def replay_legacy_protocol(
+    manifests: Mapping[str, dict[str, Any]],
+    *,
+    predictions_path: Path,
+    config: EvaluationConfig,
+) -> dict[str, Any]:
+    """Recompute every metric from frozen manifests and path-free prediction JSONL."""
+
+    if set(manifests) != set(_EVALUATION_SPLITS):
+        raise ValueError("legacy replay requires validation and test manifests")
+    try:
+        predictions_payload = predictions_path.read_bytes()
+        rows = [json.loads(line) for line in predictions_payload.splitlines() if line]
+    except (OSError, json.JSONDecodeError):
+        raise ValueError("legacy prediction JSONL is unreadable") from None
+    indexed: dict[tuple[str, str], dict[str, Any]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("legacy prediction JSONL rows must be objects")
+        split_name = row.get("split")
+        track_id = row.get("track_id")
+        if not isinstance(split_name, str) or not isinstance(track_id, str):
+            raise ValueError("legacy prediction JSONL row identifiers are invalid")
+        key = (split_name, track_id)
+        if key in indexed:
+            raise ValueError("legacy prediction JSONL contains duplicated tracks")
+        indexed[key] = row
+    split_evaluations: dict[str, dict[str, object]] = {}
+    consumed: set[tuple[str, str]] = set()
+    for split_name in _EVALUATION_SPLITS:
+        manifest = manifests[split_name]
+        tracks = manifest.get("tracks")
+        if manifest.get("split") != split_name or not isinstance(tracks, list):
+            raise ValueError(f"legacy replay manifest does not match {split_name}")
+        evaluation_tracks = {}
+        for track in sorted(tracks, key=lambda item: item.get("track_id", "")):
+            track_id = track.get("track_id")
+            duration_seconds = track.get("duration_seconds")
+            key = (split_name, track_id)
+            row = indexed.get(key)
+            if (
+                not isinstance(track_id, str)
+                or isinstance(duration_seconds, bool)
+                or not isinstance(duration_seconds, (int, float))
+                or row is None
+            ):
+                raise ValueError("legacy replay is missing a frozen track prediction")
+            reference = _reference_intervals(track, float(duration_seconds))
+            prediction = _serialized_prediction_intervals(
+                row.get("events"), float(duration_seconds)
+            )
+            evaluation_tracks[track_id] = (reference, prediction)
+            consumed.add(key)
+        split_evaluations[split_name] = evaluate_corpus(evaluation_tracks, config)
+    if consumed != set(indexed):
+        raise ValueError("legacy prediction JSONL contains tracks outside frozen manifests")
+    return {
+        "schema_version": 1,
+        "predictions_sha256": hashlib.sha256(predictions_payload).hexdigest(),
+        "splits": split_evaluations,
+    }
+
+
+def _serialized_prediction_intervals(
+    raw_events: Any, duration_seconds: float
+) -> tuple[ScoredChordInterval, ...]:
+    if not isinstance(raw_events, list) or not raw_events:
+        raise ValueError("legacy replay prediction must contain events")
+    intervals: list[ScoredChordInterval] = []
+    for raw in raw_events:
+        if not isinstance(raw, dict):
+            raise ValueError("legacy replay events must be objects")
+        chord = CanonicalChord(
+            root=raw.get("root"),
+            quality=raw.get("quality"),
+            bass=raw.get("bass"),
+        )
+        chord.display_symbol
+        intervals.append(
+            ScoredChordInterval(
+                float(raw.get("start_seconds")),
+                float(raw.get("end_seconds")),
+                chord,
+                float(raw.get("confidence")),
+            )
+        )
+    if not math.isclose(intervals[0].start_seconds, 0.0, abs_tol=1e-9) or not math.isclose(
+        intervals[-1].end_seconds, duration_seconds, abs_tol=1e-9
+    ):
+        raise ValueError("legacy replay prediction must cover the full track")
+    return tuple(intervals)
+
+
 def _markdown_report(report: dict[str, Any]) -> str:
     lines = [
         "# Legacy baseline v1",

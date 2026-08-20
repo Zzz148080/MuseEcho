@@ -1,0 +1,5313 @@
+{
+  "algorithm_version": "chroma-triad-viterbi-v1",
+  "baseline_version": "legacy-baseline-v1",
+  "environment": {
+    "librosa": "0.11.0",
+    "numpy": "2.5.2",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.13"
+  },
+  "evaluation_config": {
+    "boundary_tolerance_seconds": 0.05,
+    "ece_bin_count": 15,
+    "exact_match_includes_bass": false,
+    "publication_threshold": 0.85
+  },
+  "evaluation_config_sha256": "e6fe9a5d7c41d2bc7fce8ecf9a26a090055e4384e77f11138198daf6b038f3ab",
+  "predictions_sha256": "4fb49bd54957afbe60a2c89edef48cd4b214820dc3413f75755e47cd061641e2",
+  "schema_version": 1,
+  "source_commit": "e354f72",
+  "splits": {
+    "test": {
+      "algorithm_version": "chroma-triad-viterbi-v1",
+      "baseline_version": "legacy-baseline-v1",
+      "evaluation": {
+        "aggregate": {
+          "boundary": {
+            "f1": 0.004257583821181479,
+            "precision": 0.05555555555555555,
+            "recall": 0.002213613724405091
+          },
+          "ece": 0.20494393936259178,
+          "published": {
+            "coverage": 0.0035789201145204593,
+            "precision": 0.8306709265176017
+          },
+          "quality": {
+            "macro_f1": 0.037643673006772446,
+            "per_quality": {
+              "7": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 407.9126019913676
+              },
+              "N": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 43.03639138322069
+              },
+              "X": {
+                "f1": 0.3406735163835932,
+                "precision": 0.20537208992710573,
+                "recall": 0.9984896471238925,
+                "support_seconds": 830.1884750615451
+              },
+              "dim": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 28.528000000000247
+              },
+              "hdim7": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 34.94666666666649
+              },
+              "maj": {
+                "f1": 0.006422069667660728,
+                "precision": 0.845528455284549,
+                "recall": 0.0032232757592270565,
+                "support_seconds": 1498.398191053781
+              },
+              "maj7": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 224.3833333333323
+              },
+              "min": {
+                "f1": 0.06698481702324292,
+                "precision": 0.8714285714285928,
+                "recall": 0.03483110408003373,
+                "support_seconds": 487.9835782312928
+              },
+              "min7": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 423.13122902494337
+              },
+              "sus2": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 11.578557823128989
+              },
+              "sus4": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 71.38714776632332
+              }
+            }
+          },
+          "segmentation": {
+            "predicted_events": 122,
+            "reference_events": 1857
+          },
+          "weighted_scores": {
+            "exact_quality": 0.2090594405176696,
+            "majmin": 0.006625965362932205,
+            "root": 0.2090594405176696,
+            "sevenths": 0.006490524934007716,
+            "triads": 0.006321626291169174
+          }
+        },
+        "duration_seconds": 4061.474172335602,
+        "evaluation_version": "1.0.0",
+        "schema_version": 1,
+        "track_count": 50,
+        "tracks": {
+          "guitarset:00_Funk1-97-C_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.3333595122179301,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.16667648355564404,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 14.845360824742269
+                },
+                "X": {
+                  "f1": 0.5000294506669322,
+                  "precision": 0.3333595122179301,
+                  "recall": 1.0,
+                  "support_seconds": 9.896907216494846
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.946121981438623
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:00_Funk1-97-C_comp",
+            "weighted_scores": {
+              "exact_quality": 0.3333595122179301,
+              "majmin": 0.0,
+              "root": 0.3333595122179301,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:00_Funk1-97-C_solo": {
+            "boundary": {
+              "f1": 0.22222222222222224,
+              "precision": 0.25,
+              "recall": 0.2
+            },
+            "ece": 0.3434758273051339,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.21107626472856497,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 14.845360824742269
+                },
+                "X": {
+                  "f1": 0.47206353927807004,
+                  "precision": 0.3185894162830018,
+                  "recall": 0.9108450491307634,
+                  "support_seconds": 9.896907216494846
+                },
+                "maj": {
+                  "f1": 0.1611652549076248,
+                  "precision": 0.3666666666666681,
+                  "recall": 0.10328071248234665,
+                  "support_seconds": 4.946121981438623
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 5,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:00_Funk1-97-C_solo",
+            "weighted_scores": {
+              "exact_quality": 0.30363886128434786,
+              "majmin": 0.0,
+              "root": 0.30363886128434786,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:00_Funk2-108-Eb_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.2500503928087548,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.06667741669915489,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.4444444444444455
+                },
+                "X": {
+                  "f1": 0.40006450019492934,
+                  "precision": 0.2500503928087548,
+                  "recall": 1.0,
+                  "support_seconds": 8.88888888888889
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 6.666666666666666
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.88888888888889
+                },
+                "sus2": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.437278911564626
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.222222222222225
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 14
+            },
+            "track_id": "guitarset:00_Funk2-108-Eb_comp",
+            "weighted_scores": {
+              "exact_quality": 0.2500503928087548,
+              "majmin": 0.0,
+              "root": 0.2500503928087548,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:00_Funk2-108-Eb_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.2500503928087548,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.06667741669915489,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.4444444444444455
+                },
+                "X": {
+                  "f1": 0.40006450019492934,
+                  "precision": 0.2500503928087548,
+                  "recall": 1.0,
+                  "support_seconds": 8.88888888888889
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 6.666666666666666
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.88888888888889
+                },
+                "sus2": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.437278911564626
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.222222222222225
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 14
+            },
+            "track_id": "guitarset:00_Funk2-108-Eb_solo",
+            "weighted_scores": {
+              "exact_quality": 0.2500503928087548,
+              "majmin": 0.0,
+              "root": 0.2500503928087548,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:00_Jazz1-130-D_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.08335829986872488,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.03847217484687465,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 14.76923076923077
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.0884353741857922e-05
+                },
+                "X": {
+                  "f1": 0.1538886993874986,
+                  "precision": 0.08335829986872488,
+                  "recall": 1.0,
+                  "support_seconds": 1.8461538461538467
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 5.531815384615381
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 7
+            },
+            "track_id": "guitarset:00_Jazz1-130-D_comp",
+            "weighted_scores": {
+              "exact_quality": 0.08335829986872488,
+              "majmin": 0.0,
+              "root": 0.08335829986872488,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:00_Jazz1-130-D_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.08335829986872488,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.03847217484687465,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 14.76923076923077
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.0884353741857922e-05
+                },
+                "X": {
+                  "f1": 0.1538886993874986,
+                  "precision": 0.08335829986872488,
+                  "recall": 1.0,
+                  "support_seconds": 1.8461538461538467
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 5.531815384615381
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 7
+            },
+            "track_id": "guitarset:00_Jazz1-130-D_solo",
+            "weighted_scores": {
+              "exact_quality": 0.08335829986872488,
+              "majmin": 0.0,
+              "root": 0.08335829986872488,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:01_Funk1-97-C_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.0,
+              "per_quality": {
+                "X": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.0
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 29.688390022675737
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:01_Funk1-97-C_comp",
+            "weighted_scores": {
+              "exact_quality": 0.0,
+              "majmin": 0.0,
+              "root": 0.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:01_Funk1-97-C_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.0,
+              "per_quality": {
+                "X": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.0
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 29.688390022675737
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:01_Funk1-97-C_solo",
+            "weighted_scores": {
+              "exact_quality": 0.0,
+              "majmin": 0.0,
+              "root": 0.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:01_Funk2-108-Eb_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.3125629910109435,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.15875453503388595,
+              "per_quality": {
+                "X": {
+                  "f1": 0.4762636051016579,
+                  "precision": 0.3125629910109435,
+                  "recall": 1.0,
+                  "support_seconds": 11.11111111111111
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 20.000000000000004
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.437278911564626
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 14
+            },
+            "track_id": "guitarset:01_Funk2-108-Eb_comp",
+            "weighted_scores": {
+              "exact_quality": 0.3125629910109435,
+              "majmin": 0.0,
+              "root": 0.3125629910109435,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:01_Funk2-108-Eb_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.3125629910109435,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.15875453503388595,
+              "per_quality": {
+                "X": {
+                  "f1": 0.4762636051016579,
+                  "precision": 0.3125629910109435,
+                  "recall": 1.0,
+                  "support_seconds": 11.11111111111111
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 20.000000000000004
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.437278911564626
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 14
+            },
+            "track_id": "guitarset:01_Funk2-108-Eb_solo",
+            "weighted_scores": {
+              "exact_quality": 0.3125629910109435,
+              "majmin": 0.0,
+              "root": 0.3125629910109435,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:01_Jazz1-130-D_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.0809601785757597,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.016774991501926937,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.04161782009555567,
+              "per_quality": {
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.0884353741857922e-05
+                },
+                "X": {
+                  "f1": 0.124853460286667,
+                  "precision": 0.06771929903258603,
+                  "recall": 0.7987603930461071,
+                  "support_seconds": 1.8461538461538467
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 20.30104615384615
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.0
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 3,
+              "reference_events": 7
+            },
+            "track_id": "guitarset:01_Jazz1-130-D_comp",
+            "weighted_scores": {
+              "exact_quality": 0.06658330836679795,
+              "majmin": 0.0,
+              "root": 0.06658330836679795,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:01_Jazz1-130-D_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.08335829986872488,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.0512962331291662,
+              "per_quality": {
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.0884353741857922e-05
+                },
+                "X": {
+                  "f1": 0.1538886993874986,
+                  "precision": 0.08335829986872488,
+                  "recall": 1.0,
+                  "support_seconds": 1.8461538461538467
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 20.30104615384615
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 7
+            },
+            "track_id": "guitarset:01_Jazz1-130-D_solo",
+            "weighted_scores": {
+              "exact_quality": 0.08335829986872488,
+              "majmin": 0.0,
+              "root": 0.08335829986872488,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:02_Funk1-97-C_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.4999607316731049,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.2222105868578006,
+              "per_quality": {
+                "X": {
+                  "f1": 0.6666317605734018,
+                  "precision": 0.4999607316731049,
+                  "recall": 1.0,
+                  "support_seconds": 14.843029197933468
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.948453608247423
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 9.896907216494846
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:02_Funk1-97-C_comp",
+            "weighted_scores": {
+              "exact_quality": 0.4999607316731049,
+              "majmin": 0.0,
+              "root": 0.4999607316731049,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:02_Funk1-97-C_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.4999607316731049,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.2222105868578006,
+              "per_quality": {
+                "X": {
+                  "f1": 0.6666317605734018,
+                  "precision": 0.4999607316731049,
+                  "recall": 1.0,
+                  "support_seconds": 14.843029197933468
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.948453608247423
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 9.896907216494846
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:02_Funk1-97-C_solo",
+            "weighted_scores": {
+              "exact_quality": 0.4999607316731049,
+              "majmin": 0.0,
+              "root": 0.4999607316731049,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:02_Funk2-108-Eb_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.749949607191245,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.2857033155352593,
+              "per_quality": {
+                "X": {
+                  "f1": 0.8571099466057779,
+                  "precision": 0.7499496071912451,
+                  "recall": 1.0,
+                  "support_seconds": 26.65950113378685
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444445
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444446
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 14
+            },
+            "track_id": "guitarset:02_Funk2-108-Eb_comp",
+            "weighted_scores": {
+              "exact_quality": 0.7499496071912451,
+              "majmin": 0.0,
+              "root": 0.7499496071912451,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:02_Funk2-108-Eb_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.749949607191245,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.2857033155352593,
+              "per_quality": {
+                "X": {
+                  "f1": 0.8571099466057779,
+                  "precision": 0.7499496071912451,
+                  "recall": 1.0,
+                  "support_seconds": 26.65950113378685
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444445
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444446
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 14
+            },
+            "track_id": "guitarset:02_Funk2-108-Eb_solo",
+            "weighted_scores": {
+              "exact_quality": 0.7499496071912451,
+              "majmin": 0.0,
+              "root": 0.7499496071912451,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:02_Jazz1-130-D_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.09779079916336582,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.016774991501926937,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.05210300918507529,
+              "per_quality": {
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.0884353741857922e-05
+                },
+                "X": {
+                  "f1": 0.15630902755522585,
+                  "precision": 0.08478049189987447,
+                  "recall": 1.0,
+                  "support_seconds": 1.8461538461538467
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 20.30104615384615
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.0
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 3,
+              "reference_events": 7
+            },
+            "track_id": "guitarset:02_Jazz1-130-D_comp",
+            "weighted_scores": {
+              "exact_quality": 0.08335829986872488,
+              "majmin": 0.0,
+              "root": 0.08335829986872488,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:02_Jazz1-130-D_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.09709045594512093,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.06408408222174873,
+              "per_quality": {
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.0884353741857922e-05
+                },
+                "X": {
+                  "f1": 0.15630902755522585,
+                  "precision": 0.08478049189987447,
+                  "recall": 1.0,
+                  "support_seconds": 1.8461538461538467
+                },
+                "maj": {
+                  "f1": 0.03594321911002035,
+                  "precision": 1.0,
+                  "recall": 0.01830049897729193,
+                  "support_seconds": 20.30104615384615
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 3,
+              "reference_events": 7
+            },
+            "track_id": "guitarset:02_Jazz1-130-D_solo",
+            "weighted_scores": {
+              "exact_quality": 0.08335829986872488,
+              "majmin": 0.0,
+              "root": 0.08335829986872488,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:03_Funk1-97-C_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 1.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 1.0,
+              "per_quality": {
+                "X": {
+                  "f1": 1.0,
+                  "precision": 1.0,
+                  "recall": 1.0,
+                  "support_seconds": 29.688390022675737
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:03_Funk1-97-C_comp",
+            "weighted_scores": {
+              "exact_quality": 1.0,
+              "majmin": 0.0,
+              "root": 1.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:03_Funk1-97-C_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 1.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 1.0,
+              "per_quality": {
+                "X": {
+                  "f1": 1.0,
+                  "precision": 1.0,
+                  "recall": 1.0,
+                  "support_seconds": 29.688390022675737
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:03_Funk1-97-C_solo",
+            "weighted_scores": {
+              "exact_quality": 1.0,
+              "majmin": 0.0,
+              "root": 1.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:03_Funk2-108-Eb_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.25005039280875474,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.08001290003898585,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444448
+                },
+                "X": {
+                  "f1": 0.4000645001949293,
+                  "precision": 0.25005039280875474,
+                  "recall": 1.0,
+                  "support_seconds": 8.888888888888888
+                },
+                "hdim7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444443
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.888888888888891
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.88172335600907
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 14
+            },
+            "track_id": "guitarset:03_Funk2-108-Eb_comp",
+            "weighted_scores": {
+              "exact_quality": 0.25005039280875474,
+              "majmin": 0.0,
+              "root": 0.25005039280875474,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:03_Funk2-108-Eb_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.25005039280875474,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.08001290003898585,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444448
+                },
+                "X": {
+                  "f1": 0.4000645001949293,
+                  "precision": 0.25005039280875474,
+                  "recall": 1.0,
+                  "support_seconds": 8.888888888888888
+                },
+                "hdim7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444443
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.888888888888891
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.88172335600907
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 14
+            },
+            "track_id": "guitarset:03_Funk2-108-Eb_solo",
+            "weighted_scores": {
+              "exact_quality": 0.25005039280875474,
+              "majmin": 0.0,
+              "root": 0.25005039280875474,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:03_Jazz1-130-D_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.9999995085451708,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.49999987713626254,
+              "per_quality": {
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.0884353741857922e-05
+                },
+                "X": {
+                  "f1": 0.9999997542725251,
+                  "precision": 0.9999995085451708,
+                  "recall": 1.0,
+                  "support_seconds": 22.147199999999998
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 7
+            },
+            "track_id": "guitarset:03_Jazz1-130-D_comp",
+            "weighted_scores": {
+              "exact_quality": 0.9999995085451708,
+              "majmin": 0.0,
+              "root": 0.9999995085451708,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:03_Jazz1-130-D_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.9999995085451708,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.49999987713626254,
+              "per_quality": {
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.0884353741857922e-05
+                },
+                "X": {
+                  "f1": 0.9999997542725251,
+                  "precision": 0.9999995085451708,
+                  "recall": 1.0,
+                  "support_seconds": 22.147199999999998
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 7
+            },
+            "track_id": "guitarset:03_Jazz1-130-D_solo",
+            "weighted_scores": {
+              "exact_quality": 0.9999995085451708,
+              "majmin": 0.0,
+              "root": 0.9999995085451708,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:04_Funk1-97-C_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 1.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 1.0,
+              "per_quality": {
+                "X": {
+                  "f1": 1.0,
+                  "precision": 1.0,
+                  "recall": 1.0,
+                  "support_seconds": 29.688390022675737
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:04_Funk1-97-C_comp",
+            "weighted_scores": {
+              "exact_quality": 1.0,
+              "majmin": 0.0,
+              "root": 1.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:04_Funk1-97-C_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 1.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 1.0,
+              "per_quality": {
+                "X": {
+                  "f1": 1.0,
+                  "precision": 1.0,
+                  "recall": 1.0,
+                  "support_seconds": 29.688390022675737
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:04_Funk1-97-C_solo",
+            "weighted_scores": {
+              "exact_quality": 1.0,
+              "majmin": 0.0,
+              "root": 1.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:04_Funk2-108-Eb_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.5626133838196983,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.14401857545707936,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.222222222222223
+                },
+                "X": {
+                  "f1": 0.7200928772853967,
+                  "precision": 0.5626133838196983,
+                  "recall": 1.0,
+                  "support_seconds": 20.0
+                },
+                "hdim7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444443
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444447
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.437278911564626
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 14
+            },
+            "track_id": "guitarset:04_Funk2-108-Eb_comp",
+            "weighted_scores": {
+              "exact_quality": 0.5626133838196983,
+              "majmin": 0.0,
+              "root": 0.5626133838196983,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:04_Funk2-108-Eb_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.5626133838196983,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.14401857545707936,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.222222222222223
+                },
+                "X": {
+                  "f1": 0.7200928772853967,
+                  "precision": 0.5626133838196983,
+                  "recall": 1.0,
+                  "support_seconds": 20.0
+                },
+                "hdim7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444443
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444447
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.437278911564626
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 14
+            },
+            "track_id": "guitarset:04_Funk2-108-Eb_solo",
+            "weighted_scores": {
+              "exact_quality": 0.5626133838196983,
+              "majmin": 0.0,
+              "root": 0.5626133838196983,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:04_Jazz1-130-D_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.9166412086764459,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.3188359596732386,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.8461538461538467
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.0884353741857922e-05
+                },
+                "X": {
+                  "f1": 0.9565078790197158,
+                  "precision": 0.9166412086764459,
+                  "recall": 1.0,
+                  "support_seconds": 20.30104615384615
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 7
+            },
+            "track_id": "guitarset:04_Jazz1-130-D_comp",
+            "weighted_scores": {
+              "exact_quality": 0.9166412086764459,
+              "majmin": 0.0,
+              "root": 0.9166412086764459,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:04_Jazz1-130-D_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.9166412086764459,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.3188359596732386,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.8461538461538467
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.0884353741857922e-05
+                },
+                "X": {
+                  "f1": 0.9565078790197158,
+                  "precision": 0.9166412086764459,
+                  "recall": 1.0,
+                  "support_seconds": 20.30104615384615
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 7
+            },
+            "track_id": "guitarset:04_Jazz1-130-D_solo",
+            "weighted_scores": {
+              "exact_quality": 0.9166412086764459,
+              "majmin": 0.0,
+              "root": 0.9166412086764459,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:05_Funk1-97-C_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 1.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 1.0,
+              "per_quality": {
+                "X": {
+                  "f1": 1.0,
+                  "precision": 1.0,
+                  "recall": 1.0,
+                  "support_seconds": 29.688390022675737
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:05_Funk1-97-C_comp",
+            "weighted_scores": {
+              "exact_quality": 1.0,
+              "majmin": 0.0,
+              "root": 1.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:05_Funk1-97-C_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 1.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 1.0,
+              "per_quality": {
+                "X": {
+                  "f1": 1.0,
+                  "precision": 1.0,
+                  "recall": 1.0,
+                  "support_seconds": 29.688390022675737
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:05_Funk1-97-C_solo",
+            "weighted_scores": {
+              "exact_quality": 1.0,
+              "majmin": 0.0,
+              "root": 1.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:05_Funk2-108-Eb_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.3750755892131322,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.09092241720029465,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444448
+                },
+                "X": {
+                  "f1": 0.5455345032017679,
+                  "precision": 0.3750755892131322,
+                  "recall": 1.0,
+                  "support_seconds": 13.333333333333334
+                },
+                "hdim7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444443
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.2222222222222223
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.2222222222222223
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.88172335600907
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 14
+            },
+            "track_id": "guitarset:05_Funk2-108-Eb_comp",
+            "weighted_scores": {
+              "exact_quality": 0.3750755892131322,
+              "majmin": 0.0,
+              "root": 0.3750755892131322,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:05_Funk2-108-Eb_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.3750755892131322,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.09092241720029465,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444448
+                },
+                "X": {
+                  "f1": 0.5455345032017679,
+                  "precision": 0.3750755892131322,
+                  "recall": 1.0,
+                  "support_seconds": 13.333333333333334
+                },
+                "hdim7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.444444444444443
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.2222222222222223
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.2222222222222223
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.88172335600907
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 14
+            },
+            "track_id": "guitarset:05_Funk2-108-Eb_solo",
+            "weighted_scores": {
+              "exact_quality": 0.3750755892131322,
+              "majmin": 0.0,
+              "root": 0.3750755892131322,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:05_Jazz1-130-D_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.9999995085451708,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.49999987713626254,
+              "per_quality": {
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.0884353741857922e-05
+                },
+                "X": {
+                  "f1": 0.9999997542725251,
+                  "precision": 0.9999995085451708,
+                  "recall": 1.0,
+                  "support_seconds": 22.147199999999998
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 7
+            },
+            "track_id": "guitarset:05_Jazz1-130-D_comp",
+            "weighted_scores": {
+              "exact_quality": 0.9999995085451708,
+              "majmin": 0.0,
+              "root": 0.9999995085451708,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:05_Jazz1-130-D_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.9999995085451708,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.49999987713626254,
+              "per_quality": {
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.0884353741857922e-05
+                },
+                "X": {
+                  "f1": 0.9999997542725251,
+                  "precision": 0.9999995085451708,
+                  "recall": 1.0,
+                  "support_seconds": 22.147199999999998
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 7
+            },
+            "track_id": "guitarset:05_Jazz1-130-D_solo",
+            "weighted_scores": {
+              "exact_quality": 0.9999995085451708,
+              "majmin": 0.0,
+              "root": 0.9999995085451708,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P015": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.005632017979786028,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.001600135999505263,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.9050000000000011
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 6.363963718820856
+                },
+                "X": {
+                  "f1": 0.011200951996536842,
+                  "precision": 0.005632017979786028,
+                  "recall": 1.0,
+                  "support_seconds": 0.9060000000000059
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 120.10400000000003
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 3.6229999999999976
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 9.028000000000006
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 19.93599999999997
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 126
+            },
+            "track_id": "rwc-popular:RWC_P015",
+            "weighted_scores": {
+              "exact_quality": 0.005632017979786028,
+              "majmin": 0.0,
+              "root": 0.005632017979786028,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P026": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.0,
+              "per_quality": {
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 3.300934240362821
+                },
+                "X": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.0
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 170.2650000000001
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 12.040999999999983
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 12.120999999999938
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 7.290999999999997
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 149
+            },
+            "track_id": "rwc-popular:RWC_P026",
+            "weighted_scores": {
+              "exact_quality": 0.0,
+              "majmin": 0.0,
+              "root": 0.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P029": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.022232991553979647,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.004833208114583103,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 33.66900000000001
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 3.060746031746035
+                },
+                "X": {
+                  "f1": 0.04349887303124793,
+                  "precision": 0.022232991553979647,
+                  "recall": 1.0,
+                  "support_seconds": 4.736999999999966
+                },
+                "dim": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.655999999999999
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 53.38000000000005
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 16.25799999999998
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 6.908000000000003
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 86.90999999999997
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 3.483000000000004
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 87
+            },
+            "track_id": "rwc-popular:RWC_P029",
+            "weighted_scores": {
+              "exact_quality": 0.022232991553979647,
+              "majmin": 0.0,
+              "root": 0.022232991553979647,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P040": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.00875048050973621,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.002891524606862959,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.961999999999989
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.883258503401358
+                },
+                "X": {
+                  "f1": 0.017349147641177756,
+                  "precision": 0.00875048050973621,
+                  "recall": 1.0,
+                  "support_seconds": 1.961999999999989
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 199.67000000000002
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 5.910000000000011
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 11.829000000000008
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 171
+            },
+            "track_id": "rwc-popular:RWC_P040",
+            "weighted_scores": {
+              "exact_quality": 0.00875048050973621,
+              "majmin": 0.0,
+              "root": 0.00875048050973621,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P052": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.20784498916685215,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.03823982032849349,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 10.788000000000011
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.987122448979586
+                },
+                "X": {
+                  "f1": 0.3441583829564414,
+                  "precision": 0.20784498916685215,
+                  "recall": 1.0,
+                  "support_seconds": 46.437999999999946
+                },
+                "dim": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.53500000000001
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 60.30200000000001
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 21.488000000000007
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 11.43200000000003
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 59.53999999999999
+                },
+                "sus2": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.9159999999999968
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 98
+            },
+            "track_id": "rwc-popular:RWC_P052",
+            "weighted_scores": {
+              "exact_quality": 0.20784498916685215,
+              "majmin": 0.0,
+              "root": 0.20784498916685215,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P055": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.05890282458377155,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0016911475691405407,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.01637428202677455,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 17.869999999999983
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.9773061224489725
+                },
+                "X": {
+                  "f1": 0.10883531055092462,
+                  "precision": 0.05754935630837628,
+                  "recall": 1.0,
+                  "support_seconds": 14.198999999999963
+                },
+                "maj": {
+                  "f1": 0.005784663636497225,
+                  "precision": 1.0,
+                  "recall": 0.002900721667824344,
+                  "support_seconds": 144.0880000000001
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 9.763000000000005
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 46.31299999999999
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 12.934999999999974
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 3,
+              "reference_events": 136
+            },
+            "track_id": "rwc-popular:RWC_P055",
+            "weighted_scores": {
+              "exact_quality": 0.057452031854349765,
+              "majmin": 0.0,
+              "root": 0.057452031854349765,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P059": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.10307801562953499,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.02669880207124855,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.4379999999999953
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.1871768707483037
+                },
+                "X": {
+                  "f1": 0.18689161449873984,
+                  "precision": 0.10307801562953499,
+                  "recall": 1.0,
+                  "support_seconds": 20.92300000000003
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 43.82899999999998
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 18.390999999999977
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 27.34200000000001
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 87.87200000000001
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 93
+            },
+            "track_id": "rwc-popular:RWC_P059",
+            "weighted_scores": {
+              "exact_quality": 0.10307801562953499,
+              "majmin": 0.0,
+              "root": 0.10307801562953499,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P065": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.13827820738248714,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0016151476878268774,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.029279006718701803,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 22.103999999999967
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.3498594104308457
+                },
+                "X": {
+                  "f1": 0.24107870530104417,
+                  "precision": 0.13706054161013806,
+                  "recall": 1.0,
+                  "support_seconds": 31.47600000000005
+                },
+                "dim": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.5800000000000196
+                },
+                "maj": {
+                  "f1": 0.02243235516727208,
+                  "precision": 1.0,
+                  "recall": 0.011343407253798144,
+                  "support_seconds": 32.75199999999997
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 74.39500000000001
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 5.516000000000023
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 59.060999999999936
+                },
+                "sus2": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.7880000000000109
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 3,
+              "reference_events": 137
+            },
+            "track_id": "rwc-popular:RWC_P065",
+            "weighted_scores": {
+              "exact_quality": 0.13683916859326414,
+              "majmin": 0.0,
+              "root": 0.13683916859326414,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P070": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.07602358247000758,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.023266571562934168,
+              "per_quality": {
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 3.6430226757369804
+                },
+                "X": {
+                  "f1": 0.139599429377605,
+                  "precision": 0.07503729658118852,
+                  "recall": 1.0,
+                  "support_seconds": 18.333000000000006
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 180.828
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 14.869
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 11.795000000000009
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 15.221999999999994
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 3,
+              "reference_events": 144
+            },
+            "track_id": "rwc-popular:RWC_P070",
+            "weighted_scores": {
+              "exact_quality": 0.07492336548717755,
+              "majmin": 0.0,
+              "root": 0.07492336548717755,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P076": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.11518741906748786,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.025406620612993057,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 12.164000000000055
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.616294784580493
+                },
+                "X": {
+                  "f1": 0.20634996214978582,
+                  "precision": 0.11504471764018544,
+                  "recall": 1.0,
+                  "support_seconds": 26.232999999999997
+                },
+                "dim": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 6.777000000000001
+                },
+                "maj": {
+                  "f1": 0.022309623367151695,
+                  "precision": 1.0,
+                  "recall": 0.01128064515595982,
+                  "support_seconds": 74.102
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 40.221999999999994
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 31.613
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 7.64699999999997
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 27.485999999999986
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 5,
+              "reference_events": 123
+            },
+            "track_id": "rwc-popular:RWC_P076",
+            "weighted_scores": {
+              "exact_quality": 0.11827704055360984,
+              "majmin": 0.005043308922864436,
+              "root": 0.11827704055360984,
+              "sevenths": 0.004845201375724877,
+              "triads": 0.004179361971826222
+            }
+          },
+          "schubert-winterreise:Schubert_D911-06_HU33": {
+            "boundary": {
+              "f1": 0.020833333333333336,
+              "precision": 0.0625,
+              "recall": 0.0125
+            },
+            "ece": 0.10991920002732224,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.018425760286225477,
+              "precision": 1.0
+            },
+            "quality": {
+              "macro_f1": 0.058757887805993655,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 78.07999999999991
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.8590929705215307
+                },
+                "X": {
+                  "f1": 0.19680520687333575,
+                  "precision": 0.10914251062808569,
+                  "recall": 1.0,
+                  "support_seconds": 27.720000000000027
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 40.68
+                },
+                "min": {
+                  "f1": 0.09698423215663256,
+                  "precision": 1.0,
+                  "recall": 0.05096344118395928,
+                  "support_seconds": 110.26000000000008
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 17,
+              "reference_events": 81
+            },
+            "track_id": "schubert-winterreise:Schubert_D911-06_HU33",
+            "weighted_scores": {
+              "exact_quality": 0.12842583016547432,
+              "majmin": 0.0245359751329288,
+              "root": 0.12842583016547432,
+              "sevenths": 0.0245359751329288,
+              "triads": 0.0245359751329288
+            }
+          },
+          "schubert-winterreise:Schubert_D911-06_SC06": {
+            "boundary": {
+              "f1": 0.020202020202020204,
+              "precision": 0.05,
+              "recall": 0.012658227848101266
+            },
+            "ece": 0.1046039183366018,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.018735815345984733,
+              "precision": 0.8969072164948506
+            },
+            "quality": {
+              "macro_f1": 0.08470379490305735,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 75.30000000000001
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.44
+                },
+                "X": {
+                  "f1": 0.18915782555228228,
+                  "precision": 0.10445848247927672,
+                  "recall": 1.0,
+                  "support_seconds": 24.140000000000043
+                },
+                "maj": {
+                  "f1": 0.11276750621928222,
+                  "precision": 1.0,
+                  "recall": 0.05975284263645418,
+                  "support_seconds": 38.859999999999935
+                },
+                "min": {
+                  "f1": 0.12159364274372222,
+                  "precision": 0.9337748344370893,
+                  "recall": 0.06503089535036097,
+                  "support_seconds": 100.6910204081633
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 21,
+              "reference_events": 80
+            },
+            "track_id": "schubert-winterreise:Schubert_D911-06_SC06",
+            "weighted_scores": {
+              "exact_quality": 0.13729519019508432,
+              "majmin": 0.04128452664030223,
+              "root": 0.13729519019508432,
+              "sevenths": 0.04128452664030223,
+              "triads": 0.04128452664030223
+            }
+          },
+          "schubert-winterreise:Schubert_D911-14_HU33": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.21327514557893923,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.017743979721165933,
+              "precision": 1.0
+            },
+            "quality": {
+              "macro_f1": 0.07014491713895395,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 32.0
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 6.325442176870756
+                },
+                "X": {
+                  "f1": 0.35337635444518023,
+                  "precision": 0.21460663181847617,
+                  "recall": 1.0,
+                  "support_seconds": 38.45999999999998
+                },
+                "dim": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.9200000000000017
+                },
+                "hdim7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 5.060000000000002
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 44.40000000000003
+                },
+                "min": {
+                  "f1": 0.13763806552749736,
+                  "precision": 1.0,
+                  "recall": 0.07390511102047526,
+                  "support_seconds": 54.039999999999985
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 11,
+              "reference_events": 54
+            },
+            "track_id": "schubert-winterreise:Schubert_D911-14_HU33",
+            "weighted_scores": {
+              "exact_quality": 0.23172800815906194,
+              "majmin": 0.030618155470304217,
+              "root": 0.23172800815906194,
+              "sevenths": 0.02885299956326023,
+              "triads": 0.02885299956326023
+            }
+          },
+          "schubert-winterreise:Schubert_D911-14_SC06": {
+            "boundary": {
+              "f1": 0.03389830508474576,
+              "precision": 0.16666666666666666,
+              "recall": 0.018867924528301886
+            },
+            "ece": 0.201037546074633,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.003109634034944529,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.05193664437971094,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 26.59999999999998
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.0420408163265222
+                },
+                "X": {
+                  "f1": 0.3286573012485195,
+                  "precision": 0.19664267627101953,
+                  "recall": 1.0,
+                  "support_seconds": 29.01999999999996
+                },
+                "dim": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.060000000000002
+                },
+                "hdim7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 3.219999999999999
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 39.26000000000004
+                },
+                "min": {
+                  "f1": 0.034899209409457094,
+                  "precision": 0.4736842105263154,
+                  "recall": 0.01811699972576813,
+                  "support_seconds": 46.140000000000015
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 7,
+              "reference_events": 54
+            },
+            "track_id": "schubert-winterreise:Schubert_D911-14_SC06",
+            "weighted_scores": {
+              "exact_quality": 0.1999163678502709,
+              "majmin": 0.007463556851311976,
+              "root": 0.1999163678502709,
+              "sevenths": 0.00700803460217087,
+              "triads": 0.00700803460217087
+            }
+          }
+        }
+      },
+      "manifest_sha256": "06b92ce1bd46a1c432cefb9fe32f641095cfb081ac998e7772a66c20a686cddc",
+      "manifest_split": "test",
+      "predictions_sha256": "19a27ff6667d7b5c9d11e3fc9ebd1b98ce29f0ecf7fbb54e212b4b3391cb668a",
+      "schema_version": 1,
+      "split_sha256": "1215c79ccc80c5574f2e2584fc8130f2583e793cc7fa5dfaf96453285620bc3e"
+    },
+    "validation": {
+      "algorithm_version": "chroma-triad-viterbi-v1",
+      "baseline_version": "legacy-baseline-v1",
+      "evaluation": {
+        "aggregate": {
+          "boundary": {
+            "f1": 0.00175054704595186,
+            "precision": 0.09090909090909091,
+            "recall": 0.0008837825894829872
+          },
+          "ece": 0.1570811772692255,
+          "published": {
+            "coverage": 0.0006669135447274416,
+            "precision": 0.561403508771972
+          },
+          "quality": {
+            "macro_f1": 0.025566643703473498,
+            "per_quality": {
+              "7": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 251.10899999999856
+              },
+              "N": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 75.10570975056646
+              },
+              "X": {
+                "f1": 0.2712722148996453,
+                "precision": 0.15696612373040086,
+                "recall": 0.9981367920316302,
+                "support_seconds": 623.1176294517804
+              },
+              "dim": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 15.256000000000768
+              },
+              "hdim7": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 8.44900000000007
+              },
+              "maj": {
+                "f1": 0.003834461078449502,
+                "precision": 0.7011494252873344,
+                "recall": 0.0019224874095006685,
+                "support_seconds": 1473.5256278511442
+              },
+              "maj7": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 309.8548151260508
+              },
+              "min": {
+                "f1": 0.006126404760113651,
+                "precision": 0.5084745762711509,
+                "recall": 0.0030817678681046034,
+                "support_seconds": 452.0772941176441
+              },
+              "min7": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 663.4505210084033
+              },
+              "sus2": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 35.52680632252856
+              },
+              "sus4": {
+                "f1": 0.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "support_seconds": 61.66999999999996
+              }
+            }
+          },
+          "segmentation": {
+            "predicted_events": 61,
+            "reference_events": 2302
+          },
+          "weighted_scores": {
+            "exact_quality": 0.15776271037617706,
+            "majmin": 0.001503760252777774,
+            "root": 0.15789141299007192,
+            "sevenths": 0.0013315694954849286,
+            "triads": 0.0014481773027701821
+          }
+        },
+        "duration_seconds": 3969.1424036281173,
+        "evaluation_version": "1.0.0",
+        "schema_version": 1,
+        "track_count": 39,
+        "tracks": {
+          "guitarset:00_BN3-119-G_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.8105911249120065,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.29623232053479903,
+              "per_quality": {
+                "X": {
+                  "f1": 0.888696961604397,
+                  "precision": 0.8101848111207101,
+                  "recall": 0.9840586080586081,
+                  "support_seconds": 26.218487394957982
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.0168067226890756
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.0
+                },
+                "sus2": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.027903161264504
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 3,
+              "reference_events": 16
+            },
+            "track_id": "guitarset:00_BN3-119-G_comp",
+            "weighted_scores": {
+              "exact_quality": 0.799689131496856,
+              "majmin": 0.0,
+              "root": 0.799689131496856,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:00_BN3-119-G_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.8126438048995029,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.29887975515945625,
+              "per_quality": {
+                "X": {
+                  "f1": 0.8966392654783687,
+                  "precision": 0.8126438048995029,
+                  "recall": 1.0,
+                  "support_seconds": 26.218487394957982
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.0168067226890756
+                },
+                "sus2": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.027903161264504
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 16
+            },
+            "track_id": "guitarset:00_BN3-119-G_solo",
+            "weighted_scores": {
+              "exact_quality": 0.8126438048995029,
+              "majmin": 0.0,
+              "root": 0.8126438048995029,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:00_Jazz1-200-B_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.6666666666666666,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.4,
+              "per_quality": {
+                "X": {
+                  "f1": 0.8,
+                  "precision": 0.6666666666666666,
+                  "recall": 1.0,
+                  "support_seconds": 9.6
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.800000000000001
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:00_Jazz1-200-B_comp",
+            "weighted_scores": {
+              "exact_quality": 0.6666666666666666,
+              "majmin": 0.0,
+              "root": 0.6666666666666666,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:00_Jazz1-200-B_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.6666666666666666,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.4,
+              "per_quality": {
+                "X": {
+                  "f1": 0.8,
+                  "precision": 0.6666666666666666,
+                  "recall": 1.0,
+                  "support_seconds": 9.6
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.800000000000001
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:00_Jazz1-200-B_solo",
+            "weighted_scores": {
+              "exact_quality": 0.6666666666666666,
+              "majmin": 0.0,
+              "root": 0.6666666666666666,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:01_BN3-119-G_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.0,
+              "per_quality": {
+                "X": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.0
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 24.19597038815526
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.067226890756302
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 16
+            },
+            "track_id": "guitarset:01_BN3-119-G_comp",
+            "weighted_scores": {
+              "exact_quality": 0.0,
+              "majmin": 0.0,
+              "root": 0.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:01_BN3-119-G_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.0,
+              "per_quality": {
+                "X": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.0
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 24.19597038815526
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.067226890756302
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 16
+            },
+            "track_id": "guitarset:01_BN3-119-G_solo",
+            "weighted_scores": {
+              "exact_quality": 0.0,
+              "majmin": 0.0,
+              "root": 0.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:01_Jazz1-200-B_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.0,
+              "per_quality": {
+                "X": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.0
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 14.4
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:01_Jazz1-200-B_comp",
+            "weighted_scores": {
+              "exact_quality": 0.0,
+              "majmin": 0.0,
+              "root": 0.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:01_Jazz1-200-B_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.0,
+              "per_quality": {
+                "X": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.0
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 14.4
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:01_Jazz1-200-B_solo",
+            "weighted_scores": {
+              "exact_quality": 0.0,
+              "majmin": 0.0,
+              "root": 0.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:02_BN3-119-G_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.12502212383069278,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.07408572754995744,
+              "per_quality": {
+                "X": {
+                  "f1": 0.22225718264987232,
+                  "precision": 0.12502212383069278,
+                  "recall": 1.0,
+                  "support_seconds": 4.033613445378151
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 22.179163665466184
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 6.050420168067227
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 16
+            },
+            "track_id": "guitarset:02_BN3-119-G_comp",
+            "weighted_scores": {
+              "exact_quality": 0.12502212383069278,
+              "majmin": 0.0,
+              "root": 0.12502212383069278,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:02_BN3-119-G_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.12502212383069278,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.07408572754995744,
+              "per_quality": {
+                "X": {
+                  "f1": 0.22225718264987232,
+                  "precision": 0.12502212383069278,
+                  "recall": 1.0,
+                  "support_seconds": 4.033613445378151
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 22.179163665466184
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 6.050420168067227
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 16
+            },
+            "track_id": "guitarset:02_BN3-119-G_solo",
+            "weighted_scores": {
+              "exact_quality": 0.12502212383069278,
+              "majmin": 0.0,
+              "root": 0.12502212383069278,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:02_Jazz1-200-B_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.6666666666666667,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.4,
+              "per_quality": {
+                "X": {
+                  "f1": 0.8,
+                  "precision": 0.6666666666666666,
+                  "recall": 1.0,
+                  "support_seconds": 9.600000000000001
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.8
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:02_Jazz1-200-B_comp",
+            "weighted_scores": {
+              "exact_quality": 0.6666666666666667,
+              "majmin": 0.0,
+              "root": 0.6666666666666667,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:02_Jazz1-200-B_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.6666666666666667,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.4,
+              "per_quality": {
+                "X": {
+                  "f1": 0.8,
+                  "precision": 0.6666666666666666,
+                  "recall": 1.0,
+                  "support_seconds": 9.600000000000001
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.8
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:02_Jazz1-200-B_solo",
+            "weighted_scores": {
+              "exact_quality": 0.6666666666666667,
+              "majmin": 0.0,
+              "root": 0.6666666666666667,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:03_BN3-119-G_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.24986725701584342,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.13327669031158887,
+              "per_quality": {
+                "X": {
+                  "f1": 0.39983007093476663,
+                  "precision": 0.24986725701584342,
+                  "recall": 1.0,
+                  "support_seconds": 8.061516606642655
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 16.134453781512605
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.067226890756302
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 16
+            },
+            "track_id": "guitarset:03_BN3-119-G_comp",
+            "weighted_scores": {
+              "exact_quality": 0.24986725701584342,
+              "majmin": 0.0,
+              "root": 0.24986725701584342,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:03_BN3-119-G_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.24986725701584342,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.13327669031158887,
+              "per_quality": {
+                "X": {
+                  "f1": 0.39983007093476663,
+                  "precision": 0.24986725701584342,
+                  "recall": 1.0,
+                  "support_seconds": 8.061516606642655
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 16.134453781512605
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.067226890756302
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 16
+            },
+            "track_id": "guitarset:03_BN3-119-G_solo",
+            "weighted_scores": {
+              "exact_quality": 0.24986725701584342,
+              "majmin": 0.0,
+              "root": 0.24986725701584342,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:03_Jazz1-200-B_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 1.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 1.0,
+              "per_quality": {
+                "X": {
+                  "f1": 1.0,
+                  "precision": 1.0,
+                  "recall": 1.0,
+                  "support_seconds": 14.4
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:03_Jazz1-200-B_comp",
+            "weighted_scores": {
+              "exact_quality": 1.0,
+              "majmin": 0.0,
+              "root": 1.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:03_Jazz1-200-B_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 1.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 1.0,
+              "per_quality": {
+                "X": {
+                  "f1": 1.0,
+                  "precision": 1.0,
+                  "recall": 1.0,
+                  "support_seconds": 14.4
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:03_Jazz1-200-B_solo",
+            "weighted_scores": {
+              "exact_quality": 1.0,
+              "majmin": 0.0,
+              "root": 1.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:04_BN3-119-G_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.18753318574603914,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.07895913478334751,
+              "per_quality": {
+                "X": {
+                  "f1": 0.31583653913339005,
+                  "precision": 0.18753318574603914,
+                  "recall": 1.0,
+                  "support_seconds": 6.050420168067227
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 6.04470988395358
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 12.100840336134453
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.067226890756302
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 16
+            },
+            "track_id": "guitarset:04_BN3-119-G_comp",
+            "weighted_scores": {
+              "exact_quality": 0.18753318574603914,
+              "majmin": 0.0,
+              "root": 0.18753318574603914,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:04_BN3-119-G_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.18753318574603914,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.07895913478334751,
+              "per_quality": {
+                "X": {
+                  "f1": 0.31583653913339005,
+                  "precision": 0.18753318574603914,
+                  "recall": 1.0,
+                  "support_seconds": 6.050420168067227
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 6.04470988395358
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 12.100840336134453
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.067226890756302
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 16
+            },
+            "track_id": "guitarset:04_BN3-119-G_solo",
+            "weighted_scores": {
+              "exact_quality": 0.18753318574603914,
+              "majmin": 0.0,
+              "root": 0.18753318574603914,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:04_Jazz1-200-B_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.3333333333333333,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.24999999999999994,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 9.600000000000001
+                },
+                "X": {
+                  "f1": 0.4999999999999999,
+                  "precision": 0.33333333333333326,
+                  "recall": 1.0,
+                  "support_seconds": 4.8
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:04_Jazz1-200-B_comp",
+            "weighted_scores": {
+              "exact_quality": 0.3333333333333333,
+              "majmin": 0.0,
+              "root": 0.3333333333333333,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:04_Jazz1-200-B_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.3333333333333333,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.24999999999999994,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 9.600000000000001
+                },
+                "X": {
+                  "f1": 0.4999999999999999,
+                  "precision": 0.33333333333333326,
+                  "recall": 1.0,
+                  "support_seconds": 4.8
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:04_Jazz1-200-B_solo",
+            "weighted_scores": {
+              "exact_quality": 0.3333333333333333,
+              "majmin": 0.0,
+              "root": 0.3333333333333333,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:05_BN3-119-G_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.8124668142539608,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.29884384010579695,
+              "per_quality": {
+                "X": {
+                  "f1": 0.8965315203173909,
+                  "precision": 0.8124668142539608,
+                  "recall": 1.0,
+                  "support_seconds": 26.212777110844335
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.033613445378151
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.0168067226890756
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 16
+            },
+            "track_id": "guitarset:05_BN3-119-G_comp",
+            "weighted_scores": {
+              "exact_quality": 0.8124668142539608,
+              "majmin": 0.0,
+              "root": 0.8124668142539608,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:05_BN3-119-G_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.8124668142539608,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.29884384010579695,
+              "per_quality": {
+                "X": {
+                  "f1": 0.8965315203173909,
+                  "precision": 0.8124668142539608,
+                  "recall": 1.0,
+                  "support_seconds": 26.212777110844335
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.033613445378151
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.0168067226890756
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 16
+            },
+            "track_id": "guitarset:05_BN3-119-G_solo",
+            "weighted_scores": {
+              "exact_quality": 0.8124668142539608,
+              "majmin": 0.0,
+              "root": 0.8124668142539608,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:05_Jazz1-200-B_comp": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 1.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 1.0,
+              "per_quality": {
+                "X": {
+                  "f1": 1.0,
+                  "precision": 1.0,
+                  "recall": 1.0,
+                  "support_seconds": 14.4
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:05_Jazz1-200-B_comp",
+            "weighted_scores": {
+              "exact_quality": 1.0,
+              "majmin": 0.0,
+              "root": 1.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "guitarset:05_Jazz1-200-B_solo": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 1.0,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 1.0,
+              "per_quality": {
+                "X": {
+                  "f1": 1.0,
+                  "precision": 1.0,
+                  "recall": 1.0,
+                  "support_seconds": 14.4
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 6
+            },
+            "track_id": "guitarset:05_Jazz1-200-B_solo",
+            "weighted_scores": {
+              "exact_quality": 1.0,
+              "majmin": 0.0,
+              "root": 1.0,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P007": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.1042423211634861,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.02097814928352382,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 22.140999999999956
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 5.386351473922929
+                },
+                "X": {
+                  "f1": 0.18880334355171438,
+                  "precision": 0.1042423211634861,
+                  "recall": 1.0,
+                  "support_seconds": 30.922999999999888
+                },
+                "dim": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 3.923999999999989
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 30.323999999999955
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 36.20500000000008
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 74.77999999999997
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 89.03700000000013
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 3.9250000000000176
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 142
+            },
+            "track_id": "rwc-popular:RWC_P007",
+            "weighted_scores": {
+              "exact_quality": 0.1042423211634861,
+              "majmin": 0.0,
+              "root": 0.1042423211634861,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P016": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.081851442775318,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.021616763247309,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 46.941
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 11.691002267573687
+                },
+                "X": {
+                  "f1": 0.151317342731163,
+                  "precision": 0.081851442775318,
+                  "recall": 1.0,
+                  "support_seconds": 21.454000000000008
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 21.996999999999908
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 36.940000000000055
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 37.077000000000055
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 86.009
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 180
+            },
+            "track_id": "rwc-popular:RWC_P016",
+            "weighted_scores": {
+              "exact_quality": 0.081851442775318,
+              "majmin": 0.0,
+              "root": 0.081851442775318,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P019": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.028706471077475773,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.00697635134136183,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 21.281999999999933
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 5.0264580498866
+                },
+                "X": {
+                  "f1": 0.05581081073089464,
+                  "precision": 0.028706471077475773,
+                  "recall": 1.0,
+                  "support_seconds": 8.238999999999988
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 85.024
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 48.93899999999997
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.284000000000017
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 108.40400000000011
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.809999999999988
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 202
+            },
+            "track_id": "rwc-popular:RWC_P019",
+            "weighted_scores": {
+              "exact_quality": 0.028706471077475773,
+              "majmin": 0.0,
+              "root": 0.028706471077475773,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P024": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.07159302160663343,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.016702474764928577,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 40.109000000000016
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.0415419501133947
+                },
+                "X": {
+                  "f1": 0.13361979811942862,
+                  "precision": 0.07159302160663343,
+                  "recall": 1.0,
+                  "support_seconds": 17.055
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 123.20499999999998
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 7.297000000000018
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 14.817999999999977
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 16.416999999999984
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 17.27900000000001
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 113
+            },
+            "track_id": "rwc-popular:RWC_P024",
+            "weighted_scores": {
+              "exact_quality": 0.07159302160663343,
+              "majmin": 0.0,
+              "root": 0.07159302160663343,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P033": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.0389577924663977,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.010713426405050228,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 3.0960000000000036
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 9.296079365079343
+                },
+                "X": {
+                  "f1": 0.0749939848353516,
+                  "precision": 0.0389577924663977,
+                  "recall": 1.0,
+                  "support_seconds": 11.101999999999975
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 145.31700000000004
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 6.654000000000011
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 79.351
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 30.158999999999992
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 146
+            },
+            "track_id": "rwc-popular:RWC_P033",
+            "weighted_scores": {
+              "exact_quality": 0.0389577924663977,
+              "majmin": 0.0,
+              "root": 0.0389577924663977,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P049": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.15396788589462168,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.038121359423461156,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 5.9909999999999854
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 6.96746712018136
+                },
+                "X": {
+                  "f1": 0.26684951596422807,
+                  "precision": 0.15396788589462168,
+                  "recall": 1.0,
+                  "support_seconds": 42.03699999999998
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 120.19099999999997
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.1839999999999975
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 41.08400000000003
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 55.570000000000064
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 179
+            },
+            "track_id": "rwc-popular:RWC_P049",
+            "weighted_scores": {
+              "exact_quality": 0.15396788589462168,
+              "majmin": 0.0,
+              "root": 0.15396788589462168,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P063": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.03247349921800989,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.006989364051497078,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 9.368999999999993
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.541244897959182
+                },
+                "X": {
+                  "f1": 0.0629042764634737,
+                  "precision": 0.03247349921800989,
+                  "recall": 1.0,
+                  "support_seconds": 8.085000000000043
+                },
+                "dim": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.9420000000000002
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 115.6469999999999
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 19.955999999999975
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 39.46300000000008
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 45.51200000000001
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.45699999999999
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 182
+            },
+            "track_id": "rwc-popular:RWC_P063",
+            "weighted_scores": {
+              "exact_quality": 0.03247349921800989,
+              "majmin": 0.0,
+              "root": 0.03247349921800989,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P067": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.1467017905907502,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.027977531303518956,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 10.216000000000001
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 3.1856009070294817
+                },
+                "X": {
+                  "f1": 0.2517977817316706,
+                  "precision": 0.1440324117544521,
+                  "recall": 1.0,
+                  "support_seconds": 35.67400000000003
+                },
+                "dim": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.3699999999999974
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 38.35700000000004
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 28.611000000000047
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 33.96199999999997
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 96.00999999999992
+                },
+                "sus2": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.2700000000000031
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 7,
+              "reference_events": 162
+            },
+            "track_id": "rwc-popular:RWC_P067",
+            "weighted_scores": {
+              "exact_quality": 0.14346751036321229,
+              "majmin": 0.0024659628601999147,
+              "root": 0.14552191412650645,
+              "sevenths": 0.0,
+              "triads": 0.0024349320400177963
+            }
+          },
+          "rwc-popular:RWC_P080": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.15400731442920854,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0019079210709449376,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.026485065185079936,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 15.792999999999978
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.889238095238092
+                },
+                "X": {
+                  "f1": 0.26485065185079937,
+                  "precision": 0.1526385334687776,
+                  "recall": 1.0,
+                  "support_seconds": 33.37400000000001
+                },
+                "dim": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 9.020000000000024
+                },
+                "hdim7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 3.7489999999999952
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 26.70900000000002
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 58.49800000000003
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 3.390999999999967
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 63.308999999999976
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 3.3330000000000055
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 3,
+              "reference_events": 90
+            },
+            "track_id": "rwc-popular:RWC_P080",
+            "weighted_scores": {
+              "exact_quality": 0.1523473111945344,
+              "majmin": 0.0,
+              "root": 0.1523473111945344,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P084": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.08899654349015305,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.020430859955929186,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.8710000000000093
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 4.988834467120174
+                },
+                "X": {
+                  "f1": 0.16344687964743349,
+                  "precision": 0.08899654349015305,
+                  "recall": 1.0,
+                  "support_seconds": 24.77600000000004
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 180.74399999999991
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 12.713000000000036
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.7299999999999898
+                },
+                "sus2": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 18.704
+                },
+                "sus4": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 33.866
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 155
+            },
+            "track_id": "rwc-popular:RWC_P084",
+            "weighted_scores": {
+              "exact_quality": 0.08899654349015305,
+              "majmin": 0.0,
+              "root": 0.08899654349015305,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "rwc-popular:RWC_P100": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.01842413528833647,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.005168807838906983,
+              "per_quality": {
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.4591927437641612
+                },
+                "X": {
+                  "f1": 0.03618165487234888,
+                  "precision": 0.01842413528833647,
+                  "recall": 1.0,
+                  "support_seconds": 5.405000000000015
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 222.02099999999993
+                },
+                "maj7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.032999999999987
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 22.498999999999985
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 33.45100000000006
+                },
+                "sus2": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 7.4970000000000425
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 1,
+              "reference_events": 154
+            },
+            "track_id": "rwc-popular:RWC_P100",
+            "weighted_scores": {
+              "exact_quality": 0.01842413528833647,
+              "majmin": 0.0,
+              "root": 0.01842413528833647,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          },
+          "schubert-winterreise:Schubert_D911-13_HU33": {
+            "boundary": {
+              "f1": 0.02150537634408602,
+              "precision": 0.25,
+              "recall": 0.011235955056179775
+            },
+            "ece": 0.14713835039658751,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.0,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.08156723503917687,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 12.679999999999982
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 5.661950113378684
+                },
+                "X": {
+                  "f1": 0.2561406591835488,
+                  "precision": 0.14688149048972446,
+                  "recall": 1.0,
+                  "support_seconds": 15.599999999999994
+                },
+                "maj": {
+                  "f1": 0.022219042820885434,
+                  "precision": 1.0,
+                  "recall": 0.011234329433819704,
+                  "support_seconds": 66.14000000000003
+                },
+                "min": {
+                  "f1": 0.12947647319145014,
+                  "precision": 1.0,
+                  "recall": 0.06921937700102619,
+                  "support_seconds": 7.380000000000003
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 5,
+              "reference_events": 90
+            },
+            "track_id": "schubert-winterreise:Schubert_D911-13_HU33",
+            "weighted_scores": {
+              "exact_quality": 0.15683576869057902,
+              "majmin": 0.014546143283299406,
+              "root": 0.15683576869057902,
+              "sevenths": 0.014546143283299406,
+              "triads": 0.014546143283299406
+            }
+          },
+          "schubert-winterreise:Schubert_D911-13_SC06": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.15754411236533977,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.005044992602294515,
+              "precision": 1.0
+            },
+            "quality": {
+              "macro_f1": 0.05768155032599333,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 14.320000000000004
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.706938775510206
+                },
+                "X": {
+                  "f1": 0.2724834780583154,
+                  "precision": 0.15773132968479567,
+                  "recall": 1.0,
+                  "support_seconds": 18.78000000000001
+                },
+                "maj": {
+                  "f1": 0.015924273571651208,
+                  "precision": 1.0,
+                  "recall": 0.008026041223898963,
+                  "support_seconds": 75.21999999999997
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 8.640000000000018
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 3,
+              "reference_events": 90
+            },
+            "track_id": "schubert-winterreise:Schubert_D911-13_SC06",
+            "weighted_scores": {
+              "exact_quality": 0.1619805688956803,
+              "majmin": 0.006149101862514563,
+              "root": 0.1619805688956803,
+              "sevenths": 0.006149101862514563,
+              "triads": 0.006149101862514563
+            }
+          },
+          "schubert-winterreise:Schubert_D911-16_HU33": {
+            "boundary": {
+              "f1": 0.0,
+              "precision": 0.0,
+              "recall": 0.0
+            },
+            "ece": 0.41303424258188853,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.006371562709590932,
+              "precision": 1.0
+            },
+            "quality": {
+              "macro_f1": 0.10691455241358135,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 15.620000000000012
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 5.503809523809533
+                },
+                "X": {
+                  "f1": 0.5891517689050093,
+                  "precision": 0.41758692105936557,
+                  "recall": 1.0,
+                  "support_seconds": 56.84000000000001
+                },
+                "hdim7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 2.719999999999999
+                },
+                "maj": {
+                  "f1": 0.08110429356744707,
+                  "precision": 1.0,
+                  "recall": 0.04226612905306315,
+                  "support_seconds": 35.159999999999975
+                },
+                "min": {
+                  "f1": 0.07814580442261296,
+                  "precision": 1.0,
+                  "recall": 0.040661671734746475,
+                  "support_seconds": 21.699999999999996
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.9400000000000048
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 5,
+              "reference_events": 77
+            },
+            "track_id": "schubert-winterreise:Schubert_D911-16_HU33",
+            "weighted_scores": {
+              "exact_quality": 0.4275477081237428,
+              "majmin": 0.0322587220668714,
+              "root": 0.4275477081237428,
+              "sevenths": 0.031106322224188312,
+              "triads": 0.031106322224188312
+            }
+          },
+          "schubert-winterreise:Schubert_D911-16_SC06": {
+            "boundary": {
+              "f1": 0.025974025974025976,
+              "precision": 0.5,
+              "recall": 0.013333333333333334
+            },
+            "ece": 0.41473362018842713,
+            "evaluation_version": "1.0.0",
+            "published": {
+              "coverage": 0.006567638985094484,
+              "precision": 0.0
+            },
+            "quality": {
+              "macro_f1": 0.08294157377630416,
+              "per_quality": {
+                "7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 13.47999999999999
+                },
+                "N": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.76
+                },
+                "X": {
+                  "f1": 0.5805910164341291,
+                  "precision": 0.41174132621439435,
+                  "recall": 0.9841973936887957,
+                  "support_seconds": 47.01999999999998
+                },
+                "hdim7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 1.9799999999999898
+                },
+                "maj": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 30.59632653061228
+                },
+                "min": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 18.700000000000006
+                },
+                "min7": {
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support_seconds": 0.6000000000000014
+                }
+              }
+            },
+            "schema_version": 1,
+            "segmentation": {
+              "predicted_events": 3,
+              "reference_events": 76
+            },
+            "track_id": "schubert-winterreise:Schubert_D911-16_SC06",
+            "weighted_scores": {
+              "exact_quality": 0.40903715782857425,
+              "majmin": 0.0,
+              "root": 0.40903715782857425,
+              "sevenths": 0.0,
+              "triads": 0.0
+            }
+          }
+        }
+      },
+      "manifest_sha256": "4e0522bcc9b0765ac8fdd7f2728994edecdf186e63ff2238af2854afd94c4106",
+      "manifest_split": "validation",
+      "predictions_sha256": "7abb03e57daa906945e9b9b282627d9e5b9b6fab42e2444963cfef1d12f12d67",
+      "schema_version": 1,
+      "split_sha256": "1215c79ccc80c5574f2e2584fc8130f2583e793cc7fa5dfaf96453285620bc3e"
+    }
+  }
+}
