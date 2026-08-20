@@ -233,17 +233,21 @@ PCM 裁剪近重复和必填 group metadata；切分单位固定为连通作品�
 先按显式 work/cover group 聚合，再用轻量音频指纹发现遗漏。疑似跨集重复进入人工审计清单，不自动忽略。
 
 已实现作品/cover/可选 artist 连通分组、跨 cover 精确哈希 fail-closed，以及有界内存的
-16-bit PCM shingle 指纹与裁剪包含度评分。真实全库候选清单将在 RWC 下载、校验和盘点完成后生成。
+16-bit PCM shingle 指纹与裁剪包含度评分。已对 508 首 real-gold WAV 完成全库审计，
+阈值 0.8 下无近重复候选或跨 group 冲突。
 
-- [ ] **步骤 3：冻结四份清单**
+- [x] **步骤 3：冻结四份清单**
 
 建议比例为 train 70%、calibration 10%、validation 10%、test 10%，按作品组和质量分布约束划分。测试清单的标签统计可生成，但训练代码不得读取测试音频。
 
-- [ ] **步骤 4：验证确定性和隔离性**
+已冻结 357/62/39/50 首 train/calibration/validation/test 清单；154 个作品组均只属于一个
+split，四份清单均覆盖首发 quality 与 `N/X`，完整重跑后五个制品逐字节哈希一致。
+
+- [x] **步骤 4：验证确定性和隔离性**
 
 相同 manifest/policy/seed 必须生成逐字节相同清单；任意 group 不得跨集；测试集权限或路径配置与训练进程隔离。
 
-- [ ] **步骤 5：提交**
+- [x] **步骤 5：提交**
 
 提交消息：`test: freeze leakage-resistant chord splits`
 

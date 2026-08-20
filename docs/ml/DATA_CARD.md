@@ -138,9 +138,9 @@ published MD5, and processed read-only. The archive and extracted audio remain u
 | `N` | 0 | 0 | 0 | no explicit source intervals |
 | `X` | 23 | 500 | 927.1 | retained internally, not a published known chord |
 
-Near-duplicate audio and cross-dataset collision counts remain pending Task 4 fingerprinting. The
-two performances of each song already share one explicit work/cover group and therefore cannot be
-split across train and evaluation sets.
+Task 4 fingerprinted all 508 approved real-gold WAV files. At the frozen 0.8 containment threshold
+there were zero near-duplicate candidates and zero cross-group candidates. The two performances of
+each song share one explicit work/cover group and cannot cross train and evaluation sets.
 
 ### RWC-P 2026 re-release
 
@@ -209,12 +209,20 @@ For each dataset:
 7. Keep a private local path mapping outside Git; run the read-only adapter to produce hashes and
    normalized interval statistics.
 
-## Required aggregate report
+## Frozen real-gold split
 
-Before G1 can pass, this document still needs:
+The path-free public audit is `docs/ml/split-audit-v1.json`; full manifests remain ignored under
+`ml/data/manifests/splits-v1` because they contain local relative audio and annotation paths.
 
-- near-duplicate and cross-dataset collision counts;
-- the final multi-dataset manifest hash and split-policy hash.
+- Combined real-gold manifest SHA-256:
+  `49122d2e556932d3702a00cb495806fac6764515ff54ef82ef68c42de9531be4`.
+- Split policy SHA-256:
+  `547f7ca8e3b0724449a695fb11eabc66e6947a9552e04243648b00b2d3bfb012`.
+- Split assignment SHA-256:
+  `1215c79ccc80c5574f2e2584fc8130f2583e793cc7fa5dfaf96453285620bc3e`.
+- Tracks/groups: train 357/108, calibration 62/16, validation 39/15, test 50/15.
+- All 154 groups are isolated, all four splits contain every published quality plus `N/X`, and a
+  complete rerun produced byte-identical manifests and audit JSON.
 
 The planning target is at least 500 independent works and 80 hours of usable annotations, with
 every published non-`N/X` quality represented by at least 20 independent works. If lawful data

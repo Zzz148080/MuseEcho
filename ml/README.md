@@ -18,10 +18,31 @@ runtime in `src/museecho`.
 ```powershell
 uv lock --project ml
 uv sync --project ml --extra dev
-uv run --project ml pytest -q
+uv run --project ml pytest -q ml/tests
 ```
 
 Install the `train` or `export` extras only on machines that perform those jobs.
+
+After generating the three approved real-gold manifests, freeze the leakage-resistant v1 split
+from the repository root. Dataset roots are explicit because legacy manifests intentionally retain
+their original relative-path bases:
+
+```powershell
+uv run --project ml python -m museecho_ml.data.split_freeze `
+  --manifest ml/data/manifests/guitarset-real-gold.manifest.json `
+  --manifest ml/data/manifests/winterreise-real-gold.manifest.json `
+  --manifest ml/data/manifests/rwc-popular-real-gold.manifest.json `
+  --config ml/configs/split-v1.json `
+  --dataset-root guitarset=ml/data/sources `
+  --dataset-root schubert-winterreise=ml/data/sources/schubert-winterreise-2.1 `
+  --dataset-root rwc-popular=ml/data/sources `
+  --output-dir ml/data/manifests/splits-v1 `
+  --audit-output docs/ml/split-audit-v1.json
+```
+
+Frozen artifacts are immutable: an identical rerun is accepted, while changed content at the same
+v1 output path is rejected. Training code must use `load_training_manifest()`, which refuses
+calibration, validation, and test manifests before returning track paths.
 
 After placing the verified Winterreise 2.1 archive contents in the ignored local data directory,
 generate its licensed manifest and reproducible public inventory from the repository root:

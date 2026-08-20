@@ -1,0 +1,312 @@
+{
+  "combined_manifest_sha256": "49122d2e556932d3702a00cb495806fac6764515ff54ef82ef68c42de9531be4",
+  "group_count": 154,
+  "near_duplicate_audit": {
+    "candidate_count": 0,
+    "cross_group_candidate_count": 0,
+    "fingerprinted_track_count": 508,
+    "same_group_candidates": [],
+    "status": "passed",
+    "threshold": 0.8
+  },
+  "policy_sha256": "547f7ca8e3b0724449a695fb11eabc66e6947a9552e04243648b00b2d3bfb012",
+  "policy_version": "1.0.0",
+  "schema_version": 1,
+  "source_dataset_ids": [
+    "guitarset",
+    "rwc-popular",
+    "schubert-winterreise"
+  ],
+  "source_manifest_sha256s": {
+    "guitarset": "1aa28d8e243be2dd59ba4f33d2a2c898176a9647cd36f06b245abd40594c1693",
+    "rwc-popular": "b1d3b09a6e73afd3474fbbbcb8585b907727c79d7c4fee15e7c4545e07af0a4d",
+    "schubert-winterreise": "a4e59eeca0978d3cb5ec9521b6758a3180cd4d4ee62ab823cef242aedbb23f00"
+  },
+  "split_manifest_sha256s": {
+    "calibration": "25dae88fb315ec8fd25d07f80d353aa07ad6e3077fcc8dacd4faec87847d7d54",
+    "test": "06b92ce1bd46a1c432cefb9fe32f641095cfb081ac998e7772a66c20a686cddc",
+    "train": "ac495aa86de00e8ed5a3f67fc8289a55395e85a133ba2c338e91aaa4fe232f5c",
+    "validation": "4e0522bcc9b0765ac8fdd7f2728994edecdf186e63ff2238af2854afd94c4106"
+  },
+  "split_sha256": "1215c79ccc80c5574f2e2584fc8130f2583e793cc7fa5dfaf96453285620bc3e",
+  "split_track_counts": {
+    "calibration": 62,
+    "test": 50,
+    "train": 357,
+    "validation": 39
+  },
+  "splits": {
+    "calibration": {
+      "dataset_track_counts": {
+        "guitarset": 48,
+        "rwc-popular": 10,
+        "schubert-winterreise": 4
+      },
+      "group_count": 16,
+      "qualities": {
+        "7": {
+          "duration_seconds": 321.56202,
+          "interval_count": 237,
+          "work_count": 13
+        },
+        "N": {
+          "duration_seconds": 32.422959,
+          "interval_count": 24,
+          "work_count": 10
+        },
+        "X": {
+          "duration_seconds": 812.613012,
+          "interval_count": 445,
+          "work_count": 15
+        },
+        "dim": {
+          "duration_seconds": 32.869,
+          "interval_count": 24,
+          "work_count": 5
+        },
+        "hdim7": {
+          "duration_seconds": 17.654244,
+          "interval_count": 12,
+          "work_count": 5
+        },
+        "maj": {
+          "duration_seconds": 1892.179965,
+          "interval_count": 929,
+          "work_count": 16
+        },
+        "maj7": {
+          "duration_seconds": 260.39102,
+          "interval_count": 141,
+          "work_count": 11
+        },
+        "min": {
+          "duration_seconds": 657.697752,
+          "interval_count": 384,
+          "work_count": 15
+        },
+        "min7": {
+          "duration_seconds": 361.030403,
+          "interval_count": 220,
+          "work_count": 14
+        },
+        "sus2": {
+          "duration_seconds": 8.551959,
+          "interval_count": 4,
+          "work_count": 3
+        },
+        "sus4": {
+          "duration_seconds": 34.341883,
+          "interval_count": 20,
+          "work_count": 8
+        }
+      },
+      "total_annotated_seconds": 4431.314218,
+      "total_audio_seconds": 4445.363651,
+      "track_count": 62
+    },
+    "test": {
+      "dataset_track_counts": {
+        "guitarset": 36,
+        "rwc-popular": 10,
+        "schubert-winterreise": 4
+      },
+      "group_count": 15,
+      "qualities": {
+        "7": {
+          "duration_seconds": 407.912602,
+          "interval_count": 165,
+          "work_count": 13
+        },
+        "N": {
+          "duration_seconds": 31.369685,
+          "interval_count": 22,
+          "work_count": 10
+        },
+        "X": {
+          "duration_seconds": 830.188475,
+          "interval_count": 278,
+          "work_count": 14
+        },
+        "dim": {
+          "duration_seconds": 28.528,
+          "interval_count": 15,
+          "work_count": 5
+        },
+        "hdim7": {
+          "duration_seconds": 34.946667,
+          "interval_count": 14,
+          "work_count": 2
+        },
+        "maj": {
+          "duration_seconds": 1498.398191,
+          "interval_count": 825,
+          "work_count": 15
+        },
+        "maj7": {
+          "duration_seconds": 224.383333,
+          "interval_count": 113,
+          "work_count": 10
+        },
+        "min": {
+          "duration_seconds": 487.983578,
+          "interval_count": 181,
+          "work_count": 13
+        },
+        "min7": {
+          "duration_seconds": 423.131229,
+          "interval_count": 197,
+          "work_count": 10
+        },
+        "sus2": {
+          "duration_seconds": 11.578558,
+          "interval_count": 4,
+          "work_count": 3
+        },
+        "sus4": {
+          "duration_seconds": 71.387148,
+          "interval_count": 24,
+          "work_count": 5
+        }
+      },
+      "total_annotated_seconds": 4049.807466,
+      "total_audio_seconds": 4061.474172,
+      "track_count": 50
+    },
+    "train": {
+      "dataset_track_counts": {
+        "guitarset": 252,
+        "rwc-popular": 69,
+        "schubert-winterreise": 36
+      },
+      "group_count": 108,
+      "qualities": {
+        "7": {
+          "duration_seconds": 2750.395279,
+          "interval_count": 1437,
+          "work_count": 89
+        },
+        "N": {
+          "duration_seconds": 299.946535,
+          "interval_count": 186,
+          "work_count": 69
+        },
+        "X": {
+          "duration_seconds": 4447.245854,
+          "interval_count": 2181,
+          "work_count": 94
+        },
+        "dim": {
+          "duration_seconds": 145.78,
+          "interval_count": 123,
+          "work_count": 29
+        },
+        "hdim7": {
+          "duration_seconds": 443.30149,
+          "interval_count": 222,
+          "work_count": 29
+        },
+        "maj": {
+          "duration_seconds": 12472.443314,
+          "interval_count": 6298,
+          "work_count": 105
+        },
+        "maj7": {
+          "duration_seconds": 1627.887256,
+          "interval_count": 706,
+          "work_count": 62
+        },
+        "min": {
+          "duration_seconds": 5670.795468,
+          "interval_count": 2729,
+          "work_count": 100
+        },
+        "min7": {
+          "duration_seconds": 2443.689074,
+          "interval_count": 1418,
+          "work_count": 81
+        },
+        "sus2": {
+          "duration_seconds": 187.830587,
+          "interval_count": 97,
+          "work_count": 14
+        },
+        "sus4": {
+          "duration_seconds": 230.381109,
+          "interval_count": 145,
+          "work_count": 35
+        }
+      },
+      "total_annotated_seconds": 30719.695966,
+      "total_audio_seconds": 30832.3778,
+      "track_count": 357
+    },
+    "validation": {
+      "dataset_track_counts": {
+        "guitarset": 24,
+        "rwc-popular": 11,
+        "schubert-winterreise": 4
+      },
+      "group_count": 15,
+      "qualities": {
+        "7": {
+          "duration_seconds": 251.109,
+          "interval_count": 172,
+          "work_count": 13
+        },
+        "N": {
+          "duration_seconds": 60.473011,
+          "interval_count": 31,
+          "work_count": 11
+        },
+        "X": {
+          "duration_seconds": 623.117629,
+          "interval_count": 335,
+          "work_count": 15
+        },
+        "dim": {
+          "duration_seconds": 15.256,
+          "interval_count": 10,
+          "work_count": 4
+        },
+        "hdim7": {
+          "duration_seconds": 8.449,
+          "interval_count": 4,
+          "work_count": 2
+        },
+        "maj": {
+          "duration_seconds": 1473.525628,
+          "interval_count": 879,
+          "work_count": 15
+        },
+        "maj7": {
+          "duration_seconds": 309.854815,
+          "interval_count": 159,
+          "work_count": 11
+        },
+        "min": {
+          "duration_seconds": 452.077294,
+          "interval_count": 250,
+          "work_count": 14
+        },
+        "min7": {
+          "duration_seconds": 663.450521,
+          "interval_count": 410,
+          "work_count": 13
+        },
+        "sus2": {
+          "duration_seconds": 35.526806,
+          "interval_count": 19,
+          "work_count": 4
+        },
+        "sus4": {
+          "duration_seconds": 61.67,
+          "interval_count": 26,
+          "work_count": 6
+        }
+      },
+      "total_annotated_seconds": 3954.509705,
+      "total_audio_seconds": 3969.142404,
+      "track_count": 39
+    }
+  }
+}
