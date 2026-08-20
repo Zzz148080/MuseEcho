@@ -8,5 +8,7 @@
   "n_octaves": 6,
   "bass_octaves": 3,
   "log_scale": 10.0,
-  "minimum_analysis_seconds": 2.0
+  "minimum_analysis_seconds": 2.0,
+  "chunk_seconds": 30.0,
+  "context_seconds": 2.0
 }

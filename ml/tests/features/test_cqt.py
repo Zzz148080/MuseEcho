@@ -42,6 +42,60 @@ def test_cqt_resamples_and_returns_aligned_main_bass_and_time_axes() -> None:
     assert np.isfinite(features.bass_cqt).all()
 
 
+def test_chunked_cqt_preserves_full_time_axis_and_interior_values() -> None:
+    audio = _tone(8_000, duration_seconds=6.3)
+    common = {
+        "sample_rate": 8_000,
+        "hop_length": 256,
+        "fmin_hz": 55.0,
+        "bins_per_octave": 12,
+        "n_octaves": 3,
+        "bass_octaves": 1,
+        "log_scale": 10.0,
+        "minimum_analysis_seconds": 1.0,
+        "context_seconds": 1.0,
+    }
+
+    chunked = extract_features(
+        audio,
+        sample_rate=8_000,
+        config=CqtConfig(**common, chunk_seconds=2.0),
+    )
+    single = extract_features(
+        audio,
+        sample_rate=8_000,
+        config=CqtConfig(**common, chunk_seconds=20.0),
+    )
+
+    assert chunked.main_cqt.shape == single.main_cqt.shape
+    np.testing.assert_array_equal(chunked.frame_times, single.frame_times)
+    np.testing.assert_array_equal(chunked.valid_mask, single.valid_mask)
+    np.testing.assert_allclose(chunked.main_cqt, single.main_cqt, atol=0.08, rtol=0.08)
+
+
+def test_five_minute_audio_uses_complete_bounded_chunked_time_axis() -> None:
+    sample_rate = 22_050
+    duration_seconds = 300.0
+    sample_count = round(sample_rate * duration_seconds)
+    times = np.arange(sample_count, dtype=np.float32) / sample_rate
+    audio = (
+        0.4 * np.sin(2 * math.pi * 220.0 * times)
+        + 0.3 * np.sin(2 * math.pi * 277.18 * times)
+        + 0.2 * np.sin(2 * math.pi * 329.63 * times)
+    ).astype(np.float32)
+    config = CqtConfig()
+
+    features = extract_features(audio, sample_rate=sample_rate, config=config)
+
+    assert features.main_cqt.shape == (
+        config.bins_per_octave * config.n_octaves,
+        math.ceil(sample_count / config.hop_length),
+    )
+    assert features.valid_mask.all()
+    assert features.frame_times[-1] < duration_seconds
+    assert np.isfinite(features.main_cqt).all()
+
+
 @pytest.mark.parametrize(
     ("audio", "sample_rate", "message"),
     [

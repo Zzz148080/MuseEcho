@@ -315,29 +315,34 @@ manifests、prediction JSONL 与 evaluation-v1 配置逐字段重算并完全匹
 
 **接口：** `extract_features(audio, config) -> FeatureSequence`，包含主 CQT、bass CQT、帧时间和有效 mask；缓存 key 绑定音频、配置和代码版本哈希。
 
-- [ ] **步骤 1：固定时间轴和分块失败测试**
+- [x] **步骤 1：固定时间轴和分块失败测试**
 
 覆盖短音频、5 分钟分块、不同采样率、尾块、重叠上下文、静音和非有限输入。
 
-- [ ] **步骤 2：实现离线特征提取**
+- [x] **步骤 2：实现离线特征提取**
 
 初始配置使用 22.05 kHz、至少 6 个八度、每半音多个 bin 和固定 hop。参数写入 JSON，不散落在代码中。
 
-- [ ] **步骤 3：实现内容寻址缓存**
+- [x] **步骤 3：实现内容寻址缓存**
 
 原子写入，损坏缓存自动拒绝并重算；缓存默认位于仓库外或 ignored 目录。
 
-阶段进度：已实现 `CqtConfig`、log-CQT/bass-CQT、重采样、短音频补齐、有效帧 mask 和内容
-寻址 `.npz` 原子缓存；cache key 绑定音频 SHA-256、完整特征配置和 extractor 版本，损坏条目
-fail-closed；整数半音移调同步移动 CQT bin、root 和相对 bass。对应 12 项特征/缓存/增强测试
-已通过。长音频分块、上下文裁剪、时间伸缩和真实 5 分钟资源测试
-尚未完成，因此步骤 1--3 暂不勾选。
+已实现 `CqtConfig`、log-CQT/bass-CQT、重采样、短音频补齐、有效帧 mask 和内容寻址
+`.npz` 原子缓存；cache key 绑定音频 SHA-256、完整特征配置和 extractor 版本，损坏条目
+fail-closed。30 秒 core/2 秒 context 均按 hop 对齐，块间只保留 core 全局帧并校验最终连续帧数；
+小块与单块提取在固定容差内一致。
 
-- [ ] **步骤 4：实现标签同步增强**
+- [x] **步骤 4：实现标签同步增强**
 
 移调必须同时更新 root/bass；时间伸缩必须同步区间。每项增强有确定性种子、强度上限和可关闭消融开关。
 
-- [ ] **步骤 5：运行长音频资源测试并提交**
+整数半音移调同步移动 CQT bin、root 和相对 bass；时间伸缩沿 feature 时间轴插值并以同一
+rate 缩放标签区间。rate 使用显式 seed、范围验证和 enabled 开关，支持可重放消融。
+
+- [x] **步骤 5：运行长音频资源测试并提交**
+
+默认 22.05 kHz、144-bin、512 hop 配置已通过真实 5 分钟非静音合成和弦资源测试：完整
+12,920 帧、全 valid、无非有限值，测试墙钟 3.75 秒。
 
 提交消息：`feat: add aligned cqt training features`
 

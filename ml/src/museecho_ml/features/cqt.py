@@ -19,6 +19,8 @@ class CqtConfig:
     bass_octaves: int = 3
     log_scale: float = 10.0
     minimum_analysis_seconds: float = 2.0
+    chunk_seconds: float = 30.0
+    context_seconds: float = 2.0
 
     def __post_init__(self) -> None:
         integer_fields = (
@@ -45,6 +47,14 @@ class CqtConfig:
             or not isinstance(self.minimum_analysis_seconds, (int, float))
             or not math.isfinite(self.minimum_analysis_seconds)
             or self.minimum_analysis_seconds <= 0
+            or isinstance(self.chunk_seconds, bool)
+            or not isinstance(self.chunk_seconds, (int, float))
+            or not math.isfinite(self.chunk_seconds)
+            or self.chunk_seconds <= 0
+            or isinstance(self.context_seconds, bool)
+            or not isinstance(self.context_seconds, (int, float))
+            or not math.isfinite(self.context_seconds)
+            or self.context_seconds <= 0
         ):
             raise ValueError("CQT frequency and log parameters must be finite and positive")
 
@@ -61,6 +71,8 @@ class CqtConfig:
             "bass_octaves",
             "log_scale",
             "minimum_analysis_seconds",
+            "chunk_seconds",
+            "context_seconds",
         }
         if not isinstance(value, dict) or set(value) != required:
             raise ValueError("CQT config fields are invalid")
@@ -75,6 +87,8 @@ class CqtConfig:
             bass_octaves=value["bass_octaves"],
             log_scale=value["log_scale"],
             minimum_analysis_seconds=value["minimum_analysis_seconds"],
+            chunk_seconds=value["chunk_seconds"],
+            context_seconds=value["context_seconds"],
         )
 
 
@@ -117,15 +131,7 @@ def extract_features(
         else samples
     )
     n_bins = config.bins_per_octave * config.n_octaves
-    complex_cqt = librosa.cqt(
-        y=analysis_samples,
-        sr=config.sample_rate,
-        hop_length=config.hop_length,
-        fmin=float(config.fmin_hz),
-        n_bins=n_bins,
-        bins_per_octave=config.bins_per_octave,
-        pad_mode="constant",
-    )
+    complex_cqt = _chunked_cqt(analysis_samples, config, n_bins=n_bins)
     main = np.asarray(
         np.log1p(float(config.log_scale) * np.abs(complex_cqt)), dtype=np.float32
     )
@@ -147,6 +153,42 @@ def extract_features(
         frame_times=frame_times,
         valid_mask=valid_mask,
     )
+
+
+def _chunked_cqt(
+    samples: NDArray[np.float32], config: CqtConfig, *, n_bins: int
+) -> NDArray[np.complexfloating]:
+    core_samples = max(
+        config.hop_length,
+        math.floor(config.chunk_seconds * config.sample_rate / config.hop_length)
+        * config.hop_length,
+    )
+    context_samples = (
+        math.ceil(config.context_seconds * config.sample_rate / config.hop_length)
+        * config.hop_length
+    )
+    pieces: list[NDArray[np.complexfloating]] = []
+    for core_start in range(0, len(samples), core_samples):
+        core_end = min(len(samples), core_start + core_samples)
+        context_start = max(0, core_start - context_samples)
+        context_end = min(len(samples), core_end + context_samples)
+        chunk = librosa.cqt(
+            y=samples[context_start:context_end],
+            sr=config.sample_rate,
+            hop_length=config.hop_length,
+            fmin=float(config.fmin_hz),
+            n_bins=n_bins,
+            bins_per_octave=config.bins_per_octave,
+            pad_mode="constant",
+        )
+        global_samples = context_start + np.arange(chunk.shape[1]) * config.hop_length
+        keep = (global_samples >= core_start) & (global_samples < core_end)
+        pieces.append(np.asarray(chunk[:, keep]))
+    combined = np.concatenate(pieces, axis=1)
+    expected_frames = math.ceil(len(samples) / config.hop_length)
+    if combined.shape != (n_bins, expected_frames):
+        raise RuntimeError("chunked CQT produced a discontinuous time axis")
+    return combined
 
 
 def _float_audio(audio: NDArray[np.generic]) -> NDArray[np.float32]:
