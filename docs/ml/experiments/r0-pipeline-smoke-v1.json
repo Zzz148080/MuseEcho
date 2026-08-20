@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "experiment_id": "r0-pipeline-smoke-v1",
+  "stage": "R0",
+  "status": "passed",
+  "source_git_sha": "72cc4904952af44a0b915a5f093e2be56cf19255",
+  "config_sha256": "b1df06fb540a2c5a1e6679d13eda18c29bd0fed60ba6a82733890d0d5fa65bc2",
+  "train_manifest_sha256": "581ae22857021420f0638176a624cfd9e616d3ec31ad50b88c248cdd3bdc77fe",
+  "validation_manifest_sha256": "ddc33b29d4d1496a3531687b4db029c45c4b082a5cd4e2d27cd4e8e38f94f954",
+  "split_sha256": "1215c79ccc80c5574f2e2584fc8130f2583e793cc7fa5dfaf96453285620bc3e",
+  "seed": 20260820,
+  "device": {
+    "type": "cpu",
+    "precision_mode": "float32",
+    "deterministic_algorithms": true,
+    "python_version": "3.12.13",
+    "torch_version": "2.13.0+cpu",
+    "cuda_available": false
+  },
+  "protocol": {
+    "purpose": "data, feature, training, validation, checkpoint, and exact-resume pipeline smoke",
+    "epochs": 3,
+    "steps_per_epoch": 1,
+    "track_limit_per_split": 2,
+    "segment_seconds": 4.0,
+    "segment_start_policy": "first-supervised",
+    "partial_epoch_limit": 1,
+    "is_model_score": false
+  },
+  "data": {
+    "train_role": "real-gold train",
+    "validation_role": "real-gold validation",
+    "train_track_ids": [
+      "guitarset:00_BN1-129-Eb_comp",
+      "guitarset:00_BN1-129-Eb_solo"
+    ],
+    "validation_track_ids": [
+      "guitarset:00_BN3-119-G_comp",
+      "guitarset:00_BN3-119-G_solo"
+    ],
+    "train_segment_offsets_seconds": [
+      11.162790697674419,
+      11.162790697674419
+    ],
+    "validation_segment_offsets_seconds": [
+      10.084033613445378,
+      10.084033613445378
+    ]
+  },
+  "result": {
+    "partial_stop_reason": "operational_limit",
+    "resumed_from_epoch": 1,
+    "final_stop_reason": "max_epochs",
+    "best_epoch": 1,
+    "best_model_state_sha256": "1f7c63433ec3c971a8b14f19b2517185faa08839701f0ba856d311e04c8b1b61",
+    "best_validation": {
+      "root_accuracy": 0.0,
+      "quality_accuracy": 0.5028901696205139,
+      "root_quality_accuracy": 0.25144508481025696,
+      "total_loss": 6.263112545013428
+    },
+    "combined_curve": [
+      {
+        "epoch": 0,
+        "global_step": 1,
+        "learning_rate": 0.005,
+        "train_total_loss": 6.652382850646973,
+        "validation_quality_accuracy": 0.4971098303794861,
+        "validation_root_accuracy": 0.0,
+        "validation_root_quality_accuracy": 0.24855491518974304,
+        "validation_total_loss": 6.324970722198486
+      },
+      {
+        "epoch": 1,
+        "global_step": 2,
+        "learning_rate": 0.005,
+        "train_total_loss": 6.460257530212402,
+        "validation_quality_accuracy": 0.5028901696205139,
+        "validation_root_accuracy": 0.0,
+        "validation_root_quality_accuracy": 0.25144508481025696,
+        "validation_total_loss": 6.263112545013428
+      },
+      {
+        "epoch": 2,
+        "global_step": 3,
+        "learning_rate": 0.005,
+        "train_total_loss": 6.2752156257629395,
+        "validation_quality_accuracy": 0.5028901696205139,
+        "validation_root_accuracy": 0.0,
+        "validation_root_quality_accuracy": 0.25144508481025696,
+        "validation_total_loss": 6.20492696762085
+      }
+    ]
+  },
+  "exact_resume": {
+    "partial_checkpoint_sha256": "048ee117d49ac82f87d9970f392c5ada3081d00e11ea958550bcac1a8b8fe7d1",
+    "partial_report_sha256": "7044e442f780ccc7adb380d8004993ffdcee6d99801f17b4cbda0296acddb3ba",
+    "resumed_report_sha256": "ad53d4d8affdd84465ad051e46d621de923ccb8660df0aa32aeae705dedd59ef",
+    "uninterrupted_report_sha256": "9878e4d8529c5d06c2241cd8dc33e5d9dc7631d5dba8ae9a3a2e10a67d229eb5",
+    "combined_curve_exact_match": true,
+    "initial_train_exact_match": true,
+    "final_train_exact_match": true,
+    "best_validation_exact_match": true,
+    "checkpoint_identity_exact_match": true,
+    "device_exact_match": true,
+    "track_selection_exact_match": true,
+    "best_epoch_exact_match": true,
+    "best_model_state_exact_match": true,
+    "checkpoint_container_hashes_expected_to_differ": true
+  },
+  "verification": {
+    "ml_tests_passed": 179,
+    "ruff_passed": true,
+    "pytest_basetemp": "workspace-local due host temp ACL"
+  },
+  "gate_state": {
+    "g1": "NOT READY",
+    "real_gold_works": 124,
+    "real_gold_hours": 8.9408,
+    "g1_minimum_works": 500,
+    "g1_minimum_hours": 80.0,
+    "training_route": "A",
+    "b0": "skipped-not-applicable",
+    "formal_r1_r2": "blocked-by-g1-and-no-local-cuda"
+  },
+  "limitations": [
+    "R0 proves pipeline operation and exact CPU resume; its validation diagnostics are not model or competition scores.",
+    "The full checkpoint files include interruption-history state, so container SHA-256 values differ even though the resumed and uninterrupted best model-state SHA-256 values match.",
+    "G1 remains NOT READY at 124 works and 8.9408 hours, below the 500-work and 80-hour targets.",
+    "Route A is frozen because synthetic-supervised data totals 41.487981 hours, below the 60-hour Route B threshold; B0 is therefore skipped.",
+    "The local PyTorch build is CPU-only, so formal GPU candidate training was not attempted."
+  ]
+}

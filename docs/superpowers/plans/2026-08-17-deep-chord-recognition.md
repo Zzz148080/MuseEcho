@@ -443,9 +443,16 @@ partial→resume 与 uninterrupted 最佳参数哈希一致。统一 CLI 读取 
 
 **接口：** 每一轮只改变声明的变量，使用相同 validation 协议；失败实验同样进入索引。
 
-- [ ] **R0：数据/训练链 smoke**
+- [x] **R0：数据/训练链 smoke**
 
 在极小合法子集验证数据读取、特征、训练、评测和恢复，不报告为模型成绩。
+
+完成证据：`r0-pipeline-smoke-v1` 从冻结 real-gold train/validation 各读取两首 GuitarSet，
+完成 CQT、训练、验证、checkpoint 和恢复。epoch 0 的 partial run 以 `operational_limit` 正常
+停止，从其 checkpoint 恢复后的 epoch 1–2 与独立 uninterrupted 三 epoch 对照组合曲线逐字段
+一致；最佳模型状态 SHA-256 均为
+`1f7c63433ec3c971a8b14f19b2517185faa08839701f0ba856d311e04c8b1b61`。公开证据见
+`docs/ml/experiments/r0-pipeline-smoke-v1.{json,md}`；该结果明确不是模型成绩。
 
 - [ ] **B0（仅方案 B）：合成监督预训练**
 
