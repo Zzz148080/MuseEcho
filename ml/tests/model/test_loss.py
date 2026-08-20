@@ -143,3 +143,19 @@ def test_full_n_x_batch_is_finite_and_has_no_bass_supervision() -> None:
 
     assert torch.isfinite(result.total)
     assert result.bass.item() == 0.0
+
+
+def test_multitask_loss_rejects_batch_without_any_valid_frame() -> None:
+    targets = _targets()
+    empty = torch.zeros_like(targets.mask)
+    targets = ChordTargets(
+        root=targets.root,
+        quality=targets.quality,
+        bass=targets.bass,
+        boundary=targets.boundary,
+        mask=empty,
+        bass_mask=empty,
+    )
+
+    with pytest.raises(ValueError, match="valid frame"):
+        multitask_loss(_logits(), targets, LossConfig())

@@ -358,29 +358,29 @@ rate 缩放标签区间。rate 使用显式 seed、范围验证和 enabled 开�
 
 **接口：** 输入 `[batch, channel, frequency, time]` 和 mask；输出 root、quality、bass、boundary logits 及有限标量损失。
 
-- [ ] **步骤 1：编写 shape、mask 和 NaN 测试**
+- [x] **步骤 1：编写 shape、mask 和 NaN 测试**
 
 覆盖不同长度 batch、全 `N`、全 `X`、无 bass 标签、稀有类别和空有效区间。
 
-- [ ] **步骤 2：实现最小 CNN + BiGRU + 四 head**
+- [x] **步骤 2：实现最小 CNN + BiGRU + 四 head**
 
 网络规模、dropout、归一化和隐藏维度全部来自配置。不得把词表长度硬编码进 layer。
 
-- [ ] **步骤 3：实现 masked multi-task loss**
+- [x] **步骤 3：实现 masked multi-task loss**
 
 类别权重只来自 train split 统计；所有 loss 分量分别记录，禁用 head 时权重必须显式为零。
 
-- [ ] **步骤 4：小批次前后向验证**
+- [x] **步骤 4：小批次前后向验证**
 
 检查梯度有限、参数确实更新、mask 帧不改变 loss。
 
-阶段进度：`model-crnn-v1` 已实现 main/bass 双 CNN 分支、prefix-mask 的双向 GRU，以及
+完成证据：`model-crnn-v1` 已实现 main/bass 双 CNN 分支、prefix-mask 的双向 GRU，以及
 root/quality/bass/boundary 四个配置化 head；`multitask-v1` 已实现四项加权损失、空 bass
-监督的显式零损失和严格有限值/类别范围校验。12 项模型/损失/batch 测试覆盖 shape、非连续
-mask、NaN、masked-frame 不变性、有限反向梯度、变长 padding 与区间对帧标签。真实 AdamW
-单步已证明参数更新；尚需补齐 train-split 类别权重和全 `N/X` 批次后，才勾选步骤 1--4。
+监督的显式零损失和严格有限值/类别范围校验。模型/损失/batch 测试覆盖 shape、非连续 mask、
+NaN、空有效区间、masked-frame 不变性、train-split 逆频率类别权重、全 `N/X` batch、有限
+反向梯度、变长 padding 与区间对帧标签。真实 AdamW 单步已证明参数更新。
 
-- [ ] **步骤 5：提交**
+- [x] **步骤 5：提交**
 
 提交消息：`feat: implement multitask chord crnn`
 
