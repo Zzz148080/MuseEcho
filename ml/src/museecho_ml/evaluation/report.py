@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
 from museecho_ml.evaluation.metrics import (
@@ -73,6 +73,90 @@ def evaluate_track(
             "predicted_events": len(prediction),
         },
     }
+
+
+def evaluate_corpus(
+    tracks: Mapping[
+        str,
+        tuple[Sequence[ScoredChordInterval], Sequence[ScoredChordInterval]],
+    ],
+    config: EvaluationConfig,
+) -> dict[str, object]:
+    """Pool track timelines by duration while excluding artificial track seams."""
+
+    if not tracks:
+        raise ValueError("evaluation corpus cannot be empty")
+    track_reports: dict[str, dict[str, object]] = {}
+    combined_reference: list[ScoredChordInterval] = []
+    combined_prediction: list[ScoredChordInterval] = []
+    reference_boundaries: list[float] = []
+    predicted_boundaries: list[float] = []
+    offset = 0.0
+    reference_events = 0
+    predicted_events = 0
+    for track_id in sorted(tracks):
+        reference, prediction = tracks[track_id]
+        track_reports[track_id] = evaluate_track(track_id, reference, prediction, config)
+        duration = reference[-1].end_seconds - reference[0].start_seconds
+        combined_reference.extend(_shifted(reference, offset - reference[0].start_seconds))
+        combined_prediction.extend(_shifted(prediction, offset - prediction[0].start_seconds))
+        reference_boundaries.extend(
+            offset + item.end_seconds - reference[0].start_seconds
+            for item in reference[:-1]
+        )
+        predicted_boundaries.extend(
+            offset + item.end_seconds - prediction[0].start_seconds
+            for item in prediction[:-1]
+        )
+        offset += duration
+        reference_events += len(reference)
+        predicted_events += len(prediction)
+    aggregate = {
+        "weighted_scores": weighted_chord_scores(
+            combined_reference, combined_prediction
+        ),
+        "quality": quality_f1_report(combined_reference, combined_prediction),
+        "boundary": boundary_f1(
+            reference_boundaries=reference_boundaries,
+            predicted_boundaries=predicted_boundaries,
+            tolerance_seconds=config.boundary_tolerance_seconds,
+        ),
+        "ece": expected_calibration_error(
+            _calibration_samples(combined_reference, combined_prediction),
+            bin_count=config.ece_bin_count,
+        ),
+        "published": precision_coverage(
+            combined_reference,
+            combined_prediction,
+            threshold=config.publication_threshold,
+        ),
+        "segmentation": {
+            "reference_events": reference_events,
+            "predicted_events": predicted_events,
+        },
+    }
+    return {
+        "schema_version": 1,
+        "evaluation_version": "1.0.0",
+        "track_count": len(track_reports),
+        "duration_seconds": offset,
+        "aggregate": aggregate,
+        "tracks": track_reports,
+    }
+
+
+def _shifted(
+    intervals: Sequence[ScoredChordInterval], offset: float
+) -> tuple[ScoredChordInterval, ...]:
+    return tuple(
+        ScoredChordInterval(
+            start_seconds=item.start_seconds + offset,
+            end_seconds=item.end_seconds + offset,
+            chord=item.chord,
+            confidence=item.confidence,
+        )
+        for item in intervals
+    )
 
 
 def _calibration_samples(

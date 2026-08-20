@@ -13,7 +13,11 @@ from museecho_ml.evaluation.metrics import (
     quality_f1_report,
     weighted_chord_scores,
 )
-from museecho_ml.evaluation.report import EvaluationConfig, evaluate_track
+from museecho_ml.evaluation.report import (
+    EvaluationConfig,
+    evaluate_corpus,
+    evaluate_track,
+)
 from museecho_ml.labels import parse_annotation
 
 ML_ROOT = Path(__file__).resolve().parents[2]
@@ -142,6 +146,36 @@ def test_track_report_combines_versioned_metrics_deterministically() -> None:
     assert first["boundary"]["f1"] == 1.0
     assert first["segmentation"] == {"reference_events": 2, "predicted_events": 2}
     assert first["published"] == {"precision": 1.0, "coverage": 0.5}
+
+
+def test_corpus_report_pools_duration_without_scoring_track_seams() -> None:
+    config = EvaluationConfig(
+        boundary_tolerance_seconds=0.05,
+        ece_bin_count=10,
+        publication_threshold=0.85,
+    )
+    tracks = {
+        "short-correct": (
+            (_interval(0, 1, "C:maj"),),
+            (_interval(0, 1, "C:maj", 0.9),),
+        ),
+        "long-wrong": (
+            (_interval(0, 1, "C:maj"), _interval(1, 3, "G:maj")),
+            (_interval(0, 3, "D:maj", 0.9),),
+        ),
+    }
+
+    report = evaluate_corpus(tracks, config)
+
+    assert report["track_count"] == 2
+    assert report["duration_seconds"] == 4.0
+    assert report["aggregate"]["weighted_scores"]["exact_quality"] == 0.25
+    assert report["aggregate"]["boundary"] == {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+    }
+    assert sorted(report["tracks"]) == ["long-wrong", "short-correct"]
 
 
 def test_evaluation_config_matches_versioned_file() -> None:
