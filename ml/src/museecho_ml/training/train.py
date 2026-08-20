@@ -452,12 +452,13 @@ def run_from_config(
     *,
     run_dir: Path | None = None,
     resume_path: Path | None = None,
+    epoch_limit: int | None = None,
 ) -> dict[str, Any]:
     source = config_path.resolve(strict=True)
     config = load_train_config(source)
     if config.purpose == "formal":
         raise RuntimeError("formal training is blocked while G1 NOT READY")
-    base = source.parent.parent if source.parent.name == "configs" else source.parent
+    base = _config_base(source)
     train_manifest_path = _resolve_relative(base, config.train_manifest, must_exist=True)
     validation_manifest_path = _resolve_relative(
         base, config.validation_manifest, must_exist=True
@@ -516,6 +517,7 @@ def run_from_config(
         identity,
         destination,
         resume_path=resume_path,
+        epoch_limit=epoch_limit,
     )
     report.update(
         {
@@ -688,6 +690,15 @@ def _resolve_relative(base: Path, value: str, *, must_exist: bool) -> Path:
     return resolved
 
 
+def _config_base(source: Path) -> Path:
+    for candidate in source.parents:
+        if (candidate / "pyproject.toml").is_file() and (
+            candidate / "src" / "museecho_ml"
+        ).is_dir():
+            return candidate
+    return source.parent
+
+
 def _git_commit(base: Path) -> str | None:
     try:
         completed = subprocess.run(
@@ -797,11 +808,13 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("config", type=Path)
     parser.add_argument("--run-dir", type=Path)
     parser.add_argument("--resume", type=Path)
+    parser.add_argument("--epoch-limit", type=int)
     args = parser.parse_args(argv)
     report = run_from_config(
         args.config,
         run_dir=args.run_dir,
         resume_path=args.resume,
+        epoch_limit=args.epoch_limit,
     )
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
 

@@ -127,12 +127,15 @@ def test_interrupted_cpu_training_resumes_to_uninterrupted_best_state(
 def test_versioned_smoke_and_formal_training_configs_are_strictly_loadable() -> None:
     smoke = load_train_config(ML_ROOT / "configs" / "train-smoke.json")
     formal = load_train_config(ML_ROOT / "configs" / "train-crnn-v1.json")
+    r0 = load_train_config(ML_ROOT / "configs" / "experiments" / "r0-pipeline-smoke.json")
 
     assert smoke.purpose == "g3-overfit"
     assert smoke.device == "cpu"
     assert smoke.overfit_gate is not None
     assert formal.purpose == "formal"
     assert formal.validation_manifest.endswith("real-gold-validation.manifest.json")
+    assert r0.purpose == "r0-smoke"
+    assert r0.validation_manifest.endswith("real-gold-validation.manifest.json")
 
 
 def test_config_cli_runs_real_wav_pipeline_and_binds_manifest_hashes(
@@ -207,12 +210,26 @@ def test_config_cli_runs_real_wav_pipeline_and_binds_manifest_hashes(
     config_path = tmp_path / "config.json"
     config_path.write_text(json.dumps(payload), encoding="utf-8")
 
-    report = run_from_config(config_path, run_dir=tmp_path / "run")
+    payload["max_epochs"] = 2
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+    report = run_from_config(
+        config_path, run_dir=tmp_path / "run", epoch_limit=1
+    )
 
     assert report["track_ids"] == ["fixture:0", "fixture:1"]
     assert report["train_segment_offsets_seconds"] == [0.5, 0.5]
     assert report["checkpoint_identity"]["split_sha256"] == "d" * 64
+    assert report["stop_reason"] == "operational_limit"
     assert (tmp_path / "run" / "training-report.json").is_file()
+
+    resumed = run_from_config(
+        config_path,
+        run_dir=tmp_path / "run",
+        resume_path=tmp_path / "run" / "checkpoint-last.pt",
+    )
+
+    assert resumed["resumed_from_epoch"] == 1
+    assert resumed["curve"][0]["epoch"] == 1
 
 
 def test_formal_config_is_blocked_while_g1_is_not_ready(tmp_path: Path) -> None:
