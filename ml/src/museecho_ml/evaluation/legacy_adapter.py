@@ -32,6 +32,7 @@ class LegacyEvent(Protocol):
 AudioLoader = Callable[[Path], tuple[np.ndarray, int]]
 LegacyRecognizer = Callable[[np.ndarray, int], Sequence[LegacyEvent]]
 _EVALUATION_SPLITS = ("validation", "test")
+_TIMELINE_TOLERANCE_SECONDS = 1e-9
 
 
 def load_evaluation_config(path: Path) -> EvaluationConfig:
@@ -285,13 +286,25 @@ def _reference_intervals(
             or isinstance(end, bool)
             or not isinstance(start, (int, float))
             or not isinstance(end, (int, float))
-            or start < cursor
+            or start < cursor - _TIMELINE_TOLERANCE_SECONDS
             or end <= start
-            or end > duration_seconds
+            or end > duration_seconds + _TIMELINE_TOLERANCE_SECONDS
         ):
             raise ValueError("legacy reference interval timeline is invalid")
-        if start > cursor:
-            result.append(ScoredChordInterval(cursor, float(start), parse_annotation("N")))
+        normalized_start = (
+            cursor
+            if math.isclose(start, cursor, abs_tol=_TIMELINE_TOLERANCE_SECONDS)
+            else float(start)
+        )
+        normalized_end = (
+            duration_seconds
+            if math.isclose(end, duration_seconds, abs_tol=_TIMELINE_TOLERANCE_SECONDS)
+            else float(end)
+        )
+        if normalized_start > cursor:
+            result.append(
+                ScoredChordInterval(cursor, normalized_start, parse_annotation("N"))
+            )
         chord = CanonicalChord(
             root=raw.get("root"),
             quality=raw.get("quality"),
@@ -299,9 +312,9 @@ def _reference_intervals(
             mapping_reason=raw.get("mapping_reason"),
         )
         chord.display_symbol
-        result.append(ScoredChordInterval(float(start), float(end), chord))
-        cursor = float(end)
-    if cursor < duration_seconds:
+        result.append(ScoredChordInterval(normalized_start, normalized_end, chord))
+        cursor = normalized_end
+    if duration_seconds - cursor > _TIMELINE_TOLERANCE_SECONDS:
         result.append(ScoredChordInterval(cursor, duration_seconds, parse_annotation("N")))
     if not result:
         result.append(ScoredChordInterval(0.0, duration_seconds, parse_annotation("N")))

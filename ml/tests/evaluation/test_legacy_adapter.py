@@ -125,6 +125,71 @@ def test_evaluate_legacy_manifest_refuses_training_split(tmp_path: Path) -> None
         )
 
 
+def test_evaluate_legacy_manifest_ignores_subnanosecond_annotation_tail(
+    tmp_path: Path,
+) -> None:
+    manifest = _manifest("validation")
+    first = manifest["tracks"][0]
+    first["duration_seconds"] = 250.0
+    first["intervals"] = [
+        {
+            "start_seconds": 0.0,
+            "end_seconds": 250.0,
+            "root": "C",
+            "quality": "maj",
+            "bass": "1",
+            "mapping_reason": None,
+        }
+    ]
+    second = json.loads(json.dumps(first))
+    second.update(
+        {
+            "source_track_id": "track-b",
+            "track_id": "fixture:track-b",
+            "work_id": "fixture:work-b",
+            "cover_group_id": "fixture:group-b",
+            "audio_path": "audio/track-b.wav",
+            "duration_seconds": 14.4,
+            "intervals": [
+                {
+                    "start_seconds": 0.0,
+                    "end_seconds": 14.399999999999977,
+                    "root": "C",
+                    "quality": "maj",
+                    "bass": "1",
+                    "mapping_reason": None,
+                }
+            ],
+        }
+    )
+    manifest["tracks"].append(second)
+    dataset_root = tmp_path / "fixture"
+    audio_dir = dataset_root / "audio"
+    audio_dir.mkdir(parents=True)
+    (audio_dir / "track-a.wav").write_bytes(b"a")
+    (audio_dir / "track-b.wav").write_bytes(b"b")
+
+    def load_audio(path: Path) -> tuple[np.ndarray, int]:
+        size = 2500 if path.name == "track-a.wav" else 144
+        return np.zeros(size, dtype=np.float32), 10
+
+    def recognize(samples: np.ndarray, sample_rate: int) -> tuple[_LegacyEvent, ...]:
+        return (_LegacyEvent("C", 0.0, samples.size / sample_rate, 0.9),)
+
+    result = evaluate_legacy_manifest(
+        manifest,
+        dataset_roots={"fixture": dataset_root},
+        config=EvaluationConfig(),
+        recognize=recognize,
+        audio_loader=load_audio,
+    )
+
+    assert result["report"]["evaluation"]["track_count"] == 2
+    assert result["report"]["evaluation"]["aggregate"]["weighted_scores"][
+        "exact_quality"
+    ] == pytest.approx(1.0)
+
+
 def test_run_legacy_protocol_writes_immutable_commit_bound_artifacts(
     tmp_path: Path,
 ) -> None:
