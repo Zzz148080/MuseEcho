@@ -298,7 +298,7 @@ git commit -m "feat: freeze train-only plan c vocabulary"
 
 **Interfaces:**
 - Consumes: G1 report, vocabulary report, four real-gold manifests, two required synthetic manifests, optional score manifest, optional MAESTRO feasibility report, and dataset registry.
-- Produces: `freeze_plan_c_protocol(config: Mapping[str, Any], *, g1_report: Mapping[str, Any], vocabulary_report: Mapping[str, Any], real_manifests: Mapping[str, Path], synthetic_manifests: Sequence[Path], registry: DatasetRegistry, score_manifest: Path | None = None, score_feasibility: Mapping[str, Any] | None = None) -> dict[str, Any]` and `write_frozen_protocol(path: Path, protocol: Mapping[str, Any]) -> None`.
+- Produces: `freeze_plan_c_protocol(config: Mapping[str, Any], *, g1_report: Mapping[str, Any], vocabulary_report: Mapping[str, Any], real_manifests: Mapping[str, Path], synthetic_manifests: Sequence[Path], registry: DatasetRegistry, historical_route_report: Mapping[str, Any], score_manifest: Path | None = None, score_feasibility: Mapping[str, Any] | None = None) -> dict[str, Any]` and `write_frozen_protocol(path: Path, protocol: Mapping[str, Any]) -> None`.
 
 - [ ] **Step 1: Add the versioned protocol config**
 

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "plan_version": "plan-c-v1",
+  "seeds": [20260821, 20260822, 20260823],
+  "minimum_quality_train_groups": 20,
+  "g1b_production_scale_exclusions": {
+    "guitarset": "lead-sheet-domain-augmentation-not-independent-musical-works"
+  },
+  "bootstrap": {
+    "resamples": 10000,
+    "seed": 20260821,
+    "unit": "cover_group_id"
+  },
+  "courses": ["C0", "C1", "C2"],
+  "required_synthetic_datasets": [
+    "idmt-smt-chord-sequences",
+    "jazznet"
+  ],
+  "selection_metrics": [
+    "exact_vocabulary_wcsr",
+    "public_quality_macro_f1",
+    "published_known_precision",
+    "coverage",
+    "five_minute_cpu_wall_seconds"
+  ],
+  "course_tie_order": ["C0", "C1", "C2"]
+}

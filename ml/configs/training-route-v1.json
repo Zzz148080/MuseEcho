@@ -12,6 +12,7 @@
     "frozen-real-test"
   ],
   "forbidden_evaluation_roles": [
+    "real-score-supervised",
     "synthetic-supervised",
     "weak-label-validation"
   ]
