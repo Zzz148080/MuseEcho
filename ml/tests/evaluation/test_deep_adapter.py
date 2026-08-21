@@ -8,6 +8,7 @@ import pytest
 
 from museecho_ml.evaluation.deep_adapter import (
     RawTrackPrediction,
+    collect_authorized_test_predictions,
     collect_checkpoint_predictions,
     evaluate_deep_predictions,
     fit_deep_calibration,
@@ -15,6 +16,7 @@ from museecho_ml.evaluation.deep_adapter import (
     manifest_reference_intervals,
 )
 from museecho_ml.evaluation.metrics import ScoredChordInterval
+from museecho_ml.evaluation.promotion import FrozenTestSession
 from museecho_ml.labels import BASS_INTERVALS, PITCH_NAMES, CanonicalChord
 from museecho_ml.vocabulary import ChordVocabulary
 
@@ -79,6 +81,33 @@ def test_deep_collection_rejects_manifest_hash_before_checkpoint_or_audio(
         )
 
 
+def test_authorized_test_collection_rejects_reused_session_before_checkpoint(
+    tmp_path: Path,
+) -> None:
+    manifest = {
+        "schema_version": 1,
+        "split": "test",
+        "corpus_role": "real-gold",
+        "tracks": [{"track_id": "must-not-be-opened"}],
+    }
+    session = FrozenTestSession(
+        receipt={
+            "checkpoint_sha256": "a" * 64,
+            "test_manifest_sha256": "b" * 64,
+        },
+        _manifest=manifest,
+    )
+    session.evaluate_once(lambda _: None)
+
+    with pytest.raises(PermissionError, match="already accessed"):
+        collect_authorized_test_predictions(
+            session=session,
+            checkpoint_path=tmp_path / "does-not-exist.pt",
+            config_path=tmp_path / "does-not-exist.json",
+            vocabulary_path=tmp_path / "does-not-exist-vocabulary.json",
+        )
+
+
 def test_reference_fills_unannotated_gaps_and_maps_sus2_to_x() -> None:
     reference = manifest_reference_intervals(
         {
@@ -112,6 +141,28 @@ def test_reference_fills_unannotated_gaps_and_maps_sus2_to_x() -> None:
         (2.0, 3.0, "G", "7"),
         (3.0, 4.0, "N", "N"),
     ]
+
+
+def test_reference_normalizes_floating_point_tail_instead_of_creating_micro_gap() -> None:
+    reference = manifest_reference_intervals(
+        {
+            "duration_seconds": 14.4,
+            "intervals": [
+                {
+                    "start_seconds": 0.0,
+                    "end_seconds": 14.399999999999977,
+                    "root": "C",
+                    "quality": "maj",
+                    "bass": "1",
+                }
+            ],
+        },
+        VOCABULARY,
+    )
+
+    assert reference == (
+        ScoredChordInterval(0.0, 14.4, CanonicalChord("C", "maj", "1")),
+    )
 
 
 def _logits(labels: tuple[str, ...], values: tuple[str, ...]) -> np.ndarray:

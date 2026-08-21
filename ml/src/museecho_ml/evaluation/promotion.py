@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import json
 import math
+import os
 import re
-from collections.abc import Mapping
-from typing import Any
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
+from dataclasses import field as dataclass_field
+from pathlib import Path
+from typing import Any, TypeVar
 
 from museecho_ml.artifacts import canonical_sha256
 from museecho_ml.data.registry import DatasetRegistry
@@ -17,6 +22,54 @@ _SELECTION_IDENTITIES = (
     "checkpoint_sha256",
     "test_manifest_sha256",
 )
+_ResultT = TypeVar("_ResultT")
+
+
+@dataclass
+class FrozenTestSession:
+    receipt: dict[str, Any]
+    _manifest: dict[str, Any] = dataclass_field(repr=False)
+    _accessed: bool = dataclass_field(default=False, init=False, repr=False)
+
+    def evaluate_once(
+        self, evaluator: Callable[[Mapping[str, Any]], _ResultT]
+    ) -> _ResultT:
+        if self._accessed:
+            raise PermissionError("frozen test is already accessed")
+        self._accessed = True
+        return evaluator(self._manifest)
+
+
+def open_frozen_test_session(
+    *,
+    selection: Mapping[str, Any],
+    manifest_path: Path,
+    access_marker_path: Path,
+) -> FrozenTestSession:
+    frozen = _validated_selection(selection)
+    marker = access_marker_path.resolve()
+    try:
+        descriptor = os.open(
+            marker,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+        )
+    except FileExistsError as error:
+        raise PermissionError("frozen test is already accessed") from error
+    except OSError as error:
+        raise ValueError("frozen test access marker cannot be created") from error
+    with os.fdopen(descriptor, "wb") as target:
+        target.write(b"plan-c-frozen-test-access-started-v1\n")
+        target.flush()
+        os.fsync(target.fileno())
+    try:
+        manifest = json.loads(
+            manifest_path.resolve(strict=True).read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError("frozen test manifest is unreadable") from error
+    receipt = authorize_frozen_test(frozen, manifest, existing_receipt=None)
+    return FrozenTestSession(receipt=receipt, _manifest=manifest)
 
 
 def authorize_frozen_test(

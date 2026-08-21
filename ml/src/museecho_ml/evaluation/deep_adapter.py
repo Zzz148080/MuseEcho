@@ -16,6 +16,7 @@ from numpy.typing import NDArray
 from museecho_ml.artifacts import canonical_sha256, file_sha256
 from museecho_ml.data.vocabulary_freeze import map_to_frozen_vocabulary
 from museecho_ml.evaluation.metrics import ScoredChordInterval
+from museecho_ml.evaluation.promotion import FrozenTestSession
 from museecho_ml.evaluation.report import EvaluationConfig
 from museecho_ml.evaluation.statistics import evaluate_dataset_strata
 from museecho_ml.features.cqt import extract_features
@@ -29,6 +30,8 @@ from museecho_ml.postprocess.calibration import (
 from museecho_ml.postprocess.decode import decode_logits
 from museecho_ml.training.train import _config_base, _resolve_relative, load_train_config
 from museecho_ml.vocabulary import ChordVocabulary
+
+_REFERENCE_TIME_TOLERANCE_SECONDS = 1e-9
 
 
 @dataclass(frozen=True)
@@ -52,7 +55,7 @@ class RawTrackPrediction:
             not self.track_id
             or not self.dataset_id
             or not self.cover_group_id
-            or self.split not in {"calibration", "validation"}
+            or self.split not in {"calibration", "validation", "test"}
             or not math.isfinite(self.duration_seconds)
             or self.duration_seconds <= 0
             or not math.isfinite(self.inference_wall_seconds)
@@ -159,12 +162,23 @@ def manifest_reference_intervals(
         )
         _append_interval(result, start_value, end_value, chord)
         cursor = end_value
-    if cursor < float(duration):
+    remaining = float(duration) - cursor
+    if remaining > _REFERENCE_TIME_TOLERANCE_SECONDS:
         _append_interval(
             result,
             cursor,
             float(duration),
             CanonicalChord("N", "N", "N"),
+        )
+    elif remaining > 0:
+        previous = result.pop()
+        result.append(
+            ScoredChordInterval(
+                previous.start_seconds,
+                float(duration),
+                previous.chord,
+                previous.confidence,
+            )
         )
     if not result or result[0].start_seconds != 0 or result[-1].end_seconds != duration:
         raise ValueError("deep evaluation reference does not cover the track")
@@ -181,6 +195,52 @@ def collect_checkpoint_predictions(
     expected_checkpoint_sha256: str | None = None,
 ) -> tuple[RawTrackPrediction, ...]:
     manifest = load_deep_evaluation_manifest(manifest_path)
+    return _collect_checkpoint_predictions_from_manifest(
+        manifest=manifest,
+        checkpoint_path=checkpoint_path,
+        config_path=config_path,
+        vocabulary_path=vocabulary_path,
+        expected_manifest_sha256=expected_manifest_sha256,
+        expected_checkpoint_sha256=expected_checkpoint_sha256,
+    )
+
+
+def collect_authorized_test_predictions(
+    *,
+    session: FrozenTestSession,
+    checkpoint_path: Path,
+    config_path: Path,
+    vocabulary_path: Path,
+) -> tuple[tuple[RawTrackPrediction, ...], dict[str, Any]]:
+    def collect(
+        manifest: Mapping[str, Any],
+    ) -> tuple[tuple[RawTrackPrediction, ...], dict[str, Any]]:
+        if manifest.get("split") != "test":
+            raise PermissionError("authorized deep evaluation requires the test split")
+        if manifest.get("corpus_role") != "real-gold":
+            raise ValueError("authorized deep evaluation must contain real-gold")
+        predictions = _collect_checkpoint_predictions_from_manifest(
+            manifest=manifest,
+            checkpoint_path=checkpoint_path,
+            config_path=config_path,
+            vocabulary_path=vocabulary_path,
+            expected_manifest_sha256=session.receipt.get("test_manifest_sha256"),
+            expected_checkpoint_sha256=session.receipt.get("checkpoint_sha256"),
+        )
+        return predictions, dict(manifest)
+
+    return session.evaluate_once(collect)
+
+
+def _collect_checkpoint_predictions_from_manifest(
+    *,
+    manifest: Mapping[str, Any],
+    checkpoint_path: Path,
+    config_path: Path,
+    vocabulary_path: Path,
+    expected_manifest_sha256: str,
+    expected_checkpoint_sha256: str | None,
+) -> tuple[RawTrackPrediction, ...]:
     if canonical_sha256(manifest) != expected_manifest_sha256:
         raise ValueError("deep evaluation manifest SHA-256 does not match")
     try:

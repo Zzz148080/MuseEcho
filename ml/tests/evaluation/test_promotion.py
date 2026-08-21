@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -15,6 +17,7 @@ from museecho_ml.evaluation.promotion import (
     authorize_frozen_test,
     consume_frozen_test,
     decide_model_promotion,
+    open_frozen_test_session,
 )
 
 
@@ -129,6 +132,50 @@ def test_test_authorization_binds_every_frozen_identity() -> None:
     assert receipt["selection_sha256"] == _selection()["selection_sha256"]
     assert receipt["test_manifest_sha256"] == canonical_sha256(_test_manifest())
     assert receipt["checkpoint_sha256"] == _selection()["checkpoint_sha256"]
+
+
+def test_frozen_test_session_reads_manifest_exactly_once(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "test.manifest.json"
+    marker_path = tmp_path / "test-access.marker"
+    manifest_path.write_text(json.dumps(_test_manifest()), encoding="utf-8")
+
+    session = open_frozen_test_session(
+        selection=_selection(),
+        manifest_path=manifest_path,
+        access_marker_path=marker_path,
+    )
+
+    assert marker_path.is_file()
+    assert session.evaluate_once(lambda manifest: manifest["split"]) == "test"
+    with pytest.raises(PermissionError, match="already accessed"):
+        session.evaluate_once(lambda manifest: manifest["split"])
+    with pytest.raises(PermissionError, match="already accessed"):
+        open_frozen_test_session(
+            selection=_selection(),
+            manifest_path=manifest_path,
+            access_marker_path=marker_path,
+        )
+
+
+def test_failed_test_open_burns_marker_before_manifest_parse(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "test.manifest.json"
+    marker_path = tmp_path / "test-access.marker"
+    manifest_path.write_text("not-json", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="unreadable"):
+        open_frozen_test_session(
+            selection=_selection(),
+            manifest_path=manifest_path,
+            access_marker_path=marker_path,
+        )
+
+    manifest_path.write_text(json.dumps(_test_manifest()), encoding="utf-8")
+    with pytest.raises(PermissionError, match="already accessed"):
+        open_frozen_test_session(
+            selection=_selection(),
+            manifest_path=manifest_path,
+            access_marker_path=marker_path,
+        )
 
 
 def test_existing_receipt_forbids_second_test_access_and_consumes_once() -> None:
