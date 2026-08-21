@@ -8,6 +8,7 @@ from typing import Any
 
 class CorpusRole(StrEnum):
     REAL_GOLD = "real-gold"
+    REAL_SCORE_SUPERVISED = "real-score-supervised"
     SYNTHETIC_SUPERVISED = "synthetic-supervised"
     WEAK_LABEL_VALIDATION = "weak-label-validation"
 

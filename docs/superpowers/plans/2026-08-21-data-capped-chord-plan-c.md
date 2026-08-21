@@ -60,7 +60,7 @@
 
 **Interfaces:**
 - Consumes: `DatasetRegistry`, four frozen manifest dictionaries keyed by `train`, `calibration`, `validation`, and `test`, and `docs/ml/split-audit-v1.json`-shaped evidence.
-- Produces: `CorpusRole.REAL_SCORE_SUPERVISED`; `canonical_json_bytes(value: Any) -> bytes`; `canonical_sha256(value: Any) -> str`; `file_sha256(path: Path) -> str`; `write_immutable_json(path: Path, value: Mapping[str, Any]) -> None`; `evaluate_data_gates(registry: DatasetRegistry, manifests: Mapping[str, Mapping[str, Any]], split_audit: Mapping[str, Any], *, minimum_works: int = 500, minimum_seconds: float = 288000.0, minimum_quality_works: int = 20) -> dict[str, Any]`.
+- Produces: `CorpusRole.REAL_SCORE_SUPERVISED`; `canonical_json_bytes(value: Any) -> bytes`; `canonical_sha256(value: Any) -> str`; `file_sha256(path: Path) -> str`; `write_immutable_json(path: Path, value: Mapping[str, Any]) -> None`; `evaluate_data_gates(registry: DatasetRegistry, manifests: Mapping[str, Mapping[str, Any]], split_audit: Mapping[str, Any], *, minimum_works: int = 500, minimum_seconds: float = 288000.0, minimum_quality_works: int = 20, production_scale_exclusions: Mapping[str, str] | None = None) -> dict[str, Any]`.
 
 - [ ] **Step 1: Write failing role-isolation tests**
 
@@ -100,7 +100,7 @@ class CorpusRole(StrEnum):
 
 ```python
 def test_canonical_json_is_order_independent_and_rejects_nan() -> None:
-    assert canonical_json_bytes({"b": 2, "a": 1}) == b'{"a":1,"b":2}\n'
+    assert canonical_json_bytes({"b": 2, "a": 1}) == b'{"a":1,"b":2}'
     with pytest.raises(ValueError):
         canonical_json_bytes({"value": float("nan")})
 
@@ -130,15 +130,15 @@ Expected: collection failure because `museecho_ml.data.gates` does not exist.
 
 ```python
 def canonical_json_bytes(value: Any) -> bytes:
-    return (json.dumps(
+    return json.dumps(
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
-    ) + "\n").encode("utf-8")
+    ).encode("utf-8")
 
 def canonical_sha256(value: Any) -> str:
     return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
 ```
 
-`write_immutable_json()` must write through a temporary file in the destination directory, flush and `fsync`, use `os.replace`, accept an identical existing file, and reject a different existing file. `file_sha256()` streams the file and returns lowercase hexadecimal.
+`write_immutable_json()` appends one newline to `canonical_json_bytes()`, writes through a temporary file in the destination directory, flushes and `fsync`s, uses `os.replace`, accepts an identical existing file, and rejects a different existing file. `file_sha256()` streams the file and returns lowercase hexadecimal. Keeping the newline outside `canonical_sha256()` preserves the existing frozen split-hash convention.
 
 ```python
 _SPLITS = ("train", "calibration", "validation", "test")
@@ -151,16 +151,19 @@ def evaluate_data_gates(
     minimum_works: int = 500,
     minimum_seconds: float = 80 * 3600,
     minimum_quality_works: int = 20,
+    production_scale_exclusions: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     _require_four_real_gold_splits(manifests, split_audit)
     tracks = [track for split in _SPLITS for track in manifests[split]["tracks"]]
     dataset_ids = sorted({str(track["dataset_id"]) for track in tracks})
     for dataset_id in dataset_ids:
         registry.require_training_approval(dataset_id)
-    work_ids = {str(track["work_id"]) for track in tracks}
+    exclusions = _validated_exclusions(production_scale_exclusions, dataset_ids)
+    scale_tracks = [track for track in tracks if track["dataset_id"] not in exclusions]
+    work_ids = {str(track["work_id"]) for track in scale_tracks}
     annotated_seconds = math.fsum(
         float(interval["end_seconds"]) - float(interval["start_seconds"])
-        for track in tracks for interval in track["intervals"]
+        for track in scale_tracks for interval in track["intervals"]
     )
     quality_works = _quality_work_counts(tracks)
     return _path_free_gate_report(
@@ -169,7 +172,7 @@ def evaluate_data_gates(
     )
 ```
 
-The helper must verify split names, `split_sha256`, per-split manifest hashes, `near_duplicate_audit.status == "passed"`, non-empty tracks, no repeated track across splits, and no work or cover group crossing splits. It must output explicit reason codes instead of using G1b to reject Plan C.
+The helper must verify split names, `split_sha256`, per-split manifest hashes, `near_duplicate_audit.status == "passed"`, non-empty tracks, no repeated track across splits, and no work or cover group crossing splits. G1a always audits every real-gold dataset. G1b may exclude a named dataset only through a non-empty path-free reason; the current GuitarSet reason is `lead-sheet-domain-augmentation-not-independent-musical-works`, preserving the approved Winterreise/RWC-P production-scale facts without hiding GuitarSet from training or evaluation. It must output explicit reason codes instead of using G1b to reject Plan C.
 
 - [ ] **Step 7: Run focused data tests and confirm GREEN**
 

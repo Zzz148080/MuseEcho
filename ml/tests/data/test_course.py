@@ -73,6 +73,39 @@ def test_real_evaluation_selection_cannot_include_synthetic_tracks() -> None:
     assert [track["track_id"] for track in selected["tracks"]] == ["real"]
 
 
+def test_score_supervised_is_valid_but_cannot_enter_real_evaluation() -> None:
+    assert CorpusRole.REAL_SCORE_SUPERVISED.value == "real-score-supervised"
+    manifest = {
+        "schema_version": 1,
+        "tracks": [
+            {"track_id": "score", "corpus_role": "real-score-supervised"},
+        ],
+    }
+
+    with pytest.raises(ValueError, match="real-gold"):
+        select_manifest_role(manifest, role=CorpusRole.REAL_GOLD)
+
+
+def test_historical_route_a_ignores_score_supervised_hours() -> None:
+    decision = decide_training_route(
+        [
+            _inventory(
+                "idmt",
+                role="synthetic-supervised",
+                hours=41.487981,
+            ),
+            _inventory(
+                "maestro",
+                role="real-score-supervised",
+                hours=100.0,
+            ),
+        ]
+    )
+
+    assert decision.route == "A"
+    assert decision.usable_synthetic_seconds == pytest.approx(41.487981 * 3600)
+
+
 def test_route_rejects_implicit_or_unknown_corpus_role() -> None:
     with pytest.raises(ValueError, match="corpus_role"):
         decide_training_route(
