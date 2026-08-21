@@ -39,6 +39,7 @@ where = ["src"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 cache_dir = "../tmp/ml-pytest-cache"
+addopts = ["--import-mode=importlib"]
 
 [tool.ruff]
 line-length = 100

@@ -7,6 +7,7 @@ from museecho_ml.artifacts import canonical_sha256
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 PLAN_C_DOCS = REPOSITORY_ROOT / "docs" / "ml" / "plan-c"
+EXPERIMENTS = REPOSITORY_ROOT / "docs" / "ml" / "experiments"
 
 
 def _read(name: str) -> dict:
@@ -43,3 +44,50 @@ def test_public_g1_reports_g1a_and_g1b_independently() -> None:
 
     assert report["g1a"]["status"] == "passed"
     assert report["g1b"]["status"] == "not-met"
+
+
+def test_completed_plan_c_decisions_recompute_their_hashes() -> None:
+    for name, hash_field in (
+        ("selection-v1.json", "selection_sha256"),
+        ("test-receipt-v1.json", "receipt_sha256"),
+        ("promotion-v1.json", "promotion_sha256"),
+    ):
+        payload = _read(name)
+        body = dict(payload)
+        embedded_hash = body.pop(hash_field)
+        assert canonical_sha256(body) == embedded_hash
+
+    assert _read("test-receipt-v1.json")["status"] == "consumed"
+    promotion = _read("promotion-v1.json")
+    assert promotion["status"] == "rejected"
+    assert promotion["default_algorithm"] == "chroma-triad-viterbi-v1"
+
+
+def test_plan_c_run_evidence_covers_six_runs_and_c2_skip() -> None:
+    run_names = [
+        f"plan-c-{course}-seed-{seed}.json"
+        for course in ("C0", "C1")
+        for seed in (20260821, 20260822, 20260823)
+    ]
+    for name in run_names:
+        payload = json.loads((EXPERIMENTS / name).read_text(encoding="utf-8"))
+        body = dict(payload)
+        embedded_hash = body.pop("experiment_sha256")
+        assert payload["status"] == "completed"
+        assert canonical_sha256(body) == embedded_hash
+
+    c2 = json.loads(
+        (EXPERIMENTS / "plan-c-C2-seed-20260821.json").read_text(encoding="utf-8")
+    )
+    body = dict(c2)
+    embedded_hash = body.pop("experiment_sha256")
+    assert c2["status"] == "skipped"
+    assert c2["reason_code"] == "score-supervision-not-approved"
+    assert canonical_sha256(body) == embedded_hash
+
+    frozen_test = json.loads(
+        (EXPERIMENTS / "plan-c-frozen-test-v1.json").read_text(encoding="utf-8")
+    )
+    body = dict(frozen_test)
+    embedded_hash = body.pop("experiment_sha256")
+    assert canonical_sha256(body) == embedded_hash

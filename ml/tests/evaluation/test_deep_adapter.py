@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from museecho_ml.artifacts import canonical_sha256
 from museecho_ml.evaluation.deep_adapter import (
     RawTrackPrediction,
     collect_authorized_test_predictions,
@@ -17,7 +18,7 @@ from museecho_ml.evaluation.deep_adapter import (
     manifest_reference_intervals,
 )
 from museecho_ml.evaluation.metrics import ScoredChordInterval
-from museecho_ml.evaluation.promotion import FrozenTestSession
+from museecho_ml.evaluation.promotion import open_frozen_test_session
 from museecho_ml.labels import BASS_INTERVALS, PITCH_NAMES, CanonicalChord
 from museecho_ml.vocabulary import ChordVocabulary
 
@@ -89,14 +90,29 @@ def test_authorized_test_collection_rejects_reused_session_before_checkpoint(
         "schema_version": 1,
         "split": "test",
         "corpus_role": "real-gold",
+        "split_sha256": "c" * 64,
         "tracks": [{"track_id": "must-not-be-opened"}],
     }
-    session = FrozenTestSession(
-        receipt={
-            "checkpoint_sha256": "a" * 64,
-            "test_manifest_sha256": "b" * 64,
-        },
-        _manifest=manifest,
+    manifest_path = tmp_path / "test.manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    selection_body = {
+        "status": "frozen",
+        "protocol_sha256": "1" * 64,
+        "vocabulary_sha256": "2" * 64,
+        "calibration_sha256": "3" * 64,
+        "threshold_sha256": "4" * 64,
+        "checkpoint_sha256": "a" * 64,
+        "test_manifest_sha256": canonical_sha256(manifest),
+        "test_split_sha256": "c" * 64,
+    }
+    selection = {
+        **selection_body,
+        "selection_sha256": canonical_sha256(selection_body),
+    }
+    session = open_frozen_test_session(
+        selection=selection,
+        manifest_path=manifest_path,
+        access_marker_path=tmp_path / "test-access.marker",
     )
     session.evaluate_once(lambda _: None)
 

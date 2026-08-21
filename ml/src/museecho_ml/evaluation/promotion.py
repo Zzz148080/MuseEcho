@@ -5,8 +5,6 @@ import math
 import os
 import re
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
-from dataclasses import field as dataclass_field
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -25,11 +23,25 @@ _SELECTION_IDENTITIES = (
 _ResultT = TypeVar("_ResultT")
 
 
-@dataclass
 class FrozenTestSession:
+    __slots__ = ("receipt", "_manifest", "_accessed")
+
     receipt: dict[str, Any]
-    _manifest: dict[str, Any] = dataclass_field(repr=False)
-    _accessed: bool = dataclass_field(default=False, init=False, repr=False)
+    _manifest: dict[str, Any]
+    _accessed: bool
+
+    def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+        raise TypeError("use open_frozen_test_session to create a frozen test session")
+
+    @classmethod
+    def _create(
+        cls, *, receipt: dict[str, Any], manifest: dict[str, Any]
+    ) -> FrozenTestSession:
+        session = object.__new__(cls)
+        session.receipt = receipt
+        session._manifest = manifest
+        session._accessed = False
+        return session
 
     def evaluate_once(
         self, evaluator: Callable[[Mapping[str, Any]], _ResultT]
@@ -69,7 +81,7 @@ def open_frozen_test_session(
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise ValueError("frozen test manifest is unreadable") from error
     receipt = authorize_frozen_test(frozen, manifest, existing_receipt=None)
-    return FrozenTestSession(receipt=receipt, _manifest=manifest)
+    return FrozenTestSession._create(receipt=receipt, manifest=manifest)
 
 
 def authorize_frozen_test(

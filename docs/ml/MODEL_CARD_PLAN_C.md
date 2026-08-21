@@ -1,7 +1,7 @@
 # MuseEcho Plan C chord model card
 
-Status: research protocol frozen; C0/C1 experiments not yet completed; frozen test not consumed;
-promotion not evaluated. The product default remains `chroma-triad-viterbi-v1`.
+Status: research comparison completed; frozen test consumed exactly once; promotion rejected.
+The product default remains `chroma-triad-viterbi-v1`.
 
 ## Intended use
 
@@ -39,24 +39,57 @@ three-seed medians and deterministic lexicographic ranking. Uncertainty uses 10,
 group bootstrap resamples with PCG64 seed `20260821`; dataset macro gives GuitarSet, RWC-P, and
 Winterreise equal weight.
 
-The test may be authorized and consumed once only after protocol, vocabulary, calibration,
-threshold, course, seed, and checkpoint identities are frozen. No test metric is present in this
-card because that access has not occurred.
+The test was authorized only after protocol, vocabulary, calibration, threshold, course, seed,
+and checkpoint identities were frozen. C1 won the validation-only course comparison and seed
+`20260821` was the closest-to-median selected run. Selection SHA-256 is
+`5bb7ad3bc46e251756ac7f9e8c1de1a2280976912a3cc9a1fd17dc664f2bf262`.
+
+## Measured results
+
+The six formal runs all completed. C0's median validation exact-vocabulary WCSR was 0.116977;
+C1's was 0.136838. The selected C1 seed had validation exact WCSR 0.136838, public-quality
+Macro-F1 0.042597, known precision 0.029095, and coverage 0.293014. Its grouped-bootstrap exact
+WCSR 95% interval was [0.072317, 0.210590]. Quality support remained incomplete in individual
+dataset strata, so the strict dataset macro was unavailable.
+
+The one-use frozen-test comparison produced:
+
+| Metric | Plan C candidate | Frozen legacy |
+| --- | ---: | ---: |
+| Exact-vocabulary WCSR | 0.171727 | 0.211910 |
+| Maj/min WCSR | 0.002261 | 0.006626 |
+| Published-known precision | 0.005218 | 0.799263 |
+| Coverage | 0.246738 | 0.006209 |
+| ECE | 0.072034 | 0.207795 |
+| Seventh-quality Macro-F1 | 0.003324 | 0.000000 |
+
+The candidate exact-WCSR grouped-bootstrap 95% interval was [0.074549, 0.273325]. Test
+exact-vocabulary WCSR by dataset was 0.463712 on GuitarSet, 0.053552 on RWC-P, and 0.113449 on
+Winterreise; GuitarSet's large `X` share makes its exact score non-representative of known-chord
+quality. The candidate did not exceed the unchanged legacy recognizer on exact or maj/min WCSR.
 
 ## Promotion and fallback
 
-Plan C experiment completion does not imply product promotion. Promotion additionally requires
-all frozen accuracy, calibration, determinism, ONNX parity, CPU/RSS, and per-training-dataset
-weight-distribution checks to pass. An exact-vocabulary WCSR improvement of at least 0.08 is
-recorded as a strong-result target but is not a completion gate. Any failed or unavailable check
-keeps `chroma-triad-viterbi-v1` as the default.
+Plan C experiment completion does not imply product promotion. The candidate passed ECE,
+deterministic-event, five-minute chord wall-time (2.959743 seconds), and measured process peak
+working-set (862,597,120 bytes) checks. It failed the exact/maj-min comparison, seventh-quality,
+known-precision, and coverage gates. ONNX parity and full-analysis resource evidence were not run
+and were recorded as conservative failures. RWC-P and Winterreise weight-distribution permission
+also remains unresolved. The strong-result target was not met; promotion status is `rejected`.
 
 ## Frozen evidence
 
 - `docs/ml/plan-c/g1-status-v1.json`
 - `docs/ml/plan-c/vocabulary-v1.json`
 - `docs/ml/plan-c/protocol-v1.json`
+- `docs/ml/plan-c/selection-v1.json`
+- `docs/ml/plan-c/test-receipt-v1.json`
+- `docs/ml/plan-c/promotion-v1.json`
+- `docs/ml/experiments/plan-c-C0-seed-*.json`
+- `docs/ml/experiments/plan-c-C1-seed-*.json`
+- `docs/ml/experiments/plan-c-frozen-test-v1.json`
 - `docs/ml/split-audit-v1.json`
 
-Selection, one-use test receipt, promotion decision, confidence intervals, and measured
-dataset-stratum results will be added only after the corresponding protocol steps actually run.
+The consumed receipt binds the selected checkpoint, calibration, threshold, vocabulary, test
+manifest, and both candidate/legacy report hashes. A second authorization or evaluation attempt
+is rejected by both the persisted access marker and the consumed public receipt.

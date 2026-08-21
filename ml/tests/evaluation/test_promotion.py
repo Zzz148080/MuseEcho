@@ -14,6 +14,7 @@ from museecho_ml.data.registry import (
     LicenseStatus,
 )
 from museecho_ml.evaluation.promotion import (
+    FrozenTestSession,
     authorize_frozen_test,
     consume_frozen_test,
     decide_model_promotion,
@@ -176,6 +177,11 @@ def test_failed_test_open_burns_marker_before_manifest_parse(tmp_path: Path) -> 
             manifest_path=manifest_path,
             access_marker_path=marker_path,
         )
+
+
+def test_frozen_test_session_cannot_be_constructed_without_access_marker() -> None:
+    with pytest.raises(TypeError, match="open_frozen_test_session"):
+        FrozenTestSession(receipt={}, _manifest={})
 
 
 def test_existing_receipt_forbids_second_test_access_and_consumes_once() -> None:
