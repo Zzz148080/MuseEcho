@@ -10,6 +10,7 @@ from museecho_ml.evaluation.deep_adapter import (
     RawTrackPrediction,
     collect_authorized_test_predictions,
     collect_checkpoint_predictions,
+    evaluate_authorized_test_predictions,
     evaluate_deep_predictions,
     fit_deep_calibration,
     load_deep_evaluation_manifest,
@@ -223,3 +224,34 @@ def test_calibration_and_validation_reports_are_derived_from_raw_predictions() -
     assert report["selection_metrics"]["exact_vocabulary_wcsr"] == 1.0
     assert report["selection_metrics"]["published_known_precision"] == 1.0
     assert report["selection_metrics"]["coverage"] == 1.0
+
+
+def test_authorized_test_predictions_use_test_only_evaluation_path() -> None:
+    test_tracks = (
+        _raw_prediction("test-a", "guitarset", "test-group-a", split="test"),
+        _raw_prediction(
+            "test-b", "rwc-popular", "test-group-b", split="test"
+        ),
+    )
+    calibration_tracks = (
+        _raw_prediction("cal-a", "guitarset", "cal-group-a", split="calibration"),
+        _raw_prediction(
+            "cal-b", "rwc-popular", "cal-group-b", split="calibration"
+        ),
+    )
+    calibration = fit_deep_calibration(calibration_tracks, VOCABULARY)
+
+    with pytest.raises(ValueError, match="validation"):
+        evaluate_deep_predictions(
+            test_tracks,
+            VOCABULARY,
+            calibration.parameters,
+        )
+
+    report = evaluate_authorized_test_predictions(
+        test_tracks,
+        VOCABULARY,
+        calibration.parameters,
+    )
+
+    assert report["selection_metrics"]["exact_vocabulary_wcsr"] == 1.0

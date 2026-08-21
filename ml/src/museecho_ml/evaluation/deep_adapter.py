@@ -457,7 +457,35 @@ def evaluate_deep_predictions(
     vocabulary: ChordVocabulary,
     calibration: CalibrationParameters,
 ) -> dict[str, Any]:
-    raw = _validated_raw_predictions(predictions, expected_split="validation")
+    return _evaluate_predictions(
+        predictions,
+        vocabulary,
+        calibration,
+        expected_split="validation",
+    )
+
+
+def evaluate_authorized_test_predictions(
+    predictions: Sequence[RawTrackPrediction],
+    vocabulary: ChordVocabulary,
+    calibration: CalibrationParameters,
+) -> dict[str, Any]:
+    return _evaluate_predictions(
+        predictions,
+        vocabulary,
+        calibration,
+        expected_split="test",
+    )
+
+
+def _evaluate_predictions(
+    predictions: Sequence[RawTrackPrediction],
+    vocabulary: ChordVocabulary,
+    calibration: CalibrationParameters,
+    *,
+    expected_split: str,
+) -> dict[str, Any]:
+    raw = _validated_raw_predictions(predictions, expected_split=expected_split)
     tracks: dict[
         str,
         tuple[tuple[ScoredChordInterval, ...], tuple[ScoredChordInterval, ...]],
