@@ -105,6 +105,19 @@ def test_publication_threshold_meets_precision_and_coverage_from_durations() -> 
     assert threshold == 0.9
 
 
+def test_publication_threshold_excludes_special_predictions_from_known_coverage() -> None:
+    threshold = select_publication_threshold(
+        confidences=np.asarray([0.99, 0.9, 0.7, 0.4]),
+        correct=np.asarray([False, True, False, False]),
+        durations=np.asarray([1.0, 1.0, 1.0, 1.0]),
+        eligible=np.asarray([False, True, True, True]),
+        minimum_precision=1.0,
+        minimum_coverage=0.25,
+    )
+
+    assert threshold == 0.9
+
+
 def test_conflicting_special_and_acoustic_heads_map_to_x() -> None:
     events = _decode(["C"], ["N"])
 

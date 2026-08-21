@@ -130,18 +130,27 @@ def select_publication_threshold(
     confidences: NDArray[np.floating],
     correct: NDArray[np.bool_],
     durations: NDArray[np.floating],
+    eligible: NDArray[np.bool_] | None = None,
     minimum_precision: float,
     minimum_coverage: float,
 ) -> float:
     confidence = np.asarray(confidences, dtype=np.float64)
     correctness = np.asarray(correct)
     weights = np.asarray(durations, dtype=np.float64)
+    eligibility = (
+        np.ones(confidence.shape, dtype=np.bool_)
+        if eligible is None
+        else np.asarray(eligible)
+    )
     if (
         confidence.ndim != 1
         or correctness.dtype != np.bool_
         or correctness.shape != confidence.shape
         or weights.shape != confidence.shape
+        or eligibility.dtype != np.bool_
+        or eligibility.shape != confidence.shape
         or not len(confidence)
+        or not eligibility.any()
         or not np.isfinite(confidence).all()
         or not np.isfinite(weights).all()
         or np.any((confidence < 0) | (confidence > 1))
@@ -160,9 +169,11 @@ def select_publication_threshold(
         ):
             raise ValueError(f"minimum {name} must be within [0, 1]")
     total_duration = float(weights.sum())
-    candidates = sorted((float(value) for value in np.unique(confidence)), reverse=True)
+    candidates = sorted(
+        (float(value) for value in np.unique(confidence[eligibility])), reverse=True
+    )
     for threshold in candidates:
-        selected = confidence >= threshold
+        selected = eligibility & (confidence >= threshold)
         selected_duration = float(weights[selected].sum())
         coverage = selected_duration / total_duration
         precision = (
