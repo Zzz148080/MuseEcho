@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
 
+from museecho_ml.artifacts import canonical_sha256
 from museecho_ml.labels import BASS_INTERVALS, PITCH_NAMES, SUPPORTED_QUALITIES, CanonicalChord
 
 ROOT_LABELS = (*PITCH_NAMES, "N", "X")
@@ -22,9 +25,39 @@ class ChordVocabulary:
     quality_labels: tuple[str, ...]
     bass_labels: tuple[str, ...]
 
+    def __post_init__(self) -> None:
+        _validate_labels(self.root_labels, ROOT_LABELS, "root")
+        _validate_labels(self.quality_labels, QUALITY_LABELS, "quality")
+        _validate_labels(self.bass_labels, BASS_LABELS, "bass")
+
     @classmethod
     def default(cls) -> ChordVocabulary:
         return cls(ROOT_LABELS, QUALITY_LABELS, BASS_LABELS)
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> ChordVocabulary:
+        if not isinstance(value, Mapping):
+            raise ValueError("vocabulary must be an object")
+        embedded_hash = value.get("vocabulary_sha256")
+        if embedded_hash is not None:
+            body = dict(value)
+            del body["vocabulary_sha256"]
+            if (
+                not isinstance(embedded_hash, str)
+                or canonical_sha256(body) != embedded_hash
+            ):
+                raise ValueError("vocabulary SHA-256 does not match")
+        labels: dict[str, tuple[str, ...]] = {}
+        for head in ("root", "quality", "bass"):
+            raw = value.get(f"{head}_labels")
+            if not isinstance(raw, list):
+                raise ValueError(f"vocabulary {head}_labels must be a list")
+            labels[head] = tuple(raw)
+        return cls(
+            root_labels=labels["root"],
+            quality_labels=labels["quality"],
+            bass_labels=labels["bass"],
+        )
 
     def encode(self, chord: CanonicalChord) -> EncodedChord:
         _validate_state(chord)
@@ -63,3 +96,18 @@ def _validate_state(chord: CanonicalChord) -> None:
         or chord.bass not in BASS_INTERVALS
     ):
         raise ValueError("chord state is outside the supported labels")
+
+
+def _validate_labels(
+    labels: tuple[str, ...], allowed: tuple[str, ...], head: str
+) -> None:
+    if not isinstance(labels, tuple) or any(
+        not isinstance(label, str) or not label for label in labels
+    ):
+        raise ValueError(f"vocabulary {head} labels must be non-empty strings")
+    if len(set(labels)) != len(labels):
+        raise ValueError(f"vocabulary {head} labels contain a duplicate")
+    if len(labels) < 2 or labels[-2:] != ("N", "X"):
+        raise ValueError(f"vocabulary {head} labels must end with N and X")
+    if any(label not in allowed for label in labels):
+        raise ValueError(f"vocabulary {head} labels contain an unsupported label")

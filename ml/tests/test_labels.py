@@ -149,3 +149,20 @@ def test_versioned_vocabulary_config_matches_code() -> None:
         "quality_labels": list(QUALITY_LABELS),
         "bass_labels": list(BASS_LABELS),
     }
+    assert ChordVocabulary.from_dict(payload) == ChordVocabulary.default()
+
+
+def test_vocabulary_loader_rejects_duplicate_labels() -> None:
+    payload = json.loads((ML_ROOT / "configs" / "vocabulary-v2.json").read_text(encoding="utf-8"))
+    payload["quality_labels"] = ["maj", "maj", "N", "X"]
+
+    with pytest.raises(ValueError, match="duplicate"):
+        ChordVocabulary.from_dict(payload)
+
+
+def test_vocabulary_loader_rejects_embedded_hash_drift() -> None:
+    payload = json.loads((ML_ROOT / "configs" / "vocabulary-v2.json").read_text(encoding="utf-8"))
+    payload["vocabulary_sha256"] = "f" * 64
+
+    with pytest.raises(ValueError, match="SHA-256"):
+        ChordVocabulary.from_dict(payload)
