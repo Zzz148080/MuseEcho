@@ -18,7 +18,14 @@ training-chain gates are never presented as model or competition scores.
 | `plan-c-validation-selection` | selection | frozen | `25b9d48` | validation only | [selection](../plan-c/selection-v1.json) | C1 seed 20260821 selected by the frozen median/ranking rule; selection SHA `5bb7ad3b…`. |
 | `plan-c-frozen-test` | test | consumed | `25b9d48` | yes | [comparison](plan-c-frozen-test-v1.json), [receipt](../plan-c/test-receipt-v1.json) | Candidate exact WCSR 0.171727 versus legacy 0.211910; candidate did not exceed legacy. |
 | `plan-c-promotion` | promotion | rejected | `25b9d48` | decision | [promotion](../plan-c/promotion-v1.json) | Accuracy, seventh, precision, coverage, ONNX/full-analysis, and RWC-P/Winterreise distribution gates failed or were unavailable; legacy remains default. |
+| `plan-d-stage-0-audit` | D0 audit | completed | `db4b1cb` | no | [public audit](plan-d-stage-0-audit.json), [full audit](../plan-d/audit-v1.json) | All identity and alignment checks passed; maximum frame alignment error was 0.011608 seconds. No label, alignment, or metric defect explained the low score. |
+| `plan-d-d1-replay` | D1 replay | completed | `e67f438` | validation only | [seed 20260821](plan-d-D1-seed-20260821.json), [20260822](plan-d-D1-seed-20260822.json), [20260823](plan-d-D1-seed-20260823.json) | Hybrid exact WCSR was 0.166596 for all seeds, identical to legacy. Minimum known precision was 0.623288, but coverage was 0.001708 and event ratio was 0.027214. |
+| `plan-d-d2` | D2 retraining | skipped | `34b0139` | no | [replay decision](../plan-d/replay-decision-v1.json) | Structured skip: D1 returned `data-first-required`, so Tasks 8–10 and all retraining work were not authorized. |
+| `plan-d-final-decision` | development decision | `data-first-required` | `34b0139` | decision | [replay decision](../plan-d/replay-decision-v1.json), [Chinese model card](../MODEL_CARD_PLAN_D.md) | No hybrid gain, extremely low coverage, and unstable deep-only seeds require legally expanded real-gold data and a new frozen test v2; legacy remains default. |
 
 Plan C completed as an honest bounded research comparison, not a successful replacement model.
 The single frozen-test receipt is consumed, the strong-result target is not met, and the product
 default remains `chroma-triad-viterbi-v1`.
+
+Plan D ended at `data-first-required`. It did not reopen the consumed Plan C test, did not run D2,
+and did not change the product default.

@@ -14,7 +14,32 @@ from museecho_ml.data.plan_d import (
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 PLAN_D_DOCS = REPOSITORY_ROOT / "docs" / "ml" / "plan-d"
+PLAN_D_EXPERIMENTS = REPOSITORY_ROOT / "docs" / "ml" / "experiments"
 PLAN_D_CONFIG = REPOSITORY_ROOT / "ml" / "configs" / "plan-d-v1.json"
+PLAN_D_MODEL_CARD = REPOSITORY_ROOT / "docs" / "ml" / "MODEL_CARD_PLAN_D.md"
+
+PLAN_D_PUBLIC_ARTIFACTS = (
+    (PLAN_D_DOCS / "protocol-v1.json", "protocol_sha256", None),
+    (PLAN_D_DOCS / "audit-v1.json", "audit_sha256", "completed"),
+    (
+        PLAN_D_DOCS / "replay-decision-v1.json",
+        "decision_sha256",
+        "data-first-required",
+    ),
+    (
+        PLAN_D_EXPERIMENTS / "plan-d-stage-0-audit.json",
+        "experiment_sha256",
+        "completed",
+    ),
+    *(
+        (
+            PLAN_D_EXPERIMENTS / f"plan-d-D1-seed-{seed}.json",
+            "experiment_sha256",
+            "completed",
+        )
+        for seed in (20260821, 20260822, 20260823)
+    ),
+)
 
 
 def _protocol_fixture() -> dict:
@@ -146,3 +171,40 @@ def test_plan_d_config_freezes_replay_and_development_gates() -> None:
         "minimum_exact_gain_over_legacy": 0.03,
         "minimum_known_precision": 0.6,
     }
+
+
+def test_plan_d_public_evidence_is_hashed_and_has_final_statuses() -> None:
+    for path, hash_field, expected_status in PLAN_D_PUBLIC_ARTIFACTS:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        body = dict(payload)
+        embedded_hash = body.pop(hash_field)
+
+        assert canonical_sha256(body) == embedded_hash
+        if expected_status is not None:
+            assert payload["status"] == expected_status
+
+
+def test_plan_d_model_card_and_index_preserve_the_honest_boundary() -> None:
+    model_card = PLAN_D_MODEL_CARD.read_text(encoding="utf-8")
+    experiment_index = (
+        PLAN_D_EXPERIMENTS / "EXPERIMENT_INDEX.md"
+    ).read_text(encoding="utf-8")
+
+    for required_statement in (
+        "chroma-triad-viterbi-v1",
+        "不重新使用 Plan C test",
+        "data-first-required",
+        "30–50 小时/300 首",
+        "80 小时/500 首",
+        "新的冻结 test v2",
+    ):
+        assert required_statement in model_card
+    assert "接近生产可用" not in model_card
+
+    for required_entry in (
+        "plan-d-stage-0-audit",
+        "plan-d-d1-replay",
+        "plan-d-d2",
+        "data-first-required",
+    ):
+        assert required_entry in experiment_index
