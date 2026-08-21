@@ -9,7 +9,11 @@ from museecho_ml.postprocess.calibration import (
     multiclass_nll,
     select_publication_threshold,
 )
-from museecho_ml.postprocess.decode import decode_logits, serialize_events
+from museecho_ml.postprocess.decode import (
+    _suppress_short_runs,
+    decode_logits,
+    serialize_events,
+)
 from museecho_ml.vocabulary import BASS_LABELS, ROOT_LABELS, ChordVocabulary
 
 QUALITY_LABELS = (
@@ -186,3 +190,32 @@ def test_serialized_events_are_byte_deterministic() -> None:
     second = serialize_events(events)
 
     assert canonical_json_bytes(first) == canonical_json_bytes(second)
+
+
+class _CountingState:
+    comparisons = 0
+
+    def __init__(self, label: int) -> None:
+        self.label = label
+
+    def __eq__(self, other: object) -> bool:
+        type(self).comparisons += 1
+        return isinstance(other, _CountingState) and self.label == other.label
+
+
+def test_short_run_suppression_does_not_rescan_every_frame_per_merge() -> None:
+    count = 500
+    states = [_CountingState(index % 2) for index in range(count)]
+    times = np.arange(count, dtype=np.float64) * 0.05
+    _CountingState.comparisons = 0
+
+    result = _suppress_short_runs(
+        states,
+        np.linspace(0.1, 0.9, count),
+        times,
+        duration_seconds=count * 0.05,
+        minimum_event_seconds=0.1,
+    )
+
+    assert len(result) == count
+    assert _CountingState.comparisons < count * 20

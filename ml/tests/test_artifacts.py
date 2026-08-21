@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+import museecho_ml.artifacts as artifacts_module
 from museecho_ml.artifacts import (
     canonical_json_bytes,
     canonical_sha256,
@@ -44,3 +45,20 @@ def test_immutable_json_accepts_identical_content_and_rejects_drift(
     with pytest.raises(FileExistsError, match="different content"):
         write_immutable_json(artifact, {"a": 2, "b": 2})
     assert not tuple(tmp_path.glob("*.tmp"))
+
+
+def test_immutable_json_temporary_name_does_not_embed_destination_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real_mkstemp = artifacts_module.tempfile.mkstemp
+    prefixes: list[str] = []
+
+    def recording_mkstemp(*args, **kwargs):
+        prefixes.append(kwargs["prefix"])
+        return real_mkstemp(*args, **kwargs)
+
+    monkeypatch.setattr(artifacts_module.tempfile, "mkstemp", recording_mkstemp)
+
+    write_immutable_json(tmp_path / "audit-v1.json", {"status": "completed"})
+
+    assert prefixes == [".immutable-json."]

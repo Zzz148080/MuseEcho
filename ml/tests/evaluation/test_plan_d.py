@@ -1,19 +1,31 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from dataclasses import replace
+from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 from museecho_ml.artifacts import canonical_json_bytes, canonical_sha256
+from museecho_ml.evaluation.deep_adapter import RawTrackPrediction
+from museecho_ml.evaluation.metrics import ScoredChordInterval
 from museecho_ml.evaluation.plan_d import (
     PlanDDevelopmentGates,
+    collect_plan_d_deep_predictions,
+    collect_plan_d_legacy_predictions,
     decide_plan_d_development,
     evaluate_plan_d_replay,
+    load_plan_d_raw_predictions,
+    write_plan_d_raw_predictions,
 )
+from museecho_ml.labels import parse_annotation
 
 GATES = PlanDDevelopmentGates()
 DATASETS = ("guitarset", "rwc-popular", "schubert-winterreise")
+ML_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _report(
@@ -152,3 +164,96 @@ def test_plan_d_replay_rejects_test_track_before_other_inputs() -> None:
             calibration=None,
             config=None,
         )
+
+
+def test_plan_d_collection_rejects_test_before_reading_inputs(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="forbids test split"):
+        collect_plan_d_deep_predictions(
+            protocol_path=tmp_path / "missing-protocol.json",
+            split="test",
+            manifest_path=tmp_path / "missing-manifest.json",
+            checkpoint_path=tmp_path / "missing-checkpoint.pt",
+            seed=20260821,
+            output_path=tmp_path / "raw.npz",
+        )
+    with pytest.raises(ValueError, match="forbids test split"):
+        collect_plan_d_legacy_predictions(
+            protocol_path=tmp_path / "missing-protocol.json",
+            split="test",
+            manifest_path=tmp_path / "missing-manifest.json",
+            output_path=tmp_path / "legacy.json",
+        )
+
+
+def test_plan_d_raw_prediction_npz_round_trip_is_pickle_free(tmp_path: Path) -> None:
+    prediction = RawTrackPrediction(
+        track_id="fixture",
+        dataset_id="guitarset",
+        cover_group_id="group-a",
+        split="validation",
+        duration_seconds=1.0,
+        frame_times=np.array([0.0, 0.5], dtype=np.float64),
+        valid_mask=np.array([True, True]),
+        root_logits=np.zeros((2, 14), dtype=np.float64),
+        quality_logits=np.zeros((2, 10), dtype=np.float64),
+        bass_logits=np.zeros((2, 14), dtype=np.float64),
+        boundary_logits=np.zeros(2, dtype=np.float64),
+        reference=(
+            ScoredChordInterval(0.0, 1.0, parse_annotation("C:maj")),
+        ),
+        inference_wall_seconds=0.25,
+    )
+    output = tmp_path / "raw.npz"
+
+    write_plan_d_raw_predictions(
+        output,
+        (prediction,),
+        seed=20260821,
+        manifest_sha256="a" * 64,
+        checkpoint_sha256="b" * 64,
+        vocabulary_sha256="c" * 64,
+    )
+    loaded, identity = load_plan_d_raw_predictions(output)
+
+    assert identity == {
+        "checkpoint_sha256": "b" * 64,
+        "manifest_sha256": "a" * 64,
+        "seed": 20260821,
+        "split": "validation",
+        "vocabulary_sha256": "c" * 64,
+    }
+    assert loaded[0].track_id == prediction.track_id
+    assert loaded[0].reference == prediction.reference
+    np.testing.assert_array_equal(loaded[0].root_logits, prediction.root_logits)
+
+
+def test_plan_d_collect_deep_cli_rejects_test_before_missing_files(
+    tmp_path: Path,
+) -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "museecho_ml.evaluation.plan_d",
+            "collect-deep",
+            "--protocol",
+            str(tmp_path / "missing-protocol.json"),
+            "--split",
+            "test",
+            "--manifest",
+            str(tmp_path / "missing-manifest.json"),
+            "--checkpoint",
+            str(tmp_path / "missing-checkpoint.pt"),
+            "--seed",
+            "20260821",
+            "--output",
+            str(tmp_path / "raw.npz"),
+        ],
+        cwd=ML_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode != 0
+    assert "forbids test split" in completed.stderr

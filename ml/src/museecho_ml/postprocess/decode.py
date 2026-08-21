@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import heapq
 import math
 from collections.abc import Sequence
 
@@ -192,39 +193,98 @@ def _suppress_short_runs(
 ) -> list[CanonicalChord]:
     if minimum_event_seconds <= 0 or len(states) == 1:
         return states
-    result = list(states)
-    for _ in range(len(result)):
-        runs = _label_runs(result)
-        changed = False
-        for run_index, (start, end) in enumerate(runs):
-            start_seconds = 0.0 if start == 0 else float(times[start])
-            end_seconds = duration_seconds if end == len(result) else float(times[end])
-            if end_seconds - start_seconds >= minimum_event_seconds or len(runs) == 1:
-                continue
-            if run_index == 0:
-                replacement = result[runs[1][0]]
-            elif run_index == len(runs) - 1:
-                replacement = result[runs[-2][0]]
-            else:
-                previous = runs[run_index - 1]
-                following = runs[run_index + 1]
-                previous_state = result[previous[0]]
-                following_state = result[following[0]]
-                if previous_state == following_state:
-                    replacement = previous_state
-                else:
-                    previous_confidence = float(np.mean(confidences[previous[0] : previous[1]]))
-                    following_confidence = float(np.mean(confidences[following[0] : following[1]]))
-                    replacement = (
-                        previous_state
-                        if previous_confidence >= following_confidence
-                        else following_state
-                    )
-            result[start:end] = [replacement] * (end - start)
-            changed = True
+    runs = _label_runs(states)
+    if len(runs) == 1:
+        return list(states)
+    starts = [start for start, _ in runs]
+    ends = [end for _, end in runs]
+    labels = [states[start] for start, _ in runs]
+    previous = [index - 1 for index in range(len(runs))]
+    following = [index + 1 for index in range(len(runs))]
+    following[-1] = -1
+    active = [True] * len(runs)
+    versions = [0] * len(runs)
+
+    def is_short(index: int) -> bool:
+        start_seconds = 0.0 if starts[index] == 0 else float(times[starts[index]])
+        end_seconds = (
+            duration_seconds
+            if ends[index] == len(states)
+            else float(times[ends[index]])
+        )
+        return end_seconds - start_seconds < minimum_event_seconds
+
+    pending: list[tuple[int, int, int]] = []
+
+    def enqueue(index: int) -> None:
+        if active[index] and is_short(index):
+            heapq.heappush(pending, (starts[index], index, versions[index]))
+
+    for index in range(len(runs)):
+        enqueue(index)
+
+    while pending:
+        _, index, version = heapq.heappop(pending)
+        if (
+            not active[index]
+            or versions[index] != version
+            or not is_short(index)
+        ):
+            continue
+        previous_index = previous[index]
+        following_index = following[index]
+        if previous_index == -1 and following_index == -1:
             break
-        if not changed:
-            return result
+        if previous_index == -1:
+            replacement = labels[following_index]
+        elif following_index == -1:
+            replacement = labels[previous_index]
+        elif labels[previous_index] == labels[following_index]:
+            replacement = labels[previous_index]
+        else:
+            previous_confidence = float(
+                np.mean(confidences[starts[previous_index] : ends[previous_index]])
+            )
+            following_confidence = float(
+                np.mean(confidences[starts[following_index] : ends[following_index]])
+            )
+            replacement = (
+                labels[previous_index]
+                if previous_confidence >= following_confidence
+                else labels[following_index]
+            )
+        labels[index] = replacement
+        versions[index] += 1
+
+        if previous_index != -1 and labels[previous_index] == labels[index]:
+            starts[index] = starts[previous_index]
+            previous[index] = previous[previous_index]
+            if previous[index] != -1:
+                following[previous[index]] = index
+            active[previous_index] = False
+            versions[previous_index] += 1
+        following_index = following[index]
+        if following_index != -1 and labels[following_index] == labels[index]:
+            ends[index] = ends[following_index]
+            following[index] = following[following_index]
+            if following[index] != -1:
+                previous[following[index]] = index
+            active[following_index] = False
+            versions[following_index] += 1
+        versions[index] += 1
+        enqueue(index)
+
+    result = list(states)
+    index = next(
+        run_index
+        for run_index in range(len(runs))
+        if active[run_index] and previous[run_index] == -1
+    )
+    while index != -1:
+        result[starts[index] : ends[index]] = [labels[index]] * (
+            ends[index] - starts[index]
+        )
+        index = following[index]
     return result
 
 

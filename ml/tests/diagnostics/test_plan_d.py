@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -10,9 +13,16 @@ from museecho_ml.diagnostics.plan_d import (
     PlanDAuditTrack,
     audit_frame_alignment,
     build_plan_d_failure_audit,
+    build_plan_d_stage_0_audit,
+    run_plan_d_audit,
 )
+from museecho_ml.evaluation.deep_adapter import RawTrackPrediction
 from museecho_ml.evaluation.metrics import ScoredChordInterval
 from museecho_ml.labels import CanonicalChord, parse_annotation
+from museecho_ml.postprocess.calibration import CalibrationParameters
+from museecho_ml.vocabulary import ChordVocabulary
+
+ML_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _interval(start: float, end: float, symbol: str, confidence: float = 1.0):
@@ -136,3 +146,148 @@ def test_audit_rejects_test_overlap_missing_group_and_illegal_chord_state() -> N
         build_plan_d_failure_audit(
             (replace(base, prediction=(illegal,)),), supported_qualities=("maj", "min")
         )
+
+
+def test_audit_cli_writes_path_free_immutable_report(tmp_path: Path) -> None:
+    output = tmp_path / "audit.json"
+
+    result = run_plan_d_audit(
+        (_audit_track(),),
+        supported_qualities=("maj", "min"),
+        output_path=output,
+    )
+
+    assert result["status"] == "completed"
+    assert "audio_path" not in output.read_text(encoding="utf-8")
+    assert output.exists()
+    body = dict(result)
+    embedded = body.pop("audit_sha256")
+    assert canonical_sha256(body) == embedded
+    assert run_plan_d_audit(
+        (_audit_track(),),
+        supported_qualities=("maj", "min"),
+        output_path=output,
+    ) == result
+
+
+def _raw_prediction(seed: int) -> RawTrackPrediction:
+    vocabulary = ChordVocabulary.default()
+    root = np.full((2, len(vocabulary.root_labels)), -10.0, dtype=np.float64)
+    quality = np.full(
+        (2, len(vocabulary.quality_labels)), -10.0, dtype=np.float64
+    )
+    bass = np.full((2, len(vocabulary.bass_labels)), -10.0, dtype=np.float64)
+    root[:, vocabulary.root_labels.index("C")] = 10.0
+    quality[:, vocabulary.quality_labels.index("maj")] = 10.0
+    bass[:, vocabulary.bass_labels.index("1")] = 10.0
+    return RawTrackPrediction(
+        track_id="fixture",
+        dataset_id="dataset-a",
+        cover_group_id="g1",
+        split="validation",
+        duration_seconds=1.0,
+        frame_times=np.array([0.0, 0.5], dtype=np.float64),
+        valid_mask=np.array([True, True]),
+        root_logits=root,
+        quality_logits=quality,
+        bass_logits=bass,
+        boundary_logits=np.full(2, -10.0, dtype=np.float64),
+        reference=(_interval(0.0, 1.0, "C:maj"),),
+        inference_wall_seconds=float(seed - 20260820) / 10.0,
+    )
+
+
+def test_stage_0_audit_combines_legacy_and_three_deep_seeds_without_paths() -> None:
+    seeds = (20260821, 20260822, 20260823)
+    manifest_sha256 = "a" * 64
+    vocabulary_sha256 = "b" * 64
+    protocol = {
+        "seeds": list(seeds),
+        "development_splits": {
+            "validation": {"manifest_sha256": manifest_sha256}
+        },
+        "plan_c": {"vocabulary_sha256": vocabulary_sha256},
+        "legacy_algorithm": {"version": "chroma-triad-viterbi-v1"},
+    }
+    raw_by_seed = {seed: (_raw_prediction(seed),) for seed in seeds}
+    identities = {
+        seed: {
+            "checkpoint_sha256": str(index) * 64,
+            "manifest_sha256": manifest_sha256,
+            "seed": seed,
+            "split": "validation",
+            "vocabulary_sha256": vocabulary_sha256,
+        }
+        for index, seed in enumerate(seeds, start=1)
+    }
+    calibration = CalibrationParameters(
+        root_temperature=1.0,
+        quality_temperature=1.0,
+        bass_temperature=1.0,
+        publication_threshold=0.5,
+        boundary_threshold=0.5,
+        minimum_event_seconds=0.0,
+    )
+
+    report = build_plan_d_stage_0_audit(
+        protocol=protocol,
+        vocabulary=ChordVocabulary.default(),
+        split="validation",
+        legacy_by_track={"fixture": (_interval(0.0, 1.0, "C:maj"),)},
+        legacy_identity={
+            "algorithm_version": "chroma-triad-viterbi-v1",
+            "manifest_sha256": manifest_sha256,
+            "split": "validation",
+        },
+        raw_by_seed=raw_by_seed,
+        deep_identities=identities,
+        calibration_by_seed={seed: calibration for seed in seeds},
+    )
+
+    assert report["status"] == "completed"
+    assert all(report["checks"].values())
+    assert set(report["variants"]) == {"deep-only", "legacy"}
+    assert set(report["variants"]["deep-only"]["seeds"]) == {
+        "20260821",
+        "20260822",
+        "20260823",
+    }
+    assert "path" not in str(report).lower()
+    body = dict(report)
+    embedded = body.pop("audit_sha256")
+    assert canonical_sha256(body) == embedded
+
+
+def test_stage_0_cli_rejects_test_before_opening_prediction_files(
+    tmp_path: Path,
+) -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "museecho_ml.diagnostics.plan_d",
+            "--protocol",
+            str(tmp_path / "missing-protocol.json"),
+            "--vocabulary",
+            str(tmp_path / "missing-vocabulary.json"),
+            "--legacy-predictions",
+            str(tmp_path / "missing-legacy.json"),
+            "--deep-predictions",
+            f"20260821={tmp_path / 'missing-1.npz'}",
+            "--deep-predictions",
+            f"20260822={tmp_path / 'missing-2.npz'}",
+            "--deep-predictions",
+            f"20260823={tmp_path / 'missing-3.npz'}",
+            "--split",
+            "test",
+            "--output",
+            str(tmp_path / "audit.json"),
+        ],
+        cwd=ML_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode != 0
+    assert "forbids test split" in completed.stderr
