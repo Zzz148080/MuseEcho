@@ -102,6 +102,7 @@ def select_plan_c_candidate(
     validation_sha256 = frozen_protocol["real_splits"]["validation"][
         "manifest_sha256"
     ]
+    test_binding = frozen_protocol["real_splits"]["test"]
     summaries: dict[str, dict[str, Any]] = {}
     for course_id in ready_courses:
         reports = reports_by_course[course_id]
@@ -146,6 +147,8 @@ def select_plan_c_candidate(
         "protocol_sha256": frozen_protocol["protocol_sha256"],
         "vocabulary_sha256": frozen_protocol["vocabulary_sha256"],
         "validation_manifest_sha256": validation_sha256,
+        "test_manifest_sha256": test_binding["manifest_sha256"],
+        "test_split_sha256": test_binding["split_sha256"],
         "expected_seeds": list(frozen_protocol["seeds"]),
         "metric_order": list(_METRICS),
         "course_tie_order": list(course_order),
@@ -226,15 +229,26 @@ def _validated_protocol(protocol: Mapping[str, Any]) -> Mapping[str, Any]:
     if list(seeds) != protocol.get("seeds"):
         raise ValueError("Plan C protocol seeds must be sorted")
     real = protocol.get("real_splits")
-    if not isinstance(real, Mapping) or not isinstance(
-        real.get("validation"), Mapping
+    if (
+        not isinstance(real, Mapping)
+        or not isinstance(real.get("validation"), Mapping)
+        or not isinstance(real.get("test"), Mapping)
     ):
+        if isinstance(real, Mapping) and isinstance(real.get("validation"), Mapping):
+            raise ValueError("Plan C test binding is missing")
         raise ValueError("Plan C validation binding is missing")
     validation = real["validation"]
     if validation.get("corpus_role") != "real-gold" or _SHA256.fullmatch(
         str(validation.get("manifest_sha256"))
     ) is None:
         raise ValueError("Plan C validation binding is invalid")
+    test = real["test"]
+    if (
+        test.get("corpus_role") != "real-gold"
+        or _SHA256.fullmatch(str(test.get("manifest_sha256"))) is None
+        or _SHA256.fullmatch(str(test.get("split_sha256"))) is None
+    ):
+        raise ValueError("Plan C test binding is invalid")
     if _SHA256.fullmatch(str(protocol.get("vocabulary_sha256"))) is None:
         raise ValueError("Plan C vocabulary SHA-256 is invalid")
     return protocol

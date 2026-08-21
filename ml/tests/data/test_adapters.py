@@ -148,6 +148,22 @@ def test_shipped_candidate_registry_only_approves_evidenced_training_data() -> N
             registry.require_training_approval(dataset_id)
 
 
+def test_weights_distribution_requires_separate_explicit_approval() -> None:
+    registry = DatasetRegistry.load(
+        REPOSITORY_ROOT / "docs" / "ml" / "dataset-registry.example.json"
+    )
+
+    assert (
+        registry.require_weights_distribution_approval(
+            "idmt-smt-chord-sequences"
+        ).weights_distribution_allowed
+        is True
+    )
+    for dataset_id in ("rwc-popular", "schubert-winterreise"):
+        with pytest.raises(PermissionError, match="weights distribution"):
+            registry.require_weights_distribution_approval(dataset_id)
+
+
 @pytest.mark.parametrize("adapter_type", [IsophonicsAdapter, BillboardAdapter, RwcAdapter])
 def test_lab_adapters_canonicalize_without_copying_audio(
     adapter_type: type[IsophonicsAdapter] | type[BillboardAdapter] | type[RwcAdapter],

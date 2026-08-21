@@ -13,6 +13,8 @@ from museecho_ml.evaluation.selection import (
 SEEDS = (20260821, 20260822, 20260823)
 VALIDATION_SHA256 = "a" * 64
 VOCABULARY_SHA256 = "b" * 64
+TEST_MANIFEST_SHA256 = "c" * 64
+TEST_SPLIT_SHA256 = "d" * 64
 
 
 def _protocol(*, c2_status: str = "skipped") -> dict:
@@ -31,7 +33,12 @@ def _protocol(*, c2_status: str = "skipped") -> dict:
             "validation": {
                 "corpus_role": "real-gold",
                 "manifest_sha256": VALIDATION_SHA256,
-            }
+            },
+            "test": {
+                "corpus_role": "real-gold",
+                "manifest_sha256": TEST_MANIFEST_SHA256,
+                "split_sha256": TEST_SPLIT_SHA256,
+            },
         },
         "courses": {
             "C0": {"status": "ready", "pretrain": None},
@@ -111,6 +118,29 @@ def test_course_selection_uses_three_seed_median_not_best_seed() -> None:
         "minimum": 0.60,
         "maximum": 0.80,
     }
+
+
+def test_frozen_selection_carries_test_binding_without_reading_test_data() -> None:
+    selected = select_plan_c_candidate(
+        _protocol(), _reports_where_c1_has_one_outlier()
+    )
+
+    assert selected["test_manifest_sha256"] == TEST_MANIFEST_SHA256
+    assert selected["test_split_sha256"] == TEST_SPLIT_SHA256
+
+
+def test_selection_rejects_protocol_without_frozen_test_binding() -> None:
+    protocol = _protocol()
+    protocol.pop("protocol_sha256")
+    protocol["real_splits"].pop("test")
+    protocol["protocol_sha256"] = canonical_sha256(protocol)
+    reports = _reports_where_c1_has_one_outlier()
+    for course_reports in reports.values():
+        for report in course_reports:
+            report["protocol_sha256"] = protocol["protocol_sha256"]
+
+    with pytest.raises(ValueError, match="test binding"):
+        select_plan_c_candidate(protocol, reports)
 
 
 def test_report_and_seed_order_do_not_change_frozen_selection_bytes() -> None:

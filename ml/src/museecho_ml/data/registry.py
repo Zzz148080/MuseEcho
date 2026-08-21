@@ -62,6 +62,14 @@ class DatasetRegistry:
             raise PermissionError(f"dataset {dataset_id!r} is not approved for formal training")
         return record
 
+    def require_weights_distribution_approval(self, dataset_id: str) -> DatasetRecord:
+        record = self.require_training_approval(dataset_id)
+        if record.weights_distribution_allowed is not True:
+            raise PermissionError(
+                f"dataset {dataset_id!r} is not approved for weights distribution"
+            )
+        return record
+
 
 def _record_from_json(value: Any) -> DatasetRecord:
     if not isinstance(value, dict):
