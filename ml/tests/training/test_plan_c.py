@@ -23,6 +23,29 @@ def _write_json(path: Path, value: dict) -> Path:
     return path
 
 
+@pytest.mark.skipif(
+    not (ML_ROOT / "data/manifests/jazznet-synthetic-supervised.manifest.json").is_file(),
+    reason="local audited Plan C manifests are not installed",
+)
+def test_formal_plan_c_config_resolves_every_synthetic_audio_path() -> None:
+    config = json.loads(
+        (ML_ROOT / "configs/train-plan-c-v1.json").read_text(encoding="utf-8")
+    )
+    manifests = (
+        ML_ROOT / "data/manifests/idmt-synthetic-supervised.manifest.json",
+        ML_ROOT / "data/manifests/jazznet-synthetic-supervised.manifest.json",
+    )
+
+    for manifest_path in manifests:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        dataset_id = manifest["dataset_id"]
+        root = (ML_ROOT / config["dataset_roots"][dataset_id]).resolve(strict=True)
+        for track in manifest["tracks"]:
+            audio_path = (root / track["audio_path"]).resolve(strict=False)
+            assert audio_path.is_relative_to(root)
+            assert audio_path.is_file(), audio_path
+
+
 def _vocabulary_payload() -> dict:
     body = {
         "schema_version": 1,

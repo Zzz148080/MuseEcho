@@ -13,8 +13,8 @@
     "guitarset": "data/sources",
     "schubert-winterreise": "data/sources/schubert-winterreise-2.1",
     "rwc-popular": "data/sources",
-    "idmt-smt-chord-sequences": "data/sources/idmt",
-    "jazznet": "data/sources/jazznet-v1"
+    "idmt-smt-chord-sequences": "data/sources/idmt/IDMT-SMT-CHORD-SEQUENCES-2",
+    "jazznet": "data/sources"
   },
   "output_root": "runs/plan-c",
   "track_limit": 8,
