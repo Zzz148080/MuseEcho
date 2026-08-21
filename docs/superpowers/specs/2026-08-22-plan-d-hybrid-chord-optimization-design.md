@@ -1,242 +1,227 @@
-# Plan D hybrid chord optimization design
+# Plan D 混合和弦识别优化设计
 
-Status: written design awaiting user review. The user approved the Plan D direction in chat on
-2026-08-22. No implementation starts until this document is reviewed.
+状态：书面设计等待用户审阅。用户已于 2026-08-22 在对话中批准 Plan D 的总体方向。
+本文档通过审阅前不开始代码实施。
 
-## Context
+## 背景
 
-Plan C completed an honest three-seed comparison and consumed its frozen test exactly once. The
-selected C1 model did not earn promotion. Its frozen-test exact-vocabulary WCSR was 0.171727
-against 0.211910 for the unchanged legacy recognizer; maj/min WCSR was 0.002261 against 0.006626.
-The candidate emitted 6,454 events for 1,723 reference events, published known chords with only
-0.005218 precision at 0.246738 coverage, and learned almost no useful `min`, `min7`, `maj7`,
-`dim`, or `hdim7` behavior. Three-seed validation results were also unstable.
+Plan C 已完成严格的三随机种子比较，并且只消费了一次冻结测试集。最终选出的 C1
+模型没有获得上线资格：它在冻结测试集上的精确词表 WCSR 为 0.171727，低于未修改
+legacy 识别器的 0.211910；maj/min WCSR 为 0.002261，低于 legacy 的 0.006626。
 
-The data ceiling remains the dominant external constraint: 124 independent real-gold works,
-8.940803 annotated hours, and 17,795 intervals, plus 41.487981 hours of train-only synthetic
-supervision. This is sufficient for bounded research, not for claiming production readiness.
+该候选模型针对 1,723 个参考事件输出了 6,454 个预测事件；在覆盖率为 0.246738 时，
+已发布已知和弦的精度只有 0.005218。模型几乎没有学到可用的 `min`、`min7`、
+`maj7`、`dim` 或 `hdim7` 行为，三个随机种子的验证结果也明显不稳定。
 
-Plan D therefore treats the Plan C outcome as diagnostic evidence. It does not reopen the Plan C
-test or assume that a larger neural model will fix the result.
+数据上限仍是主要外部约束：当前只有 124 首独立 real-gold 作品、8.940803 小时标注
+和 17,795 个和弦区间，另有 41.487981 小时仅允许用于训练的合成监督数据。这些数据
+足以开展边界明确的研究，但不足以宣称达到生产可用水平。
 
-## Decision and alternatives
+因此，Plan D 把 Plan C 的结果当作诊断证据，不重新打开 Plan C 测试集，也不假设
+换用更大的神经网络就能自动解决问题。
 
-Plan D will use a **legacy-rooted hybrid recognizer** as the primary approach.
+## 决策与备选方案
 
-1. **Recommended: legacy-rooted hybrid.** Keep the deterministic chroma recognizer's root and
-   initial segmentation, then allow a calibrated neural head to refine quality and bass only when
-   it passes precision-first gates. Low-confidence output falls back to the legacy chord. This
-   reduces the learning burden and makes every neural override measurable and reversible.
-2. **Pure neural repair.** Improve loss weighting, decoding, and the current CRNN without a legacy
-   prior. This remains an ablation, not the primary product path, because Plan C showed severe
-   class collapse and seed instability.
-3. **Data-first pause.** Acquire and annotate substantially more lawful real audio before changing
-   the model. This is the correct fallback if the bounded hybrid and rebalanced-training stages do
-   not pass their development gates. No new download or license acceptance is implied by this
-   design.
+Plan D 的主要路线是采用**以 legacy 为根基的混合识别器**。
 
-Plan D deliberately excludes a large generative music model. Such a model is expensive, is not
-designed for frame-aligned chord recognition, and would add distribution and reproducibility risk
-before the current pipeline failures are understood.
+1. **推荐方案：以 legacy 为根基的混合模型。** 保留确定性的 chroma 识别器提供的
+   根音和初始分段；只有在通过精度优先门禁时，才允许校准后的神经网络修正和弦
+   quality 和 bass。低置信度结果回退到 legacy 和弦。这样可以降低神经网络的学习
+   难度，同时让每一次覆盖操作都可测量、可解释、可撤销。
+2. **备选方案：修复纯神经网络。** 改进损失权重、解码和当前 CRNN，但只作为消融
+   实验，不作为产品主路线。原因是 Plan C 已经暴露出严重的类别塌缩和随机种子
+   不稳定。
+3. **回退方案：暂停模型扩展，优先补数据。** 在调整模型前，先获取并标注更多合法
+   真实音频。如果有限范围的混合模型和重平衡训练仍不能通过开发门禁，就执行此
+   方案。本文档不授权任何新下载或许可证接受操作。
 
-## Non-negotiable invariants
+Plan D 明确排除大型生成式音乐模型。此类模型计算成本高，不是针对逐帧和弦识别
+设计的，并且会在当前流水线问题尚未查清前增加权重分发和复现风险。
 
-- The consumed Plan C test manifest, raw test predictions, and access session are never opened by
-  Plan D. The committed aggregate Plan C report may be cited as historical evidence only.
-- Plan C protocol, vocabulary, selection, receipt, promotion decision, and experiment reports are
-  immutable.
-- Train fits model parameters. Calibration fits temperatures and publication thresholds.
-  Validation selects Plan D variants. No other split may influence those choices.
-- A Plan D model cannot be promoted from the existing test result. Promotion requires a new,
-  independently grouped and legally approved frozen test v2.
-- `chroma-triad-viterbi-v1` remains the product default until a future promotion gate passes.
-- No external download, paid compute, license acceptance, model-weight distribution, or user audio
-  reuse is authorized by this design.
-- Raw audio, local paths, features, logits, checkpoints, and run logs stay under ignored paths.
-  Public evidence is path-free, compact, hash-bound JSON.
+## 不可违反的约束
 
-## Stage 0: failure audit
+- Plan D 不得打开已消费的 Plan C 测试清单、原始测试预测或测试访问会话。已提交的
+  Plan C 聚合报告只能作为历史证据引用。
+- Plan C 的协议、词表、选择结果、测试收据、promotion 决策和实验报告保持不可变。
+- 训练集只拟合模型参数；校准集只拟合温度和发布阈值；验证集只选择 Plan D 变体。
+  其他数据划分不得影响这些决策。
+- 不能使用现有测试结果推广 Plan D 模型。正式 promotion 必须使用新的、按独立分组
+  划分并通过法律审查的冻结测试集 v2。
+- `chroma-triad-viterbi-v1` 继续作为产品默认算法，直到未来 promotion 门禁通过。
+- 本设计不授权外部下载、付费算力、许可证接受、模型权重分发或复用用户音频。
+- 原始音频、本地路径、特征、logits、checkpoint 和运行日志保存在 Git 忽略路径中；
+  公开证据必须是不含路径、紧凑并通过哈希绑定的 JSON。
 
-Plan D first creates a reproducible development-only audit from train, calibration, and validation
-artifacts. It must answer whether the dominant failure comes from labels, frame alignment,
-calibration, segmentation, class collapse, domain shift, or seed instability before training is
-changed.
+## 阶段 0：失败原因审计
 
-The audit contains:
+Plan D 首先从训练集、校准集和验证集产物生成可复现的开发审计。修改训练方式前，
+必须回答主要失败来自标签、帧对齐、校准、分段、类别塌缩、域差异还是随机种子
+不稳定。
 
-- frame-to-interval alignment probes at the first frame, final frame, and every annotation
-  boundary, including resampling and hop-length rounding;
-- augmentation invariants proving that transposition updates root and bass while time stretch
-  updates all interval boundaries consistently;
-- duration-weighted root, quality, bass, `N`, and `X` confusion matrices;
-- reference/predicted event counts, event-duration histograms, boundary precision/recall, and
-  over-segmentation ratios by dataset and cover group;
-- confidence/accuracy and precision/coverage curves globally and per supported quality;
-- class support and effective sample size by independent work, not just frame count;
-- per-dataset and per-seed metrics with whole-cover-group bootstrap intervals;
-- explicit checks for illegal chord combinations and label-normalization drift.
+审计内容包括：
 
-If a label, timing, or metric defect is found, it is fixed and re-audited before any architecture
-experiment. The audit never reads the old test split.
+- 检查第一帧、最后一帧和每个标注边界处的帧到区间对齐，包括重采样和 hop-length
+  取整行为；
+- 证明转调增强会同步更新 root 与 bass，时间伸缩会同步更新全部区间边界；
+- 按持续时间加权的 root、quality、bass、`N` 和 `X` 混淆矩阵；
+- 按数据集和 cover group 统计参考/预测事件数、事件时长分布、边界精确率/召回率和
+  过分段比例；
+- 全局及各个受支持 quality 的置信度/准确率曲线与精度/覆盖率曲线；
+- 按独立作品而不是单纯帧数统计类别支持度和有效样本量；
+- 包含整组 cover-group bootstrap 区间的各数据集、各随机种子指标；
+- 对非法和弦组合及标签归一化漂移进行显式检查。
 
-## Stage 1: deterministic hybrid decoder
+如果发现标签、时间或指标缺陷，必须先修复并重新审计，然后才能进行架构实验。
+该审计绝不读取旧测试集。
 
-The first retained implementation adds a pure, replayable hybrid decoder. It consumes:
+## 阶段 1：确定性混合解码器
 
-- legacy chord events with root, maj/min quality, boundaries, and confidence;
-- calibrated neural frame probabilities for root, quality, bass, boundary, `N`, and `X`;
-- a frozen Plan D decoder configuration and vocabulary.
+第一个保留实现是一个纯函数式、可回放的混合解码器。它接收：
 
-Version 1 follows conservative rules:
+- legacy 和弦事件，包括 root、maj/min quality、边界和置信度；
+- 校准后的神经网络逐帧 root、quality、bass、boundary、`N` 和 `X` 概率；
+- 冻结的 Plan D 解码配置和词表。
 
-1. Legacy event boundaries and root are authoritative.
-2. Neural quality can replace the legacy maj/min quality only when the proposed quality is legal,
-   its calibrated precision gate is satisfied, and supporting frames cover a configured fraction
-   of the legacy event.
-3. Neural bass is published only when it is a legal chord tone or an explicitly supported slash
-   bass and passes its own confidence gate.
-4. When the legacy recognizer returns unknown, the neural model may publish a known chord only if
-   root, quality, energy, and event-support gates all pass; otherwise the output remains `X`.
-5. Adjacent identical outputs are merged. Minimum duration and hysteresis are applied
-   deterministically. The decoder may not create more events than its configured ratio relative
-   to the legacy timeline.
-6. A neural root override is disabled in version 1. It can become a separately measured ablation
-   only after quality refinement is stable.
+第一版采用以下保守规则：
 
-The decoder is side-effect free: identical legacy events, logits, calibration, vocabulary, and
-configuration produce byte-identical events. Every override records a reason code, supporting
-confidence, and fallback source in ignored diagnostic output.
+1. legacy 事件边界和 root 具有最高权威。
+2. 只有当候选 quality 合法、达到校准精度门槛，并且支持帧覆盖了 legacy 事件中
+   配置要求的比例时，神经网络 quality 才能替换 legacy 的 maj/min quality。
+3. 只有当神经网络 bass 是合法和弦音或明确支持的转位低音，并且通过独立置信度
+   门禁时，才发布 bass。
+4. 当 legacy 返回未知和弦时，只有 root、quality、能量和事件支持度全部通过门禁，
+   神经网络才能发布已知和弦；否则保持为 `X`。
+5. 合并相邻且完全相同的输出，确定性地应用最小时长和迟滞规则。解码器创建的事件
+   数不得超过配置相对于 legacy 时间线允许的比例。
+6. 第一版禁用神经网络 root 覆盖。只有在 quality 修正已经稳定后，root 覆盖才能作为
+   单独测量的消融实验。
 
-## Stage 2: precision-first calibration and decoding
+解码器不得产生副作用：相同的 legacy 事件、logits、校准、词表和配置必须生成
+逐字节相同的事件。每次覆盖操作都在被忽略的诊断输出中记录原因代码、支持置信度和
+回退来源。
 
-Plan D separates three decisions that Plan C combined too aggressively:
+## 阶段 2：精度优先的校准与解码
 
-- known-versus-`N/X` publication;
-- quality selection conditional on a trusted root;
-- boundary acceptance and event merging.
+Plan D 把 Plan C 中耦合过紧的三个决策拆开：
 
-Calibration starts with global temperatures and thresholds. A per-quality threshold is permitted
-only when calibration contains enough independent cover groups for that quality; otherwise it
-must fall back to the global threshold. Threshold selection is precision-first, then coverage,
-then exact WCSR. Validation, never calibration, decides whether a threshold scheme advances.
+- 是否发布为已知和弦，还是保持 `N/X`；
+- 在可信 root 条件下选择 quality；
+- 接受边界并合并事件。
 
-The boundary path uses hysteresis, a minimum event duration, and an event-count ratio guard. A
-neural boundary cannot split a legacy event in the primary variant; neural splitting remains an
-ablation and must prove a boundary-F1 gain without over-segmentation.
+校准首先使用全局温度和阈值。只有当某个 quality 在校准集中拥有足够多的独立
+cover group 时，才允许使用该 quality 的独立阈值；否则必须回退到全局阈值。阈值
+选择顺序固定为先最大化精度，再最大化覆盖率，最后比较 exact WCSR。是否让某种阈值
+方案进入下一阶段，只能由验证集决定，不能由校准集决定。
 
-## Stage 3: rebalanced neural training
+边界路径使用迟滞、最小事件时长和事件数量比例保护。主要变体不允许神经边界切分
+legacy 事件；神经切分只能作为消融实验，并且必须在不增加过分段的前提下证明
+boundary F1 有所提升。
 
-Only after the replayable hybrid baseline is frozen does Plan D retrain the neural component.
-The existing root, quality, bass, and boundary heads remain to preserve checkpoint and evaluation
-interfaces. Changes are bounded to:
+## 阶段 3：重平衡神经网络训练
 
-- a hierarchical known/`N/X` gate before known-quality publication;
-- clipped effective-number class weights computed from train groups only;
-- duration-aware, dataset-balanced, and quality-balanced sampling without duplicating evaluation
-  groups;
-- synthetic-domain randomization using deterministic EQ, compression, noise, reverb, and
-  instrument mixing already lawful for train-only data;
-- gradual encoder unfreezing during real-gold finetuning;
-- loss and sampling artifacts that serialize every weight and class count.
+只有在可回放混合基线冻结后，Plan D 才重新训练神经组件。保留现有 root、quality、
+bass 和 boundary heads，以维持 checkpoint 与评估接口。改动范围限制为：
 
-Three seeds remain mandatory. A larger TCN or Conformer encoder is not introduced unless the
-hybrid decoder plus rebalanced current encoder fails for a diagnosed representation reason. Model
-size is not used as a substitute for data.
+- 在发布已知 quality 前增加分层的 known/`N/X` 门控；
+- 使用仅由训练组计算且经过截断的 effective-number 类别权重；
+- 按持续时间、数据集和 quality 做均衡采样，不复制任何评估分组；
+- 对仅训练合成数据进行确定性的 EQ、压缩、噪声、混响和乐器混合域随机化；
+- 在 real-gold 微调期间逐步解冻编码器；
+- 生成包含每个权重和类别计数的损失及采样配置产物。
 
-## Data flow and artifact identities
+仍然必须训练三个随机种子。只有在混合解码器和当前编码器的重平衡训练因已诊断的
+表示能力问题失败时，才考虑引入更大的 TCN 或 Conformer 编码器。不能用增大模型
+规模代替补充数据。
 
-Plan D creates a versioned protocol that binds the Plan C train/calibration/validation manifest
-hashes, vocabulary, legacy algorithm version, checkpoint lineage, calibration method, decoder
-configuration, seed list, and code identity.
+## 数据流与产物身份
 
-Development flow:
+Plan D 创建版本化协议，绑定 Plan C 训练/校准/验证清单哈希、词表、legacy 算法版本、
+checkpoint 血缘、校准方法、解码配置、随机种子列表和代码身份。
 
-1. Reproduce legacy and C1 predictions on train/calibration/validation only.
-2. Generate the Stage 0 audit and freeze its hash.
-3. Replay legacy, deep-only, and hybrid variants from the same validation identities.
-4. Fit calibration using calibration groups only.
-5. Rank variants by the predeclared validation gates and whole-group bootstrap results.
-6. Retrain three seeds only for variants that survive the replay gate.
-7. Freeze a Plan D development candidate or record an honest stop decision.
-8. Wait for new lawful data and a new frozen test v2 before any promotion claim.
+开发流程如下：
 
-A dedicated Plan D development-manifest loader rejects `split: test`, the Plan C test manifest
-hash, and any attempt to construct a `FrozenTestSession`. This failure is tested explicitly.
+1. 只在训练集、校准集和验证集上复现 legacy 与 C1 预测。
+2. 生成阶段 0 审计并冻结其哈希。
+3. 使用完全相同的验证身份回放 legacy、deep-only 和 hybrid 变体。
+4. 只使用校准分组拟合校准参数。
+5. 根据预先声明的验证门禁和整组 bootstrap 结果排序变体。
+6. 只有通过 replay 门禁的变体才进行三随机种子重训。
+7. 冻结 Plan D 开发候选，或者记录诚实的停止决策。
+8. 等待新的合法数据和冻结测试集 v2，然后才能提出 promotion 结论。
 
-## Development gates
+专用 Plan D 开发清单加载器必须拒绝 `split: test`、Plan C 测试清单哈希，以及任何
+构造 `FrozenTestSession` 的尝试。必须使用测试显式验证这些拒绝行为。
 
-These gates decide whether Plan D continues; they do not authorize production promotion.
+## 开发门禁
 
-The primary hybrid variant must satisfy all of the following on validation:
+以下门禁决定 Plan D 是否继续，不授权生产 promotion。
 
-- median exact-vocabulary WCSR across three seeds is at least 0.30 and at least 0.03 absolute above
-  both the unchanged legacy validation result and the corresponding deep-only result;
-- maj/min WCSR is not below legacy;
-- published-known precision is at least 0.60 at coverage of at least 0.20;
-- boundary F1 is not below legacy and predicted/reference event ratio is within [0.75, 1.50];
-- no dataset's exact WCSR is more than 0.02 below its legacy result;
-- the maximum-minus-minimum three-seed exact WCSR is at most 0.05;
-- deterministic replay is byte-identical and five-minute chord CPU wall time is at most 15
-  seconds on the reference CPU environment.
+主要混合变体必须在验证集同时满足：
 
-The strong development target is exact WCSR at least 0.40, known precision at least 0.70,
-coverage at least 0.35, and no unsupported quality silently published.
+- 三个随机种子的 exact-vocabulary WCSR 中位数至少为 0.30，并且比未修改 legacy
+  验证结果和对应 deep-only 结果都至少高 0.03 绝对值；
+- maj/min WCSR 不低于 legacy；
+- published-known precision 至少为 0.60，同时 coverage 至少为 0.20；
+- boundary F1 不低于 legacy，并且预测/参考事件数量比例位于 `[0.75, 1.50]`；
+- 任一数据集的 exact WCSR 都不得比该数据集 legacy 结果低超过 0.02；
+- 三个随机种子的 exact WCSR 最大值减最小值不超过 0.05；
+- 确定性 replay 结果逐字节一致，参考 CPU 环境中的五分钟音频 chord 推理时间不超过
+  15 秒。
 
-If Stage 1 and Stage 3 both remain below 0.30 exact WCSR or fail stability, Plan D stops model
-expansion and records `data-first-required`. The next action is then a separately approved data
-program targeting at least 30--50 real-gold hours and 300 independent works, followed eventually
-by the existing 80-hour/500-work production-scale target.
+强开发目标为 exact WCSR 至少 0.40、known precision 至少 0.70、coverage 至少 0.35，
+并且不得静默发布不受支持的 quality。
 
-## Error handling and safety
+如果阶段 1 和阶段 3 的 exact WCSR 都仍低于 0.30，或者稳定性门禁失败，Plan D 停止
+扩展模型并记录 `data-first-required`。下一步改为单独批准的数据扩充计划：先达到
+30--50 小时 real-gold、300 首独立作品，再逐步达到既定的 80 小时/500 首生产规模
+目标。
 
-- Missing hashes, changed split identities, unsupported qualities, non-finite logits, invalid
-  time axes, and event-count guard violations fail closed.
-- Immutable artifacts are written atomically and refuse overwrite.
-- A failed or interrupted experiment remains failed or interrupted; it is never silently resumed
-  under a different identity.
-- Checkpoint resume continues to restore optimizer, scheduler, early-stop, RNG, and generator
-  state exactly.
-- License decisions for training and weight distribution remain separate gates.
-- The product runtime receives no Plan D dependency or default change until promotion is approved.
+## 错误处理与安全
 
-## Testing strategy
+- 缺少哈希、划分身份变化、不受支持的 quality、非有限 logits、无效时间轴和事件
+  数量保护违规全部 fail closed。
+- 不可变产物以原子方式写入，并拒绝覆盖已有文件。
+- 失败或中断实验保持失败或中断状态，不得在不同身份下静默恢复。
+- checkpoint 恢复继续精确恢复优化器、调度器、early-stop、RNG 和 generator 状态。
+- 训练许可和模型权重分发许可继续作为两个独立门禁。
+- promotion 获批前，产品 runtime 不增加 Plan D 依赖，也不改变默认算法。
 
-Implementation follows test-driven development.
+## 测试策略
 
-- Unit tests cover alignment, class-support calculations, confusion matrices, effective-number
-  weights, hybrid fallback/override rules, legal bass combinations, hysteresis, event merging,
-  event-count guards, per-quality calibration fallback, and deterministic serialization.
-- Mutation tests prove that test manifests, Plan C test hashes, direct frozen-session creation,
-  split leakage, and changed artifact identities are rejected.
-- Regression tests keep Plan C artifacts interpretable, preserve the legacy default, and preserve
-  exact checkpoint resume and CPU reproducibility.
-- Integration tests replay fixed synthetic legacy events and logits without audio or checkpoints.
-- Validation experiments produce three-seed and per-dataset reports plus 10,000 whole-group
-  bootstrap resamples.
-- Performance tests cover five-minute CPU time, peak memory, and event-count bounds.
-- Full ML pytest, Ruff, and legacy runtime tests remain final gates.
+实现阶段遵循测试驱动开发。
 
-## Expected files
+- 单元测试覆盖对齐、类别支持度计算、混淆矩阵、effective-number 权重、混合回退/
+  覆盖规则、合法 bass 组合、迟滞、事件合并、事件数量保护、逐 quality 校准回退和
+  确定性序列化。
+- 变异测试证明 test 清单、Plan C test 哈希、直接创建 frozen session、数据划分泄漏和
+  产物身份变化都会被拒绝。
+- 回归测试保证 Plan C 产物仍可解释、legacy 默认算法不变，并保留 checkpoint 精确恢复
+  与 CPU 可复现性。
+- 集成测试使用固定的合成 legacy 事件和 logits 做 replay，不依赖音频或 checkpoint。
+- 验证实验生成三随机种子、各数据集报告，以及 10,000 次整组 bootstrap 重采样。
+- 性能测试覆盖五分钟 CPU 时间、峰值内存和事件数量边界。
+- 完整 ML pytest、Ruff 和 legacy runtime 测试继续作为最终门禁。
 
-The implementation plan may refine names, but the intended boundaries are:
+## 预计文件
 
-- `docs/ml/plan-d/`: protocol, audit schema, selection, and development decision;
-- `docs/ml/MODEL_CARD_PLAN_D.md`: data ceiling, intended use, results, and fallback;
-- `ml/configs/plan-d-v1.json`: frozen audit, hybrid, calibration, and gate configuration;
-- `ml/src/museecho_ml/diagnostics/plan_d.py`: development-only failure audit;
-- `ml/src/museecho_ml/postprocess/hybrid.py`: pure deterministic hybrid decoder;
-- `ml/src/museecho_ml/evaluation/plan_d.py`: split-restricted replay and selection;
-- focused tests under `ml/tests/diagnostics`, `ml/tests/postprocess`, and
-  `ml/tests/evaluation`;
-- training and loss files only after the replay stage demonstrates that retraining is warranted.
+实施计划可以细化名称，但模块边界预期如下：
 
-## Completion states
+- `docs/ml/plan-d/`：协议、审计模式、选择结果和开发决策；
+- `docs/ml/MODEL_CARD_PLAN_D.md`：数据上限、预期用途、结果和回退策略；
+- `ml/configs/plan-d-v1.json`：冻结的审计、混合解码、校准和门禁配置；
+- `ml/src/museecho_ml/diagnostics/plan_d.py`：仅用于开发的失败原因审计；
+- `ml/src/museecho_ml/postprocess/hybrid.py`：纯函数式确定性混合解码器；
+- `ml/src/museecho_ml/evaluation/plan_d.py`：限制数据划分的 replay 与选择；
+- `ml/tests/diagnostics`、`ml/tests/postprocess` 和 `ml/tests/evaluation` 下的聚焦测试；
+- 只有在 replay 阶段证明需要重训后，才修改训练和损失文件。
 
-Plan D has three honest terminal states:
+## 完成状态
 
-1. `development-candidate-frozen`: all development gates pass; wait for test v2.
-2. `data-first-required`: bounded optimization fails or is unstable; expand lawful real-gold data
-   before further architecture work.
-3. `blocked`: required data, license, compute, or user authorization is unavailable.
+Plan D 有三个诚实的终止状态：
 
-None of these states changes the product default by itself.
+1. `development-candidate-frozen`：全部开发门禁通过，等待 test v2。
+2. `data-first-required`：有限范围优化失败或不稳定，进一步架构开发前先扩充合法
+   real-gold 数据。
+3. `blocked`：所需数据、许可证、算力或用户授权不可用。
+
+以上任何状态都不会自动改变产品默认算法。
