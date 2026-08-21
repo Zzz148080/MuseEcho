@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "protocol_version": "plan-d-protocol-v1",
+  "config_sha256": "840bf7b68cbba56544f6ceae3f36e83c07be43f7b90f66d6b7cc5520849a3088",
+  "plan_c": {
+    "protocol_sha256": "f9e2c39367a21e3cf467e9bfbd5b72dfb5f6db49a34572abbd719bb2ea60a568",
+    "selection_sha256": "5bb7ad3bc46e251756ac7f9e8c1de1a2280976912a3cc9a1fd17dc664f2bf262",
+    "vocabulary_sha256": "11a4b33e627d04bf11c3691de702b051f6bda648c5d75a0b86f0b1cad04fa1bf",
+    "selected_checkpoint_sha256": "b5b89e53a2571f05567eaf7947bf9afc37bba2b05b60d8fababbedae9803eb34",
+    "selected_course": "C1",
+    "selected_seed": 20260821
+  },
+  "legacy_algorithm": {
+    "version": "chroma-triad-viterbi-v1",
+    "source_sha256": "1e60141a9d0f2deb6cef8376536d0288aab9294cd080f7a5f9183dfa15764c49"
+  },
+  "development_splits": {
+    "train": {
+      "corpus_role": "real-gold",
+      "dataset_ids": ["guitarset", "rwc-popular", "schubert-winterreise"],
+      "manifest_sha256": "ac495aa86de00e8ed5a3f67fc8289a55395e85a133ba2c338e91aaa4fe232f5c",
+      "split_sha256": "1215c79ccc80c5574f2e2584fc8130f2583e793cc7fa5dfaf96453285620bc3e"
+    },
+    "calibration": {
+      "corpus_role": "real-gold",
+      "dataset_ids": ["guitarset", "rwc-popular", "schubert-winterreise"],
+      "manifest_sha256": "25dae88fb315ec8fd25d07f80d353aa07ad6e3077fcc8dacd4faec87847d7d54",
+      "split_sha256": "1215c79ccc80c5574f2e2584fc8130f2583e793cc7fa5dfaf96453285620bc3e"
+    },
+    "validation": {
+      "corpus_role": "real-gold",
+      "dataset_ids": ["guitarset", "rwc-popular", "schubert-winterreise"],
+      "manifest_sha256": "4e0522bcc9b0765ac8fdd7f2728994edecdf186e63ff2238af2854afd94c4106",
+      "split_sha256": "1215c79ccc80c5574f2e2584fc8130f2583e793cc7fa5dfaf96453285620bc3e"
+    }
+  },
+  "seeds": [20260821, 20260822, 20260823],
+  "bootstrap": {
+    "resamples": 10000,
+    "seed": 20260821,
+    "unit": "cover_group_id"
+  },
+  "minimum_quality_groups": 3,
+  "replay_continuation_gate": {
+    "minimum_exact_gain_over_legacy": 0.01,
+    "minimum_exact_gain_over_deep": 0.01,
+    "minimum_known_precision": 0.4,
+    "minimum_coverage": 0.1,
+    "minimum_event_ratio": 0.75,
+    "maximum_event_ratio": 1.5,
+    "maximum_dataset_regression": 0.05
+  },
+  "development_gate": {
+    "minimum_exact": 0.3,
+    "minimum_exact_gain_over_legacy": 0.03,
+    "minimum_exact_gain_over_deep": 0.03,
+    "minimum_known_precision": 0.6,
+    "minimum_coverage": 0.2,
+    "minimum_event_ratio": 0.75,
+    "maximum_event_ratio": 1.5,
+    "maximum_dataset_regression": 0.02,
+    "maximum_seed_span": 0.05,
+    "maximum_cpu_seconds": 15.0
+  },
+  "protocol_sha256": "af9ef829cf1c0d494dbe07a5988e2313b778d0084f16b48ab862dfb2b983523f"
+}

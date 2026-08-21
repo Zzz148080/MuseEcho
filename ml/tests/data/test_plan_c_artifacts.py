@@ -7,6 +7,7 @@ from museecho_ml.artifacts import canonical_sha256
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 PLAN_C_DOCS = REPOSITORY_ROOT / "docs" / "ml" / "plan-c"
+PLAN_D_DOCS = REPOSITORY_ROOT / "docs" / "ml" / "plan-d"
 EXPERIMENTS = REPOSITORY_ROOT / "docs" / "ml" / "experiments"
 
 
@@ -91,3 +92,18 @@ def test_plan_c_run_evidence_covers_six_runs_and_c2_skip() -> None:
     body = dict(frozen_test)
     embedded_hash = body.pop("experiment_sha256")
     assert canonical_sha256(body) == embedded_hash
+
+
+def test_plan_d_protocol_does_not_change_plan_c_frozen_outcome() -> None:
+    protocol = json.loads(
+        (PLAN_D_DOCS / "protocol-v1.json").read_text(encoding="utf-8")
+    )
+    receipt = _read("test-receipt-v1.json")
+    promotion = _read("promotion-v1.json")
+
+    assert protocol["plan_c"]["selection_sha256"] == _read("selection-v1.json")[
+        "selection_sha256"
+    ]
+    assert receipt["status"] == "consumed"
+    assert promotion["status"] == "rejected"
+    assert promotion["default_algorithm"] == "chroma-triad-viterbi-v1"

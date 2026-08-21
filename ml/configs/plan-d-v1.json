@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "plan_version": "plan-d-v1",
+  "seeds": [20260821, 20260822, 20260823],
+  "bootstrap": {
+    "resamples": 10000,
+    "seed": 20260821,
+    "unit": "cover_group_id"
+  },
+  "development_splits": {
+    "train": "ac495aa86de00e8ed5a3f67fc8289a55395e85a133ba2c338e91aaa4fe232f5c",
+    "calibration": "25dae88fb315ec8fd25d07f80d353aa07ad6e3077fcc8dacd4faec87847d7d54",
+    "validation": "4e0522bcc9b0765ac8fdd7f2728994edecdf186e63ff2238af2854afd94c4106"
+  },
+  "minimum_quality_groups": 3,
+  "replay_continuation_gate": {
+    "minimum_exact_gain_over_legacy": 0.01,
+    "minimum_exact_gain_over_deep": 0.01,
+    "minimum_known_precision": 0.4,
+    "minimum_coverage": 0.1,
+    "minimum_event_ratio": 0.75,
+    "maximum_event_ratio": 1.5,
+    "maximum_dataset_regression": 0.05
+  },
+  "development_gate": {
+    "minimum_exact": 0.3,
+    "minimum_exact_gain_over_legacy": 0.03,
+    "minimum_exact_gain_over_deep": 0.03,
+    "minimum_known_precision": 0.6,
+    "minimum_coverage": 0.2,
+    "minimum_event_ratio": 0.75,
+    "maximum_event_ratio": 1.5,
+    "maximum_dataset_regression": 0.02,
+    "maximum_seed_span": 0.05,
+    "maximum_cpu_seconds": 15.0
+  }
+}
