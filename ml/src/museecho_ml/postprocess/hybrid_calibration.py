@@ -213,22 +213,30 @@ def _precision_first_threshold(
     minimum_coverage: float,
 ) -> float:
     total_duration = sum(sample.duration_seconds for sample in samples)
-
-    def score(threshold: float) -> tuple[bool, float, float, float, float]:
-        selected = [sample for sample in samples if sample.confidence >= threshold]
-        selected_duration = sum(sample.duration_seconds for sample in selected)
-        correct_duration = sum(
-            sample.duration_seconds for sample in selected if sample.correct
-        )
+    ordered = sorted(samples, key=lambda sample: -sample.confidence)
+    selected_duration = 0.0
+    correct_duration = 0.0
+    best_score: tuple[bool, float, float, float, float] | None = None
+    best_threshold = 0.0
+    index = 0
+    while index < len(ordered):
+        threshold = float(ordered[index].confidence)
+        while index < len(ordered) and ordered[index].confidence == threshold:
+            sample = ordered[index]
+            selected_duration += sample.duration_seconds
+            if sample.correct:
+                correct_duration += sample.duration_seconds
+            index += 1
         precision = correct_duration / selected_duration
         coverage = selected_duration / total_duration
-        return (
+        score = (
             precision >= minimum_precision and coverage >= minimum_coverage,
             precision,
             coverage,
             correct_duration,
             threshold,
         )
-
-    candidates = sorted({sample.confidence for sample in samples})
-    return float(max(candidates, key=score))
+        if best_score is None or score > best_score:
+            best_score = score
+            best_threshold = threshold
+    return best_threshold

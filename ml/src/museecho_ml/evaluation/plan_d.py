@@ -32,7 +32,11 @@ from museecho_ml.postprocess.hybrid import (
     HybridFrameProbabilities,
     decode_hybrid,
 )
-from museecho_ml.postprocess.hybrid_calibration import HybridCalibrationParameters
+from museecho_ml.postprocess.hybrid_calibration import (
+    HybridCalibrationParameters,
+    HybridCalibrationSample,
+    fit_hybrid_calibration,
+)
 from museecho_ml.vocabulary import ChordVocabulary
 
 _SEEDS = (20260821, 20260822, 20260823)
@@ -384,7 +388,7 @@ def evaluate_plan_d_replay(
     tracks: dict[str, tuple[Sequence[Any], Sequence[Any]]] = {}
     metadata: dict[str, dict[str, str]] = {}
     predicted_events = 0
-    legacy_events = 0
+    reference_events = 0
     cpu_seconds = 0.0
     for raw in sorted(raw_predictions, key=lambda item: item.track_id):
         neural = HybridFrameProbabilities(
@@ -406,12 +410,524 @@ def evaluate_plan_d_replay(
             "split": raw.split,
         }
         predicted_events += len(prediction)
-        legacy_events += len(legacy)
+        reference_events += len(raw.reference)
         cpu_seconds += float(raw.inference_wall_seconds)
-    report = evaluate_dataset_strata(tracks, metadata, EvaluationConfig())
-    report["event_ratio"] = predicted_events / legacy_events
+    report = evaluate_dataset_strata(
+        tracks, metadata, EvaluationConfig(publication_threshold=0.0)
+    )
+    report["event_ratio"] = predicted_events / reference_events
     report["inference_wall_seconds"] = cpu_seconds
     return report
+
+
+def validate_plan_d_replay_identity(
+    *,
+    protocol: Mapping[str, Any],
+    seed: int,
+    expected_checkpoint_sha256: str,
+    deep_calibration_identity: Mapping[str, Any],
+    deep_validation_identity: Mapping[str, Any],
+    legacy_identity: Mapping[str, Any],
+) -> dict[str, Any]:
+    calibration_sha256 = protocol["development_splits"]["calibration"][
+        "manifest_sha256"
+    ]
+    validation_sha256 = protocol["development_splits"]["validation"][
+        "manifest_sha256"
+    ]
+    vocabulary_sha256 = protocol["plan_c"]["vocabulary_sha256"]
+    expected_calibration = {
+        "checkpoint_sha256": expected_checkpoint_sha256,
+        "manifest_sha256": calibration_sha256,
+        "seed": seed,
+        "split": "calibration",
+        "vocabulary_sha256": vocabulary_sha256,
+    }
+    expected_validation = {
+        **expected_calibration,
+        "manifest_sha256": validation_sha256,
+        "split": "validation",
+    }
+    expected_legacy = {
+        "algorithm_version": protocol["legacy_algorithm"]["version"],
+        "manifest_sha256": validation_sha256,
+        "split": "validation",
+    }
+    if (
+        dict(deep_calibration_identity) != expected_calibration
+        or dict(deep_validation_identity) != expected_validation
+        or dict(legacy_identity) != expected_legacy
+    ):
+        raise ValueError("Plan D replay identity drift")
+    return {
+        "seed": seed,
+        "checkpoint_sha256": expected_checkpoint_sha256,
+        "calibration_manifest_sha256": calibration_sha256,
+        "manifest_sha256": validation_sha256,
+        "vocabulary_sha256": vocabulary_sha256,
+        "legacy_algorithm_version": expected_legacy["algorithm_version"],
+    }
+
+
+def fit_plan_d_hybrid_calibration(
+    predictions: Sequence[Any],
+    *,
+    vocabulary: ChordVocabulary,
+    minimum_precision: float,
+    minimum_coverage: float,
+    minimum_quality_groups: int,
+) -> HybridCalibrationParameters:
+    if not predictions or any(
+        getattr(item, "split", None) != "calibration" for item in predictions
+    ):
+        raise ValueError("Plan D hybrid calibration requires calibration split")
+    samples: list[HybridCalibrationSample] = []
+    for raw in sorted(predictions, key=lambda item: item.track_id):
+        times = np.asarray(raw.frame_times, dtype=np.float64)
+        valid = np.asarray(raw.valid_mask)
+        if (
+            times.ndim != 1
+            or valid.dtype != np.bool_
+            or valid.shape != times.shape
+            or not valid.any()
+            or np.any(np.maximum.accumulate(~valid) & valid)
+        ):
+            raise ValueError("Plan D calibration frame evidence is invalid")
+        count = int(valid.sum())
+        times = times[:count]
+        probabilities = _softmax(np.asarray(raw.quality_logits)[:count])
+        candidates = np.argmax(probabilities, axis=1)
+        durations = np.concatenate(
+            (times[1:], np.asarray([raw.duration_seconds], dtype=np.float64))
+        ) - times
+        if np.any(durations <= 0) or not np.isfinite(durations).all():
+            raise ValueError("Plan D calibration frame durations are invalid")
+        reference_index = 0
+        for frame_index, frame_time in enumerate(times):
+            while frame_time >= raw.reference[reference_index].end_seconds:
+                reference_index += 1
+            quality = vocabulary.quality_labels[int(candidates[frame_index])]
+            if quality in {"N", "X"}:
+                continue
+            samples.append(
+                HybridCalibrationSample(
+                    cover_group_id=raw.cover_group_id,
+                    quality=quality,
+                    confidence=float(
+                        probabilities[frame_index, candidates[frame_index]]
+                    ),
+                    correct=quality == raw.reference[reference_index].chord.quality,
+                    duration_seconds=float(durations[frame_index]),
+                )
+            )
+    return fit_hybrid_calibration(
+        samples,
+        minimum_precision=minimum_precision,
+        minimum_coverage=minimum_coverage,
+        minimum_quality_groups=minimum_quality_groups,
+    )
+
+
+def build_plan_d_seed_replay_artifact(
+    *,
+    protocol_sha256: str,
+    seed: int,
+    identity: Mapping[str, Any],
+    calibration: HybridCalibrationParameters,
+    legacy: Mapping[str, Any],
+    deep: Mapping[str, Any],
+    hybrid: Mapping[str, Any],
+) -> dict[str, Any]:
+    if seed not in _SEEDS or not isinstance(calibration, HybridCalibrationParameters):
+        raise ValueError("Plan D replay artifact identity is invalid")
+    reports = {"legacy": legacy, "deep-only": deep, "hybrid": hybrid}
+    if (
+        legacy.get("variant") != "legacy"
+        or legacy.get("seed") is not None
+        or deep.get("variant") != "deep-only"
+        or deep.get("seed") != seed
+        or hybrid.get("variant") != "hybrid"
+        or hybrid.get("seed") != seed
+        or any(report.get("split") != "validation" for report in reports.values())
+    ):
+        raise ValueError("Plan D replay artifact report identity drift")
+    manifest_sha256 = identity.get("manifest_sha256")
+    vocabulary_sha256 = identity.get("vocabulary_sha256")
+    if any(
+        report.get("manifest_sha256") != manifest_sha256
+        or report.get("vocabulary_sha256") != vocabulary_sha256
+        for report in reports.values()
+    ):
+        raise ValueError("Plan D replay artifact report identity drift")
+    body = {
+        "schema_version": 1,
+        "experiment_version": "plan-d-D1-replay-v1",
+        "status": "completed",
+        "seed": seed,
+        "protocol_sha256": protocol_sha256,
+        "identity": dict(identity),
+        "hybrid_calibration": calibration.to_dict(),
+        "reports": reports,
+    }
+    serialized = canonical_json_bytes(body).decode("utf-8").lower()
+    if "audio_path" in serialized or "checkpoint_path" in serialized:
+        raise ValueError("Plan D public replay artifact contains a path")
+    return {**body, "experiment_sha256": canonical_sha256(body)}
+
+
+def decide_plan_d_replay_reports(
+    artifacts: Sequence[Mapping[str, Any]],
+    *,
+    gates: PlanDDevelopmentGates,
+    protocol_sha256: str,
+) -> dict[str, Any]:
+    if not isinstance(artifacts, Sequence) or len(artifacts) != 3:
+        raise ValueError("Plan D replay decision requires three reports")
+    ordered = tuple(sorted(artifacts, key=lambda item: item.get("seed", -1)))
+    if tuple(item.get("seed") for item in ordered) != _SEEDS:
+        raise ValueError("Plan D replay decision seed identity drift")
+    for artifact in ordered:
+        body = dict(artifact)
+        embedded = body.pop("experiment_sha256", None)
+        if (
+            not isinstance(embedded, str)
+            or canonical_sha256(body) != embedded
+            or artifact.get("protocol_sha256") != protocol_sha256
+            or artifact.get("status") != "completed"
+        ):
+            raise ValueError("Plan D replay decision artifact identity drift")
+    legacy_reports = tuple(item["reports"]["legacy"] for item in ordered)
+    if any(
+        canonical_json_bytes(report) != canonical_json_bytes(legacy_reports[0])
+        for report in legacy_reports[1:]
+    ):
+        raise ValueError("Plan D replay legacy report drift")
+    decision = decide_plan_d_development(
+        legacy=legacy_reports[0],
+        deep_by_seed=tuple(item["reports"]["deep-only"] for item in ordered),
+        hybrid_by_seed=tuple(item["reports"]["hybrid"] for item in ordered),
+        gates=gates,
+    )
+    body = {
+        "schema_version": 1,
+        "decision_version": "plan-d-replay-decision-v1",
+        "status": decision["status"],
+        "protocol_sha256": protocol_sha256,
+        "report_sha256s": [item["experiment_sha256"] for item in ordered],
+        "checks": decision["checks"],
+        "continuation_checks": decision["continuation_checks"],
+        "summary": decision["summary"],
+    }
+    return {**body, "decision_sha256": canonical_sha256(body)}
+
+
+def replay_plan_d_seed(
+    *,
+    protocol_path: Path,
+    seed: int,
+    deep_calibration_path: Path,
+    deep_validation_path: Path,
+    legacy_validation_path: Path,
+    run_output_path: Path,
+    public_output_path: Path,
+) -> dict[str, Any]:
+    input_identities = (
+        str(deep_calibration_path),
+        str(deep_validation_path),
+        str(legacy_validation_path),
+    )
+    from museecho_ml.data.plan_d import PLAN_C_TEST_MANIFEST_SHA256
+
+    if any(PLAN_C_TEST_MANIFEST_SHA256 in value for value in input_identities):
+        raise ValueError("Plan D replay forbids the Plan C test manifest")
+    protocol = load_plan_d_protocol(protocol_path)
+    if seed not in protocol["seeds"]:
+        raise ValueError("Plan D replay seed is not frozen")
+    expected_checkpoint_sha256 = _expected_plan_c_checkpoint_sha(protocol, seed)
+    calibration_raw, calibration_identity = load_plan_d_raw_predictions(
+        deep_calibration_path
+    )
+    validation_raw, validation_identity = load_plan_d_raw_predictions(
+        deep_validation_path
+    )
+    legacy_by_track, legacy_identity = load_plan_d_legacy_predictions(
+        legacy_validation_path
+    )
+    identity = validate_plan_d_replay_identity(
+        protocol=protocol,
+        seed=seed,
+        expected_checkpoint_sha256=expected_checkpoint_sha256,
+        deep_calibration_identity=calibration_identity,
+        deep_validation_identity=validation_identity,
+        legacy_identity=legacy_identity,
+    )
+    if set(legacy_by_track) != {item.track_id for item in validation_raw}:
+        raise ValueError("Plan D replay identity drift")
+    vocabulary = _load_plan_d_vocabulary(protocol)
+    development_gate = protocol["development_gate"]
+    hybrid_calibration = fit_plan_d_hybrid_calibration(
+        calibration_raw,
+        vocabulary=vocabulary,
+        minimum_precision=development_gate["minimum_known_precision"],
+        minimum_coverage=development_gate["minimum_coverage"],
+        minimum_quality_groups=protocol["minimum_quality_groups"],
+    )
+    hybrid_config = HybridDecodeConfig(
+        known_threshold=hybrid_calibration.known_threshold,
+        quality_thresholds=hybrid_calibration.quality_thresholds,
+        bass_threshold=hybrid_calibration.bass_threshold,
+        minimum_support_fraction=hybrid_calibration.minimum_support_fraction,
+        minimum_event_seconds=0.1,
+        hysteresis_frames=1,
+        maximum_event_ratio=development_gate["maximum_event_ratio"],
+    )
+    hybrid_evaluation = evaluate_plan_d_replay(
+        validation_raw,
+        legacy_by_track=legacy_by_track,
+        vocabulary=vocabulary,
+        calibration=hybrid_calibration,
+        config=hybrid_config,
+    )
+    legacy_evaluation = _evaluate_plan_d_legacy_replay(
+        validation_raw, legacy_by_track=legacy_by_track
+    )
+    deep_evaluation, deep_artifacts = _load_plan_c_validation_evidence(
+        protocol=protocol,
+        seed=seed,
+        checkpoint_sha256=expected_checkpoint_sha256,
+    )
+    report_identity = {
+        "manifest_sha256": identity["manifest_sha256"],
+        "vocabulary_sha256": identity["vocabulary_sha256"],
+    }
+    legacy_report = _standardize_plan_d_evaluation(
+        legacy_evaluation,
+        variant="legacy",
+        seed=None,
+        identity=report_identity,
+        cpu_seconds=0.0,
+    )
+    deep_report = _standardize_plan_d_evaluation(
+        deep_evaluation,
+        variant="deep-only",
+        seed=seed,
+        identity=report_identity,
+        cpu_seconds=None,
+    )
+    hybrid_report = _standardize_plan_d_evaluation(
+        hybrid_evaluation,
+        variant="hybrid",
+        seed=seed,
+        identity=report_identity,
+        cpu_seconds=float(hybrid_evaluation["inference_wall_seconds"]),
+    )
+    public_identity = {
+        **identity,
+        "plan_c_calibration_sha256": deep_artifacts["calibration_sha256"],
+        "plan_c_threshold_sha256": deep_artifacts["threshold_sha256"],
+    }
+    public = build_plan_d_seed_replay_artifact(
+        protocol_sha256=protocol["protocol_sha256"],
+        seed=seed,
+        identity=public_identity,
+        calibration=hybrid_calibration,
+        legacy=legacy_report,
+        deep=deep_report,
+        hybrid=hybrid_report,
+    )
+    run_body = {
+        "schema_version": 1,
+        "run_version": "plan-d-D1-replay-run-v1",
+        "status": "completed",
+        "seed": seed,
+        "identity": public_identity,
+        "hybrid_calibration": hybrid_calibration.to_dict(),
+        "evaluations": {
+            "deep-only": deep_evaluation,
+            "hybrid": hybrid_evaluation,
+            "legacy": legacy_evaluation,
+        },
+        "public_experiment_sha256": public["experiment_sha256"],
+    }
+    run_result = {**run_body, "run_sha256": canonical_sha256(run_body)}
+    write_immutable_json(run_output_path, run_result)
+    write_immutable_json(public_output_path, public)
+    return public
+
+
+def decide_plan_d_replay_from_files(
+    *, protocol_path: Path, report_paths: Sequence[Path], output_path: Path
+) -> dict[str, Any]:
+    protocol = load_plan_d_protocol(protocol_path)
+    reports = tuple(_load_replay_public_artifact(path) for path in report_paths)
+    gate = protocol["development_gate"]
+    if gate["minimum_exact_gain_over_legacy"] != gate[
+        "minimum_exact_gain_over_deep"
+    ]:
+        raise ValueError("Plan D replay gain gates are inconsistent")
+    decision = decide_plan_d_replay_reports(
+        reports,
+        gates=PlanDDevelopmentGates(
+            minimum_exact=gate["minimum_exact"],
+            minimum_exact_gain=gate["minimum_exact_gain_over_legacy"],
+            minimum_known_precision=gate["minimum_known_precision"],
+            minimum_coverage=gate["minimum_coverage"],
+            minimum_event_ratio=gate["minimum_event_ratio"],
+            maximum_event_ratio=gate["maximum_event_ratio"],
+            maximum_dataset_regression=gate["maximum_dataset_regression"],
+            maximum_seed_span=gate["maximum_seed_span"],
+            maximum_cpu_seconds=gate["maximum_cpu_seconds"],
+        ),
+        protocol_sha256=protocol["protocol_sha256"],
+    )
+    write_immutable_json(output_path, decision)
+    return decision
+
+
+def _load_plan_d_vocabulary(protocol: Mapping[str, Any]) -> ChordVocabulary:
+    path = _REPOSITORY_ROOT / "docs" / "ml" / "plan-c" / "vocabulary-v1.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError("Plan D replay vocabulary is unreadable") from error
+    vocabulary = ChordVocabulary.from_dict(payload)
+    if payload.get("vocabulary_sha256") != protocol["plan_c"]["vocabulary_sha256"]:
+        raise ValueError("Plan D replay vocabulary identity drift")
+    return vocabulary
+
+
+def _evaluate_plan_d_legacy_replay(
+    raw_predictions: Sequence[Any],
+    *,
+    legacy_by_track: Mapping[str, Sequence[ScoredChordInterval]],
+) -> dict[str, Any]:
+    tracks = {
+        raw.track_id: (raw.reference, tuple(legacy_by_track[raw.track_id]))
+        for raw in raw_predictions
+    }
+    metadata = {
+        raw.track_id: {
+            "dataset_id": raw.dataset_id,
+            "cover_group_id": raw.cover_group_id,
+            "split": raw.split,
+        }
+        for raw in raw_predictions
+    }
+    report = evaluate_dataset_strata(
+        tracks, metadata, EvaluationConfig(publication_threshold=0.0)
+    )
+    report["event_ratio"] = sum(len(value) for value in legacy_by_track.values()) / sum(
+        len(raw.reference) for raw in raw_predictions
+    )
+    report["inference_wall_seconds"] = 0.0
+    return report
+
+
+def _standardize_plan_d_evaluation(
+    evaluation: Mapping[str, Any],
+    *,
+    variant: str,
+    seed: int | None,
+    identity: Mapping[str, str],
+    cpu_seconds: float | None,
+) -> dict[str, Any]:
+    aggregate = evaluation["aggregate"]
+    segmentation = aggregate["segmentation"]
+    event_ratio = float(
+        evaluation.get(
+            "event_ratio",
+            segmentation["predicted_events"] / segmentation["reference_events"],
+        )
+    )
+    if cpu_seconds is None:
+        five_minute_cpu = float(
+            evaluation["selection_metrics"]["five_minute_cpu_wall_seconds"]
+        )
+    else:
+        five_minute_cpu = (
+            cpu_seconds / float(evaluation["duration_seconds"]) * 300.0
+        )
+    report = {
+        "split": "validation",
+        "variant": variant,
+        "seed": seed,
+        "manifest_sha256": identity["manifest_sha256"],
+        "vocabulary_sha256": identity["vocabulary_sha256"],
+        "metrics": {
+            "exact_vocabulary_wcsr": float(
+                aggregate["weighted_scores"]["exact_quality"]
+            ),
+            "majmin_wcsr": float(aggregate["weighted_scores"]["majmin"]),
+            "known_precision": float(aggregate["published"]["precision"]),
+            "coverage": float(aggregate["published"]["coverage"]),
+            "boundary_f1": float(aggregate["boundary"]["f1"]),
+            "event_ratio": event_ratio,
+            "five_minute_cpu_wall_seconds": five_minute_cpu,
+        },
+        "datasets": {
+            dataset: {
+                "exact_vocabulary_wcsr": float(
+                    value["aggregate"]["weighted_scores"]["exact_quality"]
+                )
+            }
+            for dataset, value in sorted(evaluation["datasets"].items())
+        },
+        "bootstrap": evaluation["bootstrap"],
+    }
+    return report
+
+
+def _load_plan_c_validation_evidence(
+    *, protocol: Mapping[str, Any], seed: int, checkpoint_sha256: str
+) -> tuple[dict[str, Any], dict[str, str]]:
+    candidates = sorted(
+        (_ML_ROOT / "runs" / "plan-c").glob(f"*/C1/{seed}/finetune")
+    )
+    for directory in candidates:
+        try:
+            payload = json.loads(
+                (directory / "validation-report.json").read_text(encoding="utf-8")
+            )
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        body = dict(payload)
+        embedded = body.pop("validation_report_sha256", None)
+        if (
+            not isinstance(embedded, str)
+            or canonical_sha256(body) != embedded
+            or payload.get("course_id") != "C1"
+            or payload.get("seed") != seed
+            or payload.get("split") != "validation"
+            or payload.get("checkpoint_sha256") != checkpoint_sha256
+            or payload.get("validation_manifest_sha256")
+            != protocol["development_splits"]["validation"]["manifest_sha256"]
+            or payload.get("vocabulary_sha256")
+            != protocol["plan_c"]["vocabulary_sha256"]
+            or payload.get("protocol_sha256") != protocol["plan_c"]["protocol_sha256"]
+            or not isinstance(payload.get("evaluation"), dict)
+        ):
+            continue
+        return payload["evaluation"], {
+            "calibration_sha256": payload["calibration_sha256"],
+            "threshold_sha256": payload["threshold_sha256"],
+        }
+    raise ValueError(f"Plan D seed {seed} validation evidence is unavailable")
+
+
+def _load_replay_public_artifact(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.resolve(strict=True).read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError("Plan D replay report is unreadable") from error
+    if not isinstance(payload, dict):
+        raise ValueError("Plan D replay report is invalid")
+    body = dict(payload)
+    embedded = body.pop("experiment_sha256", None)
+    if not isinstance(embedded, str) or canonical_sha256(body) != embedded:
+        raise ValueError("Plan D replay report SHA-256 mismatch")
+    return payload
 
 
 def decide_plan_d_development(
@@ -632,7 +1148,7 @@ def _expected_plan_c_checkpoint_sha(
     return str(matches[0]["checkpoint_sha256"])
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Plan D development-only evaluation")
     subparsers = parser.add_subparsers(dest="command", required=True)
     collect_deep = subparsers.add_parser("collect-deep")
@@ -647,7 +1163,19 @@ def main() -> None:
     collect_legacy.add_argument("--split", required=True)
     collect_legacy.add_argument("--manifest", type=Path, required=True)
     collect_legacy.add_argument("--output", type=Path, required=True)
-    args = parser.parse_args()
+    replay = subparsers.add_parser("replay")
+    replay.add_argument("--protocol", type=Path, required=True)
+    replay.add_argument("--seed", type=int, required=True)
+    replay.add_argument("--deep-calibration", type=Path, required=True)
+    replay.add_argument("--deep-validation", type=Path, required=True)
+    replay.add_argument("--legacy-validation", type=Path, required=True)
+    replay.add_argument("--run-output", type=Path, required=True)
+    replay.add_argument("--public-output", type=Path, required=True)
+    decide = subparsers.add_parser("decide")
+    decide.add_argument("--protocol", type=Path, required=True)
+    decide.add_argument("--report", type=Path, action="append", default=[])
+    decide.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args(argv)
     if args.command == "collect-deep":
         result = collect_plan_d_deep_predictions(
             protocol_path=args.protocol,
@@ -663,6 +1191,34 @@ def main() -> None:
             protocol_path=args.protocol,
             split=args.split,
             manifest_path=args.manifest,
+            output_path=args.output,
+        )
+        print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+    elif args.command == "replay":
+        result = replay_plan_d_seed(
+            protocol_path=args.protocol,
+            seed=args.seed,
+            deep_calibration_path=args.deep_calibration,
+            deep_validation_path=args.deep_validation,
+            legacy_validation_path=args.legacy_validation,
+            run_output_path=args.run_output,
+            public_output_path=args.public_output,
+        )
+        print(
+            json.dumps(
+                {
+                    "experiment_sha256": result["experiment_sha256"],
+                    "seed": result["seed"],
+                    "status": result["status"],
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+    elif args.command == "decide":
+        result = decide_plan_d_replay_from_files(
+            protocol_path=args.protocol,
+            report_paths=args.report,
             output_path=args.output,
         )
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))

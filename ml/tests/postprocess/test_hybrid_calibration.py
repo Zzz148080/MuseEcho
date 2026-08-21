@@ -8,6 +8,7 @@ from museecho_ml.artifacts import canonical_json_bytes
 from museecho_ml.postprocess.hybrid_calibration import (
     HybridCalibrationParameters,
     HybridCalibrationSample,
+    _precision_first_threshold,
     fit_hybrid_calibration,
 )
 
@@ -127,3 +128,35 @@ def test_calibration_parameter_validation_rejects_duplicate_quality() -> None:
             ),
             quality_thresholds=(("maj", 0.8), ("maj", 0.9)),
         )
+
+
+class _CountingThresholdSample:
+    confidence_accesses = 0
+
+    def __init__(self, confidence: float, correct: bool) -> None:
+        self._confidence = confidence
+        self.correct = correct
+        self.duration_seconds = 1.0
+
+    @property
+    def confidence(self) -> float:
+        type(self).confidence_accesses += 1
+        return self._confidence
+
+
+def test_precision_first_threshold_does_not_rescan_samples_per_candidate() -> None:
+    count = 300
+    samples = tuple(
+        _CountingThresholdSample(index / count, index % 3 != 0)
+        for index in range(1, count + 1)
+    )
+    _CountingThresholdSample.confidence_accesses = 0
+
+    threshold = _precision_first_threshold(
+        samples,
+        minimum_precision=0.6,
+        minimum_coverage=0.2,
+    )
+
+    assert 0.0 < threshold <= 1.0
+    assert _CountingThresholdSample.confidence_accesses < count * 20
