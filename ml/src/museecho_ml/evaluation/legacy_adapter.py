@@ -10,7 +10,6 @@ import platform
 import sys
 import tempfile
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -188,7 +187,12 @@ def run_legacy_protocol(
     predictions_payload = b"".join(
         _compact_json_bytes(row) + b"\n" for row in prediction_rows
     )
-    serialized_config = asdict(config)
+    serialized_config = {
+        "boundary_tolerance_seconds": config.boundary_tolerance_seconds,
+        "ece_bin_count": config.ece_bin_count,
+        "publication_threshold": config.publication_threshold,
+        "exact_match_includes_bass": config.exact_match_includes_bass,
+    }
     report = {
         "schema_version": 1,
         "baseline_version": "legacy-baseline-v1",

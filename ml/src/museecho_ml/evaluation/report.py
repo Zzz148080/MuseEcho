@@ -12,6 +12,18 @@ from museecho_ml.evaluation.metrics import (
     quality_f1_report,
     weighted_chord_scores,
 )
+from museecho_ml.labels import SUPPORTED_QUALITIES
+
+_PLAN_C_PUBLIC_QUALITIES = (
+    "maj",
+    "min",
+    "7",
+    "maj7",
+    "min7",
+    "dim",
+    "hdim7",
+    "sus4",
+)
 
 
 @dataclass(frozen=True)
@@ -20,6 +32,7 @@ class EvaluationConfig:
     ece_bin_count: int = 15
     publication_threshold: float = 0.85
     exact_match_includes_bass: bool = False
+    public_quality_labels: tuple[str, ...] = _PLAN_C_PUBLIC_QUALITIES
 
     def __post_init__(self) -> None:
         if (
@@ -36,6 +49,16 @@ class EvaluationConfig:
             raise ValueError("publication threshold must be within [0, 1]")
         if self.exact_match_includes_bass is not False:
             raise ValueError("evaluation v1 exact matching excludes bass inversion")
+        if (
+            not isinstance(self.public_quality_labels, tuple)
+            or not self.public_quality_labels
+            or len(set(self.public_quality_labels)) != len(self.public_quality_labels)
+            or any(
+                not isinstance(quality, str) or quality not in SUPPORTED_QUALITIES
+                for quality in self.public_quality_labels
+            )
+        ):
+            raise ValueError("public quality labels must be unique supported qualities")
 
 
 def evaluate_track(

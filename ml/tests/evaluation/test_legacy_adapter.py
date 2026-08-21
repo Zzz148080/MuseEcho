@@ -243,6 +243,7 @@ def test_run_legacy_protocol_writes_immutable_commit_bound_artifacts(
     assert first == second == json.loads(report_path.read_text(encoding="utf-8"))
     assert first["source_commit"] == "abc123"
     assert first["algorithm_version"] == "chroma-triad-viterbi-v1"
+    assert "public_quality_labels" not in first["evaluation_config"]
     assert set(first["splits"]) == {"validation", "test"}
     assert len(first["predictions_sha256"]) == 64
     assert len(predictions_path.read_text(encoding="utf-8").splitlines()) == 2

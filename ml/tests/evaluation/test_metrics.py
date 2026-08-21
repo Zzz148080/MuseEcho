@@ -191,3 +191,13 @@ def test_evaluation_config_matches_versioned_file() -> None:
         "publication_threshold": 0.85,
         "exact_match_includes_bass": False,
     }
+
+
+def test_evaluation_config_validates_plan_c_public_quality_labels() -> None:
+    config = EvaluationConfig(public_quality_labels=("maj", "min", "7"))
+
+    assert config.public_quality_labels == ("maj", "min", "7")
+    with pytest.raises(ValueError, match="public quality labels"):
+        EvaluationConfig(public_quality_labels=("maj", "maj"))
+    with pytest.raises(ValueError, match="public quality labels"):
+        EvaluationConfig(public_quality_labels=("maj", "N"))
