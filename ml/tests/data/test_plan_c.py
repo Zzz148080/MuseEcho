@@ -167,6 +167,7 @@ def test_plan_c_always_freezes_c0_and_c1_and_structurally_skips_c2(
     )
 
     assert protocol["historical_route"] == "A"
+    assert protocol["g1a_status"] == "passed"
     assert protocol["courses"]["C0"] == {"status": "ready", "pretrain": None}
     assert protocol["courses"]["C1"]["status"] == "ready"
     assert protocol["courses"]["C2"] == {

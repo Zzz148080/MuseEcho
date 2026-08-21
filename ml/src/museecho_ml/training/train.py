@@ -15,6 +15,7 @@ import torch
 
 from museecho_ml.data.manifest import ChordInterval
 from museecho_ml.data.split_freeze import load_training_manifest
+from museecho_ml.data.vocabulary_freeze import map_to_frozen_vocabulary
 from museecho_ml.features.cqt import CqtConfig, extract_features
 from museecho_ml.labels import CanonicalChord
 from museecho_ml.model.batch import ModelBatch, TrainingExample, collate_examples
@@ -24,6 +25,7 @@ from museecho_ml.training.checkpoint import (
     CheckpointIdentity,
     TrainingState,
     load_checkpoint,
+    load_model_initialization,
     save_checkpoint,
 )
 from museecho_ml.training.early_stop import EarlyStopConfig, EarlyStopper
@@ -272,15 +274,29 @@ def run_training_batches(
     identity: CheckpointIdentity,
     run_dir: Path,
     *,
+    vocabulary: ChordVocabulary | None = None,
+    initialization_checkpoint: tuple[Path, str] | None = None,
     resume_path: Path | None = None,
     epoch_limit: int | None = None,
 ) -> dict[str, Any]:
-    if not isinstance(train_batch, ModelBatch) or not isinstance(
-        validation_batch, ModelBatch
+    streaming_batches = callable(train_batch)
+    if (not isinstance(train_batch, ModelBatch) and not streaming_batches) or not (
+        isinstance(validation_batch, ModelBatch)
     ):
-        raise ValueError("training batches must use the ModelBatch contract")
+        raise ValueError(
+            "training batches must use ModelBatch or a deterministic batch provider"
+        )
     if epoch_limit is not None and (type(epoch_limit) is not int or epoch_limit <= 0):
         raise ValueError("training epoch limit must be null or a positive integer")
+    frozen_vocabulary = vocabulary or ChordVocabulary.default()
+    if config.model_config.root_classes != len(frozen_vocabulary.root_labels):
+        raise ValueError("model root classes do not match frozen vocabulary")
+    if config.model_config.quality_classes != len(frozen_vocabulary.quality_labels):
+        raise ValueError("model quality classes do not match frozen vocabulary")
+    if config.model_config.bass_classes != len(frozen_vocabulary.bass_labels):
+        raise ValueError("model bass classes do not match frozen vocabulary")
+    if initialization_checkpoint is not None and resume_path is not None:
+        raise ValueError("model initialization and exact resume are mutually exclusive")
     device = resolve_device(config.device)
     configure_reproducibility(config.seed, device)
     output = run_dir.resolve(strict=False)
@@ -288,6 +304,13 @@ def run_training_batches(
     best_path = output / "checkpoint-best.pt"
     last_path = output / "checkpoint-last.pt"
     model = _build_model(config)
+    if initialization_checkpoint is not None:
+        initialization_path, initialization_sha256 = initialization_checkpoint
+        load_model_initialization(
+            initialization_path,
+            model,
+            expected_checkpoint_sha256=initialization_sha256,
+        )
     optimizer = build_optimizer(model, config.trainer_config)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
@@ -312,13 +335,14 @@ def run_training_batches(
             data_generator=data_generator,
         )
     resumed_from_epoch = state.epoch if resume_path is not None else None
+    audit_train_batch = _training_batch_at(train_batch, epoch=0, step=0)
     class_weights = compute_class_weights(
-        [train_batch.targets],
+        [audit_train_batch.targets],
         root_classes=config.model_config.root_classes,
         quality_classes=config.model_config.quality_classes,
         bass_classes=config.model_config.bass_classes,
     )
-    initial_train = _evaluate(model, train_batch, config.loss_config, device)
+    initial_train = _evaluate(model, audit_train_batch, config.loss_config, device)
     curve: list[dict[str, Any]] = []
     global_step = state.global_step
     stop_reason = "max_epochs"
@@ -329,10 +353,13 @@ def run_training_batches(
             stop_reason = "operational_limit"
     for epoch in range(state.epoch, end_epoch):
         train_metrics: dict[str, float] | None = None
-        for _ in range(config.steps_per_epoch):
+        for step in range(config.steps_per_epoch):
+            current_train_batch = _training_batch_at(
+                train_batch, epoch=epoch, step=step
+            )
             train_metrics = train_step(
                 model,
-                train_batch,
+                current_train_batch,
                 optimizer,
                 loss_config=config.loss_config,
                 trainer_config=config.trainer_config,
@@ -404,7 +431,7 @@ def run_training_batches(
         data_generator=data_generator,
     )
     best_metrics = _evaluate(model, validation_batch, config.loss_config, device)
-    final_train = _evaluate(model, train_batch, config.loss_config, device)
+    final_train = _evaluate(model, audit_train_batch, config.loss_config, device)
     loss_ratio = final_train["total_loss"] / initial_train["total_loss"]
     gate_report = _overfit_gate_report(config.overfit_gate, final_train, loss_ratio)
     artifacts = {
@@ -425,6 +452,9 @@ def run_training_batches(
         "purpose": config.purpose,
         "seed": config.seed,
         "selection_metric": "validation_root_quality_accuracy",
+        "training_batch_mode": (
+            "deterministic-stream" if streaming_batches else "fixed"
+        ),
         "checkpoint_identity": asdict(identity),
         "device": collect_device_metadata(device, precision_mode=config.precision_mode),
         "curve": curve,
@@ -445,6 +475,13 @@ def run_training_batches(
         encoding="utf-8",
     )
     return report
+
+
+def _training_batch_at(value: Any, *, epoch: int, step: int) -> ModelBatch:
+    batch = value(epoch, step) if callable(value) else value
+    if not isinstance(batch, ModelBatch):
+        raise ValueError("deterministic batch provider must return ModelBatch")
+    return batch
 
 
 def run_from_config(
@@ -483,6 +520,7 @@ def run_from_config(
         segment_seconds=config.segment_seconds,
         segment_start_policy=config.segment_start_policy,
         feature_config=config.feature_config,
+        vocabulary=ChordVocabulary.default(),
     )
     if validation_manifest is train_manifest:
         validation_ids, validation_offsets, validation_batch = (
@@ -498,6 +536,7 @@ def run_from_config(
             segment_seconds=config.segment_seconds,
             segment_start_policy=config.segment_start_policy,
             feature_config=config.feature_config,
+            vocabulary=ChordVocabulary.default(),
         )
     identity = CheckpointIdentity(
         run_config_sha256=_file_sha256(source),
@@ -558,14 +597,26 @@ def _load_manifest_batch(
     dataset_roots: dict[str, Path],
     *,
     limit: int | None,
+    track_indices: tuple[int, ...] | None = None,
     segment_seconds: float,
     segment_start_policy: str,
     feature_config: CqtConfig,
+    vocabulary: ChordVocabulary,
 ) -> tuple[tuple[str, ...], tuple[float, ...], ModelBatch]:
     tracks = manifest.get("tracks")
     if not isinstance(tracks, list) or not tracks:
         raise ValueError("training manifest must contain tracks")
-    selected = tracks if limit is None else tracks[:limit]
+    if track_indices is not None and limit is not None:
+        raise ValueError("training track indices and limit are mutually exclusive")
+    if track_indices is not None:
+        if not track_indices or any(
+            type(index) is not int or not 0 <= index < len(tracks)
+            for index in track_indices
+        ):
+            raise ValueError("training track indices are invalid")
+        selected = [tracks[index] for index in track_indices]
+    else:
+        selected = tracks if limit is None else tracks[:limit]
     if limit is not None and len(selected) < limit:
         raise ValueError("training manifest does not contain the configured track limit")
     identifiers: list[str] = []
@@ -575,7 +626,7 @@ def _load_manifest_batch(
         if not isinstance(track, dict):
             raise ValueError("training manifest track must be an object")
         track_id = track.get("track_id")
-        dataset_id = track.get("dataset_id")
+        dataset_id = track.get("dataset_id", manifest.get("dataset_id"))
         audio_relative = track.get("audio_path")
         if any(
             not isinstance(value, str) or not value.strip()
@@ -596,14 +647,16 @@ def _load_manifest_batch(
         audio, sample_rate = _read_wav_segment(audio_path, offset, segment_seconds)
         duration = len(audio) / sample_rate
         features = extract_features(audio, sample_rate=sample_rate, config=feature_config)
-        intervals = _manifest_intervals(track.get("intervals"), offset, duration)
+        intervals = _manifest_intervals(
+            track.get("intervals"), offset, duration, vocabulary=vocabulary
+        )
         identifiers.append(track_id)
         offsets.append(offset)
         examples.append(TrainingExample(features, intervals))
     return (
         tuple(identifiers),
         tuple(offsets),
-        collate_examples(examples, ChordVocabulary.default()),
+        collate_examples(examples, vocabulary),
     )
 
 
@@ -645,7 +698,11 @@ def _first_supervised_offset(value: object) -> float:
 
 
 def _manifest_intervals(
-    value: object, offset: float, duration: float
+    value: object,
+    offset: float,
+    duration: float,
+    *,
+    vocabulary: ChordVocabulary,
 ) -> tuple[ChordInterval, ...]:
     if not isinstance(value, list):
         raise ValueError("training manifest intervals are invalid")
@@ -663,16 +720,20 @@ def _manifest_intervals(
         end = min(absolute_end, offset + duration) - offset
         if end <= start:
             continue
+        chord = map_to_frozen_vocabulary(
+            CanonicalChord(
+                str(item["root"]),
+                str(item["quality"]),
+                str(item["bass"]),
+                item.get("mapping_reason"),
+            ),
+            vocabulary,
+        )
         intervals.append(
             ChordInterval(
                 start,
                 end,
-                CanonicalChord(
-                    str(item["root"]),
-                    str(item["quality"]),
-                    str(item["bass"]),
-                    item.get("mapping_reason"),
-                ),
+                chord,
             )
         )
     if not intervals:

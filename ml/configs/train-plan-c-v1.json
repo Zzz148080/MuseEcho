@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "train_version": "train-v1",
+  "purpose": "formal",
+  "seed": 20260821,
+  "device": "auto",
+  "precision_mode": "float32",
+  "max_epochs": 100,
+  "steps_per_epoch": 1,
+  "train_manifest": "data/manifests/splits-v1/real-gold-train.manifest.json",
+  "validation_manifest": "data/manifests/splits-v1/real-gold-validation.manifest.json",
+  "dataset_roots": {
+    "guitarset": "data/sources",
+    "schubert-winterreise": "data/sources/schubert-winterreise-2.1",
+    "rwc-popular": "data/sources",
+    "idmt-smt-chord-sequences": "data/sources/idmt",
+    "jazznet": "data/sources/jazznet-v1"
+  },
+  "output_root": "runs/plan-c",
+  "track_limit": 8,
+  "segment_seconds": 30.0,
+  "segment_start_policy": "start",
+  "features": {
+    "schema_version": 1,
+    "feature_version": "1.0.0",
+    "sample_rate": 22050,
+    "hop_length": 512,
+    "fmin_hz": 32.70319566257483,
+    "bins_per_octave": 24,
+    "n_octaves": 6,
+    "bass_octaves": 3,
+    "log_scale": 10.0,
+    "minimum_analysis_seconds": 2.0,
+    "chunk_seconds": 30.0,
+    "context_seconds": 2.0
+  },
+  "model": {
+    "schema_version": 1,
+    "model_version": "crnn-v1",
+    "input_channels": 1,
+    "main_conv_channels": [16, 32],
+    "bass_conv_channels": [8, 16],
+    "gru_hidden_size": 96,
+    "gru_layers": 2,
+    "dropout": 0.2,
+    "bidirectional": true,
+    "root_classes": 14,
+    "quality_classes": 10,
+    "bass_classes": 14
+  },
+  "loss": {
+    "schema_version": 1,
+    "loss_version": "multitask-v1",
+    "root_weight": 1.0,
+    "quality_weight": 1.0,
+    "bass_weight": 0.5,
+    "boundary_weight": 0.25
+  },
+  "trainer": {
+    "schema_version": 1,
+    "trainer_version": "trainer-v1",
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "gradient_clip_norm": 5.0
+  },
+  "scheduler": {
+    "factor": 0.5,
+    "patience": 3,
+    "minimum_learning_rate": 1e-6
+  },
+  "early_stop": {
+    "mode": "max",
+    "patience": 10,
+    "minimum_delta": 0.0001
+  },
+  "overfit_gate": null
+}

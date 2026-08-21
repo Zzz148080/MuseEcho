@@ -73,6 +73,7 @@ def freeze_plan_c_protocol(
         "plan_version": "plan-c-v1",
         "config_sha256": canonical_sha256(config),
         "g1_report_sha256": canonical_sha256(g1_report),
+        "g1a_status": "passed",
         "vocabulary_sha256": vocabulary_report["vocabulary_sha256"],
         "g1b_production_scale_exclusions": frozen_config[
             "g1b_production_scale_exclusions"

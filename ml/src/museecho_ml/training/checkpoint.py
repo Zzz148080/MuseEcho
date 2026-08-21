@@ -3,12 +3,15 @@ from __future__ import annotations
 import os
 import random
 import re
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, is_dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import torch
+
+from museecho_ml.artifacts import file_sha256
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
@@ -141,6 +144,46 @@ def load_checkpoint(
     except (KeyError, TypeError, RuntimeError, ValueError) as error:
         raise ValueError("training checkpoint state is invalid") from error
     return state
+
+
+def load_model_initialization(
+    path: Path,
+    model: Any,
+    *,
+    expected_checkpoint_sha256: str,
+) -> None:
+    source = path.resolve(strict=True)
+    if file_sha256(source) != expected_checkpoint_sha256:
+        raise ValueError("initialization checkpoint SHA-256 does not match")
+    try:
+        payload = torch.load(source, map_location="cpu", weights_only=False)
+    except (OSError, RuntimeError, ValueError) as error:
+        raise ValueError("initialization checkpoint is unreadable") from error
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schema_version") != 2
+        or payload.get("checkpoint_version") != "checkpoint-v2"
+    ):
+        raise ValueError("initialization checkpoint version is unsupported")
+    if payload.get("model_config") != asdict(model.config):
+        raise ValueError("initialization checkpoint model config does not match")
+    model_state = payload.get("model_state")
+    expected_state = model.state_dict()
+    if (
+        not isinstance(model_state, Mapping)
+        or set(model_state) != set(expected_state)
+        or any(
+            not isinstance(model_state[name], torch.Tensor)
+            or model_state[name].shape != expected.shape
+            or model_state[name].dtype != expected.dtype
+            for name, expected in expected_state.items()
+        )
+    ):
+        raise ValueError("initialization checkpoint model state is invalid")
+    try:
+        model.load_state_dict(model_state, strict=True)
+    except (KeyError, TypeError, RuntimeError, ValueError) as error:
+        raise ValueError("initialization checkpoint model state is invalid") from error
 
 
 def _config_dict(value: Any) -> dict[str, Any]:

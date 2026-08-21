@@ -16,6 +16,7 @@ from museecho_ml.training.checkpoint import CheckpointIdentity
 from museecho_ml.training.train import (
     OverfitGateConfig,
     TrainConfig,
+    _load_manifest_batch,
     load_train_config,
     run_from_config,
     run_training_batches,
@@ -47,6 +48,26 @@ def _identity() -> CheckpointIdentity:
         train_manifest_sha256="b" * 64,
         validation_manifest_sha256="c" * 64,
         split_sha256="d" * 64,
+    )
+
+
+def _plan_c_vocabulary() -> ChordVocabulary:
+    default = ChordVocabulary.default()
+    return ChordVocabulary(
+        root_labels=default.root_labels,
+        quality_labels=(
+            "maj",
+            "min",
+            "7",
+            "maj7",
+            "min7",
+            "dim",
+            "hdim7",
+            "sus4",
+            "N",
+            "X",
+        ),
+        bass_labels=default.bass_labels,
     )
 
 
@@ -124,9 +145,58 @@ def test_interrupted_cpu_training_resumes_to_uninterrupted_best_state(
     assert resumed["resumed_from_epoch"] == 1
 
 
+def test_training_rejects_model_heads_that_do_not_match_frozen_vocabulary(
+    tmp_path: Path,
+) -> None:
+    destination = tmp_path / "mismatched"
+
+    with pytest.raises(ValueError, match="quality classes"):
+        run_training_batches(
+            TrainConfig.smoke_defaults(),
+            _batch(),
+            _batch(),
+            _identity(),
+            destination,
+            vocabulary=_plan_c_vocabulary(),
+            epoch_limit=1,
+        )
+
+    assert not destination.exists()
+
+
+def test_training_requests_each_deterministic_stream_batch(tmp_path: Path) -> None:
+    config = replace(
+        TrainConfig.smoke_defaults(),
+        max_epochs=2,
+        steps_per_epoch=2,
+        overfit_gate=OverfitGateConfig(
+            maximum_loss_ratio=2.0,
+            minimum_root_accuracy=0.0,
+            minimum_quality_accuracy=0.0,
+        ),
+    )
+    requested: list[tuple[int, int]] = []
+
+    def batch_at(epoch: int, step: int):
+        requested.append((epoch, step))
+        return _batch()
+
+    report = run_training_batches(
+        config,
+        batch_at,
+        _batch(),
+        _identity(),
+        tmp_path / "streamed",
+    )
+
+    assert set(requested) >= {(0, 0), (0, 1), (1, 0), (1, 1)}
+    assert report["training_batch_mode"] == "deterministic-stream"
+
+
 def test_versioned_smoke_and_formal_training_configs_are_strictly_loadable() -> None:
     smoke = load_train_config(ML_ROOT / "configs" / "train-smoke.json")
     formal = load_train_config(ML_ROOT / "configs" / "train-crnn-v1.json")
+    plan_c = load_train_config(ML_ROOT / "configs" / "train-plan-c-v1.json")
     r0 = load_train_config(ML_ROOT / "configs" / "experiments" / "r0-pipeline-smoke.json")
 
     assert smoke.purpose == "g3-overfit"
@@ -134,6 +204,17 @@ def test_versioned_smoke_and_formal_training_configs_are_strictly_loadable() -> 
     assert smoke.overfit_gate is not None
     assert formal.purpose == "formal"
     assert formal.validation_manifest.endswith("real-gold-validation.manifest.json")
+    assert plan_c.purpose == "formal"
+    assert plan_c.seed == 20260821
+    assert plan_c.model_config.quality_classes == 10
+    assert plan_c.track_limit == 8
+    assert set(plan_c.dataset_roots) >= {
+        "idmt-smt-chord-sequences",
+        "jazznet",
+        "guitarset",
+        "schubert-winterreise",
+        "rwc-popular",
+    }
     assert r0.purpose == "r0-smoke"
     assert r0.validation_manifest.endswith("real-gold-validation.manifest.json")
 
@@ -237,6 +318,95 @@ def test_formal_config_is_blocked_while_g1_is_not_ready(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeError, match="G1 NOT READY"):
         run_from_config(config, run_dir=tmp_path / "formal")
+
+
+def test_manifest_batch_maps_unfrozen_quality_to_complete_x(tmp_path: Path) -> None:
+    audio = tmp_path / "sus2.wav"
+    _write_tone(audio, 220.0)
+    manifest = {
+        "tracks": [
+            {
+                "track_id": "fixture:sus2",
+                "dataset_id": "fixture",
+                "audio_path": audio.name,
+                "intervals": [
+                    {
+                        "start_seconds": 0.0,
+                        "end_seconds": 2.0,
+                        "root": "C",
+                        "quality": "sus2",
+                        "bass": "1",
+                        "mapping_reason": None,
+                    }
+                ],
+            }
+        ]
+    }
+    vocabulary = _plan_c_vocabulary()
+
+    _, _, batch = _load_manifest_batch(
+        manifest,
+        {"fixture": tmp_path},
+        limit=1,
+        segment_seconds=2.0,
+        segment_start_policy="start",
+        feature_config=TrainConfig.smoke_defaults().feature_config,
+        vocabulary=vocabulary,
+    )
+
+    valid = batch.targets.mask
+    assert set(batch.targets.root[valid].tolist()) == {
+        vocabulary.root_labels.index("X")
+    }
+    assert set(batch.targets.quality[valid].tolist()) == {
+        vocabulary.quality_labels.index("X")
+    }
+    assert set(batch.targets.bass[valid].tolist()) == {
+        vocabulary.bass_labels.index("X")
+    }
+
+
+def test_manifest_batch_loads_only_explicit_indices_and_inherits_dataset_id(
+    tmp_path: Path,
+) -> None:
+    audio = tmp_path / "selected.wav"
+    _write_tone(audio, 330.0)
+    chord = {
+        "start_seconds": 0.0,
+        "end_seconds": 2.0,
+        "root": "C",
+        "quality": "maj",
+        "bass": "1",
+        "mapping_reason": None,
+    }
+    manifest = {
+        "dataset_id": "fixture",
+        "tracks": [
+            {
+                "track_id": "fixture:must-not-open",
+                "audio_path": "missing.wav",
+                "intervals": [chord],
+            },
+            {
+                "track_id": "fixture:selected",
+                "audio_path": audio.name,
+                "intervals": [chord],
+            },
+        ],
+    }
+
+    identifiers, _, _ = _load_manifest_batch(
+        manifest,
+        {"fixture": tmp_path},
+        limit=None,
+        track_indices=(1,),
+        segment_seconds=2.0,
+        segment_start_policy="start",
+        feature_config=TrainConfig.smoke_defaults().feature_config,
+        vocabulary=ChordVocabulary.default(),
+    )
+
+    assert identifiers == ("fixture:selected",)
 
 
 def _write_tone(path: Path, frequency: float) -> None:
