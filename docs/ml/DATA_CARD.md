@@ -1,16 +1,32 @@
 # MuseEcho chord model data card
 
-Status: `G1 NOT READY`. Winterreise, RWC-P, and GuitarSet are approved and fully inventoried as
-`real-gold`. IDMT and Jazznet are fully inventoried as separately isolated
-`synthetic-supervised`; BabySlakh remains `weak-label-validation`. The audited 60-hour course gate
-is frozen to **route A**. Weight distribution for the combined final model remains a separate
-review.
+Status: Plan C research gate `G1a PASS`; production-scale gate `G1b NOT MET`. Winterreise,
+RWC-P, and GuitarSet are approved and fully inventoried as `real-gold`. IDMT and Jazznet are
+fully inventoried as separately isolated `synthetic-supervised`; BabySlakh remains
+`weak-label-validation`. No `real-score-supervised` corpus is currently approved, so C2 is
+formally skipped. The historical 60-hour A/B decision remains frozen to **Route A**. This permits
+the bounded C0/C1 research comparison; it does not claim production-scale data readiness or
+approve distribution of combined model weights.
 
 ## Purpose
 
 This card records the provenance, license decision, transformation, split, and aggregate
 statistics for every dataset considered for the MuseEcho chord model. A dataset can enter a
 formal training manifest only after `DatasetRegistry.require_training_approval()` succeeds.
+
+## Corpus roles
+
+| Role | Allowed use | Evaluation use | Current evidence |
+| --- | --- | --- | --- |
+| `real-gold` | Finetune and model comparison | Calibration, validation, and one-use frozen test | GuitarSet, RWC-P, Winterreise |
+| `synthetic-supervised` | Train-only auxiliary pretraining | Forbidden | IDMT-SMT-Chord-Sequences and Jazznet; 41.487981 usable hours |
+| `real-score-supervised` | Train-only auxiliary pretraining after a separate approved feasibility and manifest | Forbidden | None approved; C2 is skipped |
+| `weak-label-validation` | Conversion and pipeline validation only | Forbidden | BabySlakh |
+
+G1 is intentionally split: G1a checks whether the approved real-gold manifests, grouping, split,
+and leakage audit are usable for bounded research; G1b retains the production-scale target of 500
+independent works, 80 annotated hours, and at least 20 independent works per published non-`N/X`
+quality. G1a passing never implies G1b passing.
 
 ## Non-negotiable boundaries
 
@@ -186,14 +202,19 @@ Combined totals are 148 recordings, 124 independent works, 32339.921837 seconds 
 (9.0531%) map to `X`. There are 106 explicitly recorded final-interval clips and 153.030204
 unannotated seconds, all from Winterreise leading/trailing gaps.
 
-## G1 decision
+## Plan C G1 decision
 
-`G1 NOT READY`: the approved corpus contains 124 independent works and 8.9408 hours of annotated
-audio, far below the planning target of 500 works and 80 hours. `sus2` also remains below the
-20-independent-work minimum. The project may use this corpus for adapter, feature, overfit, and
-training-chain smoke tests, but it must not present a model trained only on this corpus as the
-final competition accuracy candidate. More lawful data or a written data/vocabulary/scope
-revision is required before G1 can pass.
+- `G1a PASS`: all three approved real-gold datasets have frozen train/calibration/validation/test
+  manifests, group isolation, and a passed near-duplicate audit. This authorizes only the frozen
+  Plan C research protocol.
+- `G1b NOT MET`: after excluding GuitarSet lead-sheet repetitions from the production-scale work
+  count, the corpus contains 124 independent works, 32,186.891633 annotated seconds
+  (8.940803 hours), and 17,795 intervals. This remains below 500 works and 80 hours; `sus2` has
+  only 15 works, below the 20-work publication threshold.
+
+The train-only frozen vocabulary therefore publishes `maj`, `min`, `7`, `maj7`, `min7`, `dim`,
+`hdim7`, and `sus4`, plus `N/X`; `sus2` maps deterministically to `X`. Validation and test cannot
+add a quality. Plan C completion is a bounded research result, not a production-readiness claim.
 
 ## Approval procedure
 
@@ -228,3 +249,17 @@ The planning target is at least 500 independent works and 80 hours of usable ann
 every published non-`N/X` quality represented by at least 20 independent works. If lawful data
 cannot meet that target, the vocabulary or training strategy must be revised in writing rather
 than padded with duplicated or synthetic examples.
+
+## Frozen Plan C evidence
+
+- G1 status: `docs/ml/plan-c/g1-status-v1.json` (`g1_report_sha256`
+  `38953bef54c5184f1eadfb7d5ff4a39c4486020baf474ee0231cae41f8a6f2b4`).
+- Train-only vocabulary: `docs/ml/plan-c/vocabulary-v1.json` (`vocabulary_sha256`
+  `11a4b33e627d04bf11c3691de702b051f6bda648c5d75a0b86f0b1cad04fa1bf`).
+- Course protocol: `docs/ml/plan-c/protocol-v1.json` (`protocol_sha256`
+  `f9e2c39367a21e3cf467e9bfbd5b72dfb5f6db49a34572abbd719bb2ea60a568`).
+
+Training permission and weight-distribution permission remain separate. RWC-P and Winterreise
+currently have `weights_distribution_allowed: null`; this does not block local non-commercial
+research, but it does block promotion of Plan C weights. GuitarSet, IDMT, and Jazznet have explicit
+distribution approval in the registry for their reviewed terms.

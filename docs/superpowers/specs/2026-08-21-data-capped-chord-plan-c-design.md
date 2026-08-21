@@ -2,7 +2,7 @@
 
 日期：2026-08-21
 
-状态：用户已于 2026-08-21 在对话中批准 Plan C；等待用户复审本文后进入实施计划
+状态：用户已于 2026-08-21 批准 Plan C 及本文；实施计划见 `docs/superpowers/plans/2026-08-21-data-capped-chord-plan-c.md`
 
 基准规格：`docs/superpowers/specs/2026-08-17-deep-chord-recognition-design.md`
 
