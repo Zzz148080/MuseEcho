@@ -125,6 +125,10 @@ checkpoint 因受限 NumPy 类型不能直接读取，只允许在无网络、�
 SHA-256，逐张量校验名称、形状、dtype 和有限值。无法完成安全转换时，实验状态为
 `blocked-unsafe-checkpoint`，不得降低加载安全要求。
 
+对已锁定官方文件的预检确认：归一化均值和标准差是全局标量，旧 NumPy `float64` 只需在
+`weights_only=True` 下精确放行 NumPy scalar/dtype 的三个类型。实现优先采用这一更窄的
+安全白名单，并用恶意 reducer 测试证明任意代码仍不会执行；不启用不安全转换或扩大白名单。
+
 模型加载要求 checkpoint 张量集合与当前结构完全一致。缺失键、额外键、形状不符、非有限
 统计量或非浮点模型参数均立即拒绝；不使用 `strict=False` 部分加载。
 

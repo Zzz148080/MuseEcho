@@ -336,7 +336,7 @@ git commit -m "feat: adapt btc 170 chord labels"
 
 **Interfaces:**
 - Produces: `BtcModelConfig`, `BtcModel`, `BtcCheckpoint`, `load_btc_checkpoint(path, lock, config)`, and `checkpoint_contract(checkpoint) -> dict[str, object]`.
-- `BtcCheckpoint` contains the eval-mode CPU model and finite normalization arrays `mean` and `std` of shape `(144,)`.
+- `BtcCheckpoint` contains the eval-mode CPU model and the finite scalar normalization values `mean` and `std` stored by the official checkpoint.
 
 - [ ] **Step 1: Write failing safety, shape, and strictness tests**
 
@@ -364,7 +364,7 @@ def test_btc_checkpoint_refuses_missing_tensor(tmp_path: Path) -> None:
     state = model.state_dict()
     state.pop(next(iter(state)))
     path = tmp_path / "bad.pt"
-    torch.save({"model": state, "mean": np.zeros(144), "std": np.ones(144)}, path)
+    torch.save({"model": state, "mean": 0.0, "std": np.float64(1.0)}, path)
     artifact_lock = BtcArtifactLock(
         repository="fixture/btc",
         repository_ref="fixture",
@@ -434,7 +434,7 @@ payload = torch.load(
 )
 ```
 
-Catch all safe-unpickler failures and raise the explicit blocked error. Do not retry with `weights_only=False`. Validate the artifact SHA first, validate payload keys, coerce normalization values to copied `float32` NumPy arrays, validate shape `(144,)`, finite values and strictly positive `std`, then call `model.load_state_dict(payload["model"], strict=True)`. Finally set `requires_grad_(False)` and `eval()`.
+Catch all safe-unpickler failures and raise the explicit blocked error. Do not retry with `weights_only=False`. The official legacy file requires only the exact safe-global allowlist for `numpy.core.multiarray.scalar`, `numpy.dtype`, and `numpy.dtypes.Float64DType`; do not broaden that list. Validate the artifact SHA first, validate payload keys, coerce normalization values to Python `float` scalars, validate finite values and strictly positive `std`, then call `model.load_state_dict(payload["model"], strict=True)`. Finally set `requires_grad_(False)` and `eval()`.
 
 - [ ] **Step 5: Verify the official checkpoint contract**
 
