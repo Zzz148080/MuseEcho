@@ -24,18 +24,23 @@ test('desktop, tablet, and mobile layouts stay readable and keyboard operable', 
     await expect(audio).toBeVisible()
   }
 
-  for (const viewport of [
-    { width: 1440, height: 900, stacked: false },
-    { width: 768, height: 1024, stacked: true },
-    { width: 390, height: 844, stacked: true },
-  ]) {
-    await page.setViewportSize(viewport)
+  const expectNoPageOverflow = async () => {
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth,
     )
     expect(overflow).toBeLessThanOrEqual(0)
+  }
 
+  for (const viewport of [
+    { width: 1440, height: 900, stacked: false },
+    { width: 1024, height: 768, stacked: false },
+    { width: 768, height: 1024, stacked: true },
+    { width: 390, height: 844, stacked: true },
+    { width: 320, height: 568, stacked: true },
+  ]) {
+    await page.setViewportSize(viewport)
     await expectPersistentAudio()
+    await expectNoPageOverflow()
     const navigation = page.getByRole('navigation', { name: '分析功能' })
     const navBox = await navigation.boundingBox()
     expect(navBox).not.toBeNull()
@@ -71,12 +76,31 @@ test('desktop, tablet, and mobile layouts stay readable and keyboard operable', 
     await page.getByRole('button', { name: /结构地图/ }).click()
     await expect(page.getByRole('heading', { name: '结构地图' })).toBeVisible()
     await expectPersistentAudio()
+    await expectNoPageOverflow()
+
+    await page.getByRole('button', { name: /和弦 C/ }).first().click()
+    const detail = page.getByRole('complementary', { name: '当前和弦详情' })
+    await expect(detail).toBeVisible()
+    await expectNoPageOverflow()
+    if (viewport.width <= 599) {
+      const detailBox = await detail.boundingBox()
+      expect(detailBox).not.toBeNull()
+      if (!detailBox) throw new Error('mobile detail has no layout box')
+      expect(detailBox.x).toBeLessThanOrEqual(2)
+      expect(detailBox.y).toBeLessThanOrEqual(2)
+      expect(detailBox.width).toBeGreaterThanOrEqual(viewport.width - 4)
+      expect(detailBox.height).toBeGreaterThanOrEqual(viewport.height - 4)
+    }
+    await page.getByRole('button', { name: '返回结构地图' }).click()
+
     await page.getByRole('button', { name: /深入分析/ }).click()
     await expect(page.getByRole('heading', { name: '深入分析' })).toBeVisible()
     await expectPersistentAudio()
+    await expectNoPageOverflow()
     await page.getByRole('button', { name: /歌曲概览/ }).click()
     await expect(page.getByRole('heading', { name: '播放器' })).toBeVisible()
     await expectPersistentAudio()
+    await expectNoPageOverflow()
   }
 
   await page.getByRole('button', { name: /结构地图/ }).click()
