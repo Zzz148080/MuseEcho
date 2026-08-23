@@ -93,6 +93,11 @@ function LoadedWorkspace({
     lastChordTrigger.current?.focus()
   }
 
+  const changeView = (next: WorkspaceView) => {
+    if (next !== 'map') setSelectedChord(null)
+    setCurrentView(next)
+  }
+
   const finishDeletion = () => {
     void queryClient.cancelQueries({ queryKey: ['analysis-status', result.analysis_id] })
     void queryClient.cancelQueries({ queryKey: ['analysis-result', result.analysis_id] })
@@ -103,7 +108,7 @@ function LoadedWorkspace({
 
   return (
     <div className="music-workspace">
-      <WorkspaceNavigation current={currentView} onChange={setCurrentView} />
+      <WorkspaceNavigation current={currentView} onChange={changeView} />
       <div className="music-workspace__stage">
         <AudioPlayer analysisId={result.analysis_id} timeline={timeline} />
         {currentView === 'overview' ? (

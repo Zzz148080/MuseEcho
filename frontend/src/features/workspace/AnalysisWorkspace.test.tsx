@@ -49,6 +49,27 @@ describe('AnalysisWorkspace', () => {
     expect(loadResult).toHaveBeenCalledTimes(1)
   })
 
+  it('clears chord detail before a remounted map can restore focus', async () => {
+    const user = userEvent.setup()
+    renderWorkspace()
+
+    await screen.findByRole('heading', { name: 'Music DNA' })
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
+    await user.click(screen.getByRole('button', { name: /和弦 G/ }))
+    expect(screen.getByRole('heading', { name: 'G 和弦' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: /歌曲概览/ }))
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
+
+    expect(screen.queryByRole('heading', { name: 'G 和弦' })).not.toBeInTheDocument()
+
+    const remountedChord = screen.getByRole('button', { name: /和弦 G/ })
+    await user.click(remountedChord)
+    await user.click(screen.getByRole('button', { name: '返回结构地图' }))
+
+    expect(remountedChord).toHaveFocus()
+  })
+
   it('keeps secondary data management outside the primary result views', async () => {
     const user = userEvent.setup()
     renderWorkspace()
