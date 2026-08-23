@@ -37,6 +37,38 @@ a model-quality score.
 
 Install the `train` or `export` extras only on machines that perform those jobs.
 
+### BTC-170 validation-only research comparison
+
+BTC-170 is an ML-only research candidate. Its official checkpoint must remain at the ignored
+local cache path `ml/cache/btc/btc_model_large_voca.pt`; the runner verifies the committed source
+descriptor, byte-level artifact lock, safe `weights_only=True` checkpoint contract, and exact
+model state before inference. Never commit or redistribute the checkpoint, and never weaken the
+loader with `weights_only=False` or `strict=False`.
+
+From the repository root, run only the frozen real-gold validation comparison:
+
+```powershell
+uv run --project ml python -m museecho_ml.evaluation.btc run `
+  --manifest ml/data/manifests/splits-v1/real-gold-validation.manifest.json `
+  --dataset-root guitarset=ml/data/sources `
+  --dataset-root rwc-popular=ml/data/sources `
+  --dataset-root schubert-winterreise=ml/data/sources/schubert-winterreise-2.1 `
+  --evaluation-config ml/configs/evaluation-v1.json `
+  --source ml/configs/btc-170-source-v1.json `
+  --artifact-lock ml/configs/btc-170-artifact-lock-v1.json `
+  --checkpoint ml/cache/btc/btc_model_large_voca.pt `
+  --predictions-output ml/runs/btc-170/validation-v1/predictions.jsonl `
+  --report-output docs/ml/btc-170/validation-report-v1.json `
+  --decision-output docs/ml/btc-170/decision-v1.json `
+  --markdown-output docs/ml/btc-170/comparison-v1.md
+```
+
+The command rejects every non-validation split before checkpoint or audio access. It does not
+authorize access to any frozen test manifest and cannot promote or change the product default.
+See the Chinese [BTC-170 model card](../docs/ml/MODEL_CARD_BTC_170.md), the immutable
+[validation report](../docs/ml/btc-170/validation-report-v1.json), and the
+[continuation decision](../docs/ml/btc-170/decision-v1.json).
+
 After generating the three approved real-gold manifests, freeze the leakage-resistant v1 split
 from the repository root. Dataset roots are explicit because legacy manifests intentionally retain
 their original relative-path bases:
