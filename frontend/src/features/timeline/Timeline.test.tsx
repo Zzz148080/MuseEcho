@@ -110,6 +110,34 @@ describe('Timeline', () => {
     expect(screen.getByTestId('playhead')).toHaveAttribute('data-seconds', '8')
   })
 
+  it('marks the selected chord and returns its activating button', async () => {
+    const user = userEvent.setup()
+    const onChordSelect = vi.fn()
+    function SelectionHarness() {
+      const timeline = useTimeline(richResult.track.duration_seconds)
+      return (
+        <Timeline
+          onChordSelect={onChordSelect}
+          result={richResult}
+          selectedChord={richResult.chords[0]}
+          timeline={timeline}
+        />
+      )
+    }
+
+    render(<SelectionHarness />)
+    await user.click(screen.getByRole('button', { name: /和弦 C/ }))
+
+    expect(screen.getByRole('button', { name: /和弦 C/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(onChordSelect).toHaveBeenCalledWith(
+      richResult.chords[0],
+      expect.any(HTMLButtonElement),
+    )
+  })
+
   it('keeps visual section boundaries without exposing internal section labels', () => {
     render(<RichHarness />)
 

@@ -8,10 +8,16 @@ import { timeToPercent } from './useTimeline'
 export interface TimelineProps {
   result: AnalysisResult
   timeline: TimelineController
-  onChordSelect?: (chord: ChordResult) => void
+  selectedChord?: ChordResult | null
+  onChordSelect?: (chord: ChordResult, trigger: HTMLButtonElement) => void
 }
 
-export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
+export function Timeline({
+  result,
+  timeline,
+  selectedChord,
+  onChordSelect,
+}: TimelineProps) {
   const dragStart = useRef<number | null>(null)
   const summary = result.track.summary
   const waveform = summary?.waveform
@@ -153,12 +159,13 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
           <div className="timeline__events">
             {usableChords.map((chord) => (
               <button
+                aria-pressed={selectedChord === chord}
                 aria-label={`和弦 ${chord.symbol}，${confidenceLabel(chord.confidence)}`}
                 className="timeline__event timeline__event--chord"
                 key={chord.id}
-                onClick={() => {
+                onClick={(event) => {
                   timeline.seek(chord.start_seconds)
-                  onChordSelect?.(chord)
+                  onChordSelect?.(chord, event.currentTarget)
                 }}
                 style={eventPosition(
                   chord.start_seconds,

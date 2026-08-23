@@ -20,38 +20,45 @@ function renderWorkspace(loadResult = vi.fn().mockResolvedValue(fixtureResult)) 
 }
 
 describe('AnalysisWorkspace', () => {
-  it('loads the persisted result and exposes the synchronized evidence workspace', async () => {
+  it('loads one result and initially exposes only the overview', async () => {
     const { loadResult } = renderWorkspace()
 
     expect(await screen.findByRole('heading', { name: 'Music DNA' })).toBeVisible()
     expect(screen.getByRole('heading', { name: '播放器' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: '结构地图' })).toBeVisible()
-    expect(loadResult).toHaveBeenCalledWith(analysisId)
+    expect(screen.queryByRole('heading', { name: '结构地图' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '深入分析' })).not.toBeInTheDocument()
+    expect(loadResult).toHaveBeenCalledTimes(1)
   })
 
-  it('opens persisted theory when a chord seeks the shared media element', async () => {
+  it('switches views without refetching and opens chord theory as a returnable detail', async () => {
     const user = userEvent.setup()
-    const { container } = renderWorkspace()
+    const { container, loadResult } = renderWorkspace()
 
     await screen.findByRole('heading', { name: 'Music DNA' })
-    await user.click(screen.getByRole('button', { name: /和弦 G/ }))
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
+    const chord = screen.getByRole('button', { name: /和弦 G/ })
+    await user.click(chord)
 
     expect(container.querySelector('audio')?.currentTime).toBe(8)
     expect(screen.getByRole('heading', { name: 'G 和弦' })).toBeVisible()
-    expect(screen.getByText(/A–G 表示音名/)).toBeVisible()
+    expect(screen.getByRole('button', { name: '返回结构地图' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: '返回结构地图' }))
+    expect(screen.queryByRole('heading', { name: 'G 和弦' })).not.toBeInTheDocument()
+    expect(chord).toHaveFocus()
+    expect(loadResult).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps selection controls, hides segment questions, and tucks deletion controls away', async () => {
+  it('keeps secondary data management outside the primary result views', async () => {
+    const user = userEvent.setup()
     renderWorkspace()
 
     await screen.findByRole('heading', { name: 'Music DNA' })
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
 
     expect(screen.getByRole('group', { name: '片段选择轨道' })).toBeVisible()
     expect(screen.getByRole('group', { name: '片段选择' })).toBeVisible()
-    expect(screen.queryByRole('heading', { name: '片段问答' })).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('问题')).not.toBeInTheDocument()
     expect(screen.getByRole('group', { name: '管理分析数据' })).not.toHaveAttribute('open')
-    expect(screen.queryByRole('heading', { name: '数据生命周期' })).not.toBeInTheDocument()
   })
 
   it('announces result failures and retries only on user action', async () => {

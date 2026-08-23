@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { ChordResult } from '../../api/types'
 import { Button } from '../../components/Button'
@@ -12,10 +12,15 @@ import {
 } from '../privacy/RetentionPanel'
 import { Timeline } from '../timeline/Timeline'
 import { useTimeline } from '../timeline/useTimeline'
+import { AnalysisFeatureHub } from './AnalysisFeatureHub'
 import {
   useAnalysisResult,
   type ResultLoader,
 } from './useAnalysisResult'
+import {
+  WorkspaceNavigation,
+  type WorkspaceView,
+} from './WorkspaceNavigation'
 
 export interface AnalysisWorkspaceProps {
   analysisId: string
@@ -74,7 +79,19 @@ function LoadedWorkspace({
 }: LoadedWorkspaceProps) {
   const queryClient = useQueryClient()
   const timeline = useTimeline(result.track.duration_seconds)
+  const [currentView, setCurrentView] = useState<WorkspaceView>('overview')
   const [selectedChord, setSelectedChord] = useState<ChordResult | null>(null)
+  const lastChordTrigger = useRef<HTMLButtonElement | null>(null)
+
+  const openChord = (chord: ChordResult, trigger: HTMLButtonElement) => {
+    lastChordTrigger.current = trigger
+    setSelectedChord(chord)
+  }
+
+  const closeChord = () => {
+    setSelectedChord(null)
+    lastChordTrigger.current?.focus()
+  }
 
   const finishDeletion = () => {
     void queryClient.cancelQueries({ queryKey: ['analysis-status', result.analysis_id] })
@@ -86,23 +103,50 @@ function LoadedWorkspace({
 
   return (
     <div className="music-workspace">
-      <div className="music-workspace__overview">
+      <WorkspaceNavigation current={currentView} onChange={setCurrentView} />
+      <div className="music-workspace__stage">
         <AudioPlayer analysisId={result.analysis_id} timeline={timeline} />
-        <MusicDNA result={result} />
-      </div>
-      <Timeline
-        onChordSelect={setSelectedChord}
-        result={result}
-        timeline={timeline}
-      />
-      <ChordDetails chord={selectedChord} />
-      <div className="analysis-support">
-        <RetentionPanel
-          analysisId={result.analysis_id}
-          expiresAt={expiresAt}
-          onDeleted={finishDeletion}
-          remove={removeAnalysis}
-        />
+        {currentView === 'overview' ? (
+          <section aria-label="歌曲概览" className="workspace-view workspace-view--overview">
+            <MusicDNA result={result} />
+          </section>
+        ) : null}
+
+        {currentView === 'map' ? (
+          <section aria-label="结构地图工作区" className="workspace-view workspace-view--map">
+            <div className={`workspace-map-layout${selectedChord ? ' workspace-map-layout--detail' : ''}`}>
+              <Timeline
+                onChordSelect={openChord}
+                result={result}
+                selectedChord={selectedChord}
+                timeline={timeline}
+              />
+              {selectedChord ? (
+                <aside aria-label="当前和弦详情" className="workspace-detail">
+                  <Button onClick={closeChord} variant="secondary">
+                    返回结构地图
+                  </Button>
+                  <ChordDetails chord={selectedChord} />
+                </aside>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
+        {currentView === 'deep' ? (
+          <div className="workspace-view workspace-view--deep">
+            <AnalysisFeatureHub onOpenMap={() => setCurrentView('map')} result={result} />
+          </div>
+        ) : null}
+
+        <div className="analysis-support">
+          <RetentionPanel
+            analysisId={result.analysis_id}
+            expiresAt={expiresAt}
+            onDeleted={finishDeletion}
+            remove={removeAnalysis}
+          />
+        </div>
       </div>
     </div>
   )
