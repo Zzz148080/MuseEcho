@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
@@ -8,14 +9,18 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from museecho_ml.artifacts import canonical_sha256
+import museecho_ml.evaluation.btc as btc_evaluation_module
+from museecho_ml.artifacts import canonical_sha256, file_sha256
 from museecho_ml.candidates.btc_inference import (
     BtcEvent,
     BtcInferenceResult,
 )
 from museecho_ml.evaluation.btc import (
     decide_btc_continuation,
+    freeze_btc_validation_artifacts,
     load_btc_validation_manifest,
+    main,
+    replay_btc_validation_artifacts,
     run_btc_validation_experiment,
 )
 from museecho_ml.evaluation.report import EvaluationConfig
@@ -82,6 +87,11 @@ def test_btc_collection_checks_split_before_roots_or_recognizer_creation(
         )
 
     assert created is False
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows process API boundary")
+def test_windows_peak_rss_reader_uses_a_valid_process_handle() -> None:
+    assert btc_evaluation_module._peak_rss_bytes() > 0
 
 
 def _track(index: int, dataset_id: str, root: str, quality: str) -> dict[str, object]:
@@ -290,3 +300,174 @@ def test_btc_gate_rejects_malformed_or_non_diagnostic_reports(mutation: str) -> 
 
     with pytest.raises(ValueError, match="BTC continuation report"):
         decide_btc_continuation(report)
+
+
+def _artifact_fixture_result(tmp_path: Path) -> tuple[dict[str, object], Path]:
+    datasets = ("guitarset", "rwc-popular", "schubert-winterreise")
+    tracks = (
+        _track(0, datasets[0], "C", "maj"),
+        _track(1, datasets[1], "D", "min"),
+        _track(2, datasets[2], "E", "maj"),
+    )
+    manifest_value = {
+        "schema_version": 1,
+        "corpus_role": "real-gold",
+        "split": "validation",
+        "tracks": list(tracks),
+    }
+    manifest = tmp_path / "validation.manifest.json"
+    manifest.write_text(json.dumps(manifest_value), encoding="utf-8")
+    roots: dict[str, Path] = {}
+    for dataset_id in datasets:
+        root = tmp_path / f"source-{dataset_id}"
+        root.mkdir()
+        roots[dataset_id] = root
+    for index, track in enumerate(tracks):
+        (roots[str(track["dataset_id"])] / f"track-{index}.raw").write_bytes(b"audio")
+
+    def audio_loader(path: Path) -> tuple[np.ndarray, int]:
+        index = int(path.stem.split("-")[-1])
+        return np.full(10, index, dtype=np.float32), 10
+
+    def legacy_recognize(samples: np.ndarray, sample_rate: int):
+        index = int(samples[0])
+        predicted = ("A:maj", "F:maj", "G:min")[index]
+        return (
+            SimpleNamespace(
+                start_seconds=0.0,
+                end_seconds=samples.size / sample_rate,
+                symbol=predicted,
+                confidence=0.8,
+                algorithm="chroma-triad-viterbi-v1",
+            ),
+        )
+
+    result = run_btc_validation_experiment(
+        manifest_path=manifest,
+        dataset_roots=roots,
+        config=EvaluationConfig(),
+        btc_recognizer_factory=_FakeBtcRecognizer,
+        legacy_recognize=legacy_recognize,
+        audio_loader=audio_loader,
+        peak_rss_reader=lambda: 123_456,
+        checkpoint_security_passed=True,
+        artifact_identity_passed=True,
+        deterministic_replay=True,
+        bootstrap_resamples=100,
+    )
+    return result, manifest
+
+
+def test_btc_artifacts_are_path_free_immutable_and_replayable(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    result, manifest = _artifact_fixture_result(tmp_path)
+    assert all(
+        {
+            "btc_cpu_seconds",
+            "btc_wall_seconds",
+            "legacy_cpu_seconds",
+            "legacy_wall_seconds",
+        }
+        <= set(row)
+        for row in result["prediction_rows"]
+    )
+    identity = {
+        "source_commit": "a" * 40,
+        "evaluation_config_sha256": "b" * 64,
+        "source_descriptor_sha256": "c" * 64,
+        "artifact_lock_sha256": "d" * 64,
+        "checkpoint_tensor_contract_sha256": "e" * 64,
+        "python_version": "3.12.13",
+        "platform": "Windows-test",
+        "numpy_version": np.__version__,
+        "librosa_version": "0.11.0",
+        "torch_version": "2.test",
+        "torch_num_threads": 1,
+    }
+    predictions = tmp_path / "out" / "predictions.jsonl"
+    report = tmp_path / "out" / "report.json"
+    decision = tmp_path / "out" / "decision.json"
+    markdown = tmp_path / "out" / "comparison.md"
+
+    frozen = freeze_btc_validation_artifacts(
+        result,
+        identity=identity,
+        predictions_output=predictions,
+        report_output=report,
+        decision_output=decision,
+        markdown_output=markdown,
+    )
+
+    payload = b"\n".join(
+        path.read_bytes() for path in (predictions, report, decision, markdown)
+    )
+    assert str(tmp_path).encode() not in payload
+    assert b'"audio_path"' not in predictions.read_bytes()
+    assert b'"dataset_root"' not in payload
+    assert frozen["report_sha256"] == canonical_sha256(
+        json.loads(report.read_text(encoding="utf-8"))
+    )
+    assert frozen["decision_sha256"] == canonical_sha256(
+        json.loads(decision.read_text(encoding="utf-8"))
+    )
+
+    replay = replay_btc_validation_artifacts(
+        manifest_path=manifest,
+        predictions_path=predictions,
+        config=EvaluationConfig(),
+        expected_report_path=report,
+        expected_decision_path=decision,
+        bootstrap_resamples=100,
+    )
+
+    assert replay["report_sha256"] == frozen["report_sha256"]
+    assert replay["decision_sha256"] == frozen["decision_sha256"]
+    assert replay["predictions_sha256"] == file_sha256(predictions)
+
+    evaluation_config = tmp_path / "evaluation.json"
+    evaluation_config.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "evaluation_version": "1.0.0",
+                "boundary_tolerance_seconds": 0.05,
+                "ece_bin_count": 15,
+                "publication_threshold": 0.85,
+                "exact_match_includes_bass": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+    exit_code = main(
+        [
+            "replay",
+            "--manifest",
+            str(manifest),
+            "--evaluation-config",
+            str(evaluation_config),
+            "--predictions",
+            str(predictions),
+            "--expected-report",
+            str(report),
+            "--expected-decision",
+            str(decision),
+            "--bootstrap-resamples",
+            "100",
+        ]
+    )
+    cli_replay = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert cli_replay == replay
+
+    changed = deepcopy(result)
+    changed["prediction_rows"][0]["btc_events"][0]["confidence"] = 0.1  # type: ignore[index]
+    with pytest.raises(FileExistsError, match="different content"):
+        freeze_btc_validation_artifacts(
+            changed,
+            identity=identity,
+            predictions_output=predictions,
+            report_output=report,
+            decision_output=decision,
+            markdown_output=markdown,
+        )

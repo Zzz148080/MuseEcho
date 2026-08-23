@@ -1,21 +1,46 @@
 from __future__ import annotations
 
+import argparse
+import hashlib
+import importlib.metadata
 import json
 import math
+import platform
+import re
+import subprocess
+import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Protocol
 
 import numpy as np
+import torch
 
-from museecho_ml.artifacts import canonical_sha256
-from museecho_ml.candidates.btc_inference import BtcInferenceResult
+from museecho_ml.artifacts import (
+    canonical_json_bytes,
+    canonical_sha256,
+    file_sha256,
+    write_immutable_bytes,
+    write_immutable_json,
+)
+from museecho_ml.candidates.btc_artifact import (
+    BtcArtifactLock,
+    BtcArtifactSource,
+    load_btc_source,
+)
+from museecho_ml.candidates.btc_checkpoint import (
+    checkpoint_contract,
+    load_btc_checkpoint,
+)
+from museecho_ml.candidates.btc_inference import BtcInferenceResult, BtcRecognizer
+from museecho_ml.candidates.btc_model import BtcModelConfig
 from museecho_ml.evaluation.deep_adapter import manifest_reference_intervals
 from museecho_ml.evaluation.metrics import ScoredChordInterval
 from museecho_ml.evaluation.report import EvaluationConfig, evaluate_corpus
 from museecho_ml.evaluation.statistics import evaluate_dataset_strata
-from museecho_ml.labels import parse_annotation
+from museecho_ml.labels import CanonicalChord, parse_annotation
 from museecho_ml.vocabulary import ChordVocabulary
 
 _BTC_ALGORITHM = "btc-ismir19-large-voca-v1"
@@ -119,8 +144,10 @@ def run_btc_validation_experiment(
         legacy_started_cpu = time.process_time()
         legacy_started_wall = time.perf_counter()
         raw_legacy = tuple(legacy_recognize(samples, sample_rate))
-        legacy_cpu += time.process_time() - legacy_started_cpu
-        legacy_wall += time.perf_counter() - legacy_started_wall
+        legacy_track_cpu = time.process_time() - legacy_started_cpu
+        legacy_track_wall = time.perf_counter() - legacy_started_wall
+        legacy_cpu += legacy_track_cpu
+        legacy_wall += legacy_track_wall
         legacy_prediction, track_algorithms = _legacy_intervals(raw_legacy, duration)
         legacy_algorithms.update(track_algorithms)
 
@@ -152,6 +179,8 @@ def run_btc_validation_experiment(
                 "legacy_events": _serialize_intervals(legacy_prediction),
                 "btc_cpu_seconds": btc_result.cpu_seconds,
                 "btc_wall_seconds": btc_result.wall_seconds,
+                "legacy_cpu_seconds": legacy_track_cpu,
+                "legacy_wall_seconds": legacy_track_wall,
             }
         )
 
@@ -305,6 +334,153 @@ def paired_group_bootstrap_delta(
             }
             for metric_index, name in enumerate(metric_names)
         },
+    }
+
+
+def freeze_btc_validation_artifacts(
+    result: Mapping[str, Any],
+    *,
+    identity: Mapping[str, Any],
+    predictions_output: Path,
+    report_output: Path,
+    decision_output: Path,
+    markdown_output: Path,
+) -> dict[str, str]:
+    if (
+        not isinstance(result, Mapping)
+        or not isinstance(result.get("report"), Mapping)
+        or not isinstance(result.get("prediction_rows"), list)
+        or not result["prediction_rows"]
+        or not isinstance(identity, Mapping)
+    ):
+        raise ValueError("BTC validation result cannot be frozen")
+    rows = result["prediction_rows"]
+    predictions_payload = b"".join(canonical_json_bytes(row) + b"\n" for row in rows)
+    predictions_sha256 = hashlib.sha256(predictions_payload).hexdigest()
+    report = deepcopy(dict(result["report"]))
+    report["identity"] = dict(identity)
+    report["predictions_sha256"] = predictions_sha256
+    decision = decide_btc_continuation(report)
+    markdown = _comparison_markdown(report, decision).encode("utf-8")
+    _assert_path_free(rows, "predictions")
+    _assert_path_free(report, "report")
+    _assert_path_free(decision, "decision")
+    _preflight_immutable_outputs(
+        {
+            predictions_output: predictions_payload,
+            report_output: canonical_json_bytes(report) + b"\n",
+            decision_output: canonical_json_bytes(decision) + b"\n",
+            markdown_output: markdown,
+        }
+    )
+    write_immutable_bytes(predictions_output, predictions_payload)
+    write_immutable_json(report_output, report)
+    write_immutable_json(decision_output, decision)
+    write_immutable_bytes(markdown_output, markdown)
+    return {
+        "predictions_sha256": file_sha256(predictions_output),
+        "report_sha256": canonical_sha256(report),
+        "decision_sha256": canonical_sha256(decision),
+        "markdown_sha256": file_sha256(markdown_output),
+    }
+
+
+def replay_btc_validation_artifacts(
+    *,
+    manifest_path: Path,
+    predictions_path: Path,
+    config: EvaluationConfig,
+    expected_report_path: Path,
+    expected_decision_path: Path,
+    bootstrap_resamples: int = 10_000,
+) -> dict[str, str]:
+    manifest = load_btc_validation_manifest(manifest_path)
+    report = _read_json_object(expected_report_path, "BTC validation report")
+    decision = _read_json_object(expected_decision_path, "BTC validation decision")
+    try:
+        payload = predictions_path.resolve(strict=True).read_bytes()
+        rows = [json.loads(line) for line in payload.splitlines() if line]
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError("BTC validation predictions are unreadable") from error
+    if not rows or any(not isinstance(row, dict) for row in rows):
+        raise ValueError("BTC validation predictions must contain object rows")
+    predictions_sha256 = hashlib.sha256(payload).hexdigest()
+    if (
+        report.get("manifest_sha256") != canonical_sha256(manifest)
+        or report.get("predictions_sha256") != predictions_sha256
+    ):
+        raise ValueError("BTC replay identity does not match frozen artifacts")
+
+    manifest_tracks = {
+        track.get("track_id"): track
+        for track in manifest["tracks"]
+        if isinstance(track, Mapping)
+    }
+    if len(manifest_tracks) != len(manifest["tracks"]):
+        raise ValueError("BTC replay manifest track identities are invalid")
+    btc_tracks: dict[
+        str, tuple[Sequence[ScoredChordInterval], Sequence[ScoredChordInterval]]
+    ] = {}
+    legacy_tracks: dict[
+        str, tuple[Sequence[ScoredChordInterval], Sequence[ScoredChordInterval]]
+    ] = {}
+    metadata: dict[str, dict[str, str]] = {}
+    vocabulary = ChordVocabulary.default()
+    consumed: set[str] = set()
+    for row in rows:
+        track_id = row.get("track_id")
+        track = manifest_tracks.get(track_id)
+        if not isinstance(track_id, str) or track is None or track_id in consumed:
+            raise ValueError("BTC replay prediction track identity is invalid")
+        if (
+            row.get("split") != "validation"
+            or row.get("dataset_id") != track.get("dataset_id")
+            or row.get("cover_group_id") != track.get("cover_group_id")
+            or row.get("duration_seconds") != track.get("duration_seconds")
+        ):
+            raise ValueError("BTC replay prediction metadata does not match manifest")
+        reference = manifest_reference_intervals(track, vocabulary)
+        duration = float(track["duration_seconds"])
+        btc_prediction = _deserialize_intervals(row.get("btc_events"), duration, "BTC")
+        legacy_prediction = _deserialize_intervals(
+            row.get("legacy_events"), duration, "legacy"
+        )
+        btc_tracks[track_id] = (reference, btc_prediction)
+        legacy_tracks[track_id] = (reference, legacy_prediction)
+        metadata[track_id] = {
+            "dataset_id": str(track["dataset_id"]),
+            "cover_group_id": str(track["cover_group_id"]),
+            "split": "validation",
+        }
+        consumed.add(track_id)
+    if consumed != set(manifest_tracks):
+        raise ValueError("BTC replay predictions do not cover the manifest")
+
+    btc_evaluation = evaluate_dataset_strata(btc_tracks, metadata, config)
+    legacy_evaluation = evaluate_dataset_strata(legacy_tracks, metadata, config)
+    paired_bootstrap = paired_group_bootstrap_delta(
+        btc_tracks,
+        legacy_tracks,
+        metadata,
+        config,
+        resamples=bootstrap_resamples,
+    )
+    if (
+        canonical_sha256(btc_evaluation)
+        != canonical_sha256(report["candidates"]["btc"]["evaluation"])
+        or canonical_sha256(legacy_evaluation)
+        != canonical_sha256(report["candidates"]["legacy"]["evaluation"])
+        or canonical_sha256(paired_bootstrap)
+        != canonical_sha256(report["comparison"]["paired_bootstrap"])
+    ):
+        raise ValueError("BTC replay metrics do not reproduce the frozen report")
+    recomputed_decision = decide_btc_continuation(report)
+    if canonical_sha256(recomputed_decision) != canonical_sha256(decision):
+        raise ValueError("BTC replay decision does not reproduce the frozen decision")
+    return {
+        "predictions_sha256": predictions_sha256,
+        "report_sha256": canonical_sha256(report),
+        "decision_sha256": canonical_sha256(decision),
     }
 
 
@@ -500,6 +676,38 @@ def _serialize_intervals(
     ]
 
 
+def _deserialize_intervals(
+    value: Any, duration: float, name: str
+) -> tuple[ScoredChordInterval, ...]:
+    if not isinstance(value, list) or not value:
+        raise ValueError(f"{name} replay prediction must contain events")
+    intervals: list[ScoredChordInterval] = []
+    for raw in value:
+        if not isinstance(raw, Mapping):
+            raise ValueError(f"{name} replay event must be an object")
+        chord = CanonicalChord(
+            root=raw.get("root"),
+            quality=raw.get("quality"),
+            bass=raw.get("bass"),
+            mapping_reason=raw.get("mapping_reason"),
+        )
+        chord.display_symbol
+        try:
+            intervals.append(
+                ScoredChordInterval(
+                    float(raw["start_seconds"]),
+                    float(raw["end_seconds"]),
+                    chord,
+                    float(raw["confidence"]),
+                )
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError(f"{name} replay event is invalid") from error
+    result = tuple(intervals)
+    _validate_prediction_extent(result, duration, name)
+    return result
+
+
 def _candidate_report(
     *,
     algorithm: str,
@@ -529,6 +737,81 @@ def _candidate_report(
             "five_minute_wall_seconds": wall_seconds / duration_seconds * 300.0,
         },
     }
+
+
+def _comparison_markdown(
+    report: Mapping[str, Any], decision: Mapping[str, Any]
+) -> str:
+    btc = report["candidates"]["btc"]
+    legacy = report["candidates"]["legacy"]
+    btc_aggregate = btc["evaluation"]["aggregate"]
+    legacy_aggregate = legacy["evaluation"]["aggregate"]
+    lines = [
+        "# BTC-170 validation comparison",
+        "",
+        f"- Decision: `{decision['status']}`",
+        f"- Tracks: {report['track_count']}",
+        f"- Manifest SHA-256: `{report['manifest_sha256']}`",
+        f"- Predictions SHA-256: `{report['predictions_sha256']}`",
+        "- Confidence: uncalibrated, diagnostic only",
+        "- Bass/inversion evaluation: unavailable (BTC has no bass head)",
+        "- Product default: unchanged (`chroma-triad-viterbi-v1`)",
+        "",
+        "| Candidate | Exact WCSR | Root WCSR | Boundary F1 | Events/reference |",
+        "| --- | ---: | ---: | ---: | ---: |",
+        (
+            f"| BTC-170 | {btc_aggregate['weighted_scores']['exact_quality']:.6f} | "
+            f"{btc_aggregate['weighted_scores']['root']:.6f} | "
+            f"{btc_aggregate['boundary']['f1']:.6f} | {btc['event_ratio']:.6f} |"
+        ),
+        (
+            f"| Legacy | {legacy_aggregate['weighted_scores']['exact_quality']:.6f} | "
+            f"{legacy_aggregate['weighted_scores']['root']:.6f} | "
+            f"{legacy_aggregate['boundary']['f1']:.6f} | "
+            f"{legacy['event_ratio']:.6f} |"
+        ),
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def _assert_path_free(value: Any, label: str) -> None:
+    forbidden_keys = ("audio_path", "dataset_root", "checkpoint_path", "cache_path")
+
+    def visit(item: Any) -> None:
+        if isinstance(item, Mapping):
+            for key, nested in item.items():
+                if not isinstance(key, str) or key in forbidden_keys:
+                    raise ValueError(f"BTC {label} contains a forbidden path field")
+                visit(nested)
+        elif isinstance(item, Sequence) and not isinstance(item, (str, bytes)):
+            for nested in item:
+                visit(nested)
+        elif isinstance(item, str) and (
+            item.startswith(("/", "\\\\"))
+            or re.match(r"^[A-Za-z]:[\\/]", item) is not None
+        ):
+            raise ValueError(f"BTC {label} contains an absolute path")
+
+    visit(value)
+
+
+def _preflight_immutable_outputs(outputs: Mapping[Path, bytes]) -> None:
+    for path, payload in outputs.items():
+        if path.exists() and path.read_bytes() != payload:
+            raise FileExistsError(
+                f"frozen artifact already exists with different content: {path}"
+            )
+
+
+def _read_json_object(path: Path, label: str) -> dict[str, Any]:
+    try:
+        value = json.loads(path.resolve(strict=True).read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"{label} is unreadable") from error
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must be an object")
+    return value
 
 
 def _paired_group_statistics(
@@ -639,3 +922,250 @@ def _require_finite_json(value: Any) -> None:
         json.dumps(value, allow_nan=False)
     except (TypeError, ValueError) as error:
         raise ValueError("BTC continuation report contains invalid values") from error
+
+
+def _parse_path_mappings(values: Sequence[str]) -> dict[str, Path]:
+    result: dict[str, Path] = {}
+    for value in values:
+        key, separator, raw_path = value.partition("=")
+        if not separator or not key or not raw_path or key in result:
+            raise ValueError("BTC dataset roots must use unique NAME=PATH values")
+        result[key] = Path(raw_path)
+    return result
+
+
+def _load_artifact_lock(path: Path) -> BtcArtifactLock:
+    value = _read_json_object(path, "BTC artifact lock")
+    try:
+        return BtcArtifactLock(**value)
+    except TypeError as error:
+        raise ValueError("BTC artifact lock fields are invalid") from error
+
+
+def _artifact_source_matches_lock(
+    source: BtcArtifactSource, lock: BtcArtifactLock
+) -> bool:
+    return (
+        source.repository == lock.repository
+        and source.repository_ref == lock.repository_ref
+        and source.source_url == lock.source_url
+        and source.size_bytes == lock.size_bytes
+        and source.git_blob_sha1 == lock.git_blob_sha1
+        and source.license_spdx == lock.license_spdx
+    )
+
+
+def _default_audio_loader(path: Path) -> tuple[np.ndarray, int]:
+    import librosa
+
+    samples, sample_rate = librosa.load(path, sr=None, mono=True, dtype=np.float32)
+    return np.asarray(samples, dtype=np.float32), int(sample_rate)
+
+
+def _default_legacy_recognizer(
+    samples: np.ndarray, sample_rate: int
+) -> Sequence[_LegacyEvent]:
+    from museecho.analysis.chords import estimate_chords
+
+    return estimate_chords(samples, sample_rate)
+
+
+def _peak_rss_bytes() -> int:
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+
+        class ProcessMemoryCounters(ctypes.Structure):
+            _fields_ = [
+                ("cb", wintypes.DWORD),
+                ("PageFaultCount", wintypes.DWORD),
+                ("PeakWorkingSetSize", ctypes.c_size_t),
+                ("WorkingSetSize", ctypes.c_size_t),
+                ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                ("PagefileUsage", ctypes.c_size_t),
+                ("PeakPagefileUsage", ctypes.c_size_t),
+            ]
+
+        counters = ProcessMemoryCounters()
+        counters.cb = ctypes.sizeof(counters)
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        psapi = ctypes.WinDLL("psapi", use_last_error=True)
+        kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+        psapi.GetProcessMemoryInfo.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(ProcessMemoryCounters),
+            wintypes.DWORD,
+        ]
+        psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
+        process = kernel32.GetCurrentProcess()
+        succeeded = psapi.GetProcessMemoryInfo(
+            process, ctypes.byref(counters), counters.cb
+        )
+        if not succeeded:
+            raise RuntimeError("BTC peak RSS measurement failed")
+        return int(counters.PeakWorkingSetSize)
+    import resource
+
+    usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return int(usage if sys.platform == "darwin" else usage * 1024)
+
+
+def _prediction_event_identity(rows: Sequence[Mapping[str, Any]]) -> str:
+    stable = [
+        {
+            key: row[key]
+            for key in (
+                "split",
+                "track_id",
+                "dataset_id",
+                "cover_group_id",
+                "duration_seconds",
+                "btc_events",
+                "legacy_events",
+            )
+        }
+        for row in rows
+    ]
+    return canonical_sha256(stable)
+
+
+def _source_commit() -> str:
+    completed = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    commit = completed.stdout.strip()
+    if re.fullmatch(r"[0-9a-f]{40}", commit) is None:
+        raise ValueError("BTC source commit identity is invalid")
+    return commit
+
+
+def _run_official_cli(arguments: argparse.Namespace) -> dict[str, Any]:
+    load_btc_validation_manifest(arguments.manifest)
+    source = load_btc_source(arguments.source)
+    lock = _load_artifact_lock(arguments.artifact_lock)
+    if not _artifact_source_matches_lock(source, lock):
+        raise ValueError("BTC source descriptor does not match the artifact lock")
+    config = _load_evaluation_config(arguments.evaluation_config)
+    dataset_roots = _parse_path_mappings(arguments.dataset_root)
+    contract_holder: dict[str, Any] = {}
+
+    def create_recognizer() -> BtcRecognizer:
+        checkpoint = load_btc_checkpoint(
+            arguments.checkpoint,
+            lock,
+            BtcModelConfig.official(),
+        )
+        contract_holder.update(checkpoint_contract(checkpoint))
+        return BtcRecognizer(checkpoint)
+
+    run_arguments = {
+        "manifest_path": arguments.manifest,
+        "dataset_roots": dataset_roots,
+        "config": config,
+        "btc_recognizer_factory": create_recognizer,
+        "legacy_recognize": _default_legacy_recognizer,
+        "audio_loader": _default_audio_loader,
+        "peak_rss_reader": _peak_rss_bytes,
+        "checkpoint_security_passed": True,
+        "artifact_identity_passed": True,
+        "bootstrap_resamples": arguments.bootstrap_resamples,
+    }
+    first = run_btc_validation_experiment(
+        **run_arguments,
+        deterministic_replay=False,
+    )
+    second = run_btc_validation_experiment(
+        **run_arguments,
+        deterministic_replay=True,
+    )
+    first_identity = _prediction_event_identity(first["prediction_rows"])
+    second_identity = _prediction_event_identity(second["prediction_rows"])
+    if first_identity != second_identity:
+        raise RuntimeError("BTC deterministic prediction replay does not match")
+    first = deepcopy(first)
+    first["report"]["comparison"]["deterministic_prediction_replay"] = True
+    first["report"]["comparison"]["deterministic_prediction_sha256"] = first_identity
+    identity = {
+        "source_commit": _source_commit(),
+        "evaluation_config_sha256": file_sha256(arguments.evaluation_config),
+        "source_descriptor_sha256": file_sha256(arguments.source),
+        "artifact_lock_sha256": file_sha256(arguments.artifact_lock),
+        "checkpoint_tensor_contract_sha256": contract_holder[
+            "tensor_contract_sha256"
+        ],
+        "python_version": sys.version.split()[0],
+        "platform": platform.platform(),
+        "numpy_version": np.__version__,
+        "librosa_version": importlib.metadata.version("librosa"),
+        "torch_version": torch.__version__,
+        "torch_num_threads": 1,
+    }
+    frozen = freeze_btc_validation_artifacts(
+        first,
+        identity=identity,
+        predictions_output=arguments.predictions_output,
+        report_output=arguments.report_output,
+        decision_output=arguments.decision_output,
+        markdown_output=arguments.markdown_output,
+    )
+    return {
+        "status": _read_json_object(arguments.decision_output, "BTC decision")[
+            "status"
+        ],
+        **frozen,
+    }
+
+
+def _load_evaluation_config(path: Path) -> EvaluationConfig:
+    from museecho_ml.evaluation.legacy_adapter import load_evaluation_config
+
+    return load_evaluation_config(path)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="BTC-170 validation-only experiment")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    run_parser = subparsers.add_parser("run")
+    run_parser.add_argument("--manifest", type=Path, required=True)
+    run_parser.add_argument("--dataset-root", action="append", required=True)
+    run_parser.add_argument("--evaluation-config", type=Path, required=True)
+    run_parser.add_argument("--source", type=Path, required=True)
+    run_parser.add_argument("--artifact-lock", type=Path, required=True)
+    run_parser.add_argument("--checkpoint", type=Path, required=True)
+    run_parser.add_argument("--predictions-output", type=Path, required=True)
+    run_parser.add_argument("--report-output", type=Path, required=True)
+    run_parser.add_argument("--decision-output", type=Path, required=True)
+    run_parser.add_argument("--markdown-output", type=Path, required=True)
+    run_parser.add_argument("--bootstrap-resamples", type=int, default=10_000)
+    replay_parser = subparsers.add_parser("replay")
+    replay_parser.add_argument("--manifest", type=Path, required=True)
+    replay_parser.add_argument("--evaluation-config", type=Path, required=True)
+    replay_parser.add_argument("--predictions", type=Path, required=True)
+    replay_parser.add_argument("--expected-report", type=Path, required=True)
+    replay_parser.add_argument("--expected-decision", type=Path, required=True)
+    replay_parser.add_argument("--bootstrap-resamples", type=int, default=10_000)
+    arguments = parser.parse_args(argv)
+
+    if arguments.command == "run":
+        result = _run_official_cli(arguments)
+    else:
+        result = replay_btc_validation_artifacts(
+            manifest_path=arguments.manifest,
+            predictions_path=arguments.predictions,
+            config=_load_evaluation_config(arguments.evaluation_config),
+            expected_report_path=arguments.expected_report,
+            expected_decision_path=arguments.expected_decision,
+            bootstrap_resamples=arguments.bootstrap_resamples,
+        )
+    print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

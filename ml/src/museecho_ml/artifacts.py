@@ -53,3 +53,28 @@ def write_immutable_json(path: Path, value: Mapping[str, Any]) -> None:
         os.replace(temporary, destination)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def write_immutable_bytes(path: Path, payload: bytes) -> None:
+    if not isinstance(payload, bytes):
+        raise TypeError("immutable artifact payload must be bytes")
+    destination = path.resolve(strict=False)
+    if destination.exists():
+        if destination.read_bytes() != payload:
+            raise FileExistsError(
+                f"frozen artifact already exists with different content: {destination}"
+            )
+        return
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=".immutable-bytes.", suffix=".tmp", dir=destination.parent
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as output:
+            output.write(payload)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)

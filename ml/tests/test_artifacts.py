@@ -10,6 +10,7 @@ from museecho_ml.artifacts import (
     canonical_json_bytes,
     canonical_sha256,
     file_sha256,
+    write_immutable_bytes,
     write_immutable_json,
 )
 
@@ -62,3 +63,17 @@ def test_immutable_json_temporary_name_does_not_embed_destination_name(
     write_immutable_json(tmp_path / "audit-v1.json", {"status": "completed"})
 
     assert prefixes == [".immutable-json."]
+
+
+def test_immutable_bytes_accepts_identical_content_and_rejects_drift(
+    tmp_path: Path,
+) -> None:
+    artifact = tmp_path / "predictions.jsonl"
+
+    write_immutable_bytes(artifact, b'{"track_id":"one"}\n')
+    write_immutable_bytes(artifact, b'{"track_id":"one"}\n')
+
+    assert artifact.read_bytes() == b'{"track_id":"one"}\n'
+    with pytest.raises(FileExistsError, match="different content"):
+        write_immutable_bytes(artifact, b'{"track_id":"two"}\n')
+    assert not tuple(tmp_path.glob("*.tmp"))

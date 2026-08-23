@@ -57,6 +57,7 @@ clean:
 
 ```powershell
 uv sync --project ml --extra dev --extra train
+uv pip install --python ml\.venv\Scripts\python.exe --no-deps --editable .
 cd ml
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) "btc-baseline-$PID"
 .\.venv\Scripts\python.exe -m pytest -q --basetemp $tempRoot -p no:cacheprovider
@@ -766,6 +767,7 @@ Run the candidate-complete tests immediately before the real experiment:
 
 ```powershell
 uv sync --project ml --extra dev --extra train
+uv pip install --python ml\.venv\Scripts\python.exe --no-deps --editable .
 cd ml
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) "btc-baseline-$PID"
 .\.venv\Scripts\python.exe -m pytest -q --basetemp $tempRoot -p no:cacheprovider
