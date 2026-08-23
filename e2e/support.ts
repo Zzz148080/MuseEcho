@@ -69,6 +69,8 @@ export async function uploadAndWait(page: Page): Promise<string> {
 }
 
 export async function selectTimelineSegment(page: Page): Promise<void> {
+  const mapButton = page.getByRole('button', { name: /结构地图/ })
+  if (await mapButton.isVisible()) await mapButton.click()
   const selectionSurface = page.getByTestId('selection-surface')
   await selectionSurface.scrollIntoViewIfNeeded()
   const selectionBox = await selectionSurface.boundingBox()

@@ -6,6 +6,23 @@ test('desktop, tablet, and mobile layouts stay readable and keyboard operable', 
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await uploadAndWait(page)
+  const audio = page.locator('audio')
+  await expect(audio).toHaveCount(1)
+  const initialAudio = await audio.elementHandle()
+  expect(initialAudio).not.toBeNull()
+
+  const expectPersistentAudio = async () => {
+    await expect(audio).toHaveCount(1)
+    expect(
+      await page.evaluate(
+        (mountedAudio) =>
+          mountedAudio?.isConnected && document.querySelector('audio') === mountedAudio,
+        initialAudio,
+      ),
+    ).toBe(true)
+    await audio.scrollIntoViewIfNeeded()
+    await expect(audio).toBeVisible()
+  }
 
   for (const viewport of [
     { width: 1440, height: 900, stacked: false },
@@ -17,6 +34,18 @@ test('desktop, tablet, and mobile layouts stay readable and keyboard operable', 
       () => document.documentElement.scrollWidth - window.innerWidth,
     )
     expect(overflow).toBeLessThanOrEqual(0)
+
+    await expectPersistentAudio()
+    const navigation = page.getByRole('navigation', { name: '分析功能' })
+    const navBox = await navigation.boundingBox()
+    expect(navBox).not.toBeNull()
+    if (!navBox) continue
+
+    if (viewport.width <= 599) {
+      expect(navBox.y + navBox.height).toBeGreaterThanOrEqual(viewport.height - 4)
+    } else {
+      expect(navBox.y).toBeGreaterThanOrEqual(0)
+    }
 
     const audioPlayer = await page.locator('.audio-player').boundingBox()
     const musicDna = await page.locator('.music-dna').boundingBox()
@@ -38,8 +67,19 @@ test('desktop, tablet, and mobile layouts stay readable and keyboard operable', 
         musicDna.y + musicDna.height,
       ) - 2,
     )
+
+    await page.getByRole('button', { name: /结构地图/ }).click()
+    await expect(page.getByRole('heading', { name: '结构地图' })).toBeVisible()
+    await expectPersistentAudio()
+    await page.getByRole('button', { name: /深入分析/ }).click()
+    await expect(page.getByRole('heading', { name: '深入分析' })).toBeVisible()
+    await expectPersistentAudio()
+    await page.getByRole('button', { name: /歌曲概览/ }).click()
+    await expect(page.getByRole('heading', { name: '播放器' })).toBeVisible()
+    await expectPersistentAudio()
   }
 
+  await page.getByRole('button', { name: /结构地图/ }).click()
   const start = page.getByRole('slider', { name: '片段开始' })
   await start.scrollIntoViewIfNeeded()
   await start.focus()
