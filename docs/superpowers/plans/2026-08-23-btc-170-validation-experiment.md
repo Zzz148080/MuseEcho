@@ -251,7 +251,7 @@ import pytest
 from museecho_ml.candidates.btc_labels import decode_btc_class, frames_to_intervals
 
 
-@pytest.mark.parametrize("quality_offset", [2, 3, 4, 5, 7])
+@pytest.mark.parametrize("quality_offset", [3, 4, 5, 7, 10])
 def test_unsupported_btc_qualities_map_strictly_to_x(quality_offset: int) -> None:
     chord = decode_btc_class(4 * 14 + quality_offset)
     assert (chord.root, chord.quality, chord.bass) == ("X", "X", "X")
