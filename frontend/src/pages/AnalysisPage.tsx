@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { analysisIdPattern, type UploadTransport } from '../api/client'
 import type { UploadAccepted } from '../api/types'
+import { AppHeader } from '../components/AppHeader'
 import { Button } from '../components/Button'
 import { Panel } from '../components/Panel'
 import { AnalysisProgress } from '../features/jobs/AnalysisProgress'
@@ -51,29 +52,25 @@ export function AnalysisPage({
 
   return (
     <div className="app-shell">
-      <header className="masthead">
-        <p className="brand">MuseEcho</p>
-        <p className="edition-mark">Evidence-led music analysis</p>
-      </header>
+      <AppHeader analysisActive={Boolean(analysisId)} onStartAnother={startAnother} />
 
       <main
         aria-label="MuseEcho 音乐解析工作区"
         className={`analysis-workspace${analysisId ? ' analysis-workspace--active' : ''}`}
       >
-        <section
-          aria-labelledby="workspace-title"
-          className={`workspace-intro${analysisId ? ' workspace-intro--compact' : ''}`}
-        >
-          <div>
-            <p className="eyebrow">聆听证据，而非猜测</p>
-            <h1 className="display-title" id="workspace-title">
-              看见音乐的结构
-            </h1>
-          </div>
-          <p className="intro-copy">
-            沿着时间线聆听节奏、动态强弱与局部和声，发现歌曲的变化。
-          </p>
-        </section>
+        {analysisId ? null : (
+          <section aria-labelledby="workspace-title" className="workspace-intro">
+            <div>
+              <p className="eyebrow">聆听证据，而非猜测</p>
+              <h1 className="display-title" id="workspace-title">
+                看见音乐的结构
+              </h1>
+            </div>
+            <p className="intro-copy">
+              沿着时间线聆听节奏、动态强弱与局部和声，发现歌曲的变化。
+            </p>
+          </section>
+        )}
 
         <Panel
           className={`workflow-panel${analysisId ? ' workflow-panel--active' : ''}`}
@@ -89,9 +86,6 @@ export function AnalysisPage({
                 onDeleted={finishDeletion}
                 removeAnalysis={removeAnalysis}
               />
-              <Button onClick={startAnother} variant="secondary">
-                分析其他音频
-              </Button>
             </div>
           ) : deleted ? (
             <div className="deleted-analysis" role="status">
