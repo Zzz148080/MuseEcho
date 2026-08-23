@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "candidate_version": "btc-ismir19-large-voca-v1",
+  "repository": "jayg996/BTC-ISMIR19",
+  "repository_ref": "master",
+  "source_url": "https://raw.githubusercontent.com/jayg996/BTC-ISMIR19/master/test/btc_model_large_voca.pt",
+  "size_bytes": 12229576,
+  "git_blob_sha1": "11c6edbaaaee33737aa7a41dcb9044191630326f",
+  "license_spdx": "MIT"
+}
