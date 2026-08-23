@@ -12,6 +12,24 @@ const accepted: UploadAccepted = {
 }
 
 describe('UploadForm', () => {
+  it('keeps core limits visible and detailed format rules collapsed by default', async () => {
+    const user = userEvent.setup()
+    render(<UploadForm />)
+
+    expect(screen.getByText(/最大 100 MB，最长 10 分钟/)).toBeVisible()
+    const disclosure = screen.getByRole('group', {
+      name: '查看支持格式与上传说明',
+    })
+    expect(disclosure).not.toHaveAttribute('open')
+    expect(screen.getByText(/M4A 仅支持 AAC\/ALAC/)).not.toBeVisible()
+
+    await user.click(
+      screen.getByText('查看支持格式与上传说明', { selector: 'summary' }),
+    )
+    expect(disclosure).toHaveAttribute('open')
+    expect(screen.getByText(/M4A 仅支持 AAC\/ALAC/)).toBeVisible()
+  })
+
   it('uses an exact-suffix chooser and rejects adjacent MP4 and OGA formats', async () => {
     const user = userEvent.setup({ applyAccept: false })
     const onUpload = vi.fn().mockResolvedValue(accepted)
