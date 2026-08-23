@@ -78,11 +78,26 @@ test('desktop, tablet, and mobile layouts stay readable and keyboard operable', 
     await expectPersistentAudio()
     await expectNoPageOverflow()
 
-    await page.getByRole('button', { name: /和弦 C/ }).first().click()
-    const detail = page.getByRole('complementary', { name: '当前和弦详情' })
+    const chordControl = page.getByRole('button', { name: /和弦 C/ }).first()
+    if (viewport.width <= 599) {
+      const chordBox = await chordControl.boundingBox()
+      expect(chordBox).not.toBeNull()
+      if (!chordBox) throw new Error('mobile chord event has no layout box')
+      expect(chordBox.width).toBeGreaterThanOrEqual(44)
+      expect(chordBox.height).toBeGreaterThanOrEqual(44)
+    }
+    await chordControl.click()
+    const detail =
+      viewport.width <= 599
+        ? page.getByRole('dialog', { name: /和弦/ })
+        : page.getByRole('complementary', { name: '当前和弦详情' })
     await expect(detail).toBeVisible()
+    const returnButton = page.getByRole('button', { name: '返回结构地图' })
+    await expect(returnButton).toBeFocused()
     await expectNoPageOverflow()
     if (viewport.width <= 599) {
+      await expect(detail).toHaveAttribute('aria-modal', 'true')
+      await expect(page.locator('.app-shell')).toHaveAttribute('inert', '')
       const detailBox = await detail.boundingBox()
       expect(detailBox).not.toBeNull()
       if (!detailBox) throw new Error('mobile detail has no layout box')
@@ -90,8 +105,15 @@ test('desktop, tablet, and mobile layouts stay readable and keyboard operable', 
       expect(detailBox.y).toBeLessThanOrEqual(2)
       expect(detailBox.width).toBeGreaterThanOrEqual(viewport.width - 4)
       expect(detailBox.height).toBeGreaterThanOrEqual(viewport.height - 4)
+      await page.keyboard.press('Tab')
+      await expect(returnButton).toBeFocused()
+    } else {
+      await expect(detail).not.toHaveAttribute('aria-modal')
+      await expect(page.locator('.app-shell')).not.toHaveAttribute('inert')
     }
-    await page.getByRole('button', { name: '返回结构地图' }).click()
+    await returnButton.click()
+    await expect(chordControl).toBeFocused()
+    await expect(chordControl).toHaveAttribute('aria-pressed', 'true')
 
     await page.getByRole('button', { name: /深入分析/ }).click()
     await expect(page.getByRole('heading', { name: '深入分析' })).toBeVisible()

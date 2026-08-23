@@ -856,6 +856,10 @@ progress::-moz-progress-bar {
   background: color-mix(in srgb, var(--warn) 36%, var(--surface));
 }
 
+.timeline__event--visual {
+  cursor: default;
+}
+
 .timeline__marker {
   position: absolute;
   top: 50%;
@@ -917,41 +921,66 @@ progress::-moz-progress-bar {
   accent-color: var(--accent);
 }
 
-.timeline__event-list {
+.timeline__chord-list {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-3);
   padding-block: var(--space-3);
   border-block: 1px solid var(--border);
 }
 
-.timeline__event-list summary {
-  color: var(--fg);
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.timeline__event-list h3 {
-  margin: var(--space-4) 0 var(--space-2);
+.timeline__chord-list h3 {
+  margin: 0;
   font-family: var(--font-display);
   font-size: 1.05rem;
 }
 
-.timeline__event-list ol {
+.timeline__chord-list ol {
   display: grid;
   gap: var(--space-2);
   margin: 0;
-  padding-left: var(--space-5);
-  color: var(--fg-2);
+  padding: 0;
+  list-style: none;
 }
 
-.timeline__list-button {
-  border: 0;
-  padding: 0;
+.timeline__chord-list li {
+  min-width: 0;
+}
+
+.timeline__chord-list-button {
+  display: grid;
+  grid-template-columns: minmax(2.75rem, auto) minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
   color: var(--fg-2);
-  background: transparent;
+  background: var(--surface);
   text-align: left;
-  text-decoration: underline;
-  text-decoration-color: var(--border);
-  text-underline-offset: 0.2em;
   cursor: pointer;
+}
+
+.timeline__chord-list-button strong {
+  color: var(--fg);
+  font-family: var(--font-mono);
+}
+
+.timeline__chord-list-button span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.timeline__chord-list-button[aria-pressed='true'] {
+  border-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 16%, var(--surface));
+}
+
+.timeline__clear-chord {
+  justify-self: start;
 }
 
 .chord-details {
@@ -1369,6 +1398,10 @@ progress::-moz-progress-bar {
 }
 
 @media (max-width: 599px) {
+  body.workspace-mobile-detail-open {
+    overflow: hidden;
+  }
+
   .app-shell {
     width: min(100% - 2rem, 34rem);
     padding-bottom: calc(7rem + var(--safe-bottom));

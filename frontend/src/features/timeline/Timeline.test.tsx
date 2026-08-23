@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AnalysisResult } from '../../api/types'
 import { fixtureResult as richResult } from '../../test/analysisFixture'
 import { Timeline } from './Timeline'
@@ -76,6 +76,24 @@ const fixtureResult: AnalysisResult = {
     },
   ],
   evidence: [],
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+function setMobileViewport(matches: boolean) {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockImplementation((query: string) => ({
+      addEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      matches: query === '(max-width: 599px)' && matches,
+      media: query,
+      onchange: null,
+      removeEventListener: vi.fn(),
+    })),
+  )
 }
 
 function Harness() {
@@ -207,6 +225,42 @@ describe('Timeline', () => {
     expect(media?.currentTime).toBe(9)
     expect(screen.getByTestId('playhead')).toHaveAttribute('data-seconds', '9')
     expect(screen.queryByText(/时间轴文本事件列表/)).not.toBeInTheDocument()
+  })
+
+  it('offers mobile chord events as chronological non-overlapping 44px controls', async () => {
+    setMobileViewport(true)
+    const user = userEvent.setup()
+    const onChordSelect = vi.fn()
+    function MobileHarness() {
+      const timeline = useTimeline(richResult.track.duration_seconds)
+      return (
+        <Timeline
+          onChordSelect={onChordSelect}
+          result={richResult}
+          selectedChord={richResult.chords[1]}
+          timeline={timeline}
+        />
+      )
+    }
+
+    const { container } = render(<MobileHarness />)
+    const list = screen.getByRole('region', { name: '和弦事件列表' })
+    const controls = screen.getAllByRole('button', { name: /和弦 [CG]/ })
+
+    expect(list).toBeVisible()
+    expect(controls.map((control) => control.getAttribute('aria-label'))).toEqual([
+      '和弦 C，0:00 至 0:08，高置信',
+      '和弦 G，0:08 至 0:12，高置信',
+    ])
+    expect(controls.every((control) => control.classList.contains('timeline__chord-list-button'))).toBe(true)
+    expect(container.querySelectorAll('button.timeline__event--chord')).toHaveLength(0)
+    expect(controls[1]).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(controls[0])
+    expect(onChordSelect).toHaveBeenCalledWith(
+      richResult.chords[0],
+      controls[0],
+    )
   })
 
   it('supports keyboard seeking through the shared playhead', async () => {

@@ -41,4 +41,22 @@ describe('AnalysisFeatureHub', () => {
 
     expect(screen.getAllByText('暂未判定')).toHaveLength(2)
   })
+
+  it('excludes low-confidence chords from the visible candidate count', () => {
+    render(
+      <AnalysisFeatureHub
+        onOpenMap={vi.fn()}
+        result={{
+          ...fixtureResult,
+          chords: [
+            fixtureResult.chords[0],
+            { ...fixtureResult.chords[1], confidence: 0.2 },
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getByText('1 个可见候选')).toBeVisible()
+    expect(screen.queryByText('2 个可见候选')).not.toBeInTheDocument()
+  })
 })

@@ -1,7 +1,12 @@
 import { useRef, type CSSProperties, type PointerEvent } from 'react'
 import type { AnalysisResult, ChordResult } from '../../api/types'
 import { Button } from '../../components/Button'
-import { confidenceLevel, isUsableConfidence } from '../confidence'
+import { MOBILE_WORKSPACE_QUERY, useMediaQuery } from '../../hooks/useMediaQuery'
+import {
+  confidenceLevel,
+  isUsableConfidence,
+  isVisibleChordCandidate,
+} from '../confidence'
 import type { TimelineController } from './useTimeline'
 import { timeToPercent } from './useTimeline'
 
@@ -10,6 +15,7 @@ export interface TimelineProps {
   timeline: TimelineController
   selectedChord?: ChordResult | null
   onChordSelect?: (chord: ChordResult, trigger: HTMLButtonElement) => void
+  onChordDeselect?: () => void
 }
 
 export function Timeline({
@@ -17,16 +23,22 @@ export function Timeline({
   timeline,
   selectedChord,
   onChordSelect,
+  onChordDeselect,
 }: TimelineProps) {
   const dragStart = useRef<number | null>(null)
+  const isMobile = useMediaQuery(MOBILE_WORKSPACE_QUERY)
   const summary = result.track.summary
   const waveform = summary?.waveform
   const energy = result.time_series.find((item) => item.kind === 'energy')
-  const usableChords = result.chords.filter(
-    (chord) =>
-      chord.symbol !== 'unknown' &&
-      isUsableConfidence(chord.confidence),
-  )
+  const usableChords = result.chords
+    .filter(isVisibleChordCandidate)
+    .slice()
+    .sort(
+      (left, right) =>
+        left.start_seconds - right.start_seconds ||
+        left.end_seconds - right.end_seconds ||
+        left.id.localeCompare(right.id),
+    )
   const selectionStyle = timeline.selection
     ? eventPosition(
         timeline.selection.start,
@@ -43,6 +55,11 @@ export function Timeline({
       bounds.width,
       timeline.duration,
     )
+  }
+
+  const selectChord = (chord: ChordResult, trigger: HTMLButtonElement) => {
+    timeline.seek(chord.start_seconds)
+    onChordSelect?.(chord, trigger)
   }
 
   return (
@@ -157,26 +174,38 @@ export function Timeline({
         <div className="timeline__track" role="group" aria-label="和弦轨道">
           <span className="timeline__track-label">和弦</span>
           <div className="timeline__events">
-            {usableChords.map((chord) => (
-              <button
-                aria-pressed={selectedChord === chord}
-                aria-label={`和弦 ${chord.symbol}，${confidenceLabel(chord.confidence)}`}
-                className="timeline__event timeline__event--chord"
-                key={chord.id}
-                onClick={(event) => {
-                  timeline.seek(chord.start_seconds)
-                  onChordSelect?.(chord, event.currentTarget)
-                }}
-                style={eventPosition(
-                  chord.start_seconds,
-                  chord.end_seconds,
-                  timeline.duration,
-                )}
-                type="button"
-              >
-                {chord.symbol}
-              </button>
-            ))}
+            {usableChords.map((chord) =>
+              isMobile ? (
+                <span
+                  aria-hidden="true"
+                  className="timeline__event timeline__event--chord timeline__event--visual"
+                  key={chord.id}
+                  style={eventPosition(
+                    chord.start_seconds,
+                    chord.end_seconds,
+                    timeline.duration,
+                  )}
+                >
+                  {chord.symbol}
+                </span>
+              ) : (
+                <button
+                  aria-pressed={selectedChord?.id === chord.id}
+                  aria-label={`和弦 ${chord.symbol}，${confidenceLabel(chord.confidence)}`}
+                  className="timeline__event timeline__event--chord"
+                  key={chord.id}
+                  onClick={(event) => selectChord(chord, event.currentTarget)}
+                  style={eventPosition(
+                    chord.start_seconds,
+                    chord.end_seconds,
+                    timeline.duration,
+                  )}
+                  type="button"
+                >
+                  {chord.symbol}
+                </button>
+              ),
+            )}
             {!usableChords.length ? (
               <span className="timeline__empty-event">暂无局部和声候选</span>
             ) : null}
@@ -211,6 +240,44 @@ export function Timeline({
           </div>
         </div>
       </div>
+
+      {isMobile && usableChords.length ? (
+        <section
+          aria-labelledby="timeline-chord-list-title"
+          className="timeline__chord-list"
+        >
+          <h3 id="timeline-chord-list-title">和弦事件列表</h3>
+          <ol>
+            {usableChords.map((chord) => (
+              <li key={chord.id}>
+                <button
+                  aria-label={`和弦 ${chord.symbol}，${formatTime(chord.start_seconds)} 至 ${formatTime(chord.end_seconds)}，${confidenceLabel(chord.confidence)}`}
+                  aria-pressed={selectedChord?.id === chord.id}
+                  className="timeline__chord-list-button"
+                  onClick={(event) => selectChord(chord, event.currentTarget)}
+                  type="button"
+                >
+                  <strong>{chord.symbol}</strong>
+                  <span>
+                    {formatTime(chord.start_seconds)}–{formatTime(chord.end_seconds)} ·{' '}
+                    {confidenceLabel(chord.confidence)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+
+      {selectedChord && onChordDeselect ? (
+        <Button
+          className="timeline__clear-chord"
+          onClick={onChordDeselect}
+          variant="secondary"
+        >
+          清除和弦选择
+        </Button>
+      ) : null}
 
       <label className="timeline__seek">
         <span>播放位置</span>

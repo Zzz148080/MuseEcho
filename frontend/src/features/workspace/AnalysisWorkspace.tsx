@@ -1,8 +1,10 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import type { ChordResult } from '../../api/types'
 import { Button } from '../../components/Button'
 import { ErrorNotice } from '../../components/ErrorNotice'
+import { MOBILE_WORKSPACE_QUERY, useMediaQuery } from '../../hooks/useMediaQuery'
 import { ChordDetails } from '../chords/ChordDetails'
 import { MusicDNA } from '../dna/MusicDNA'
 import { AudioPlayer } from '../player/AudioPlayer'
@@ -57,6 +59,7 @@ export function AnalysisWorkspace({
   return (
     <LoadedWorkspace
       expiresAt={expiresAt}
+      key={query.data.analysis_id}
       onDeleted={onDeleted}
       removeAnalysis={removeAnalysis}
       result={query.data}
@@ -81,20 +84,68 @@ function LoadedWorkspace({
   const timeline = useTimeline(result.track.duration_seconds)
   const [currentView, setCurrentView] = useState<WorkspaceView>('overview')
   const [selectedChord, setSelectedChord] = useState<ChordResult | null>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
+  const isMobile = useMediaQuery(MOBILE_WORKSPACE_QUERY)
+  const workspaceRoot = useRef<HTMLDivElement | null>(null)
   const lastChordTrigger = useRef<HTMLButtonElement | null>(null)
+  const detailPanel = useRef<HTMLElement | null>(null)
+  const restoreFocusAfterClose = useRef(false)
+
+  const mobileDetailOpen = isMobile && detailOpen && selectedChord !== null
+
+  useEffect(() => {
+    if (!detailOpen || !selectedChord) return
+    detailPanel.current
+      ?.querySelector<HTMLButtonElement>('[data-detail-return]')
+      ?.focus()
+  }, [detailOpen, isMobile, selectedChord])
+
+  useEffect(() => {
+    if (detailOpen || !restoreFocusAfterClose.current) return
+    restoreFocusAfterClose.current = false
+    const trigger = lastChordTrigger.current
+    if (trigger?.isConnected) trigger.focus()
+  }, [detailOpen])
+
+  useEffect(() => {
+    if (!mobileDetailOpen) return
+    const backgroundRoot =
+      workspaceRoot.current?.closest<HTMLElement>('.app-shell') ??
+      workspaceRoot.current
+    if (!backgroundRoot) return
+
+    backgroundRoot.setAttribute('inert', '')
+    backgroundRoot.setAttribute('aria-hidden', 'true')
+    document.body.classList.add('workspace-mobile-detail-open')
+    return () => {
+      backgroundRoot.removeAttribute('inert')
+      backgroundRoot.removeAttribute('aria-hidden')
+      document.body.classList.remove('workspace-mobile-detail-open')
+    }
+  }, [mobileDetailOpen])
 
   const openChord = (chord: ChordResult, trigger: HTMLButtonElement) => {
     lastChordTrigger.current = trigger
+    restoreFocusAfterClose.current = false
     setSelectedChord(chord)
+    setDetailOpen(true)
   }
 
   const closeChord = () => {
+    restoreFocusAfterClose.current = true
+    setDetailOpen(false)
+  }
+
+  const clearChord = () => {
+    restoreFocusAfterClose.current = false
+    lastChordTrigger.current = null
+    setDetailOpen(false)
     setSelectedChord(null)
-    lastChordTrigger.current?.focus()
   }
 
   const changeView = (next: WorkspaceView) => {
-    if (next !== 'map') setSelectedChord(null)
+    restoreFocusAfterClose.current = false
+    setDetailOpen(false)
     setCurrentView(next)
   }
 
@@ -106,53 +157,77 @@ function LoadedWorkspace({
     onDeleted()
   }
 
+  const chordDetail = detailOpen && selectedChord ? (
+    <aside
+      aria-label={isMobile ? undefined : '当前和弦详情'}
+      aria-labelledby={isMobile ? 'chord-details-title' : undefined}
+      aria-modal={isMobile ? true : undefined}
+      className="workspace-detail"
+      ref={detailPanel}
+      role={isMobile ? 'dialog' : undefined}
+    >
+      <Button data-detail-return onClick={closeChord} variant="secondary">
+        返回结构地图
+      </Button>
+      <ChordDetails chord={selectedChord} />
+    </aside>
+  ) : null
+
   return (
-    <div className="music-workspace">
-      <WorkspaceNavigation current={currentView} onChange={changeView} />
-      <div className="music-workspace__stage">
-        <AudioPlayer analysisId={result.analysis_id} timeline={timeline} />
-        {currentView === 'overview' ? (
-          <section aria-label="歌曲概览" className="workspace-view workspace-view--overview">
-            <MusicDNA result={result} />
-          </section>
-        ) : null}
+    <>
+      <div className="music-workspace" ref={workspaceRoot}>
+        <WorkspaceNavigation current={currentView} onChange={changeView} />
+        <div className="music-workspace__stage">
+          <AudioPlayer analysisId={result.analysis_id} timeline={timeline} />
+          {currentView === 'overview' ? (
+            <section
+              aria-label="歌曲概览"
+              className="workspace-view workspace-view--overview"
+            >
+              <MusicDNA result={result} />
+            </section>
+          ) : null}
 
-        {currentView === 'map' ? (
-          <section aria-label="结构地图工作区" className="workspace-view workspace-view--map">
-            <div className={`workspace-map-layout${selectedChord ? ' workspace-map-layout--detail' : ''}`}>
-              <Timeline
-                onChordSelect={openChord}
+          {currentView === 'map' ? (
+            <section
+              aria-label="结构地图工作区"
+              className="workspace-view workspace-view--map"
+            >
+              <div
+                className={`workspace-map-layout${detailOpen && selectedChord && !isMobile ? ' workspace-map-layout--detail' : ''}`}
+              >
+                <Timeline
+                  onChordDeselect={clearChord}
+                  onChordSelect={openChord}
+                  result={result}
+                  selectedChord={selectedChord}
+                  timeline={timeline}
+                />
+                {!isMobile ? chordDetail : null}
+              </div>
+            </section>
+          ) : null}
+
+          {currentView === 'deep' ? (
+            <div className="workspace-view workspace-view--deep">
+              <AnalysisFeatureHub
+                onOpenMap={() => changeView('map')}
                 result={result}
-                selectedChord={selectedChord}
-                timeline={timeline}
               />
-              {selectedChord ? (
-                <aside aria-label="当前和弦详情" className="workspace-detail">
-                  <Button onClick={closeChord} variant="secondary">
-                    返回结构地图
-                  </Button>
-                  <ChordDetails chord={selectedChord} />
-                </aside>
-              ) : null}
             </div>
-          </section>
-        ) : null}
+          ) : null}
 
-        {currentView === 'deep' ? (
-          <div className="workspace-view workspace-view--deep">
-            <AnalysisFeatureHub onOpenMap={() => setCurrentView('map')} result={result} />
+          <div className="analysis-support">
+            <RetentionPanel
+              analysisId={result.analysis_id}
+              expiresAt={expiresAt}
+              onDeleted={finishDeletion}
+              remove={removeAnalysis}
+            />
           </div>
-        ) : null}
-
-        <div className="analysis-support">
-          <RetentionPanel
-            analysisId={result.analysis_id}
-            expiresAt={expiresAt}
-            onDeleted={finishDeletion}
-            remove={removeAnalysis}
-          />
         </div>
       </div>
-    </div>
+      {mobileDetailOpen ? createPortal(chordDetail, document.body) : null}
+    </>
   )
 }

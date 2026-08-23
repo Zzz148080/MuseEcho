@@ -1,6 +1,6 @@
 import type { AnalysisResult } from '../../api/types'
 import { Button } from '../../components/Button'
-import { confidenceLevel } from '../confidence'
+import { confidenceLevel, isVisibleChordCandidate } from '../confidence'
 
 export interface AnalysisFeatureHubProps {
   onOpenMap: () => void
@@ -19,7 +19,7 @@ export function AnalysisFeatureHub({ onOpenMap, result }: AnalysisFeatureHubProp
     !track.mode
       ? '暂未判定'
       : `${track.key_tonic} ${track.mode === 'major' ? '大调' : '小调'}`
-  const chordCount = result.chords.filter((chord) => chord.symbol !== 'unknown').length
+  const chordCount = result.chords.filter(isVisibleChordCandidate).length
   const energyPoints =
     result.time_series.find((series) => series.kind === 'energy')?.points.length ?? 0
 
