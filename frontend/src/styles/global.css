@@ -1135,16 +1135,17 @@ progress::-moz-progress-bar {
 }
 
 .chord-orbit__ring {
-  --orbit-radius: calc(var(--orbit-size) * (0.18 + var(--orbit-index) * 0.09));
   position: absolute;
   top: 50%;
   left: 50%;
-  width: calc(var(--orbit-radius) * 2);
-  height: calc(var(--orbit-radius) * 2);
   border: 1px solid color-mix(in srgb, var(--structure) 34%, var(--border));
   border-radius: 50%;
   transform: translate(-50%, -50%);
 }
+
+.chord-orbit__ring[data-orbit-index='0'] { width: 36%; height: 36%; }
+.chord-orbit__ring[data-orbit-index='1'] { width: 54%; height: 54%; }
+.chord-orbit__ring[data-orbit-index='2'] { width: 72%; height: 72%; }
 
 .chord-orbit__centre {
   position: absolute;
@@ -1164,32 +1165,47 @@ progress::-moz-progress-bar {
 }
 
 .chord-orbit__carrier {
-  --orbit-phase: calc(var(--orbit-index) * 120deg);
-  --orbit-radius: calc(var(--orbit-size) * (0.18 + var(--orbit-index) * 0.09));
-  --orbit-duration: calc(38s + var(--orbit-index) * 8s);
   position: absolute;
   z-index: 2;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
+  inset: 0;
   overflow: visible;
   animation: chord-orbit-turn var(--orbit-duration) linear infinite;
+  pointer-events: none;
+}
+
+.chord-orbit__carrier[data-orbit-index='0'] {
+  --orbit-phase: 0deg;
+  --orbit-duration: 38s;
+}
+
+.chord-orbit__carrier[data-orbit-index='1'] {
+  --orbit-phase: 120deg;
+  --orbit-duration: 46s;
+}
+
+.chord-orbit__carrier[data-orbit-index='2'] {
+  --orbit-phase: 240deg;
+  --orbit-duration: 54s;
 }
 
 .chord-orbit__note-anchor {
   position: absolute;
-  top: 0;
-  left: var(--orbit-radius);
+  top: 50%;
   display: block;
   width: 0;
   height: 0;
+  pointer-events: none;
 }
+
+.chord-orbit__carrier[data-orbit-index='0'] .chord-orbit__note-anchor { left: 68%; }
+.chord-orbit__carrier[data-orbit-index='1'] .chord-orbit__note-anchor { left: 77%; }
+.chord-orbit__carrier[data-orbit-index='2'] .chord-orbit__note-anchor { left: 86%; }
 
 .chord-orbit__note-upright {
   position: absolute;
   display: block;
   animation: chord-orbit-counterturn var(--orbit-duration) linear infinite;
+  pointer-events: none;
 }
 
 .chord-orbit__note {
@@ -1204,6 +1220,7 @@ progress::-moz-progress-bar {
   cursor: pointer;
   font-family: var(--font-mono);
   font-weight: 800;
+  pointer-events: auto;
   transform: translate(-50%, -50%) scale(1);
   transform-origin: center;
   transition: background-color 150ms ease, color 150ms ease,
@@ -1798,10 +1815,6 @@ progress::-moz-progress-bar {
 }
 
 @media (max-width: 599px) {
-  body.workspace-mobile-detail-open {
-    overflow: hidden;
-  }
-
   .app-shell {
     width: min(100% - 2rem, 34rem);
     padding-bottom: calc(7rem + var(--safe-bottom));
@@ -1849,22 +1862,6 @@ progress::-moz-progress-bar {
     border-radius: var(--radius-sm);
     padding: var(--space-2);
     text-align: center;
-  }
-
-  .workspace-map-layout--detail {
-    display: block;
-  }
-
-  .workspace-detail {
-    position: fixed;
-    z-index: 30;
-    inset: 0;
-    align-self: stretch;
-    overflow-y: auto;
-    padding: max(var(--space-5), env(safe-area-inset-top, 0px)) var(--space-4)
-      calc(var(--space-6) + var(--safe-bottom));
-    border: 0;
-    border-radius: 0;
   }
 
   .panel__header {
@@ -1937,6 +1934,19 @@ progress::-moz-progress-bar {
   .timeline__selection-controls {
     grid-template-columns: 1fr;
   }
+
+  .chord-lab__visual {
+    padding-inline: var(--space-2);
+  }
+
+  .tone-education dl,
+  .theory-facts--concise {
+    grid-template-columns: 1fr;
+  }
+
+  .chord-piano {
+    height: 6.75rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1947,5 +1957,25 @@ progress::-moz-progress-bar {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  .chord-orbit__carrier,
+  .chord-orbit__note-upright {
+    animation: none !important;
+  }
+
+  .chord-orbit__carrier {
+    transform: rotate(var(--orbit-phase));
+  }
+
+  .chord-orbit__note-upright {
+    transform: rotate(calc(var(--orbit-phase) * -1));
+  }
+
+  .timeline__event--chord,
+  .timeline__marker,
+  .chord-piano__key,
+  .workspace-detail {
+    transition: none !important;
   }
 }

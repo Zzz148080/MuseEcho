@@ -82,6 +82,7 @@ export function ChordOrbit({
           {pitchClasses.map((pitch, index) => (
             <span
               className="chord-orbit__ring"
+              data-orbit-index={index}
               key={`${pitch}-ring`}
               style={{ '--orbit-index': index } as CSSProperties}
             />
@@ -95,6 +96,7 @@ export function ChordOrbit({
           return (
             <span
               className="chord-orbit__carrier"
+              data-orbit-index={index}
               key={`${pitch}-${index}`}
               style={{ '--orbit-index': index } as CSSProperties}
             >
