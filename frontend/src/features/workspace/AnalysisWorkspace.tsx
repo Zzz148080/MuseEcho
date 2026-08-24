@@ -160,8 +160,16 @@ function LoadedWorkspace({
     setCurrentView(next)
   }
 
-  const keepFocusInMobileDetail = (event: ReactKeyboardEvent<HTMLElement>) => {
-    if (!isFullscreenDetail || event.key !== 'Tab') return
+  const handleFullscreenDetailKeyDown = (
+    event: ReactKeyboardEvent<HTMLElement>,
+  ) => {
+    if (!isFullscreenDetail) return
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeChord()
+      return
+    }
+    if (event.key !== 'Tab') return
     const focusable = detailPanel.current?.querySelectorAll<HTMLElement>(
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     )
@@ -192,7 +200,7 @@ function LoadedWorkspace({
       }
       aria-modal={isFullscreenDetail ? true : undefined}
       className="workspace-detail"
-      onKeyDown={keepFocusInMobileDetail}
+      onKeyDown={handleFullscreenDetailKeyDown}
       ref={detailPanel}
       role={isFullscreenDetail ? 'dialog' : undefined}
     >

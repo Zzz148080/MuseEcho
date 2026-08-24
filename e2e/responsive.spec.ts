@@ -34,9 +34,10 @@ test('desktop, tablet, and mobile layouts stay readable and keyboard operable', 
   for (const viewport of [
     { width: 1440, height: 900, stacked: false },
     { width: 1024, height: 768, stacked: false },
-    { width: 768, height: 1024, stacked: true },
+    { width: 1023, height: 768, stacked: false },
+    { width: 600, height: 900, stacked: true },
+    { width: 599, height: 900, stacked: true },
     { width: 390, height: 844, stacked: true },
-    { width: 320, height: 568, stacked: true },
   ]) {
     await page.setViewportSize(viewport)
     await expectPersistentAudio()
@@ -75,6 +76,9 @@ test('desktop, tablet, and mobile layouts stay readable and keyboard operable', 
 
     await page.getByRole('button', { name: /结构地图/ }).click()
     await expect(page.getByRole('heading', { name: '结构地图' })).toBeVisible()
+    await expect(
+      page.getByRole('region', { name: '和弦事件列表' }),
+    ).toHaveCount(viewport.width <= 599 ? 1 : 0)
     await expectPersistentAudio()
     await expectNoPageOverflow()
 
@@ -181,7 +185,12 @@ test('desktop, tablet, and mobile layouts stay readable and keyboard operable', 
         await expect(detail.locator('.chord-piano__key[data-active="true"]')).toHaveCount(1)
       }
     }
-    await returnButton.click()
+    if (viewport.width <= 1023) {
+      await page.keyboard.press('Escape')
+      await expect(detail).toHaveCount(0)
+    } else {
+      await returnButton.click()
+    }
     await expect(chordControl).toBeFocused()
     await expect(chordControl).toHaveAttribute('aria-pressed', 'true')
 

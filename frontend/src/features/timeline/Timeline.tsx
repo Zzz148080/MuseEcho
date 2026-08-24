@@ -292,7 +292,8 @@ export function Timeline({
                     </span>
                   ) : (
                     <button
-                      aria-label={`和弦 ${chord.symbol}，${confidenceLabel(chord.confidence)}`}
+                      aria-current={current ? 'true' : undefined}
+                      aria-label={`和弦 ${chord.symbol}，${confidenceLabel(chord.confidence)}${current ? '，正在经过' : ''}`}
                       aria-pressed={selectedChord?.id === chord.id}
                       className="timeline__event timeline__event--chord"
                       data-current={String(current)}
@@ -355,7 +356,8 @@ export function Timeline({
                   )
                   return (
                     <button
-                      aria-label={label}
+                      aria-current={current ? 'true' : undefined}
+                      aria-label={`${label}${current ? '，正在经过' : ''}`}
                       className="timeline__marker"
                       data-current={String(current)}
                       key={`${event.timestamp_seconds}-${index}`}
@@ -384,24 +386,28 @@ export function Timeline({
         >
           <h3 id="timeline-chord-list-title">和弦事件列表</h3>
           <ol>
-            {usableChords.map((chord) => (
-              <li key={chord.id}>
-                <button
-                  aria-label={`和弦 ${chord.symbol}，${formatTime(chord.start_seconds)} 至 ${formatTime(chord.end_seconds)}，${confidenceLabel(chord.confidence)}`}
-                  aria-pressed={selectedChord?.id === chord.id}
-                  className="timeline__chord-list-button"
-                  onClick={(event) => selectChord(chord, event.currentTarget)}
-                  type="button"
-                >
-                  <strong>{chord.symbol}</strong>
-                  <span>
-                    {formatTime(chord.start_seconds)}–
-                    {formatTime(chord.end_seconds)} ·{' '}
-                    {confidenceLabel(chord.confidence)}
-                  </span>
-                </button>
-              </li>
-            ))}
+            {usableChords.map((chord) => {
+              const current = isChordCurrent(chord, timeline.currentTime)
+              return (
+                <li key={chord.id}>
+                  <button
+                    aria-current={current ? 'true' : undefined}
+                    aria-label={`和弦 ${chord.symbol}，${formatTime(chord.start_seconds)} 至 ${formatTime(chord.end_seconds)}，${confidenceLabel(chord.confidence)}${current ? '，正在经过' : ''}`}
+                    aria-pressed={selectedChord?.id === chord.id}
+                    className="timeline__chord-list-button"
+                    onClick={(event) => selectChord(chord, event.currentTarget)}
+                    type="button"
+                  >
+                    <strong>{chord.symbol}</strong>
+                    <span>
+                      {formatTime(chord.start_seconds)}–
+                      {formatTime(chord.end_seconds)} ·{' '}
+                      {confidenceLabel(chord.confidence)}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
           </ol>
         </section>
       ) : null}

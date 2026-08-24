@@ -58,7 +58,9 @@ export function ChordOrbit({
   selectedPitchClass,
   onActivate,
 }: ChordOrbitProps) {
-  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
+  const previewIndex = hoveredIndex ?? focusedIndex
   const preview =
     previewIndex === null
       ? null
@@ -109,11 +111,11 @@ export function ChordOrbit({
                     aria-label={`组成音 ${pitch}，${education.name}`}
                     aria-pressed={selectedPitchClass === pitch}
                     className="chord-orbit__note"
-                    onBlur={() => setPreviewIndex(null)}
+                    onBlur={() => setFocusedIndex(null)}
                     onClick={() => onActivate(pitch, intervals[index] ?? '')}
-                    onFocus={() => setPreviewIndex(index)}
-                    onMouseEnter={() => setPreviewIndex(index)}
-                    onMouseLeave={() => setPreviewIndex(null)}
+                    onFocus={() => setFocusedIndex(index)}
+                    onMouseEnter={() => setHoveredIndex(index)}
+                    onMouseLeave={() => setHoveredIndex(null)}
                     type="button"
                   >
                     {pitch}

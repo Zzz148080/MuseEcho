@@ -202,15 +202,17 @@ describe('Timeline', () => {
     render(<CurrentHarness />)
     fireEvent.click(screen.getByRole('button', { name: '跳到六秒' }))
 
-    expect(screen.getByRole('button', { name: /和弦 C/ })).toHaveAttribute(
-      'data-current',
-      'true',
-    )
+    const currentChord = screen.getByRole('button', {
+      name: /和弦 C.*正在经过/,
+    })
+    expect(currentChord).toHaveAttribute('data-current', 'true')
+    expect(currentChord).toHaveAttribute('aria-current', 'true')
     expect(screen.getByText('正在经过 C 和弦')).toBeVisible()
-    expect(screen.getByRole('button', { name: /动态上升 0:06/ })).toHaveAttribute(
-      'data-current',
-      'true',
-    )
+    const currentEvent = screen.getByRole('button', {
+      name: /动态上升 0:06.*正在经过/,
+    })
+    expect(currentEvent).toHaveAttribute('data-current', 'true')
+    expect(currentEvent).toHaveAttribute('aria-current', 'true')
   })
 
   it('uses deterministic chord and event focus boundaries', () => {
@@ -352,9 +354,11 @@ describe('Timeline', () => {
 
     expect(list).toBeVisible()
     expect(controls.map((control) => control.getAttribute('aria-label'))).toEqual([
-      '和弦 C，0:00 至 0:08，高置信',
+      '和弦 C，0:00 至 0:08，高置信，正在经过',
       '和弦 G，0:08 至 0:12，高置信',
     ])
+    expect(controls[0]).toHaveAttribute('aria-current', 'true')
+    expect(controls[1]).not.toHaveAttribute('aria-current')
     expect(controls.every((control) => control.classList.contains('timeline__chord-list-button'))).toBe(true)
     expect(container.querySelectorAll('button.timeline__event--chord')).toHaveLength(0)
     expect(controls[1]).toHaveAttribute('aria-pressed', 'true')

@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ChordOrbit, intervalEducation } from './ChordOrbit'
@@ -82,6 +82,50 @@ describe('ChordOrbit', () => {
       'true',
     )
     expect(screen.getByRole('tooltip')).toHaveTextContent('纯五度')
+  })
+
+  it('keeps the focused tone preview paused when the pointer leaves it', () => {
+    render(
+      <ChordOrbit
+        intervals={['root', 'major third', 'perfect fifth']}
+        onActivate={() => undefined}
+        pitchClasses={['C', 'E', 'G']}
+        selectedPitchClass={null}
+      />,
+    )
+    const e = screen.getByRole('button', { name: /组成音 E/ })
+
+    act(() => e.focus())
+    fireEvent.mouseEnter(e)
+    fireEvent.mouseLeave(e)
+
+    expect(screen.getByTestId('chord-orbit')).toHaveAttribute(
+      'data-paused',
+      'true',
+    )
+    expect(screen.getByRole('tooltip')).toHaveTextContent('大三度')
+  })
+
+  it('keeps the hovered tone preview paused when keyboard focus leaves it', () => {
+    render(
+      <ChordOrbit
+        intervals={['root', 'major third', 'perfect fifth']}
+        onActivate={() => undefined}
+        pitchClasses={['C', 'E', 'G']}
+        selectedPitchClass={null}
+      />,
+    )
+    const e = screen.getByRole('button', { name: /组成音 E/ })
+
+    act(() => e.focus())
+    fireEvent.mouseEnter(e)
+    fireEvent.blur(e)
+
+    expect(screen.getByTestId('chord-orbit')).toHaveAttribute(
+      'data-paused',
+      'true',
+    )
+    expect(screen.getByRole('tooltip')).toHaveTextContent('大三度')
   })
 
   it('uses concise educational language for the root', () => {

@@ -205,6 +205,26 @@ describe('AnalysisWorkspace', () => {
     expect(container.querySelector('.app-shell')).not.toHaveAttribute('inert')
   })
 
+  it.each([390, 768])(
+    'closes fullscreen detail with Escape and restores its trigger at %ipx',
+    async (width) => {
+      setViewportWidth(width)
+      const user = userEvent.setup()
+      renderWorkspaceInAppShell()
+
+      await screen.findByRole('heading', { name: 'Music DNA' })
+      await user.click(screen.getByRole('button', { name: /结构地图/ }))
+      const chord = screen.getByRole('button', { name: /和弦 G/ })
+      await user.click(chord)
+      expect(screen.getByRole('dialog', { name: 'G 和弦' })).toBeVisible()
+
+      await user.keyboard('{Escape}')
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(chord).toHaveFocus()
+    },
+  )
+
   it('keeps the desktop side detail non-modal while moving focus into it', async () => {
     setViewportWidth(1440)
     const user = userEvent.setup()
@@ -219,6 +239,9 @@ describe('AnalysisWorkspace', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '返回结构地图' })).toHaveFocus()
     expect(container.querySelector('.music-workspace')).not.toHaveAttribute('inert')
+
+    await user.keyboard('{Escape}')
+    expect(detail).toBeVisible()
   })
 
   it('clears the preserved chord only through an explicit deselection action', async () => {

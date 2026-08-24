@@ -56,7 +56,12 @@ export function useToneAudition() {
     try {
       const context = contextRef.current ?? new Context()
       contextRef.current = context
-      if (context.state === 'suspended') void context.resume()
+      if (context.state === 'suspended') {
+        void context.resume().catch(() => {
+          stop()
+          setUnavailable(true)
+        })
+      }
 
       const oscillator = context.createOscillator()
       const gain = context.createGain()
@@ -86,7 +91,7 @@ export function useToneAudition() {
       setUnavailable(true)
       return false
     }
-  }, [])
+  }, [stop])
 
   return { audition, unavailable, stop }
 }

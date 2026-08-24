@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { pitchClassFrequency, useToneAudition } from './useToneAudition'
 
@@ -65,5 +65,41 @@ describe('useToneAudition', () => {
     act(() => expect(result.current.audition('C')).toBe(false))
 
     expect(result.current.unavailable).toBe(true)
+  })
+
+  it('reports suspended-context resume rejection and releases that context', async () => {
+    const oscillator = {
+      addEventListener: vi.fn(),
+      connect: vi.fn(),
+      frequency: { setValueAtTime: vi.fn() },
+      start: vi.fn(),
+      stop: vi.fn(),
+      type: 'sine' as OscillatorType,
+    }
+    const gain = {
+      connect: vi.fn(),
+      gain: {
+        exponentialRampToValueAtTime: vi.fn(),
+        setValueAtTime: vi.fn(),
+      },
+    }
+    const close = vi.fn().mockResolvedValue(undefined)
+    class SuspendedAudioContextDouble {
+      currentTime = 0
+      destination = {}
+      state = 'suspended'
+      close = close
+      createGain = () => gain
+      createOscillator = () => oscillator
+      resume = vi.fn().mockRejectedValue(new Error('playback blocked'))
+    }
+    vi.stubGlobal('AudioContext', SuspendedAudioContextDouble)
+
+    const { result } = renderHook(() => useToneAudition())
+
+    act(() => expect(result.current.audition('C')).toBe(true))
+
+    await waitFor(() => expect(result.current.unavailable).toBe(true))
+    expect(close).toHaveBeenCalledTimes(1)
   })
 })
