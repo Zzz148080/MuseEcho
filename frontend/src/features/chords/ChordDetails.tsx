@@ -1,13 +1,38 @@
+import { useState } from 'react'
 import type { ChordResult } from '../../api/types'
 import { ConfidenceBadge } from '../../components/ConfidenceBadge'
 import { confidenceLevel, isUsableConfidence } from '../confidence'
 import { formatTime } from '../timeline/Timeline'
+import { ChordOrbit, intervalEducation } from './ChordOrbit'
+import { ChordPiano } from './ChordPiano'
+import { useToneAudition } from './useToneAudition'
 
 export interface ChordDetailsProps {
   chord: ChordResult | null
 }
 
+interface SelectedTone {
+  pitchClass: string
+  interval: string
+}
+
+const QUALITY_COPY = {
+  major: {
+    name: '大三和弦',
+    character: '明亮、稳定，常带有清晰的展开感。',
+    context: '常用于建立明朗感、稳定感或清晰收束。',
+  },
+  minor: {
+    name: '小三和弦',
+    character: '柔和、内敛，常带有含蓄的张力。',
+    context: '常用于营造内省、克制或细腻的段落。',
+  },
+} as const
+
 export function ChordDetails({ chord }: ChordDetailsProps) {
+  const [selectedTone, setSelectedTone] = useState<SelectedTone | null>(null)
+  const tone = useToneAudition()
+
   if (!chord) {
     return (
       <section className="chord-details" aria-labelledby="chord-details-title">
@@ -32,6 +57,12 @@ export function ChordDetails({ chord }: ChordDetailsProps) {
     )
   }
 
+  const quality = QUALITY_COPY[theory.quality]
+  const activateTone = (pitchClass: string, interval: string) => {
+    setSelectedTone({ pitchClass, interval })
+    tone.audition(pitchClass)
+  }
+
   return (
     <section className="chord-details" aria-labelledby="chord-details-title">
       <div className="chord-details__heading">
@@ -43,30 +74,95 @@ export function ChordDetails({ chord }: ChordDetailsProps) {
         </div>
         <ConfidenceBadge level={confidenceLevel(chord.confidence)} />
       </div>
-      <dl className="theory-facts">
-        <TheoryFact label="组成音" value={theory.pitch_classes.join(' · ')} />
-        <TheoryFact label="音程" value={theory.intervals.join(' · ')} />
-        <TheoryFact
-          label="性质"
-          value={
-            theory.quality === 'major'
-              ? '大三和弦'
-              : theory.quality === 'minor'
-                ? '小三和弦'
-                : '不确定'
-          }
-        />
-      </dl>
-      <p className="theory-guide">A–G 表示音名；♯ 表示升半音；m 表示小三和弦。</p>
+
+      <div className="chord-lab">
+        <div className="chord-lab__visual">
+          <ChordOrbit
+            intervals={theory.intervals}
+            onActivate={activateTone}
+            pitchClasses={theory.pitch_classes}
+            selectedPitchClass={selectedTone?.pitchClass ?? null}
+          />
+          <ChordPiano
+            activePitchClass={selectedTone?.pitchClass ?? null}
+            pitchClasses={theory.pitch_classes}
+          />
+          <p className="theory-guide">
+            A–G 表示音名；♯ 表示升半音；b 表示降半音。
+          </p>
+          {tone.unavailable ? (
+            <p className="tone-audition-status" role="status">
+              此设备暂不支持试听
+            </p>
+          ) : null}
+        </div>
+
+        <section aria-live="polite" className="tone-education">
+          {selectedTone ? (
+            <ToneEducation
+              interval={selectedTone.interval}
+              pitchClass={selectedTone.pitchClass}
+            />
+          ) : (
+            <p className="tone-education__empty">选择一个组成音</p>
+          )}
+        </section>
+
+        <section
+          aria-labelledby="general-theory-title"
+          className="general-theory"
+        >
+          <div className="general-theory__heading">
+            <p className="eyebrow">不结合歌曲上下文</p>
+            <h3 id="general-theory-title">通用乐理</h3>
+          </div>
+          <dl className="theory-facts theory-facts--concise">
+            <TheoryFact label="构成">
+              <span>{theory.pitch_classes.join(' · ')}</span>
+              <small>{quality.name}</small>
+            </TheoryFact>
+            <TheoryFact label="听感">{quality.character}</TheoryFact>
+            <TheoryFact label="情境">{quality.context}</TheoryFact>
+          </dl>
+        </section>
+      </div>
     </section>
   )
 }
 
-function TheoryFact({ label, value }: { label: string; value: string }) {
+function ToneEducation({
+  pitchClass,
+  interval,
+}: {
+  pitchClass: string
+  interval: string
+}) {
+  const education = intervalEducation(interval)
+  return (
+    <>
+      <h3>
+        {pitchClass} · {education.name}
+      </h3>
+      <dl>
+        <TheoryFact label="音程距离">{education.distance}</TheoryFact>
+        <TheoryFact label="听感提示">{education.character}</TheoryFact>
+        <TheoryFact label="记忆方法">{education.memory}</TheoryFact>
+      </dl>
+    </>
+  )
+}
+
+function TheoryFact({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
   return (
     <div>
       <dt>{label}</dt>
-      <dd>{value}</dd>
+      <dd>{children}</dd>
     </div>
   )
 }
