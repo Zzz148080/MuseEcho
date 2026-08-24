@@ -1459,6 +1459,7 @@ progress::-moz-progress-bar {
     position: fixed;
     z-index: 30;
     inset: 0;
+    align-self: stretch;
     overflow-y: auto;
     padding: max(var(--space-5), env(safe-area-inset-top, 0px)) var(--space-4)
       calc(var(--space-6) + var(--safe-bottom));

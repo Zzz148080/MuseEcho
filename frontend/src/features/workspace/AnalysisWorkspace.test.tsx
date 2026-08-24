@@ -120,12 +120,18 @@ describe('AnalysisWorkspace', () => {
     await user.click(chord)
 
     const detail = screen.getByRole('dialog', { name: 'G 和弦' })
+    const returnButton = screen.getByRole('button', { name: '返回结构地图' })
     expect(detail).toHaveAttribute('aria-modal', 'true')
-    expect(screen.getByRole('button', { name: '返回结构地图' })).toHaveFocus()
+    expect(returnButton).toHaveFocus()
     expect(container.querySelector('.app-shell')).toHaveAttribute('inert')
     expect(container.querySelector('.app-shell')).toHaveAttribute('aria-hidden', 'true')
 
-    await user.click(screen.getByRole('button', { name: '返回结构地图' }))
+    await user.tab()
+    expect(returnButton).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(returnButton).toHaveFocus()
+
+    await user.click(returnButton)
 
     expect(chord).toHaveFocus()
     expect(chord).toHaveAttribute('aria-pressed', 'true')

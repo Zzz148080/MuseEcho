@@ -1,4 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import type { ChordResult } from '../../api/types'
@@ -149,6 +154,22 @@ function LoadedWorkspace({
     setCurrentView(next)
   }
 
+  const keepFocusInMobileDetail = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (!isMobile || event.key !== 'Tab') return
+    const focusable = detailPanel.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )
+    if (!focusable?.length) return
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    const leavingDialog = event.shiftKey
+      ? document.activeElement === first
+      : document.activeElement === last
+    if (!leavingDialog) return
+    event.preventDefault()
+    ;(event.shiftKey ? last : first).focus()
+  }
+
   const finishDeletion = () => {
     void queryClient.cancelQueries({ queryKey: ['analysis-status', result.analysis_id] })
     void queryClient.cancelQueries({ queryKey: ['analysis-result', result.analysis_id] })
@@ -163,6 +184,7 @@ function LoadedWorkspace({
       aria-labelledby={isMobile ? 'chord-details-title' : undefined}
       aria-modal={isMobile ? true : undefined}
       className="workspace-detail"
+      onKeyDown={keepFocusInMobileDetail}
       ref={detailPanel}
       role={isMobile ? 'dialog' : undefined}
     >
