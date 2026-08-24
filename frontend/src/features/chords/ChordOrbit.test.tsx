@@ -128,6 +128,30 @@ describe('ChordOrbit', () => {
     expect(screen.getByRole('tooltip')).toHaveTextContent('大三度')
   })
 
+  it('prefers the hovered tone then returns to the still-focused tone', () => {
+    render(
+      <ChordOrbit
+        intervals={['root', 'major third', 'perfect fifth']}
+        onActivate={() => undefined}
+        pitchClasses={['C', 'E', 'G']}
+        selectedPitchClass={null}
+      />,
+    )
+    const e = screen.getByRole('button', { name: /组成音 E/ })
+    const g = screen.getByRole('button', { name: /组成音 G/ })
+
+    act(() => e.focus())
+    fireEvent.mouseEnter(g)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('G · 纯五度')
+
+    fireEvent.mouseLeave(g)
+    expect(screen.getByTestId('chord-orbit')).toHaveAttribute(
+      'data-paused',
+      'true',
+    )
+    expect(screen.getByRole('tooltip')).toHaveTextContent('E · 大三度')
+  })
+
   it('uses concise educational language for the root', () => {
     expect(intervalEducation('root')).toEqual({
       name: '根音',

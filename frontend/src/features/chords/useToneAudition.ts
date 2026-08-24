@@ -27,9 +27,11 @@ export function pitchClassFrequency(
 export function useToneAudition() {
   const contextRef = useRef<AudioContext | null>(null)
   const activeRef = useRef<OscillatorNode[]>([])
+  const auditionAttemptRef = useRef(0)
   const [unavailable, setUnavailable] = useState(false)
 
   const stop = useCallback(() => {
+    auditionAttemptRef.current += 1
     activeRef.current.forEach((oscillator) => {
       try {
         oscillator.stop()
@@ -52,12 +54,19 @@ export function useToneAudition() {
       setUnavailable(true)
       return false
     }
+    const auditionAttempt = ++auditionAttemptRef.current
 
     try {
       const context = contextRef.current ?? new Context()
       contextRef.current = context
       if (context.state === 'suspended') {
         void context.resume().catch(() => {
+          if (
+            contextRef.current !== context ||
+            auditionAttemptRef.current !== auditionAttempt
+          ) {
+            return
+          }
           stop()
           setUnavailable(true)
         })

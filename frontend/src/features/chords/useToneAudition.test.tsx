@@ -102,4 +102,72 @@ describe('useToneAudition', () => {
     await waitFor(() => expect(result.current.unavailable).toBe(true))
     expect(close).toHaveBeenCalledTimes(1)
   })
+
+  it('does not let an older resume rejection stop a newer audition context', async () => {
+    const resumeAttempts: Array<{
+      reject: (reason: Error) => void
+      promise: Promise<void>
+    }> = []
+    const makeResumeAttempt = () => {
+      let reject: (reason: Error) => void = () => undefined
+      const promise = new Promise<void>((_resolve, rejectPromise) => {
+        reject = rejectPromise
+      })
+      const attempt = { reject, promise }
+      resumeAttempts.push(attempt)
+      return promise
+    }
+    const oscillators = Array.from({ length: 3 }, () => ({
+      addEventListener: vi.fn(),
+      connect: vi.fn(),
+      frequency: { setValueAtTime: vi.fn() },
+      start: vi.fn(),
+      stop: vi.fn(),
+      type: 'sine' as OscillatorType,
+    }))
+    const closes = [vi.fn().mockResolvedValue(undefined), vi.fn()]
+    let contextIndex = 0
+    let oscillatorIndex = 0
+    class AudioContextRaceDouble {
+      currentTime = 0
+      destination = {}
+      index = contextIndex++
+      state = this.index === 0 ? 'suspended' : 'running'
+      close = closes[this.index]
+      createGain = () => ({
+        connect: vi.fn(),
+        gain: {
+          exponentialRampToValueAtTime: vi.fn(),
+          setValueAtTime: vi.fn(),
+        },
+      })
+      createOscillator = () => oscillators[oscillatorIndex++]
+      resume = vi.fn(() => makeResumeAttempt())
+    }
+    vi.stubGlobal('AudioContext', AudioContextRaceDouble)
+
+    const { result } = renderHook(() => useToneAudition())
+    act(() => expect(result.current.audition('C')).toBe(true))
+    act(() => expect(result.current.audition('E')).toBe(true))
+    expect(resumeAttempts).toHaveLength(2)
+
+    await act(async () => {
+      resumeAttempts[1].reject(new Error('latest attempt blocked'))
+      await resumeAttempts[1].promise.catch(() => undefined)
+    })
+    expect(result.current.unavailable).toBe(true)
+
+    act(() => expect(result.current.audition('G')).toBe(true))
+    expect(result.current.unavailable).toBe(false)
+    expect(oscillators[2].stop).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      resumeAttempts[0].reject(new Error('older attempt finished late'))
+      await resumeAttempts[0].promise.catch(() => undefined)
+    })
+
+    expect(result.current.unavailable).toBe(false)
+    expect(closes[1]).not.toHaveBeenCalled()
+    expect(oscillators[2].stop).toHaveBeenCalledTimes(1)
+  })
 })
