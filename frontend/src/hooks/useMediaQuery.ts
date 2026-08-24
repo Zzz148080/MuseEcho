@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 export const MOBILE_WORKSPACE_QUERY = '(max-width: 599px)'
+export const FULLSCREEN_CHORD_DETAIL_QUERY = '(max-width: 1023px)'
 
 function matchesQuery(query: string): boolean {
   return typeof window !== 'undefined' &&

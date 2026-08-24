@@ -9,7 +9,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { ChordResult } from '../../api/types'
 import { Button } from '../../components/Button'
 import { ErrorNotice } from '../../components/ErrorNotice'
-import { MOBILE_WORKSPACE_QUERY, useMediaQuery } from '../../hooks/useMediaQuery'
+import {
+  FULLSCREEN_CHORD_DETAIL_QUERY,
+  useMediaQuery,
+} from '../../hooks/useMediaQuery'
 import { ChordDetails } from '../chords/ChordDetails'
 import { MusicDNA } from '../dna/MusicDNA'
 import { AudioPlayer } from '../player/AudioPlayer'
@@ -90,20 +93,22 @@ function LoadedWorkspace({
   const [currentView, setCurrentView] = useState<WorkspaceView>('overview')
   const [selectedChord, setSelectedChord] = useState<ChordResult | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
-  const isMobile = useMediaQuery(MOBILE_WORKSPACE_QUERY)
+  const [detailSession, setDetailSession] = useState(0)
+  const isFullscreenDetail = useMediaQuery(FULLSCREEN_CHORD_DETAIL_QUERY)
   const workspaceRoot = useRef<HTMLDivElement | null>(null)
   const lastChordTrigger = useRef<HTMLButtonElement | null>(null)
   const detailPanel = useRef<HTMLElement | null>(null)
   const restoreFocusAfterClose = useRef(false)
 
-  const mobileDetailOpen = isMobile && detailOpen && selectedChord !== null
+  const fullscreenDetailOpen =
+    isFullscreenDetail && detailOpen && selectedChord !== null
 
   useEffect(() => {
     if (!detailOpen || !selectedChord) return
     detailPanel.current
       ?.querySelector<HTMLButtonElement>('[data-detail-return]')
       ?.focus()
-  }, [detailOpen, isMobile, selectedChord])
+  }, [detailOpen, isFullscreenDetail, selectedChord])
 
   useEffect(() => {
     if (detailOpen || !restoreFocusAfterClose.current) return
@@ -113,7 +118,7 @@ function LoadedWorkspace({
   }, [detailOpen])
 
   useEffect(() => {
-    if (!mobileDetailOpen) return
+    if (!fullscreenDetailOpen) return
     const backgroundRoot =
       workspaceRoot.current?.closest<HTMLElement>('.app-shell') ??
       workspaceRoot.current
@@ -127,12 +132,13 @@ function LoadedWorkspace({
       backgroundRoot.removeAttribute('aria-hidden')
       document.body.classList.remove('workspace-mobile-detail-open')
     }
-  }, [mobileDetailOpen])
+  }, [fullscreenDetailOpen])
 
   const openChord = (chord: ChordResult, trigger: HTMLButtonElement) => {
     lastChordTrigger.current = trigger
     restoreFocusAfterClose.current = false
     setSelectedChord(chord)
+    setDetailSession((session) => session + 1)
     setDetailOpen(true)
   }
 
@@ -155,7 +161,7 @@ function LoadedWorkspace({
   }
 
   const keepFocusInMobileDetail = (event: ReactKeyboardEvent<HTMLElement>) => {
-    if (!isMobile || event.key !== 'Tab') return
+    if (!isFullscreenDetail || event.key !== 'Tab') return
     const focusable = detailPanel.current?.querySelectorAll<HTMLElement>(
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     )
@@ -180,18 +186,23 @@ function LoadedWorkspace({
 
   const chordDetail = detailOpen && selectedChord ? (
     <aside
-      aria-label={isMobile ? undefined : '当前和弦详情'}
-      aria-labelledby={isMobile ? 'chord-details-title' : undefined}
-      aria-modal={isMobile ? true : undefined}
+      aria-label={isFullscreenDetail ? undefined : '当前和弦详情'}
+      aria-labelledby={
+        isFullscreenDetail ? 'chord-details-title' : undefined
+      }
+      aria-modal={isFullscreenDetail ? true : undefined}
       className="workspace-detail"
       onKeyDown={keepFocusInMobileDetail}
       ref={detailPanel}
-      role={isMobile ? 'dialog' : undefined}
+      role={isFullscreenDetail ? 'dialog' : undefined}
     >
       <Button data-detail-return onClick={closeChord} variant="secondary">
         返回结构地图
       </Button>
-      <ChordDetails chord={selectedChord} />
+      <ChordDetails
+        chord={selectedChord}
+        key={`${selectedChord.id}-${detailSession}`}
+      />
     </aside>
   ) : null
 
@@ -215,9 +226,7 @@ function LoadedWorkspace({
               aria-label="结构地图工作区"
               className="workspace-view workspace-view--map"
             >
-              <div
-                className={`workspace-map-layout${detailOpen && selectedChord && !isMobile ? ' workspace-map-layout--detail' : ''}`}
-              >
+              <div className="workspace-map-layout">
                 <Timeline
                   onChordDeselect={clearChord}
                   onChordSelect={openChord}
@@ -225,7 +234,7 @@ function LoadedWorkspace({
                   selectedChord={selectedChord}
                   timeline={timeline}
                 />
-                {!isMobile ? chordDetail : null}
+                {!isFullscreenDetail ? chordDetail : null}
               </div>
             </section>
           ) : null}
@@ -249,7 +258,7 @@ function LoadedWorkspace({
           </div>
         </div>
       </div>
-      {mobileDetailOpen ? createPortal(chordDetail, document.body) : null}
+      {fullscreenDetailOpen ? createPortal(chordDetail, document.body) : null}
     </>
   )
 }

@@ -9,13 +9,15 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function setMobileViewport(matches: boolean) {
+function setViewportWidth(width: number) {
   vi.stubGlobal(
     'matchMedia',
     vi.fn().mockImplementation((query: string) => ({
       addEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
-      matches: query === '(max-width: 599px)' && matches,
+      matches:
+        (query === '(max-width: 599px)' && width <= 599) ||
+        (query === '(max-width: 1023px)' && width <= 1023),
       media: query,
       onchange: null,
       removeEventListener: vi.fn(),
@@ -55,6 +57,71 @@ function renderWorkspaceInAppShell() {
 }
 
 describe('AnalysisWorkspace', () => {
+  it.each([
+    [599, true, true],
+    [600, false, true],
+    [1023, false, true],
+    [1024, false, false],
+  ])(
+    'separates the mobile chord list and fullscreen detail at %ipx',
+    async (width, mobileList, fullscreen) => {
+      setViewportWidth(width)
+      const user = userEvent.setup()
+      const { container } = renderWorkspaceInAppShell()
+
+      await screen.findByRole('heading', { name: 'Music DNA' })
+      await user.click(screen.getByRole('button', { name: /结构地图/ }))
+      expect(
+        Boolean(screen.queryByRole('region', { name: '和弦事件列表' })),
+      ).toBe(mobileList)
+      await user.click(screen.getByRole('button', { name: /和弦 G/ }))
+
+      expect(
+        Boolean(screen.queryByRole('dialog', { name: 'G 和弦' })),
+      ).toBe(fullscreen)
+      expect(
+        Boolean(
+          screen.queryByRole('complementary', { name: '当前和弦详情' }),
+        ),
+      ).toBe(!fullscreen)
+      expect(container.querySelectorAll('audio')).toHaveLength(1)
+    },
+  )
+
+  it('places desktop detail after the timeline and resets only its internal tone session', async () => {
+    setViewportWidth(1440)
+    const user = userEvent.setup()
+    const { container, loadResult } = renderWorkspace()
+
+    await screen.findByRole('heading', { name: 'Music DNA' })
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
+    const chord = screen.getByRole('button', { name: /和弦 G/ })
+    await user.click(chord)
+    await user.click(screen.getByRole('button', { name: /组成音 B/ }))
+
+    const timeline = container.querySelector('.timeline')
+    const detail = container.querySelector('.workspace-detail')
+    expect(timeline).not.toBeNull()
+    expect(detail).not.toBeNull()
+    if (!timeline || !detail) throw new Error('desktop map layout is incomplete')
+    expect(
+      timeline.compareDocumentPosition(detail) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(container.querySelector('.workspace-map-layout--detail')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: '返回结构地图' }))
+    expect(chord).toHaveAttribute('aria-pressed', 'true')
+    await user.click(chord)
+
+    expect(screen.getByText('选择一个组成音')).toBeVisible()
+    expect(
+      container.querySelector('.chord-piano__key[data-active="true"]'),
+    ).toBeNull()
+    expect(container.querySelectorAll('audio')).toHaveLength(1)
+    expect(loadResult).toHaveBeenCalledTimes(1)
+  })
+
   it('loads one result and initially exposes only the overview', async () => {
     const { loadResult } = renderWorkspace()
 
@@ -110,7 +177,7 @@ describe('AnalysisWorkspace', () => {
   })
 
   it('uses a focused modal detail and makes the covered workspace inert only on mobile', async () => {
-    setMobileViewport(true)
+    setViewportWidth(390)
     const user = userEvent.setup()
     const { container } = renderWorkspaceInAppShell()
 
@@ -127,7 +194,7 @@ describe('AnalysisWorkspace', () => {
     expect(container.querySelector('.app-shell')).toHaveAttribute('aria-hidden', 'true')
 
     await user.tab()
-    expect(returnButton).toHaveFocus()
+    expect(screen.getByRole('button', { name: /组成音 G/ })).toHaveFocus()
     await user.tab({ shift: true })
     expect(returnButton).toHaveFocus()
 
@@ -139,7 +206,7 @@ describe('AnalysisWorkspace', () => {
   })
 
   it('keeps the desktop side detail non-modal while moving focus into it', async () => {
-    setMobileViewport(false)
+    setViewportWidth(1440)
     const user = userEvent.setup()
     const { container } = renderWorkspace()
 

@@ -523,20 +523,17 @@ progress::-moz-progress-bar {
 
 .workspace-map-layout {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
 }
 
-.workspace-map-layout--detail {
-  grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr);
-}
-
 .workspace-detail {
+  min-width: 0;
   align-self: start;
-  padding: var(--space-4);
+  padding: var(--space-5);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
-  box-shadow: var(--shadow-soft);
 }
 
 .workspace-detail .chord-details {
@@ -1724,6 +1721,25 @@ progress::-moz-progress-bar {
   color: var(--fg-2);
 }
 
+@media (max-width: 1023px) {
+  body.workspace-mobile-detail-open {
+    overflow: hidden;
+  }
+
+  .workspace-detail {
+    position: fixed;
+    z-index: 30;
+    inset: 0;
+    align-self: stretch;
+    overflow-y: auto;
+    padding: max(var(--space-5), env(safe-area-inset-top, 0px)) var(--space-4)
+      calc(var(--space-6) + var(--safe-bottom));
+    border: 0;
+    border-radius: 0;
+    background: var(--bg);
+  }
+}
+
 @media (max-width: 899px) {
   .app-shell {
     width: min(100% - 2rem, 48rem);
@@ -1770,10 +1786,6 @@ progress::-moz-progress-bar {
   .workspace-view--overview {
     grid-column: 1;
     grid-row: auto;
-  }
-
-  .workspace-map-layout--detail {
-    grid-template-columns: minmax(0, 3fr) minmax(15rem, 2fr);
   }
 
   .analysis-support {
