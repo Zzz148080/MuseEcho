@@ -1,3 +1,4 @@
+import type { ChordResult } from '../api/types'
 import type { ConfidenceLevel } from '../components/ConfidenceBadge'
 
 export function confidenceLevel(confidence: number | null): ConfidenceLevel {
@@ -10,4 +11,10 @@ export function confidenceLevel(confidence: number | null): ConfidenceLevel {
 
 export function isUsableConfidence(confidence: number | null): boolean {
   return confidenceLevel(confidence) !== 'unknown'
+}
+
+export function isVisibleChordCandidate(
+  chord: Pick<ChordResult, 'confidence' | 'symbol'>,
+): boolean {
+  return chord.symbol !== 'unknown' && isUsableConfidence(chord.confidence)
 }

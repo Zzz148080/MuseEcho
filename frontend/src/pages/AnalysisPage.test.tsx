@@ -109,6 +109,35 @@ describe('AnalysisPage', () => {
     window.history.replaceState(null, '', '/')
   })
 
+  it('removes the landing hero and exposes a new-analysis action after activation', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    })
+    window.history.replaceState(null, '', `/?analysis=${analysisId}`)
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AnalysisPage
+          loadResult={vi.fn().mockResolvedValue(fixtureResult)}
+          loadStatus={vi.fn().mockResolvedValue({
+            analysis_id: analysisId,
+            status: 'complete',
+            stage: 'complete',
+            progress: 1,
+            error_code: null,
+            expires_at: '2026-08-10T00:00:00+00:00',
+            pipeline_version: 'museecho-analysis-v1',
+            source_kind: 'real',
+          })}
+        />
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByRole('button', { name: '新的分析' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: '看见音乐的结构' })).not.toBeInTheDocument()
+    window.history.replaceState(null, '', '/')
+  })
+
   it('clears the analysis workspace and URL after confirmed deletion', async () => {
     const user = userEvent.setup()
     const queryClient = new QueryClient({

@@ -1,26 +1,71 @@
 import { useRef, type CSSProperties, type PointerEvent } from 'react'
-import type { AnalysisResult, ChordResult } from '../../api/types'
+import type {
+  AnalysisResult,
+  ChordResult,
+  EnergyChangeSummary,
+} from '../../api/types'
 import { Button } from '../../components/Button'
-import { confidenceLevel, isUsableConfidence } from '../confidence'
+import { MOBILE_WORKSPACE_QUERY, useMediaQuery } from '../../hooks/useMediaQuery'
+import {
+  confidenceLevel,
+  isUsableConfidence,
+  isVisibleChordCandidate,
+} from '../confidence'
 import type { TimelineController } from './useTimeline'
-import { timeToPercent } from './useTimeline'
+import { finiteClamp, timeToPercent } from './useTimeline'
+import {
+  TIMELINE_MAX_ZOOM,
+  TIMELINE_MIN_ZOOM,
+  TIMELINE_ZOOM_STEP,
+  useTimelineViewport,
+} from './useTimelineViewport'
 
 export interface TimelineProps {
   result: AnalysisResult
   timeline: TimelineController
-  onChordSelect?: (chord: ChordResult) => void
+  selectedChord?: ChordResult | null
+  onChordSelect?: (chord: ChordResult, trigger: HTMLButtonElement) => void
+  onChordDeselect?: () => void
 }
 
-export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
+const SECTION_LABELS: Readonly<Record<string, string>> = {
+  intro: '前奏',
+  verse: '主歌',
+  pre_chorus: '预副歌',
+  chorus: '副歌',
+  bridge: '桥段',
+  outro: '尾奏',
+}
+
+export function Timeline({
+  result,
+  timeline,
+  selectedChord,
+  onChordSelect,
+  onChordDeselect,
+}: TimelineProps) {
   const dragStart = useRef<number | null>(null)
+  const isMobile = useMediaQuery(MOBILE_WORKSPACE_QUERY)
+  const viewport = useTimelineViewport({
+    currentTime: timeline.currentTime,
+    duration: timeline.duration,
+  })
   const summary = result.track.summary
   const waveform = summary?.waveform
   const energy = result.time_series.find((item) => item.kind === 'energy')
-  const usableChords = result.chords.filter(
-    (chord) =>
-      chord.symbol !== 'unknown' &&
-      isUsableConfidence(chord.confidence),
-  )
+  const energyEvents =
+    summary?.energy_changes.filter((event) =>
+      isUsableConfidence(event.confidence),
+    ) ?? []
+  const usableChords = result.chords
+    .filter(isVisibleChordCandidate)
+    .slice()
+    .sort(
+      (left, right) =>
+        left.start_seconds - right.start_seconds ||
+        left.end_seconds - right.end_seconds ||
+        left.id.localeCompare(right.id),
+    )
   const selectionStyle = timeline.selection
     ? eventPosition(
         timeline.selection.start,
@@ -39,6 +84,11 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
     )
   }
 
+  const selectChord = (chord: ChordResult, trigger: HTMLButtonElement) => {
+    timeline.seek(chord.start_seconds)
+    onChordSelect?.(chord, trigger)
+  }
+
   return (
     <section className="timeline" aria-labelledby="timeline-title">
       <div className="timeline__heading">
@@ -49,166 +99,334 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
         <output aria-label="当前时间">{formatTime(timeline.currentTime)}</output>
       </div>
 
-      <div className="timeline__canvas">
-        <div className="timeline__overlay" aria-hidden="true">
-          {selectionStyle ? (
-            <div
-              className="timeline__selection"
-              data-end={String(timeline.selection?.end)}
-              data-start={String(timeline.selection?.start)}
-              data-testid="selection"
-              style={selectionStyle}
-            />
-          ) : null}
-          <div
-            className="timeline__playhead"
-            data-seconds={String(timeline.currentTime)}
-            data-testid="playhead"
-            style={{ left: `${timeToPercent(timeline.currentTime, timeline.duration)}%` }}
-          />
-        </div>
+      <label className="timeline__zoom">
+        <span>时间轴缩放</span>
+        <input
+          aria-label="时间轴缩放"
+          disabled={viewport.disabled}
+          max={TIMELINE_MAX_ZOOM}
+          min={TIMELINE_MIN_ZOOM}
+          onChange={(event) =>
+            viewport.setZoom(event.currentTarget.valueAsNumber)
+          }
+          step={TIMELINE_ZOOM_STEP}
+          type="range"
+          value={viewport.zoom}
+        />
+        <output aria-label="当前缩放倍率">{viewport.zoom.toFixed(2)}×</output>
+      </label>
 
-        <div className="timeline__track" role="group" aria-label="片段选择轨道">
-          <span className="timeline__track-label">选区</span>
+      <div className="timeline__frame">
+        <div aria-hidden="true" className="timeline__labels">
+          {['选区', '波形', '段落', '和弦', '动态强弱', '事件'].map((label) => (
+            <span className="timeline__track-label" key={label}>
+              {label}
+            </span>
+          ))}
+        </div>
+        <div
+          className="timeline__viewport"
+          data-testid="timeline-viewport"
+          ref={viewport.viewportRef}
+        >
           <div
-            className="timeline__selection-target"
-            data-testid="selection-surface"
-            onPointerDown={(event) => {
-              if (event.button !== 0) return
-              dragStart.current = pointerSeconds(event)
-              event.currentTarget.setPointerCapture?.(event.pointerId)
-            }}
-            onPointerMove={(event) => {
-              if (dragStart.current !== null) {
-                timeline.select(dragStart.current, pointerSeconds(event))
-              }
-            }}
-            onPointerUp={(event) => {
-              if (dragStart.current !== null) {
-                timeline.select(dragStart.current, pointerSeconds(event))
-                dragStart.current = null
-              }
-              if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
-                event.currentTarget.releasePointerCapture(event.pointerId)
-              }
-            }}
-            onPointerCancel={() => {
-              dragStart.current = null
+            className="timeline__content"
+            data-testid="timeline-content"
+            style={{
+              width:
+                viewport.contentWidth > 0
+                  ? `${viewport.contentWidth}px`
+                  : '100%',
             }}
           >
-            选择片段以回听和比较
-          </div>
-        </div>
-
-        <div className="timeline__track" role="group" aria-label="波形轨道">
-          <span className="timeline__track-label">波形</span>
-          <svg
-            aria-hidden="true"
-            className="timeline__graph timeline__graph--waveform"
-            preserveAspectRatio="none"
-            viewBox="0 0 100 100"
-          >
-            {waveform?.minimums.map((minimum, index) => {
-              const maximum = waveform.maximums[index]
-              const x = ((index + 0.5) / waveform.minimums.length) * 100
-              return (
-                <line
-                  key={index}
-                  x1={x}
-                  x2={x}
-                  y1={50 - maximum * 45}
-                  y2={50 - minimum * 45}
+            <div className="timeline__overlay" aria-hidden="true">
+              {selectionStyle ? (
+                <div
+                  className="timeline__selection"
+                  data-end={String(timeline.selection?.end)}
+                  data-start={String(timeline.selection?.start)}
+                  data-testid="selection"
+                  style={selectionStyle}
                 />
-              )
-            })}
-          </svg>
-        </div>
-
-        <div className="timeline__track" role="group" aria-label="段落轨道">
-          <span className="timeline__track-label">段落</span>
-          <div className="timeline__events">
-            {result.sections.map((section) => (
-              <button
-                aria-label={`选择片段 ${formatTime(section.start_seconds)} 至 ${formatTime(section.end_seconds)}`}
-                className="timeline__event timeline__event--section"
-                data-testid="section-boundary"
-                key={section.id}
-                onClick={() => {
-                  timeline.seek(section.start_seconds)
-                  timeline.select(section.start_seconds, section.end_seconds)
+              ) : null}
+              <div
+                className="timeline__playhead"
+                data-seconds={String(timeline.currentTime)}
+                data-testid="playhead"
+                data-timeline-layer="playhead"
+                style={{
+                  left: `${timeToPercent(timeline.currentTime, timeline.duration)}%`,
                 }}
-                style={eventPosition(
-                  section.start_seconds,
-                  section.end_seconds,
-                  timeline.duration,
-                )}
-                type="button"
               />
-            ))}
-          </div>
-        </div>
+            </div>
 
-        <div className="timeline__track" role="group" aria-label="和弦轨道">
-          <span className="timeline__track-label">和弦</span>
-          <div className="timeline__events">
-            {usableChords.map((chord) => (
-              <button
-                aria-label={`和弦 ${chord.symbol}，${confidenceLabel(chord.confidence)}`}
-                className="timeline__event timeline__event--chord"
-                key={chord.id}
-                onClick={() => {
-                  timeline.seek(chord.start_seconds)
-                  onChordSelect?.(chord)
+            <div
+              aria-label="片段选择轨道"
+              className="timeline__track-content"
+              data-timeline-layer="selection"
+              role="group"
+            >
+              <div
+                className="timeline__selection-target"
+                data-testid="selection-surface"
+                onPointerCancel={() => {
+                  dragStart.current = null
                 }}
-                style={eventPosition(
-                  chord.start_seconds,
-                  chord.end_seconds,
-                  timeline.duration,
-                )}
-                type="button"
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return
+                  dragStart.current = pointerSeconds(event)
+                  event.currentTarget.setPointerCapture?.(event.pointerId)
+                }}
+                onPointerMove={(event) => {
+                  if (dragStart.current !== null) {
+                    timeline.select(dragStart.current, pointerSeconds(event))
+                  }
+                }}
+                onPointerUp={(event) => {
+                  if (dragStart.current !== null) {
+                    timeline.select(dragStart.current, pointerSeconds(event))
+                    dragStart.current = null
+                  }
+                  if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+                    event.currentTarget.releasePointerCapture(event.pointerId)
+                  }
+                }}
               >
-                {chord.symbol}
-              </button>
-            ))}
-            {!usableChords.length ? (
-              <span className="timeline__empty-event">暂无局部和声候选</span>
-            ) : null}
-          </div>
-        </div>
+                选择片段以回听和比较
+              </div>
+            </div>
 
-        <div className="timeline__track" role="group" aria-label="动态强弱轨道">
-          <span className="timeline__track-label">动态强弱</span>
-          <svg
-            aria-hidden="true"
-            className="timeline__graph timeline__graph--energy"
-            preserveAspectRatio="none"
-            viewBox="0 0 100 100"
-          >
-            <polyline points={energyPolyline(energy?.points ?? [])} />
-          </svg>
-        </div>
+            <div
+              aria-label="波形轨道"
+              className="timeline__track-content"
+              data-timeline-layer="waveform"
+              role="group"
+            >
+              {waveform?.minimums.length ? (
+                <svg
+                  aria-hidden="true"
+                  className="timeline__graph timeline__graph--waveform"
+                  preserveAspectRatio="none"
+                  viewBox="0 0 100 100"
+                >
+                  {waveform.minimums.map((minimum, index) => {
+                    const maximum = waveform.maximums[index] ?? minimum
+                    const x = ((index + 0.5) / waveform.minimums.length) * 100
+                    return (
+                      <line
+                        key={index}
+                        x1={x}
+                        x2={x}
+                        y1={50 - maximum * 45}
+                        y2={50 - minimum * 45}
+                      />
+                    )
+                  })}
+                </svg>
+              ) : (
+                <TrackEmpty>暂无波形摘要</TrackEmpty>
+              )}
+            </div>
 
-        <div className="timeline__track" role="group" aria-label="重要事件轨道">
-          <span className="timeline__track-label">事件</span>
-          <div className="timeline__events">
-            {summary?.energy_changes.filter((event) => isUsableConfidence(event.confidence)).map((event, index) => (
-              <button
-                aria-label={`音频强度${event.direction === 'rise' ? '上升' : '下降'} ${formatTime(event.timestamp_seconds)}`}
-                className="timeline__marker"
-                key={`${event.timestamp_seconds}-${index}`}
-                onClick={() => timeline.seek(event.timestamp_seconds)}
-                style={{ left: `${timeToPercent(event.timestamp_seconds, timeline.duration)}%` }}
-                type="button"
-              />
-            ))}
+            <div
+              aria-label="段落轨道"
+              className="timeline__track-content"
+              data-timeline-layer="sections"
+              role="group"
+            >
+              <div className="timeline__events">
+                {result.sections.map((section) => {
+                  const label = sectionDisplayLabel(section.label)
+                  return (
+                    <button
+                      aria-label={`${label}，选择片段 ${formatTime(section.start_seconds)} 至 ${formatTime(section.end_seconds)}`}
+                      className="timeline__event timeline__event--section"
+                      data-testid="section-boundary"
+                      key={section.id}
+                      onClick={() => {
+                        timeline.seek(section.start_seconds)
+                        timeline.select(
+                          section.start_seconds,
+                          section.end_seconds,
+                        )
+                      }}
+                      style={eventPosition(
+                        section.start_seconds,
+                        section.end_seconds,
+                        timeline.duration,
+                      )}
+                      type="button"
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+                {!result.sections.length ? (
+                  <TrackEmpty>暂无段落信息</TrackEmpty>
+                ) : null}
+              </div>
+            </div>
+
+            <div
+              aria-label="和弦轨道"
+              className="timeline__track-content"
+              data-timeline-layer="chords"
+              role="group"
+            >
+              <div className="timeline__events">
+                {usableChords.map((chord) => {
+                  const current = isChordCurrent(chord, timeline.currentTime)
+                  return isMobile ? (
+                    <span
+                      aria-hidden="true"
+                      className="timeline__event timeline__event--chord timeline__event--visual"
+                      data-current={String(current)}
+                      key={chord.id}
+                      style={eventPosition(
+                        chord.start_seconds,
+                        chord.end_seconds,
+                        timeline.duration,
+                      )}
+                    >
+                      {chord.symbol}
+                    </span>
+                  ) : (
+                    <button
+                      aria-current={current ? 'true' : undefined}
+                      aria-label={`和弦 ${chord.symbol}，${confidenceLabel(chord.confidence)}${current ? '，正在经过' : ''}`}
+                      aria-pressed={selectedChord?.id === chord.id}
+                      className="timeline__event timeline__event--chord"
+                      data-current={String(current)}
+                      key={chord.id}
+                      onClick={(event) => selectChord(chord, event.currentTarget)}
+                      style={eventPosition(
+                        chord.start_seconds,
+                        chord.end_seconds,
+                        timeline.duration,
+                      )}
+                      type="button"
+                    >
+                      <span className="timeline__event-symbol">{chord.symbol}</span>
+                      {current ? (
+                        <span className="timeline__event-hint">
+                          正在经过 {chord.symbol} 和弦
+                        </span>
+                      ) : null}
+                    </button>
+                  )
+                })}
+                {!usableChords.length ? (
+                  <TrackEmpty>暂无局部和声候选</TrackEmpty>
+                ) : null}
+              </div>
+            </div>
+
+            <div
+              aria-label="动态强弱轨道"
+              className="timeline__track-content"
+              data-timeline-layer="energy"
+              role="group"
+            >
+              {energy?.points.length ? (
+                <svg
+                  aria-hidden="true"
+                  className="timeline__graph timeline__graph--energy"
+                  preserveAspectRatio="none"
+                  viewBox="0 0 100 100"
+                >
+                  <polyline points={energyPolyline(energy.points)} />
+                </svg>
+              ) : (
+                <TrackEmpty>暂无动态曲线</TrackEmpty>
+              )}
+            </div>
+
+            <div
+              aria-label="重要事件轨道"
+              className="timeline__track-content"
+              data-timeline-layer="events"
+              role="group"
+            >
+              <div className="timeline__events">
+                {energyEvents.map((event, index) => {
+                  const label = energyEventLabel(event)
+                  const current = isEventNear(
+                    event.timestamp_seconds,
+                    timeline.currentTime,
+                  )
+                  return (
+                    <button
+                      aria-current={current ? 'true' : undefined}
+                      aria-label={`${label}${current ? '，正在经过' : ''}`}
+                      className="timeline__marker"
+                      data-current={String(current)}
+                      key={`${event.timestamp_seconds}-${index}`}
+                      onClick={() => timeline.seek(event.timestamp_seconds)}
+                      style={{
+                        left: `${timeToPercent(event.timestamp_seconds, timeline.duration)}%`,
+                      }}
+                      type="button"
+                    >
+                      <span aria-hidden="true" className="timeline__marker-dot" />
+                      <span className="timeline__marker-label">{label}</span>
+                    </button>
+                  )
+                })}
+                {!energyEvents.length ? <TrackEmpty>暂无事件</TrackEmpty> : null}
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {isMobile && usableChords.length ? (
+        <section
+          aria-labelledby="timeline-chord-list-title"
+          className="timeline__chord-list"
+        >
+          <h3 id="timeline-chord-list-title">和弦事件列表</h3>
+          <ol>
+            {usableChords.map((chord) => {
+              const current = isChordCurrent(chord, timeline.currentTime)
+              return (
+                <li key={chord.id}>
+                  <button
+                    aria-current={current ? 'true' : undefined}
+                    aria-label={`和弦 ${chord.symbol}，${formatTime(chord.start_seconds)} 至 ${formatTime(chord.end_seconds)}，${confidenceLabel(chord.confidence)}${current ? '，正在经过' : ''}`}
+                    aria-pressed={selectedChord?.id === chord.id}
+                    className="timeline__chord-list-button"
+                    onClick={(event) => selectChord(chord, event.currentTarget)}
+                    type="button"
+                  >
+                    <strong>{chord.symbol}</strong>
+                    <span>
+                      {formatTime(chord.start_seconds)}–
+                      {formatTime(chord.end_seconds)} ·{' '}
+                      {confidenceLabel(chord.confidence)}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ol>
+        </section>
+      ) : null}
+
+      {selectedChord && onChordDeselect ? (
+        <Button
+          className="timeline__clear-chord"
+          onClick={onChordDeselect}
+          variant="secondary"
+        >
+          清除和弦选择
+        </Button>
+      ) : null}
 
       <label className="timeline__seek">
         <span>播放位置</span>
         <input
           aria-label="播放位置"
+          disabled={timeline.duration <= 0}
           max={timeline.duration}
           min={0}
           onChange={(event) => timeline.seek(event.currentTarget.valueAsNumber)}
@@ -216,7 +434,8 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
             if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
               event.preventDefault()
               timeline.seek(
-                timeline.currentTime + (event.key === 'ArrowRight' ? 5 : -5),
+                timeline.currentTime +
+                  (event.key === 'ArrowRight' ? 5 : -5),
               )
             }
           }}
@@ -230,6 +449,7 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
         <label>
           <span>片段开始</span>
           <input
+            disabled={timeline.duration <= 0}
             max={timeline.duration}
             min={0}
             onChange={(event) =>
@@ -246,6 +466,7 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
         <label>
           <span>片段结束</span>
           <input
+            disabled={timeline.duration <= 0}
             max={timeline.duration}
             min={0}
             onChange={(event) =>
@@ -277,16 +498,58 @@ export function Timeline({ result, timeline, onChordSelect }: TimelineProps) {
   )
 }
 
+function TrackEmpty({ children }: { children: string }) {
+  return <span className="timeline__empty-event">{children}</span>
+}
+
 function confidenceLabel(confidence: number): string {
-  const labels = { high: '高置信', medium: '中置信', low: '低置信', unknown: '证据不足' }
+  const labels = {
+    high: '高置信',
+    medium: '中置信',
+    low: '低置信',
+    unknown: '证据不足',
+  }
   return labels[confidenceLevel(confidence)]
 }
 
-function eventPosition(start: number, end: number, duration: number): CSSProperties {
+function eventPosition(
+  start: number,
+  end: number,
+  duration: number,
+): CSSProperties {
   return {
     left: `${timeToPercent(start, duration)}%`,
     width: `${timeToPercent(end - start, duration)}%`,
   }
+}
+
+export function sectionDisplayLabel(label: string): string {
+  const trimmed = label.trim()
+  if (!trimmed) return '未命名段落'
+  return SECTION_LABELS[trimmed.toLowerCase()] ?? `段落 ${trimmed}`
+}
+
+export function energyEventLabel(event: EnergyChangeSummary): string {
+  const direction = event.direction === 'rise' ? '动态上升' : '动态下降'
+  const magnitude = Math.round(finiteClamp(event.magnitude, 0, 1) * 100)
+  return `${direction} ${formatTime(event.timestamp_seconds)}，强度 ${magnitude}%`
+}
+
+export function isChordCurrent(
+  chord: ChordResult,
+  currentTime: number,
+): boolean {
+  return (
+    currentTime >= chord.start_seconds && currentTime < chord.end_seconds
+  )
+}
+
+export function isEventNear(
+  timestamp: number,
+  currentTime: number,
+  windowSeconds = 0.75,
+): boolean {
+  return Math.abs(timestamp - currentTime) <= windowSeconds
 }
 
 export function clientXToSeconds(
@@ -296,7 +559,10 @@ export function clientXToSeconds(
   duration: number,
 ): number {
   if (!Number.isFinite(width) || width <= 0 || duration <= 0) return 0
-  return Math.min(duration, Math.max(0, ((clientX - left) / width) * duration))
+  return Math.min(
+    duration,
+    Math.max(0, ((clientX - left) / width) * duration),
+  )
 }
 
 function energyPolyline(points: number[]): string {

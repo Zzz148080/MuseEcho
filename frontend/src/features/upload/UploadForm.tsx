@@ -92,10 +92,19 @@ export function UploadForm({
           音频文件
         </label>
         <p className="field-help" id={helpId}>
-          支持 WAV、MP3、FLAC、M4A、AAC、OGG 和 OPUS，文件最大 100 MB，音频最长
-          10 分钟。M4A 仅支持 AAC/ALAC，OGG 仅支持 Vorbis/Opus。浏览器文件名后缀或
-          MIME 类型预检不能代替后端内容验证；不支持 DRM 或专有加密下载。
+          支持 WAV、MP3、FLAC、M4A、AAC、OGG 和 OPUS；最大 100 MB，最长 10 分钟。
         </p>
+        <details
+          aria-label="查看支持格式与上传说明"
+          className="upload-guidance"
+          name="upload-guidance"
+        >
+          <summary>查看支持格式与上传说明</summary>
+          <p>
+            M4A 仅支持 AAC/ALAC，OGG 仅支持 Vorbis/Opus。浏览器文件名后缀或 MIME
+            类型预检不能代替后端内容验证；不支持 DRM 或专有加密下载。
+          </p>
+        </details>
         <input
           accept=".wav,.mp3,.flac,.m4a,.aac,.ogg,.opus"
           aria-describedby={helpId}

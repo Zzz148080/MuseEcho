@@ -1,9 +1,29 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { analysisId, fixtureResult } from '../../test/analysisFixture'
 import { AnalysisWorkspace } from './AnalysisWorkspace'
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+function setViewportWidth(width: number) {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockImplementation((query: string) => ({
+      addEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      matches:
+        (query === '(max-width: 599px)' && width <= 599) ||
+        (query === '(max-width: 1023px)' && width <= 1023),
+      media: query,
+      onchange: null,
+      removeEventListener: vi.fn(),
+    })),
+  )
+}
 
 function renderWorkspace(loadResult = vi.fn().mockResolvedValue(fixtureResult)) {
   const queryClient = new QueryClient({
@@ -19,39 +39,279 @@ function renderWorkspace(loadResult = vi.fn().mockResolvedValue(fixtureResult)) 
   }
 }
 
+function renderWorkspaceInAppShell() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  })
+  return render(
+    <div className="app-shell">
+      <button type="button">新的分析</button>
+      <QueryClientProvider client={queryClient}>
+        <AnalysisWorkspace
+          analysisId={analysisId}
+          loadResult={vi.fn().mockResolvedValue(fixtureResult)}
+        />
+      </QueryClientProvider>
+    </div>,
+  )
+}
+
 describe('AnalysisWorkspace', () => {
-  it('loads the persisted result and exposes the synchronized evidence workspace', async () => {
+  it.each([
+    [599, true, true],
+    [600, false, true],
+    [1023, false, true],
+    [1024, false, false],
+  ])(
+    'separates the mobile chord list and fullscreen detail at %ipx',
+    async (width, mobileList, fullscreen) => {
+      setViewportWidth(width)
+      const user = userEvent.setup()
+      const { container } = renderWorkspaceInAppShell()
+
+      await screen.findByRole('heading', { name: 'Music DNA' })
+      await user.click(screen.getByRole('button', { name: /结构地图/ }))
+      expect(
+        Boolean(screen.queryByRole('region', { name: '和弦事件列表' })),
+      ).toBe(mobileList)
+      await user.click(screen.getByRole('button', { name: /和弦 G/ }))
+
+      expect(
+        Boolean(screen.queryByRole('dialog', { name: 'G 和弦' })),
+      ).toBe(fullscreen)
+      expect(
+        Boolean(
+          screen.queryByRole('complementary', { name: '当前和弦详情' }),
+        ),
+      ).toBe(!fullscreen)
+      expect(container.querySelectorAll('audio')).toHaveLength(1)
+    },
+  )
+
+  it('places desktop detail after the timeline and resets only its internal tone session', async () => {
+    setViewportWidth(1440)
+    const user = userEvent.setup()
+    const { container, loadResult } = renderWorkspace()
+
+    await screen.findByRole('heading', { name: 'Music DNA' })
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
+    const chord = screen.getByRole('button', { name: /和弦 G/ })
+    await user.click(chord)
+    await user.click(screen.getByRole('button', { name: /组成音 B/ }))
+
+    const timeline = container.querySelector('.timeline')
+    const detail = container.querySelector('.workspace-detail')
+    expect(timeline).not.toBeNull()
+    expect(detail).not.toBeNull()
+    if (!timeline || !detail) throw new Error('desktop map layout is incomplete')
+    expect(
+      timeline.compareDocumentPosition(detail) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(container.querySelector('.workspace-map-layout--detail')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: '返回结构地图' }))
+    expect(chord).toHaveAttribute('aria-pressed', 'true')
+    await user.click(chord)
+
+    expect(screen.getByText('选择一个组成音')).toBeVisible()
+    expect(
+      container.querySelector('.chord-piano__key[data-active="true"]'),
+    ).toBeNull()
+    expect(container.querySelectorAll('audio')).toHaveLength(1)
+    expect(loadResult).toHaveBeenCalledTimes(1)
+  })
+
+  it('loads one result and initially exposes only the overview', async () => {
     const { loadResult } = renderWorkspace()
 
     expect(await screen.findByRole('heading', { name: 'Music DNA' })).toBeVisible()
     expect(screen.getByRole('heading', { name: '播放器' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: '结构地图' })).toBeVisible()
-    expect(loadResult).toHaveBeenCalledWith(analysisId)
+    expect(screen.queryByRole('heading', { name: '结构地图' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '深入分析' })).not.toBeInTheDocument()
+    expect(loadResult).toHaveBeenCalledTimes(1)
   })
 
-  it('opens persisted theory when a chord seeks the shared media element', async () => {
+  it('switches views without refetching and opens chord theory as a returnable detail', async () => {
+    const user = userEvent.setup()
+    const { container, loadResult } = renderWorkspace()
+
+    await screen.findByRole('heading', { name: 'Music DNA' })
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
+    const chord = screen.getByRole('button', { name: /和弦 G/ })
+    await user.click(chord)
+
+    expect(container.querySelector('audio')?.currentTime).toBe(8)
+    expect(screen.getByRole('heading', { name: 'G 和弦' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '返回结构地图' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '返回结构地图' })).toHaveFocus()
+
+    await user.click(screen.getByRole('button', { name: '返回结构地图' }))
+    expect(screen.queryByRole('heading', { name: 'G 和弦' })).not.toBeInTheDocument()
+    expect(chord).toHaveFocus()
+    expect(chord).toHaveAttribute('aria-pressed', 'true')
+    expect(loadResult).toHaveBeenCalledTimes(1)
+  })
+
+  it('preserves selection across view navigation and restores focus only to a freshly opened trigger', async () => {
+    const user = userEvent.setup()
+    renderWorkspace()
+
+    await screen.findByRole('heading', { name: 'Music DNA' })
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
+    await user.click(screen.getByRole('button', { name: /和弦 G/ }))
+    expect(screen.getByRole('heading', { name: 'G 和弦' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: /歌曲概览/ }))
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
+
+    expect(screen.queryByRole('heading', { name: 'G 和弦' })).not.toBeInTheDocument()
+
+    const remountedChord = screen.getByRole('button', { name: /和弦 G/ })
+    expect(remountedChord).toHaveAttribute('aria-pressed', 'true')
+    await user.click(remountedChord)
+    expect(screen.getByRole('button', { name: '返回结构地图' })).toHaveFocus()
+    await user.click(screen.getByRole('button', { name: '返回结构地图' }))
+
+    expect(remountedChord).toHaveFocus()
+  })
+
+  it('uses a focused modal detail and makes the covered workspace inert only on mobile', async () => {
+    setViewportWidth(390)
+    const user = userEvent.setup()
+    const { container } = renderWorkspaceInAppShell()
+
+    await screen.findByRole('heading', { name: 'Music DNA' })
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
+    const chord = screen.getByRole('button', { name: /和弦 G/ })
+    await user.click(chord)
+
+    const detail = screen.getByRole('dialog', { name: 'G 和弦' })
+    const returnButton = screen.getByRole('button', { name: '返回结构地图' })
+    expect(detail).toHaveAttribute('aria-modal', 'true')
+    expect(returnButton).toHaveFocus()
+    expect(container.querySelector('.app-shell')).toHaveAttribute('inert')
+    expect(container.querySelector('.app-shell')).toHaveAttribute('aria-hidden', 'true')
+
+    await user.tab()
+    expect(screen.getByRole('button', { name: /组成音 G/ })).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(returnButton).toHaveFocus()
+
+    await user.click(returnButton)
+
+    expect(chord).toHaveFocus()
+    expect(chord).toHaveAttribute('aria-pressed', 'true')
+    expect(container.querySelector('.app-shell')).not.toHaveAttribute('inert')
+  })
+
+  it.each([390, 768])(
+    'closes fullscreen detail with Escape and restores its trigger at %ipx',
+    async (width) => {
+      setViewportWidth(width)
+      const user = userEvent.setup()
+      renderWorkspaceInAppShell()
+
+      await screen.findByRole('heading', { name: 'Music DNA' })
+      await user.click(screen.getByRole('button', { name: /结构地图/ }))
+      const chord = screen.getByRole('button', { name: /和弦 G/ })
+      await user.click(chord)
+      expect(screen.getByRole('dialog', { name: 'G 和弦' })).toBeVisible()
+
+      await user.keyboard('{Escape}')
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(chord).toHaveFocus()
+    },
+  )
+
+  it('keeps the desktop side detail non-modal while moving focus into it', async () => {
+    setViewportWidth(1440)
     const user = userEvent.setup()
     const { container } = renderWorkspace()
 
     await screen.findByRole('heading', { name: 'Music DNA' })
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
     await user.click(screen.getByRole('button', { name: /和弦 G/ }))
 
-    expect(container.querySelector('audio')?.currentTime).toBe(8)
-    expect(screen.getByRole('heading', { name: 'G 和弦' })).toBeVisible()
-    expect(screen.getByText(/A–G 表示音名/)).toBeVisible()
+    const detail = screen.getByRole('complementary', { name: '当前和弦详情' })
+    expect(detail).not.toHaveAttribute('aria-modal')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '返回结构地图' })).toHaveFocus()
+    expect(container.querySelector('.music-workspace')).not.toHaveAttribute('inert')
+
+    await user.keyboard('{Escape}')
+    expect(detail).toBeVisible()
   })
 
-  it('keeps selection controls, hides segment questions, and tucks deletion controls away', async () => {
+  it('clears the preserved chord only through an explicit deselection action', async () => {
+    const user = userEvent.setup()
     renderWorkspace()
 
     await screen.findByRole('heading', { name: 'Music DNA' })
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
+    const chord = screen.getByRole('button', { name: /和弦 G/ })
+    await user.click(chord)
+    await user.click(screen.getByRole('button', { name: '返回结构地图' }))
+
+    expect(chord).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByRole('button', { name: '清除和弦选择' }))
+    expect(chord).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('clears workspace selection state when the analysis identity changes', async () => {
+    const nextAnalysisId = '00000000-0000-4000-8000-000000000002'
+    const nextResult = {
+      ...fixtureResult,
+      analysis_id: nextAnalysisId,
+      chords: fixtureResult.chords.map((chord, index) => ({
+        ...chord,
+        id: `00000000-0000-4000-8000-${String(index + 31).padStart(12, '0')}`,
+      })),
+    }
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    })
+    queryClient.setQueryData(['analysis-result', analysisId], fixtureResult)
+    queryClient.setQueryData(['analysis-result', nextAnalysisId], nextResult)
+    const loadResult = vi.fn()
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <AnalysisWorkspace analysisId={analysisId} loadResult={loadResult} />
+      </QueryClientProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
+    await user.click(screen.getByRole('button', { name: /和弦 G/ }))
+    await user.click(screen.getByRole('button', { name: '返回结构地图' }))
+    expect(screen.getByRole('button', { name: '清除和弦选择' })).toBeVisible()
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <AnalysisWorkspace analysisId={nextAnalysisId} loadResult={loadResult} />
+      </QueryClientProvider>,
+    )
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
+
+    expect(screen.queryByRole('button', { name: '清除和弦选择' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /和弦 G/ })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    expect(loadResult).not.toHaveBeenCalled()
+  })
+
+  it('keeps secondary data management outside the primary result views', async () => {
+    const user = userEvent.setup()
+    renderWorkspace()
+
+    await screen.findByRole('heading', { name: 'Music DNA' })
+    await user.click(screen.getByRole('button', { name: /结构地图/ }))
 
     expect(screen.getByRole('group', { name: '片段选择轨道' })).toBeVisible()
     expect(screen.getByRole('group', { name: '片段选择' })).toBeVisible()
-    expect(screen.queryByRole('heading', { name: '片段问答' })).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('问题')).not.toBeInTheDocument()
     expect(screen.getByRole('group', { name: '管理分析数据' })).not.toHaveAttribute('open')
-    expect(screen.queryByRole('heading', { name: '数据生命周期' })).not.toBeInTheDocument()
   })
 
   it('announces result failures and retries only on user action', async () => {

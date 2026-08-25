@@ -1,10 +1,15 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AnalysisResult } from '../../api/types'
 import { fixtureResult as richResult } from '../../test/analysisFixture'
 import { Timeline } from './Timeline'
-import { clientXToSeconds } from './Timeline'
+import {
+  clientXToSeconds,
+  isChordCurrent,
+  isEventNear,
+  sectionDisplayLabel,
+} from './Timeline'
 import { timeToPercent, useTimeline } from './useTimeline'
 
 const analysisId = '00000000-0000-4000-8000-000000000001'
@@ -78,6 +83,25 @@ const fixtureResult: AnalysisResult = {
   evidence: [],
 }
 
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
+
+function setMobileViewport(matches: boolean) {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockImplementation((query: string) => ({
+      addEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      matches: query === '(max-width: 599px)' && matches,
+      media: query,
+      onchange: null,
+      removeEventListener: vi.fn(),
+    })),
+  )
+}
+
 function Harness() {
   const timeline = useTimeline(fixtureResult.track.duration_seconds)
   return (
@@ -99,6 +123,105 @@ function RichHarness() {
 }
 
 describe('Timeline', () => {
+  it('keeps every musical layer on one scalable canvas without inventing semantics', () => {
+    const { container } = render(<RichHarness />)
+    const content = screen.getByTestId('timeline-content')
+
+    expect(container.querySelectorAll('.timeline__content')).toHaveLength(1)
+    expect(content.querySelectorAll('[data-timeline-layer]')).toHaveLength(7)
+    expect(screen.getByText('段落 A')).toBeVisible()
+    expect(screen.getByText('段落 B')).toBeVisible()
+    expect(screen.queryByText('主歌')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '动态上升 0:06，强度 40%' }),
+    ).toBeVisible()
+    expect(screen.queryByText(/鼓组|主唱|乐器/)).not.toBeInTheDocument()
+  })
+
+  it('translates only explicit semantic section labels', () => {
+    expect(sectionDisplayLabel('verse')).toBe('主歌')
+    expect(sectionDisplayLabel('CHORUS')).toBe('副歌')
+    expect(sectionDisplayLabel('A')).toBe('段落 A')
+    expect(sectionDisplayLabel('')).toBe('未命名段落')
+  })
+
+  it('shows independent truthful empty states for missing tracks', () => {
+    const emptyResult: AnalysisResult = {
+      ...richResult,
+      sections: [],
+      time_series: [],
+      track: { ...richResult.track, summary: null },
+    }
+    function EmptyHarness() {
+      const timeline = useTimeline(emptyResult.track.duration_seconds)
+      return <Timeline result={emptyResult} timeline={timeline} />
+    }
+
+    render(<EmptyHarness />)
+
+    expect(screen.getByText('暂无波形摘要')).toBeVisible()
+    expect(screen.getByText('暂无段落信息')).toBeVisible()
+    expect(screen.getByText('暂无动态曲线')).toBeVisible()
+    expect(screen.getByText('暂无事件')).toBeVisible()
+  })
+
+  it('applies zoom to the one shared canvas', () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(800)
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(private readonly callback: ResizeObserverCallback) {}
+        observe() {
+          this.callback([], this as unknown as ResizeObserver)
+        }
+        disconnect() {}
+      },
+    )
+    render(<RichHarness />)
+
+    fireEvent.change(screen.getByRole('slider', { name: '时间轴缩放' }), {
+      target: { value: '2.25' },
+    })
+
+    expect(screen.getByText('2.25×')).toBeVisible()
+    expect(screen.getByTestId('timeline-content')).toHaveStyle({ width: '1800px' })
+  })
+
+  it('focuses only the chord and real energy event under the playhead', () => {
+    function CurrentHarness() {
+      const timeline = useTimeline(richResult.track.duration_seconds)
+      return (
+        <>
+          <button onClick={() => timeline.seek(6)} type="button">
+            跳到六秒
+          </button>
+          <Timeline result={richResult} timeline={timeline} />
+        </>
+      )
+    }
+    render(<CurrentHarness />)
+    fireEvent.click(screen.getByRole('button', { name: '跳到六秒' }))
+
+    const currentChord = screen.getByRole('button', {
+      name: /和弦 C.*正在经过/,
+    })
+    expect(currentChord).toHaveAttribute('data-current', 'true')
+    expect(currentChord).toHaveAttribute('aria-current', 'true')
+    expect(screen.getByText('正在经过 C 和弦')).toBeVisible()
+    const currentEvent = screen.getByRole('button', {
+      name: /动态上升 0:06.*正在经过/,
+    })
+    expect(currentEvent).toHaveAttribute('data-current', 'true')
+    expect(currentEvent).toHaveAttribute('aria-current', 'true')
+  })
+
+  it('uses deterministic chord and event focus boundaries', () => {
+    expect(isChordCurrent(richResult.chords[0], 8)).toBe(false)
+    expect(isChordCurrent(richResult.chords[1], 8)).toBe(true)
+    expect(isEventNear(6, 6.75)).toBe(true)
+    expect(isEventNear(6, 6.76)).toBe(false)
+  })
+
   it('seeking a chord moves the shared playhead to its start', async () => {
     const user = userEvent.setup()
     const { container } = render(<Harness />)
@@ -110,7 +233,35 @@ describe('Timeline', () => {
     expect(screen.getByTestId('playhead')).toHaveAttribute('data-seconds', '8')
   })
 
-  it('keeps visual section boundaries without exposing internal section labels', () => {
+  it('marks the selected chord and returns its activating button', async () => {
+    const user = userEvent.setup()
+    const onChordSelect = vi.fn()
+    function SelectionHarness() {
+      const timeline = useTimeline(richResult.track.duration_seconds)
+      return (
+        <Timeline
+          onChordSelect={onChordSelect}
+          result={richResult}
+          selectedChord={richResult.chords[0]}
+          timeline={timeline}
+        />
+      )
+    }
+
+    render(<SelectionHarness />)
+    await user.click(screen.getByRole('button', { name: /和弦 C/ }))
+
+    expect(screen.getByRole('button', { name: /和弦 C/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(onChordSelect).toHaveBeenCalledWith(
+      richResult.chords[0],
+      expect.any(HTMLButtonElement),
+    )
+  })
+
+  it('keeps real tracks and presents safe section and energy labels', () => {
     render(<RichHarness />)
 
     for (const name of ['波形', '段落', '和弦', '动态强弱', '重要事件']) {
@@ -118,7 +269,7 @@ describe('Timeline', () => {
     }
     expect(screen.getAllByTestId('section-boundary')).toHaveLength(richResult.sections.length)
     expect(screen.queryByText('A', { selector: '.timeline__event--section' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /音频强度上升/ })).toBeVisible()
+    expect(screen.getByRole('button', { name: /动态上升/ })).toBeVisible()
   })
 
   it('turns a visual section boundary into its exact listening selection', async () => {
@@ -172,13 +323,51 @@ describe('Timeline', () => {
     const media = container.querySelector('audio')
 
     expect(screen.getAllByTestId('section-boundary')).toHaveLength(lowResult.sections.length)
-    expect(screen.queryByLabelText(/段落 A/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /段落 A/ })).toBeVisible()
     expect(screen.getByRole('button', { name: /和弦 G/ })).toBeVisible()
     expect(screen.queryByRole('button', { name: /unknown/ })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /和弦 A#/ }))
     expect(media?.currentTime).toBe(9)
     expect(screen.getByTestId('playhead')).toHaveAttribute('data-seconds', '9')
     expect(screen.queryByText(/时间轴文本事件列表/)).not.toBeInTheDocument()
+  })
+
+  it('offers mobile chord events as chronological non-overlapping 44px controls', async () => {
+    setMobileViewport(true)
+    const user = userEvent.setup()
+    const onChordSelect = vi.fn()
+    function MobileHarness() {
+      const timeline = useTimeline(richResult.track.duration_seconds)
+      return (
+        <Timeline
+          onChordSelect={onChordSelect}
+          result={richResult}
+          selectedChord={richResult.chords[1]}
+          timeline={timeline}
+        />
+      )
+    }
+
+    const { container } = render(<MobileHarness />)
+    const list = screen.getByRole('region', { name: '和弦事件列表' })
+    const controls = screen.getAllByRole('button', { name: /和弦 [CG]/ })
+
+    expect(list).toBeVisible()
+    expect(controls.map((control) => control.getAttribute('aria-label'))).toEqual([
+      '和弦 C，0:00 至 0:08，高置信，正在经过',
+      '和弦 G，0:08 至 0:12，高置信',
+    ])
+    expect(controls[0]).toHaveAttribute('aria-current', 'true')
+    expect(controls[1]).not.toHaveAttribute('aria-current')
+    expect(controls.every((control) => control.classList.contains('timeline__chord-list-button'))).toBe(true)
+    expect(container.querySelectorAll('button.timeline__event--chord')).toHaveLength(0)
+    expect(controls[1]).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(controls[0])
+    expect(onChordSelect).toHaveBeenCalledWith(
+      richResult.chords[0],
+      controls[0],
+    )
   })
 
   it('supports keyboard seeking through the shared playhead', async () => {
