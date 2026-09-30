@@ -17,8 +17,9 @@ RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
     attempt=1; \
     until xcaddy build v2.11.4 \
         --output /usr/bin/caddy \
+        --replace golang.org/x/crypto=golang.org/x/crypto@v0.55.0 \
         --replace golang.org/x/text=golang.org/x/text@v0.39.0 \
-        --replace google.golang.org/grpc=google.golang.org/grpc@v1.82.1; do \
+        --replace google.golang.org/grpc=google.golang.org/grpc@v1.83.2; do \
         if [ "$attempt" -ge 5 ]; then \
             exit 1; \
         fi; \
@@ -109,13 +110,17 @@ ENV XDG_DATA_HOME=/tmp/caddy/data \
     XDG_CONFIG_HOME=/tmp/caddy/config
 RUN set -eu; \
     wget -q https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/c-ares-1.34.8-r0.apk -O /tmp/c-ares.apk; \
-    wget -q https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/curl-8.20.0-r0.apk -O /tmp/curl.apk; \
-    wget -q https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/libcurl-8.20.0-r0.apk -O /tmp/libcurl.apk; \
+    wget -q https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/libcrypto3-3.5.8-r0.apk -O /tmp/libcrypto3.apk; \
+    wget -q https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/libssl3-3.5.8-r0.apk -O /tmp/libssl3.apk; \
+    wget -q https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/curl-8.22.0-r0.apk -O /tmp/curl.apk; \
+    wget -q https://dl-cdn.alpinelinux.org/alpine/v3.23/main/x86_64/libcurl-8.22.0-r0.apk -O /tmp/libcurl.apk; \
     echo '7a570d080d05e60b1256ea73586924bf9a25f468c57aae10d1cdfe7fcc3f93a2  /tmp/c-ares.apk' | sha256sum -c -; \
-    echo 'dc9f2b821e2ce3c578dc6e68dd79ff802d2eb05a390fb15164ad6288c815099c  /tmp/curl.apk' | sha256sum -c -; \
-    echo 'a162907a766bf7828ebc894b445bf53821db406d5ed50dc987bb8a1933658338  /tmp/libcurl.apk' | sha256sum -c -; \
-    apk add --no-network /tmp/c-ares.apk /tmp/curl.apk /tmp/libcurl.apk; \
-    rm /tmp/c-ares.apk /tmp/curl.apk /tmp/libcurl.apk /var/log/apk.log; \
+    echo 'a5592b5cf276bc7a30ac7b161d46446085490b640faa1f839ea98eb15aacad31  /tmp/libcrypto3.apk' | sha256sum -c -; \
+    echo 'f80b76cb5e5a52cfc1ced08f8dc3022adc0ce0a3d6e7741976731b22c71fe310  /tmp/libssl3.apk' | sha256sum -c -; \
+    echo '78829ae535239009c2dd615d0d2f58ecc0abd07855e38c1eea389fc68993f5b1  /tmp/curl.apk' | sha256sum -c -; \
+    echo 'f4070c2bce6aeb660a96f767f5a0eb6876d6c8421b51334d24678e0039720507  /tmp/libcurl.apk' | sha256sum -c -; \
+    apk add --no-network /tmp/c-ares.apk /tmp/libcrypto3.apk /tmp/libssl3.apk /tmp/curl.apk /tmp/libcurl.apk; \
+    rm /tmp/c-ares.apk /tmp/libcrypto3.apk /tmp/libssl3.apk /tmp/curl.apk /tmp/libcurl.apk /var/log/apk.log; \
     setcap -r /usr/bin/caddy
 COPY --from=gateway-builder /usr/bin/caddy /usr/bin/caddy
 COPY --from=frontend-builder /build/frontend/dist /srv
