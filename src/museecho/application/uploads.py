@@ -659,9 +659,7 @@ class UploadSubmissionService:
             staged.expires_at = now + self._staged_upload_ttl
             return staged.next_offset
 
-    def complete_staged_upload(
-        self, upload_id: uuid.UUID, upload_token: str
-    ) -> SubmittedAnalysis:
+    def complete_staged_upload(self, upload_id: uuid.UUID, upload_token: str) -> SubmittedAnalysis:
         now = self._utc_now()
         with self._staged_lock:
             self._cleanup_staged(now)

@@ -158,9 +158,7 @@ def _payload(
         "Subject": subject,
     }
     if template_id is None and template_data is None:
-        value["Simple"] = {
-            "Text": base64.b64encode(body.encode("utf-8")).decode("ascii")
-        }
+        value["Simple"] = {"Text": base64.b64encode(body.encode("utf-8")).decode("ascii")}
     elif template_id is not None and template_id > 0 and template_data is not None:
         value["Template"] = {
             "TemplateID": template_id,
@@ -191,12 +189,7 @@ def _signed_headers(
     canonical_headers = f"content-type:{content_type}\nhost:{_HOST}\n"
     signed_headers = "content-type;host"
     hashed_payload = hashlib.sha256(payload).hexdigest()
-    canonical_request = (
-        "POST\n/\n\n"
-        f"{canonical_headers}\n"
-        f"{signed_headers}\n"
-        f"{hashed_payload}"
-    )
+    canonical_request = f"POST\n/\n\n{canonical_headers}\n{signed_headers}\n{hashed_payload}"
     credential_scope = f"{date}/{_SERVICE}/tc3_request"
     string_to_sign = (
         f"{_ALGORITHM}\n{timestamp}\n{credential_scope}\n"

@@ -124,9 +124,7 @@ def create_analyses_router(service: UploadSubmissionService) -> APIRouter:
         upload_token: Annotated[str, Header(alias="X-Upload-Token", min_length=16, max_length=128)],
     ) -> JSONResponse:
         try:
-            next_offset = service.append_staged_chunk(
-                upload_id, upload_token, offset, file.file
-            )
+            next_offset = service.append_staged_chunk(upload_id, upload_token, offset, file.file)
         except StagedUploadNotFoundError as exc:
             return _error(404, exc.code, str(exc))
         except StagedUploadConflictError as exc:
@@ -209,10 +207,7 @@ class UploadBodyLimitMiddleware:
     ) -> None:
         if max_body_bytes <= 0 or max_body_bytes > DEFAULT_MAX_UPLOAD_REQUEST_BYTES:
             raise ValueError("max_body_bytes must be within the supported limit")
-        if (
-            max_chunk_body_bytes <= 0
-            or max_chunk_body_bytes > DEFAULT_MAX_CHUNK_REQUEST_BYTES
-        ):
+        if max_chunk_body_bytes <= 0 or max_chunk_body_bytes > DEFAULT_MAX_CHUNK_REQUEST_BYTES:
             raise ValueError("max_chunk_body_bytes must be within the supported limit")
         self._app = app
         self._max_body_bytes = max_body_bytes
@@ -282,9 +277,7 @@ def _is_analysis_upload(scope: Scope) -> bool:
     )
 
 
-def _upload_body_limit(
-    scope: Scope, *, upload_limit: int, chunk_limit: int
-) -> int | None:
+def _upload_body_limit(scope: Scope, *, upload_limit: int, chunk_limit: int) -> int | None:
     if _is_analysis_upload(scope):
         return upload_limit
     path = str(scope.get("path", "")).rstrip("/")

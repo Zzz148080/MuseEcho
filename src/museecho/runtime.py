@@ -131,18 +131,12 @@ class RuntimeSettings:
 
         ses_region = values.get("MUSEECHO_TENCENT_SES_REGION", "").strip()
         ses_sender = values.get("MUSEECHO_TENCENT_SES_SENDER", "").strip()
-        ses_secret_id_value = values.get(
-            "MUSEECHO_TENCENT_SES_SECRET_ID_FILE", ""
-        ).strip()
-        ses_secret_key_value = values.get(
-            "MUSEECHO_TENCENT_SES_SECRET_KEY_FILE", ""
-        ).strip()
+        ses_secret_id_value = values.get("MUSEECHO_TENCENT_SES_SECRET_ID_FILE", "").strip()
+        ses_secret_key_value = values.get("MUSEECHO_TENCENT_SES_SECRET_KEY_FILE", "").strip()
         ses_verify_template_value = values.get(
             "MUSEECHO_TENCENT_SES_VERIFY_TEMPLATE_ID", ""
         ).strip()
-        ses_reset_template_value = values.get(
-            "MUSEECHO_TENCENT_SES_RESET_TEMPLATE_ID", ""
-        ).strip()
+        ses_reset_template_value = values.get("MUSEECHO_TENCENT_SES_RESET_TEMPLATE_ID", "").strip()
         ses_values = (
             ses_region,
             ses_sender,

@@ -119,7 +119,7 @@
   ],
   "npm_lock_sha256": {
     "package-lock.json": "bf9f2afb5f2d6e82df67764052601ae3f149fd52aff0e14d847d3064d9b30824",
-    "frontend/package-lock.json": "c8bd8d1251a9d53c226a3e0c20fa7d3423402e8ef1741402f5d92d241fc381f8"
+    "frontend/package-lock.json": "67b55c759d3cf5acaa3735aafe422fd1b769a26036d48f73e4b47057a564d39b"
   },
   "distribution": {
     "container_images": {
