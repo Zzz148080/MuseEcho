@@ -10,6 +10,7 @@ permissions:
 
 env:
   SOURCE_DATE_EPOCH: 1785888000
+  TRIVY_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-db@sha256:e99e636cb9f8b5afc82f21ca6f9c55c413fd18a6ecbf132250aa0f3bb1cca46b
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -147,12 +148,14 @@ jobs:
           chmod 0777 tmp/image-security
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$PWD:/workspace" aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e image \
+            --db-repository "$TRIVY_DB_REPOSITORY" \
             --input /workspace/tmp/image-security/museecho-app.tar \
             --scanners vuln --format json \
             --output /workspace/tmp/image-security/app.raw.json \
             --severity HIGH,CRITICAL
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$PWD:/workspace" aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e image \
+            --db-repository "$TRIVY_DB_REPOSITORY" \
             --input /workspace/tmp/image-security/museecho-gateway.tar \
             --scanners vuln --format json \
             --output /workspace/tmp/image-security/gateway.raw.json \
@@ -221,11 +224,13 @@ jobs:
             --scan gateway=tmp/image-security/gateway.raw.json
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$PWD:/workspace:ro" aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e image \
+            --db-repository "$TRIVY_DB_REPOSITORY" \
             --scanners vuln --exit-code 1 --severity HIGH,CRITICAL \
             --input /workspace/tmp/image-security/museecho-app.tar \
             --vex /workspace/tmp/image-security/app.openvex.json
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$PWD:/workspace:ro" aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e image \
+            --db-repository "$TRIVY_DB_REPOSITORY" \
             --input /workspace/tmp/image-security/museecho-gateway.tar \
             --scanners vuln --exit-code 1 --severity HIGH,CRITICAL
       - name: Package offline runtime release assets

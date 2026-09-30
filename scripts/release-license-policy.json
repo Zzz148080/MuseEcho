@@ -4606,20 +4606,20 @@
         "declared_license": "MIT",
         "metadata_sha256": "1b40b4d32962c55c6b315a51af161ddc8aca49d05fed0dd94b1c7dbdeb9e8aac"
       },
-      "httpcore2@2.9.1": {
+      "httpcore2@2.13.1": {
         "approved_license": "BSD-3-Clause",
         "declared_license": "BSD-3-Clause",
-        "metadata_sha256": "0812b549162fbe23580b6b28f32ba41c3bf218b2a02ee76fc73f71726cc4b582"
+        "metadata_sha256": "b0c5bd2680e138ef18337daa0ec03e628e16c4c4312e0e9e6c290fda5441213e"
       },
       "httptools@0.8.0": {
         "approved_license": "MIT",
         "declared_license": "MIT",
         "metadata_sha256": "4d6f2eda1a7b8f3f6e72774883b1ad24518aa60e44930436a1bae6fe6f9fabdd"
       },
-      "httpx2@2.9.1": {
+      "httpx2@2.13.1": {
         "approved_license": "BSD-3-Clause",
         "declared_license": "BSD-3-Clause",
-        "metadata_sha256": "a1810a654356afa38bbcdec305016ddcd2fa29bb15bf2e0972ea16f267e6ed69"
+        "metadata_sha256": "e68c840e2c45dc1b9b0b7a85e3fa36f3abd52ecb88d946f9b201a3ab4997a2a5"
       },
       "idna@3.18": {
         "approved_license": "BSD-3-Clause",
