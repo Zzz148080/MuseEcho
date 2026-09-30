@@ -48,6 +48,10 @@ def _base_environment(tmp_path: Path) -> tuple[dict[str, str], Path]:
         {"MUSEECHO_PROVIDER_BASE_URL": "https://provider.example/v1"},
         {"MUSEECHO_PROVIDER_MODEL": "deepseek-v4-flash"},
         {"MUSEECHO_PROVIDER_SECRET_FILE": "C:/run/secrets/provider-key"},
+        {"MUSEECHO_SMTP_HOST": "smtp.qcloudmail.com"},
+        {"MUSEECHO_SMTP_PASSWORD_FILE": "C:/run/secrets/smtp-password"},
+        {"MUSEECHO_TENCENT_SES_REGION": "ap-hongkong"},
+        {"MUSEECHO_TENCENT_SES_SENDER": "no-reply@mail.toolgate.cloud"},
     ],
 )
 def test_runtime_settings_reject_missing_or_partial_secret_configuration(
@@ -72,6 +76,117 @@ def test_runtime_settings_reject_reusing_audio_key_as_provider_credential(tmp_pa
     )
 
     with pytest.raises(ValueError):
+        RuntimeSettings.from_environment(environ, repository_root=repository_root)
+
+
+def test_runtime_settings_validates_trusted_proxy_networks(tmp_path: Path):
+    environ, repository_root = _base_environment(tmp_path)
+    environ["MUSEECHO_TRUSTED_PROXY_CIDRS"] = "172.16.0.0/12,fd00::/8"
+    settings = RuntimeSettings.from_environment(environ, repository_root=repository_root)
+    assert tuple(str(network) for network in settings.trusted_proxy_networks) == (
+        "172.16.0.0/12",
+        "fd00::/8",
+    )
+
+    environ["MUSEECHO_TRUSTED_PROXY_CIDRS"] = "172.18.1.5/12"
+    with pytest.raises(ValueError, match="trusted proxy CIDRs"):
+        RuntimeSettings.from_environment(environ, repository_root=repository_root)
+
+
+def test_runtime_settings_loads_smtp_password_from_read_only_file(tmp_path: Path):
+    environ, repository_root = _base_environment(tmp_path)
+    smtp_password = _write_read_only_secret(
+        tmp_path / "external" / "smtp-password",
+        "smtp-password-value",
+    )
+    environ.update(
+        {
+            "MUSEECHO_SMTP_HOST": "smtp.qcloudmail.com",
+            "MUSEECHO_SMTP_PORT": "587",
+            "MUSEECHO_SMTP_USER": "no-reply@mail.toolgate.cloud",
+            "MUSEECHO_SMTP_PASSWORD_FILE": str(smtp_password.resolve()),
+            "MUSEECHO_SMTP_SENDER": "MuseEcho <no-reply@mail.toolgate.cloud>",
+        }
+    )
+
+    settings = RuntimeSettings.from_environment(environ, repository_root=repository_root)
+    app = create_runtime_app(settings=settings)
+
+    assert settings.smtp_password is None
+    assert settings.smtp_password_file == smtp_password.resolve()
+    with TestClient(app, base_url="https://museecho.test") as client:
+        assert client.get("/api/account/config").json() == {"registration_available": True}
+
+
+def test_runtime_settings_rejects_multiple_smtp_password_sources(tmp_path: Path):
+    environ, repository_root = _base_environment(tmp_path)
+    smtp_password = _write_read_only_secret(
+        tmp_path / "external" / "smtp-password",
+        "smtp-password-value",
+    )
+    environ.update(
+        {
+            "MUSEECHO_SMTP_HOST": "smtp.qcloudmail.com",
+            "MUSEECHO_SMTP_USER": "no-reply@mail.toolgate.cloud",
+            "MUSEECHO_SMTP_PASSWORD": "inline-secret",
+            "MUSEECHO_SMTP_PASSWORD_FILE": str(smtp_password.resolve()),
+            "MUSEECHO_SMTP_SENDER": "MuseEcho <no-reply@mail.toolgate.cloud>",
+        }
+    )
+
+    with pytest.raises(ValueError, match="only one SMTP password source"):
+        RuntimeSettings.from_environment(environ, repository_root=repository_root)
+
+
+def test_runtime_settings_configures_tencent_ses_api_from_secret_files(tmp_path: Path):
+    environ, repository_root = _base_environment(tmp_path)
+    secret_id = _write_read_only_secret(tmp_path / "external" / "ses-id", "AKIDEXAMPLE")
+    secret_key = _write_read_only_secret(tmp_path / "external" / "ses-key", "secret-key")
+    environ.update(
+        {
+            "MUSEECHO_TENCENT_SES_REGION": "ap-hongkong",
+            "MUSEECHO_TENCENT_SES_SENDER": "MuseEcho <no-reply@mail.toolgate.cloud>",
+            "MUSEECHO_TENCENT_SES_SECRET_ID_FILE": str(secret_id.resolve()),
+            "MUSEECHO_TENCENT_SES_SECRET_KEY_FILE": str(secret_key.resolve()),
+            "MUSEECHO_TENCENT_SES_VERIFY_TEMPLATE_ID": "1001",
+            "MUSEECHO_TENCENT_SES_RESET_TEMPLATE_ID": "1002",
+        }
+    )
+
+    settings = RuntimeSettings.from_environment(environ, repository_root=repository_root)
+    app = create_runtime_app(settings=settings)
+
+    assert settings.tencent_ses_config is not None
+    assert settings.tencent_ses_config.region == "ap-hongkong"
+    assert settings.tencent_ses_config.verify_template_id == 1001
+    assert settings.tencent_ses_config.reset_template_id == 1002
+    with TestClient(app, base_url="https://museecho.test") as client:
+        assert client.get("/api/account/config").json() == {"registration_available": True}
+
+
+def test_runtime_settings_rejects_configuring_ses_and_smtp_together(tmp_path: Path):
+    environ, repository_root = _base_environment(tmp_path)
+    secret_id = _write_read_only_secret(tmp_path / "external" / "ses-id", "AKIDEXAMPLE")
+    secret_key = _write_read_only_secret(tmp_path / "external" / "ses-key", "secret-key")
+    smtp_password = _write_read_only_secret(
+        tmp_path / "external" / "smtp-password", "smtp-password"
+    )
+    environ.update(
+        {
+            "MUSEECHO_TENCENT_SES_REGION": "ap-hongkong",
+            "MUSEECHO_TENCENT_SES_SENDER": "MuseEcho <no-reply@mail.toolgate.cloud>",
+            "MUSEECHO_TENCENT_SES_SECRET_ID_FILE": str(secret_id.resolve()),
+            "MUSEECHO_TENCENT_SES_SECRET_KEY_FILE": str(secret_key.resolve()),
+            "MUSEECHO_TENCENT_SES_VERIFY_TEMPLATE_ID": "1001",
+            "MUSEECHO_TENCENT_SES_RESET_TEMPLATE_ID": "1002",
+            "MUSEECHO_SMTP_HOST": "smtp.qcloudmail.com",
+            "MUSEECHO_SMTP_USER": "no-reply@mail.toolgate.cloud",
+            "MUSEECHO_SMTP_PASSWORD_FILE": str(smtp_password.resolve()),
+            "MUSEECHO_SMTP_SENDER": "MuseEcho <no-reply@mail.toolgate.cloud>",
+        }
+    )
+
+    with pytest.raises(ValueError, match="either Tencent SES API or SMTP"):
         RuntimeSettings.from_environment(environ, repository_root=repository_root)
 
 

@@ -47,10 +47,16 @@ export type UploadTransport = (
   onProgress: UploadProgressHandler,
 ) => Promise<UploadAccepted>
 
+const chunkedUploadThreshold = 16 * 1024 * 1024
+const maximumChunkRetries = 3
+
 export function uploadAnalysis(
   file: File,
   onProgress: UploadProgressHandler,
 ): Promise<UploadAccepted> {
+  if (file.size > chunkedUploadThreshold) {
+    return uploadAnalysisInChunks(file, onProgress)
+  }
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest()
     request.open('POST', '/api/analyses')
@@ -87,6 +93,109 @@ export function uploadAnalysis(
     body.append('file', file, file.name)
     request.send(body)
   })
+}
+
+interface StagedUploadGrant {
+  upload_id: string
+  upload_token: string
+  chunk_bytes: number
+}
+
+async function uploadAnalysisInChunks(
+  file: File,
+  onProgress: UploadProgressHandler,
+): Promise<UploadAccepted> {
+  const grantResponse = await fetch('/api/analyses/uploads', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename: file.name, size: file.size, media_type: file.type || null }),
+  }).catch(() => {
+    throw new ApiError(0, 'network_error')
+  })
+  const grantBody: unknown = await grantResponse.json().catch(() => null)
+  if (!grantResponse.ok) throw errorFromResponse(grantResponse.status, grantBody)
+  const grant = parseStagedUploadGrant(grantBody)
+  let completed = false
+  try {
+    let offset = 0
+    while (offset < file.size) {
+      const end = Math.min(file.size, offset + grant.chunk_bytes)
+      const body = new FormData()
+      body.append('file', file.slice(offset, end), 'chunk')
+      const response = await fetchWithNetworkRetry(
+        `/api/analyses/uploads/${grant.upload_id}/chunks?offset=${offset}`,
+        {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json', 'X-Upload-Token': grant.upload_token },
+          body,
+        },
+      )
+      const payload: unknown = await response.json().catch(() => null)
+      if (!response.ok) throw errorFromResponse(response.status, payload)
+      if (!isRecord(payload) || typeof payload.next_offset !== 'number') {
+        throw new ApiError(response.status, 'invalid_server_response')
+      }
+      if (!Number.isSafeInteger(payload.next_offset) || payload.next_offset <= offset || payload.next_offset > file.size) {
+        throw new ApiError(response.status, 'invalid_server_response')
+      }
+      offset = payload.next_offset
+      onProgress(offset / file.size)
+    }
+    const completeResponse = await fetchWithNetworkRetry(
+      `/api/analyses/uploads/${grant.upload_id}/complete`,
+      {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json', 'X-Upload-Token': grant.upload_token },
+      },
+    )
+    const completeBody: unknown = await completeResponse.json().catch(() => null)
+    if (!completeResponse.ok) throw errorFromResponse(completeResponse.status, completeBody)
+    const accepted = parseUploadAccepted(completeBody)
+    completed = true
+    onProgress(1)
+    return accepted
+  } finally {
+    if (!completed) {
+      void fetch(`/api/analyses/uploads/${grant.upload_id}`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: { 'X-Upload-Token': grant.upload_token },
+      }).catch(() => undefined)
+    }
+  }
+}
+
+async function fetchWithNetworkRetry(url: string, init: RequestInit): Promise<Response> {
+  let lastError: unknown
+  for (let attempt = 0; attempt < maximumChunkRetries; attempt += 1) {
+    try {
+      return await fetch(url, init)
+    } catch (error) {
+      lastError = error
+    }
+  }
+  void lastError
+  throw new ApiError(0, 'network_error')
+}
+
+function parseStagedUploadGrant(value: unknown): StagedUploadGrant {
+  if (
+    !isRecord(value) ||
+    typeof value.upload_id !== 'string' ||
+    !analysisIdPattern.test(value.upload_id) ||
+    typeof value.upload_token !== 'string' ||
+    value.upload_token.length < 16 ||
+    typeof value.chunk_bytes !== 'number' ||
+    !Number.isSafeInteger(value.chunk_bytes) ||
+    value.chunk_bytes < 64 * 1024 ||
+    value.chunk_bytes > 8 * 1024 * 1024
+  ) {
+    throw new ApiError(0, 'invalid_server_response')
+  }
+  return value as unknown as StagedUploadGrant
 }
 
 export async function getAnalysisStatus(
@@ -179,15 +288,19 @@ export async function createExplanation(
   }
 }
 
-export async function deleteAnalysis(analysisId: string): Promise<void> {
+export async function deleteAnalysis(analysisId: string, deleteSaved = false): Promise<void> {
   if (!isAnalysisId(analysisId)) throw new ApiError(0, 'invalid_analysis_id')
   const csrf = readCsrfToken()
   let response: Response
   try {
-    response = await fetch(`/api/analyses/${analysisId}`, {
+    response = await fetch(`/api/analyses/${analysisId}${deleteSaved ? '?delete_saved=true' : ''}`, {
       method: 'DELETE',
       credentials: 'same-origin',
-      headers: { Accept: 'application/json', 'X-CSRF-Token': csrf },
+      headers: {
+        Accept: 'application/json',
+        'X-CSRF-Token': csrf,
+        ...(deleteSaved ? { 'X-User-CSRF-Token': readUserCsrfToken() } : {}),
+      },
     })
   } catch {
     throw new ApiError(0, 'network_error')
@@ -199,6 +312,16 @@ export async function deleteAnalysis(analysisId: string): Promise<void> {
   if (response.status !== 204) {
     throw new ApiError(response.status, 'invalid_server_response')
   }
+}
+
+function readUserCsrfToken(): string {
+  const prefix = 'museecho_user_csrf='
+  const encoded = document.cookie.split(';').map((item) => item.trim())
+    .find((item) => item.startsWith(prefix))?.slice(prefix.length)
+  if (!encoded || !/^[A-Za-z0-9_-]{1,200}$/.test(encoded)) {
+    throw new ApiError(0, 'csrf_unavailable')
+  }
+  return encoded
 }
 
 function errorFromResponse(status: number, body: unknown): ApiError {
@@ -255,7 +378,7 @@ function parseAnalysisStatus(value: unknown): AnalysisStatus {
   }
 }
 
-function parseAnalysisResult(value: unknown): AnalysisResult {
+export function parseAnalysisResult(value: unknown): AnalysisResult {
   const result = record(value)
   const analysisId = analysisIdValue(result.analysis_id)
   const sourceKind = sourceKindValue(result.source_kind)

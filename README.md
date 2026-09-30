@@ -24,7 +24,7 @@
   能力访问、加密生命周期、DSP/MIR、Evidence-first 解释、React 工作区、Docker/CI、部署手册及
   三轮审计；任务 23 PR #1 和任务 24 实现边界的历史证据继续保留。
 - 2026-08-14 至 2026-08-16：在任务 24 后按细粒度提交完成可信结果呈现、七种常见音频格式、
-  100 MiB 上限、Broadcast WAV、按需解密 Range 播放、FLAC attached-picture 与节奏修复，随后闭合
+  256 MiB 分片上传、Broadcast WAV、按需解密 Range 播放、FLAC attached-picture 与节奏修复，随后闭合
   Linux 格式化、预推送 Docker、历史证据和当前镜像漏洞策略漂移。
 - 2026-08-16：PR #3 的最终产品/CI 实现 SHA
   `0674f74f4097e46cee98c4715a62ad5aa55101cf` 由 GitHub run
@@ -42,7 +42,7 @@ DSP/MIR 管线分析用户上传的 WAV、MP3、FLAC、M4A、AAC、OGG 或 OPUS�
 
 ## 核心功能
 
-- 最大 100 MiB、最长 10 分钟的 WAV/MP3/FLAC/M4A/AAC/OGG/OPUS 上传、格式探测和受限解码。
+- 最大 256 MiB、最长 10 分钟的 WAV/MP3/FLAC/M4A/AAC/OGG/OPUS 分片上传、格式探测和受限解码。
 - 单工作线程的可恢复分析队列，失败返回稳定错误码。
 - 节拍/能量、调性、结构与大小三和弦分析；低置信结果统一为 `unknown`。
 - 时间轴、波形、证据面板、确定性乐理说明和可选证据约束式 LLM 解释。

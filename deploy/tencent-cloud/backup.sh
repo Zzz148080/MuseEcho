@@ -11,6 +11,16 @@ database="$MUSEECHO_DATA_DIR/museecho.db"
 [[ -r "$database" ]] || fail "database is not readable: $database"
 command -v python3 >/dev/null || fail 'python3 with the standard sqlite3 module is required for an online database backup'
 backup_dir="$MUSEECHO_BASE/backups"
+retention_days="$(read_runtime_value MUSEECHO_BACKUP_RETENTION_DAYS)"
+retention_days="${retention_days:-30}"
+[[ "$retention_days" =~ ^[0-9]+$ ]] \
+    || fail 'MUSEECHO_BACKUP_RETENTION_DAYS must be an integer'
+[[ "$retention_days" -ge 1 && "$retention_days" -le 3650 ]] \
+    || fail 'MUSEECHO_BACKUP_RETENTION_DAYS must be between 1 and 3650'
+age_recipient="$(read_runtime_value MUSEECHO_BACKUP_AGE_RECIPIENT)"
+if [[ -n "$age_recipient" ]]; then
+    command -v age >/dev/null || fail 'age is required when backup encryption is configured'
+fi
 if [[ -n "$MUSEECHO_ROOT_PREFIX" ]]; then
     install -d -m 0700 "$backup_dir"
 else
@@ -45,10 +55,11 @@ if [[ -L "$MUSEECHO_CURRENT_LINK" ]]; then
         install_owned_file 0600 "$current/release.env" "$work/release.env"
     fi
 fi
-cat > "$work/BACKUP-METADATA.txt" <<'EOF'
+cat > "$work/BACKUP-METADATA.txt" <<EOF
 MuseEcho backup scope: SQLite database and non-secret deployment metadata only.
 Database consistency: the SQLite online backup API produces a standalone, integrity-checked database snapshot while WAL writes may continue; no WAL sidecar is needed for this snapshot.
 Encryption boundary: encrypted audio ciphertext and per-analysis wrapped-key material are deliberately excluded; recovery of audio requires a separately protected data backup and the root-readable KEK outside this archive.
+Archive encryption: $([[ -n "$age_recipient" ]] && printf 'age encrypted.' || printf 'not enabled; protect the root-only backup directory with encrypted storage.')
 Secrets are never copied into this archive.
 EOF
 checksum_files=(museecho.db BACKUP-METADATA.txt)
@@ -56,6 +67,18 @@ checksum_files=(museecho.db BACKUP-METADATA.txt)
 [[ -f "$work/release.env" ]] && checksum_files+=(release.env)
 (cd "$work" && sha256sum "${checksum_files[@]}" > SHA256SUMS)
 archive="$backup_dir/museecho-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
-tar -C "$work" --sort=name --mtime='UTC 1970-01-01' -czf "$archive" .
+plain_archive="$backup_dir/.archive.$$.tar.gz"
+trap 'rm -rf "$work"; rm -f "$plain_archive"' EXIT
+tar -C "$work" --sort=name --mtime='UTC 1970-01-01' -czf "$plain_archive" .
+if [[ -n "$age_recipient" ]]; then
+    archive="${archive}.age"
+    age --encrypt --recipient "$age_recipient" --output "$archive" "$plain_archive"
+    rm -f "$plain_archive"
+else
+    mv "$plain_archive" "$archive"
+fi
 chmod 0600 "$archive"
+find "$backup_dir" -maxdepth 1 -type f \
+    \( -name 'museecho-*.tar.gz' -o -name 'museecho-*.tar.gz.age' \) \
+    -mtime "+$retention_days" -delete
 printf 'Backup created: %s\n' "$archive"

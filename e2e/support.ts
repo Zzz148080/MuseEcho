@@ -47,10 +47,13 @@ export function ensureChordProgressionFixture(): void {
   fs.writeFileSync(fixturePath, wav)
 }
 
-export async function uploadAndWait(page: Page): Promise<string> {
+export async function uploadAndWait(
+  page: Page,
+  audioPath = fixturePath,
+): Promise<string> {
   ensureChordProgressionFixture()
   await page.goto('/')
-  await page.getByLabel('音频文件').setInputFiles(fixturePath)
+  await page.getByLabel('音频文件').setInputFiles(audioPath)
   await page.getByRole('checkbox', { name: /有权分析/ }).check()
   await page.getByRole('checkbox', { name: /加密保留最长 24 小时/ }).check()
   const uploadResponse = page.waitForResponse(
@@ -59,7 +62,9 @@ export async function uploadAndWait(page: Page): Promise<string> {
       response.request().method() === 'POST',
   )
   await page.getByRole('button', { name: /开始分析/ }).click()
-  const payload = (await (await uploadResponse).json()) as { analysis_id?: unknown }
+  const payload = (await (await uploadResponse).json()) as {
+    analysis_id?: unknown
+  }
   if (typeof payload.analysis_id !== 'string') {
     throw new Error('upload response did not contain an analysis id')
   }
@@ -69,6 +74,10 @@ export async function uploadAndWait(page: Page): Promise<string> {
 }
 
 export async function selectTimelineSegment(page: Page): Promise<void> {
+  await page
+    .getByRole('navigation', { name: '分析功能' })
+    .getByRole('button', { name: /结构地图/ })
+    .click()
   const selectionSurface = page.getByTestId('selection-surface')
   await selectionSurface.scrollIntoViewIfNeeded()
   const selectionBox = await selectionSurface.boundingBox()

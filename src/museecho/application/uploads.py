@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import math
 import os
 import re
+import secrets
 import shutil
 import struct
 import threading
@@ -27,7 +29,10 @@ from museecho.audio_formats import (
 from museecho.domain.models import EncryptedAudioMetadata, IssuedAccess
 from museecho.domain.status import AnalysisJob
 
-DEFAULT_MAX_UPLOAD_BYTES = 100 * 1024 * 1024
+DEFAULT_MAX_UPLOAD_BYTES = 256 * 1024 * 1024
+DEFAULT_UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024
+DEFAULT_STAGED_UPLOAD_TTL = timedelta(minutes=30)
+DEFAULT_MAX_ACTIVE_STAGED_UPLOADS = 2
 DEFAULT_MAX_DURATION_SECONDS = 600.0
 COPY_CHUNK_BYTES = 64 * 1024
 _UPLOAD_TEMP_PREFIX = "museecho-upload-"
@@ -83,6 +88,18 @@ class UnsupportedAudioError(UploadError):
     code = "unsupported_audio"
 
 
+class StagedUploadNotFoundError(UploadError):
+    code = "staged_upload_not_found"
+
+
+class StagedUploadConflictError(UploadError):
+    code = "staged_upload_conflict"
+
+
+class StagedUploadBusyError(UploadError):
+    code = "staged_upload_busy"
+
+
 class UploadRepository(Protocol):
     def add(self, job: AnalysisJob) -> None: ...
     def delete_cascade(self, analysis_id: uuid.UUID) -> None: ...
@@ -107,6 +124,31 @@ class AnalysisQueue(Protocol):
 class SubmittedAnalysis:
     job: AnalysisJob
     access: IssuedAccess
+
+
+@dataclass(frozen=True)
+class StagedUploadGrant:
+    upload_id: uuid.UUID
+    upload_token: str
+    chunk_bytes: int
+
+
+@dataclass
+class _StagedUpload:
+    upload_id: uuid.UUID
+    upload_token: str
+    filename: str
+    media_type: str | None
+    total_bytes: int
+    path: Path
+    expires_at: datetime
+    next_offset: int = 0
+    chunks: dict[int, tuple[int, str]] | None = None
+    submitted: SubmittedAnalysis | None = None
+
+    def __post_init__(self) -> None:
+        if self.chunks is None:
+            self.chunks = {}
 
 
 @dataclass(frozen=True)
@@ -498,12 +540,21 @@ class UploadSubmissionService:
         validator: Callable[[Path, AudioFormat], AudioProbe] | None = None,
         max_bytes: int = DEFAULT_MAX_UPLOAD_BYTES,
         access_ttl: timedelta = timedelta(hours=24),
+        staged_upload_ttl: timedelta = DEFAULT_STAGED_UPLOAD_TTL,
+        upload_chunk_bytes: int = DEFAULT_UPLOAD_CHUNK_BYTES,
+        max_active_staged_uploads: int = DEFAULT_MAX_ACTIVE_STAGED_UPLOADS,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         if max_bytes <= 0 or max_bytes > DEFAULT_MAX_UPLOAD_BYTES:
             raise ValueError("max_bytes must be within the supported limit")
         if access_ttl <= timedelta(0):
             raise ValueError("access_ttl must be positive")
+        if staged_upload_ttl <= timedelta(0):
+            raise ValueError("staged_upload_ttl must be positive")
+        if upload_chunk_bytes <= 0 or upload_chunk_bytes > DEFAULT_UPLOAD_CHUNK_BYTES:
+            raise ValueError("upload_chunk_bytes must be within the supported limit")
+        if max_active_staged_uploads < 1 or max_active_staged_uploads > 16:
+            raise ValueError("max_active_staged_uploads must be between 1 and 16")
         self._repository = repository
         self._audio_store = audio_store
         self._access_service = access_service
@@ -512,7 +563,12 @@ class UploadSubmissionService:
         self._validator = validator or FFmpegAudioValidator()
         self._max_bytes = max_bytes
         self._access_ttl = access_ttl
+        self._staged_upload_ttl = staged_upload_ttl
+        self._upload_chunk_bytes = upload_chunk_bytes
+        self._max_active_staged_uploads = max_active_staged_uploads
         self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._staged_lock = threading.RLock()
+        self._staged: dict[uuid.UUID, _StagedUpload] = {}
 
     def submit(
         self, source: BinaryIO, *, filename: str, media_type: str | None
@@ -524,21 +580,154 @@ class UploadSubmissionService:
             _write_upload_owner_marker(isolated_directory)
             isolated_path = isolated_directory / uuid.uuid4().hex
             _copy_bounded(source, isolated_path, self._max_bytes)
-            probe = self._validator(isolated_path, expected_format)
-            if not probe_matches_audio_format(
-                expected_format,
-                format_name=probe.format_name,
-                codec_name=probe.codec_name,
-            ):
-                from museecho.analysis.decode import InvalidAudioError
+            return self._submit_path(isolated_path, expected_format)
 
-                raise InvalidAudioError(
-                    "file extension does not match detected audio format and codec"
-                )
-            return self._persist_validated(
-                isolated_path,
-                canonical_media_type=expected_format.canonical_media_type,
+    def begin_staged_upload(
+        self, *, filename: str, media_type: str | None, total_bytes: int
+    ) -> StagedUploadGrant:
+        _expected_format(filename)
+        if total_bytes < 1:
+            raise UploadError("audio file cannot be empty")
+        if total_bytes > self._max_bytes:
+            raise UploadTooLargeError("audio file exceeds the supported size")
+        now = self._utc_now()
+        with self._staged_lock:
+            self._cleanup_staged(now)
+            active = sum(1 for item in self._staged.values() if item.submitted is None)
+            if active >= self._max_active_staged_uploads:
+                raise StagedUploadBusyError("too many staged uploads are active")
+            upload_id = uuid.uuid4()
+            upload_token = secrets.token_urlsafe(32)
+            directory = self._temp_root / f"{_UPLOAD_TEMP_PREFIX}{upload_id.hex}-chunked0"
+            try:
+                directory.mkdir(mode=0o700)
+                _write_upload_owner_marker(directory)
+                path = directory / "payload"
+                path.touch(mode=0o600, exist_ok=False)
+            except OSError:
+                shutil.rmtree(directory, ignore_errors=True)
+                raise UploadError("temporary upload could not be created") from None
+            self._staged[upload_id] = _StagedUpload(
+                upload_id=upload_id,
+                upload_token=upload_token,
+                filename=filename,
+                media_type=media_type,
+                total_bytes=total_bytes,
+                path=path,
+                expires_at=now + self._staged_upload_ttl,
             )
+            return StagedUploadGrant(upload_id, upload_token, self._upload_chunk_bytes)
+
+    def append_staged_chunk(
+        self,
+        upload_id: uuid.UUID,
+        upload_token: str,
+        offset: int,
+        source: BinaryIO,
+    ) -> int:
+        if offset < 0:
+            raise StagedUploadConflictError("upload offset is invalid")
+        payload = source.read(self._upload_chunk_bytes + 1)
+        if not payload:
+            raise StagedUploadConflictError("upload chunk cannot be empty")
+        if len(payload) > self._upload_chunk_bytes:
+            raise UploadTooLargeError("upload chunk exceeds the supported size")
+        digest = hashlib.sha256(payload).hexdigest()
+        now = self._utc_now()
+        with self._staged_lock:
+            self._cleanup_staged(now)
+            staged = self._get_staged(upload_id, upload_token)
+            assert staged.chunks is not None
+            if staged.submitted is not None:
+                raise StagedUploadConflictError("upload is already complete")
+            if offset < staged.next_offset:
+                previous = staged.chunks.get(offset)
+                if previous == (len(payload), digest):
+                    return staged.next_offset
+                raise StagedUploadConflictError("upload chunk does not match the accepted data")
+            if offset != staged.next_offset:
+                raise StagedUploadConflictError("upload chunks must be contiguous")
+            if offset + len(payload) > staged.total_bytes:
+                raise UploadTooLargeError("upload exceeds its declared size")
+            try:
+                with staged.path.open("ab") as target:
+                    target.write(payload)
+            except OSError:
+                raise UploadError("upload chunk could not be stored") from None
+            staged.chunks[offset] = (len(payload), digest)
+            staged.next_offset += len(payload)
+            staged.expires_at = now + self._staged_upload_ttl
+            return staged.next_offset
+
+    def complete_staged_upload(
+        self, upload_id: uuid.UUID, upload_token: str
+    ) -> SubmittedAnalysis:
+        now = self._utc_now()
+        with self._staged_lock:
+            self._cleanup_staged(now)
+            staged = self._get_staged(upload_id, upload_token)
+            if staged.submitted is not None:
+                return staged.submitted
+            if staged.next_offset != staged.total_bytes:
+                raise StagedUploadConflictError("upload is incomplete")
+            expected_format = _expected_format(staged.filename)
+            try:
+                staged.submitted = self._submit_path(staged.path, expected_format)
+            except Exception:
+                self._remove_staged(staged)
+                raise
+            staged.expires_at = now + timedelta(minutes=10)
+            shutil.rmtree(staged.path.parent, ignore_errors=True)
+            return staged.submitted
+
+    def abort_staged_upload(self, upload_id: uuid.UUID, upload_token: str) -> None:
+        with self._staged_lock:
+            staged = self._get_staged(upload_id, upload_token)
+            self._remove_staged(staged)
+
+    def _submit_path(self, path: Path, expected_format: AudioFormat) -> SubmittedAnalysis:
+        try:
+            size = path.stat().st_size
+        except OSError:
+            raise UploadError("temporary upload is unavailable") from None
+        if size < 1:
+            raise UploadError("audio file cannot be empty")
+        if size > self._max_bytes:
+            raise UploadTooLargeError("audio file exceeds the supported size")
+        probe = self._validator(path, expected_format)
+        if not probe_matches_audio_format(
+            expected_format,
+            format_name=probe.format_name,
+            codec_name=probe.codec_name,
+        ):
+            from museecho.analysis.decode import InvalidAudioError
+
+            raise InvalidAudioError("file extension does not match detected audio format and codec")
+        return self._persist_validated(
+            path,
+            canonical_media_type=expected_format.canonical_media_type,
+        )
+
+    def _utc_now(self) -> datetime:
+        now = self._clock()
+        if now.tzinfo is None or now.utcoffset() != timedelta(0):
+            raise ValueError("clock must return an aware UTC datetime")
+        return now
+
+    def _get_staged(self, upload_id: uuid.UUID, upload_token: str) -> _StagedUpload:
+        staged = self._staged.get(upload_id)
+        if staged is None or not secrets.compare_digest(staged.upload_token, upload_token):
+            raise StagedUploadNotFoundError("staged upload was not found")
+        return staged
+
+    def _cleanup_staged(self, now: datetime) -> None:
+        for staged in tuple(self._staged.values()):
+            if staged.expires_at <= now:
+                self._remove_staged(staged)
+
+    def _remove_staged(self, staged: _StagedUpload) -> None:
+        self._staged.pop(staged.upload_id, None)
+        shutil.rmtree(staged.path.parent, ignore_errors=True)
 
     def _persist_validated(
         self,
@@ -685,7 +874,12 @@ def _copy_bounded(source: BinaryIO, destination: Path, max_bytes: int) -> None:
 __all__ = [
     "DEFAULT_MAX_DURATION_SECONDS",
     "DEFAULT_MAX_UPLOAD_BYTES",
+    "DEFAULT_UPLOAD_CHUNK_BYTES",
     "FFmpegAudioValidator",
+    "StagedUploadBusyError",
+    "StagedUploadConflictError",
+    "StagedUploadGrant",
+    "StagedUploadNotFoundError",
     "SubmittedAnalysis",
     "UnsupportedAudioError",
     "UploadError",

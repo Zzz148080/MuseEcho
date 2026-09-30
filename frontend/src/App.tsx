@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { AnalysisPage } from './pages/AnalysisPage'
 import './styles/global.css'
+import './styles/workbench.css'
+import './styles/enhanced.css'
 
 function App() {
   const [queryClient] = useState(

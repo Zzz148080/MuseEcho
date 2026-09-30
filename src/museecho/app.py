@@ -1,15 +1,20 @@
 from collections.abc import Callable, Collection, Mapping
+from ipaddress import IPv4Network, IPv6Network
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from starlette.types import Lifespan
 
+from museecho.api.accounts import create_accounts_router
 from museecho.api.analyses import install_analyses_api
 from museecho.api.audio import create_audio_router
 from museecho.api.explanations import create_explanations_router
+from museecho.api.library import create_library_router, create_library_save_router
 from museecho.api.results import create_results_router
+from museecho.application.accounts import AccountService
 from museecho.application.cleanup import AnalysisDeletionService
 from museecho.application.explanations import ExplanationService
+from museecho.application.library import LibraryService
 from museecho.application.lifecycle import AnalysisLifecycleService
 from museecho.application.uploads import UploadSubmissionService
 from museecho.domain.ports import AccessService, AnalysisRepository, EncryptedAudioStore
@@ -23,7 +28,10 @@ def create_app(
     access_service: AccessService | None = None,
     audio_store: EncryptedAudioStore | None = None,
     explanation_service: ExplanationService | None = None,
+    account_service: AccountService | None = None,
+    library_service: LibraryService | None = None,
     trusted_origins: Collection[str] = (),
+    trusted_proxy_networks: Collection[IPv4Network | IPv6Network] = (),
     lifespan: Lifespan[FastAPI] | None = None,
     readiness_check: Callable[[], bool] | None = None,
     metrics_snapshot: Callable[[], Mapping[str, object]] | None = None,
@@ -43,12 +51,34 @@ def create_app(
             explanation_service,
             deletion_service,
         )
-        app.include_router(create_results_router(lifecycle, access_service, trusted_origins))
+        app.include_router(
+            create_results_router(
+                lifecycle, access_service, trusted_origins, account_service, library_service
+            )
+        )
         if audio_store is not None:
             app.include_router(create_audio_router(lifecycle, access_service))
         if explanation_service is not None:
             app.include_router(
                 create_explanations_router(lifecycle, access_service, trusted_origins)
+            )
+        if account_service is not None and library_service is not None:
+            app.include_router(
+                create_accounts_router(
+                    account_service,
+                    trusted_origins,
+                    trusted_proxy_networks,
+                )
+            )
+            app.include_router(
+                create_library_router(
+                    library_service, account_service, access_service, trusted_origins
+                )
+            )
+            app.include_router(
+                create_library_save_router(
+                    library_service, account_service, access_service, trusted_origins
+                )
             )
 
     @app.get("/api/health")

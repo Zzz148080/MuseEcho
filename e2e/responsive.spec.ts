@@ -8,9 +8,9 @@ test('desktop, tablet, and mobile layouts stay readable and keyboard operable', 
   await uploadAndWait(page)
 
   for (const viewport of [
-    { width: 1440, height: 900, stacked: false },
-    { width: 768, height: 1024, stacked: true },
-    { width: 390, height: 844, stacked: true },
+    { width: 1440, height: 900 },
+    { width: 768, height: 1024 },
+    { width: 390, height: 844 },
   ]) {
     await page.setViewportSize(viewport)
     const overflow = await page.evaluate(
@@ -25,13 +25,12 @@ test('desktop, tablet, and mobile layouts stay readable and keyboard operable', 
     expect(musicDna).not.toBeNull()
     expect(retention).not.toBeNull()
     if (!audioPlayer || !musicDna || !retention) continue
-    if (viewport.stacked) {
-      expect(musicDna.y).toBeGreaterThan(audioPlayer.y + audioPlayer.height - 2)
-      expect(Math.abs(musicDna.x - audioPlayer.x)).toBeLessThanOrEqual(2)
-    } else {
-      expect(Math.abs(musicDna.y - audioPlayer.y)).toBeLessThanOrEqual(2)
-      expect(musicDna.x).toBeGreaterThan(audioPlayer.x + audioPlayer.width - 2)
-    }
+    // All views now share one full-width transport bar above their content.
+    expect(musicDna.y).toBeGreaterThan(audioPlayer.y + audioPlayer.height - 2)
+    expect(musicDna.x).toBeGreaterThanOrEqual(audioPlayer.x)
+    expect(musicDna.x + musicDna.width).toBeLessThanOrEqual(
+      audioPlayer.x + audioPlayer.width,
+    )
     expect(retention.y).toBeGreaterThan(
       Math.max(
         audioPlayer.y + audioPlayer.height,
@@ -40,11 +39,17 @@ test('desktop, tablet, and mobile layouts stay readable and keyboard operable', 
     )
   }
 
+  await page
+    .getByRole('navigation', { name: '分析功能' })
+    .getByRole('button', { name: /结构地图/ })
+    .click()
   const start = page.getByRole('slider', { name: '片段开始' })
   await start.scrollIntoViewIfNeeded()
   await start.focus()
   await start.press('ArrowRight')
   await expect(page.getByTestId('selection')).toBeVisible()
   await expect(page.getByRole('button', { name: '清除选区' })).toBeEnabled()
-  await expect(page.getByRole('button', { name: /和弦 C/ }).first()).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: /和弦 C/ }).first(),
+  ).toBeVisible()
 })

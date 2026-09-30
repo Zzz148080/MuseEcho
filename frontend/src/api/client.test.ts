@@ -327,6 +327,39 @@ describe('API client', () => {
     expect(onProgress.mock.calls.map(([value]) => value)).toEqual([0.25, 1])
   })
 
+  it('splits large uploads into retry-safe chunks before completing', async () => {
+    const chunkBytes = 8 * 1024 * 1024
+    const fileSize = chunkBytes * 2 + 1
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: () => Promise.resolve({
+          upload_id: analysisId,
+          upload_token: 't'.repeat(43),
+          chunk_bytes: chunkBytes,
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ next_offset: chunkBytes }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ next_offset: chunkBytes * 2 }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ next_offset: fileSize }) })
+      .mockResolvedValueOnce({ ok: true, status: 202, json: () => Promise.resolve(accepted) })
+    vi.stubGlobal('fetch', fetchMock)
+    const file = new File([new Uint8Array(fileSize)], 'large.wav', { type: 'audio/wav' })
+    const progress = vi.fn()
+
+    await expect(uploadAnalysis(file, progress)).resolves.toEqual(accepted)
+
+    expect(fetchMock).toHaveBeenCalledTimes(5)
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/analyses/uploads')
+    expect(fetchMock.mock.calls[1][0]).toContain(`/api/analyses/uploads/${analysisId}/chunks?offset=0`)
+    expect(fetchMock.mock.calls[2][0]).toContain(`offset=${chunkBytes}`)
+    expect(fetchMock.mock.calls[3][0]).toContain(`offset=${chunkBytes * 2}`)
+    expect(fetchMock.mock.calls[4][0]).toBe(`/api/analyses/uploads/${analysisId}/complete`)
+    expect(progress.mock.calls.at(-1)?.[0]).toBe(1)
+  })
+
   it('does not expose server messages through its public error', async () => {
     vi.stubGlobal(
       'fetch',

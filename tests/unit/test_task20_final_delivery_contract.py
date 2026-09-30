@@ -30,6 +30,36 @@ def _require_powershell() -> str:
     return shell
 
 
+def _docker_compose_command() -> list[str] | None:
+    docker = shutil.which("docker")
+    if docker is not None:
+        plugin = subprocess.run(
+            [docker, "compose", "version"],
+            cwd=ROOT,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=15,
+        )
+        if plugin.returncode == 0:
+            return [docker, "compose"]
+    standalone = shutil.which("docker-compose")
+    if standalone is not None:
+        compose = subprocess.run(
+            [standalone, "version"],
+            cwd=ROOT,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=15,
+        )
+        if compose.returncode == 0:
+            return [standalone]
+    if docker is None:
+        return None
+    pytest.fail("Docker is available but neither docker compose nor docker-compose works")
+
+
 def _current_status_block(document: str, *, name: str) -> str:
     assert document.count(CURRENT_STATUS_START) == 1, f"{name} lacks one current-status start"
     assert document.count(CURRENT_STATUS_END) == 1, f"{name} lacks one current-status end"
@@ -202,6 +232,8 @@ def test_app_dev_reloads_mounted_source_changes_across_the_compose_process_bound
     docker = shutil.which("docker")
     if docker is None:
         pytest.skip("Docker is unavailable for the development source boundary")
+    compose = _docker_compose_command()
+    assert compose is not None
 
     source = tmp_path / "src"
     shutil.copytree(ROOT / "src", source)
@@ -243,8 +275,7 @@ def test_app_dev_reloads_mounted_source_changes_across_the_compose_process_bound
         encoding="utf-8",
     )
     compose_command = [
-        docker,
-        "compose",
+        *compose,
         "--project-name",
         project,
         "-f",
@@ -392,7 +423,8 @@ def test_delivery_images_repositories_packages_and_release_identity_are_immutabl
 
 
 def test_development_profile_renders_an_https_same_origin_gateway():
-    if shutil.which("docker") is None:
+    compose = _docker_compose_command()
+    if compose is None:
         # The authoritative pytest image deliberately has no Docker socket or
         # client. Keep its contract fail-closed while the host smoke below runs
         # the exact documented Compose command against the real daemon.
@@ -410,7 +442,7 @@ def test_development_profile_renders_an_https_same_origin_gateway():
         return
 
     completed = subprocess.run(
-        ["docker", "compose", "--profile", "development", "config", "--format", "json"],
+        [*compose, "--profile", "development", "config", "--format", "json"],
         cwd=ROOT,
         capture_output=True,
         check=False,
@@ -719,8 +751,9 @@ def test_process_documents_anchor_evidence_and_share_current_audit_status():
     assert "仅作为历史任务 24 实现证据" in delivery_report
     assert "由 DEL-012 单独记录" in delivery_report
     assert "0674f74f4097e46cee98c4715a62ad5aa55101cf" in course_checklist
-    assert "不声称存在公网 URL" in deployment
-    assert "## 待补充的真实服务器证据" in deployment
+    assert "https://museecho.toolgate.cloud" in deployment
+    assert "Deployment activated: 20260928T180424Z-e7da257e49894df" in deployment
+    assert "## 尚待完成的线上验收" in deployment
 
     current_blocks = {
         name: _current_status_block(document, name=name)

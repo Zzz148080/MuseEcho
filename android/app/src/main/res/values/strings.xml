@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MuseEcho</string>
+    <string name="workbench_description">MuseEcho 音乐分析工作台</string>
+    <string name="blocked_navigation">已阻止跳转到其他网站</string>
+    <string name="load_failed">暂时无法加载 MuseEcho，请检查网络后重试</string>
+</resources>

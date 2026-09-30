@@ -11,6 +11,7 @@ export interface RetentionPanelProps {
   expiresAt: string | null
   onDeleted: () => void
   remove?: DeleteTransport
+  accountLoggedIn?: boolean
 }
 
 export function RetentionPanel({
@@ -19,6 +20,7 @@ export function RetentionPanel({
   expiresAt,
   onDeleted,
   remove = deleteAnalysis,
+  accountLoggedIn = false,
 }: RetentionPanelProps) {
   const [now, setNow] = useState(clock)
   const [confirmed, setConfirmed] = useState(false)
@@ -32,15 +34,16 @@ export function RetentionPanel({
     return () => window.clearInterval(interval)
   }, [clock])
 
-  const submitDeletion = async () => {
+  const submitDeletion = async (deleteSaved = false) => {
     if (!confirmed || pending || expired || !Number.isFinite(expiry)) return
     setPending(true)
     setError(null)
     try {
-      await remove(analysisId)
+      if (deleteSaved) await deleteAnalysis(analysisId, true)
+      else await remove(analysisId)
       onDeleted()
     } catch (reason) {
-      setError(deletionErrorMessage(reason))
+      setError(deletionErrorMessage(reason, deleteSaved))
     } finally {
       setPending(false)
     }
@@ -51,7 +54,7 @@ export function RetentionPanel({
       <summary>管理分析数据</summary>
       <div className="retention-panel__content">
         <p>{retentionText(expiry, now)}</p>
-        <p>删除后无法恢复。</p>
+        <p>删除本次临时分析后无法恢复。若已保存到私人歌曲库，副本会继续保留；可在歌曲库单独删除。</p>
         <label className="retention-panel__confirmation">
           <input
             checked={confirmed}
@@ -71,12 +74,23 @@ export function RetentionPanel({
         >
           {pending ? '正在删除' : error ? '重新尝试删除' : '永久删除分析'}
         </Button>
+        {accountLoggedIn && <Button
+          disabled={!confirmed || pending || expired || !Number.isFinite(expiry)}
+          onClick={() => void submitDeletion(true)}
+          variant="danger"
+        >删除临时分析及我的保存副本</Button>}
       </div>
     </details>
   )
 }
 
-function deletionErrorMessage(reason: unknown): string {
+function deletionErrorMessage(reason: unknown, deleteSaved: boolean): string {
+  if (reason instanceof ApiError && reason.code === 'saved_delete_failed') {
+    return '临时分析已删除，但私人歌曲库副本可能仍在；请打开歌曲库检查并单独删除。'
+  }
+  if (deleteSaved) {
+    return '操作未完成；请检查临时分析和歌曲库副本的状态，再分别重试删除。'
+  }
   if (!(reason instanceof ApiError)) {
     return '删除未完成，当前分析仍然保留；请检查连接后手动重试。'
   }

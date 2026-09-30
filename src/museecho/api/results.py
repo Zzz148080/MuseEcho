@@ -1,17 +1,23 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from collections.abc import Collection
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 
+from museecho.api.accounts import require_user_mutation
 from museecho.api.dependencies import require_analysis_access, require_analysis_mutation
 from museecho.api.security import clear_analysis_access_cookie
+from museecho.application.accounts import AccountService
+from museecho.application.library import LibraryService
 from museecho.application.lifecycle import AnalysisLifecycleService, ResultNotReadyError
 from museecho.domain.models import AnalysisResult
 from museecho.domain.ports import AccessService
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _error(status_code: int, code: str, message: str) -> JSONResponse:
@@ -25,6 +31,8 @@ def create_results_router(
     service: AnalysisLifecycleService,
     access_service: AccessService,
     trusted_origins: Collection[str],
+    account_service: AccountService | None = None,
+    library_service: LibraryService | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/analyses", tags=["analysis-results"])
     authorize = require_analysis_access(access_service)
@@ -73,14 +81,32 @@ def create_results_router(
             raise HTTPException(status_code=404, detail="Not Found") from None
         return _serialize_result(result, job.source_kind.value, job.pipeline_version)
 
-    @router.delete("/{analysis_id}", status_code=status.HTTP_204_NO_CONTENT)
+    @router.delete("/{analysis_id}", response_model=None)
     def delete_analysis(
         analysis_id: uuid.UUID,
+        request: Request,
         response: Response,
+        delete_saved: bool = False,
         _authorized: uuid.UUID = Depends(authorize_mutation),
-    ) -> None:
+    ) -> Response | JSONResponse:
+        if delete_saved:
+            if account_service is None or library_service is None:
+                raise HTTPException(status_code=401, detail="Unauthorized")
+            user_id = require_user_mutation(request, account_service, trusted_origins)
         service.delete(analysis_id)
         clear_analysis_access_cookie(response, analysis_id)
+        if delete_saved and library_service is not None:
+            try:
+                library_service.delete_by_source(user_id, analysis_id)
+            except Exception:
+                LOGGER.exception("saved analysis deletion failed after temporary analysis deletion")
+                return _error(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "saved_delete_failed",
+                    "temporary analysis deleted; saved copy may still exist",
+                )
+        response.status_code = status.HTTP_204_NO_CONTENT
+        return response
 
     return router
 

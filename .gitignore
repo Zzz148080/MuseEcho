@@ -14,11 +14,22 @@ __pycache__/
 
 # Node
 node_modules/
+.npm-cache/
 dist/
 coverage/
 playwright-report/
 test-results/
 *.tsbuildinfo
+
+# Generated verification and delivery artifacts
+.pytest-*/
+.uv-cache/
+outputs/
+release/
+docs/evidence/frontend-*/
+docs/evidence/account-auth/
+docs/evidence/user-memory/
+docs/harmony/evidence/
 
 # Chord ML datasets and generated artifacts
 ml/data/
@@ -46,3 +57,11 @@ secrets/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Android
+.gradle/
+local.properties
+**/build/
+*.apk
+*.aab
+*.keystore

@@ -5,7 +5,7 @@ import { expect, request, test } from '@playwright/test'
 import { uploadAndWait } from './support'
 
 const baseUrl = 'https://127.0.0.1:4173'
-const maxUploadRequestBytes = 100 * 1024 * 1024 + 64 * 1024
+const maxUploadRequestBytes = 256 * 1024 * 1024 + 64 * 1024
 
 function postDeclaredMultipartLength(
   contentLength: number,

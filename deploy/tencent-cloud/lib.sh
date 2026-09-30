@@ -57,6 +57,15 @@ read_runtime_value() {
     sed -n "s/^${setting}=//p" "$MUSEECHO_RUNTIME_ENV" | tail -n 1
 }
 
+read_tunnel_mode() {
+    local value
+    value="$(read_runtime_value MUSEECHO_TUNNEL_MODE)"
+    [[ -z "$value" ]] && value=0
+    [[ "$value" == 0 || "$value" == 1 ]] \
+        || fail 'MUSEECHO_TUNNEL_MODE must be 0 or 1'
+    printf '%s\n' "$value"
+}
+
 validate_provider_configuration() {
     local setting value configured=0
     for setting in MUSEECHO_PROVIDER_BASE_URL MUSEECHO_PROVIDER_MODEL MUSEECHO_PROVIDER_SECRET_FILE; do
@@ -65,6 +74,42 @@ validate_provider_configuration() {
     done
     [[ "$configured" -eq 0 || "$configured" -eq 3 ]] \
         || fail 'provider configuration must set all three values or none'
+}
+
+validate_smtp_configuration() {
+    local setting value configured=0
+    for setting in MUSEECHO_SMTP_HOST MUSEECHO_SMTP_USER MUSEECHO_SMTP_PASSWORD_FILE MUSEECHO_SMTP_SENDER; do
+        value="$(read_runtime_value "$setting")"
+        [[ -z "$value" ]] || configured=$((configured + 1))
+    done
+    [[ "$configured" -eq 0 || "$configured" -eq 4 ]] \
+        || fail 'SMTP configuration must set host, user, password file and sender, or leave all empty'
+    value="$(read_runtime_value MUSEECHO_SMTP_PORT)"
+    [[ -z "$value" || "$value" =~ ^[0-9]+$ ]] || fail 'MUSEECHO_SMTP_PORT must be numeric'
+    if [[ -n "$value" ]]; then
+        [[ "$value" -ge 1 && "$value" -le 65535 ]] || fail 'MUSEECHO_SMTP_PORT is outside the valid range'
+    fi
+}
+
+validate_tencent_ses_configuration() {
+    local setting value configured=0 smtp_configured=0
+    for setting in MUSEECHO_TENCENT_SES_REGION MUSEECHO_TENCENT_SES_SENDER MUSEECHO_TENCENT_SES_SECRET_ID_FILE MUSEECHO_TENCENT_SES_SECRET_KEY_FILE MUSEECHO_TENCENT_SES_VERIFY_TEMPLATE_ID MUSEECHO_TENCENT_SES_RESET_TEMPLATE_ID; do
+        value="$(read_runtime_value "$setting")"
+        [[ -z "$value" ]] || configured=$((configured + 1))
+    done
+    [[ "$configured" -eq 0 || "$configured" -eq 6 ]] \
+        || fail 'Tencent SES API configuration must set region, sender, both template IDs and both credential files, or leave all empty'
+    for setting in MUSEECHO_TENCENT_SES_VERIFY_TEMPLATE_ID MUSEECHO_TENCENT_SES_RESET_TEMPLATE_ID; do
+        value="$(read_runtime_value "$setting")"
+        [[ -z "$value" || "$value" =~ ^[1-9][0-9]*$ ]] \
+            || fail "$setting must be a positive integer"
+    done
+    for setting in MUSEECHO_SMTP_HOST MUSEECHO_SMTP_USER MUSEECHO_SMTP_PASSWORD_FILE MUSEECHO_SMTP_SENDER; do
+        value="$(read_runtime_value "$setting")"
+        [[ -z "$value" ]] || smtp_configured=$((smtp_configured + 1))
+    done
+    [[ "$configured" -eq 0 || "$smtp_configured" -eq 0 ]] \
+        || fail 'configure either Tencent SES API or SMTP, not both'
 }
 
 release_is_verified() {
@@ -80,6 +125,8 @@ release_is_verified() {
 
 switch_current_to() {
     local target="$1"
+    [[ ! -e "$MUSEECHO_CURRENT_LINK" || -L "$MUSEECHO_CURRENT_LINK" ]] \
+        || fail "current release path is not a symbolic link: $MUSEECHO_CURRENT_LINK"
     ln -s "$target" "$MUSEECHO_BASE/current.next"
     mv -Tf "$MUSEECHO_BASE/current.next" "$MUSEECHO_CURRENT_LINK"
 }
@@ -90,8 +137,23 @@ restart_service() {
 
 health_check() {
     local domain="$1"
-    curl --fail --silent --show-error --connect-timeout 5 --max-time 20 \
-        --resolve "$domain:443:127.0.0.1" "https://$domain/api/health" >/dev/null
+    local attempts=45
+    local -a curl_args=(--fail --silent --show-error --connect-timeout 5 --max-time 20)
+    if [[ "$(read_tunnel_mode)" == 1 ]]; then
+        # In Tunnel mode Caddy uses a private internal CA. Cloudflare connects
+        # to this origin over HTTPS, while the local deployment gate accepts
+        # that private certificate explicitly.
+        curl_args+=(--insecure)
+    fi
+    while (( attempts > 0 )); do
+        if curl "${curl_args[@]}" \
+            --resolve "$domain:443:127.0.0.1" "https://$domain/api/health" >/dev/null 2>&1; then
+            return 0
+        fi
+        attempts=$((attempts - 1))
+        (( attempts > 0 )) && sleep 2
+    done
+    return 1
 }
 
 install_owned_dir() {

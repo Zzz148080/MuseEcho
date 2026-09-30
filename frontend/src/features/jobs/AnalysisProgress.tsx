@@ -32,6 +32,8 @@ export interface AnalysisProgressProps {
   loadStatus?: StatusLoader
   onDeleted?: () => void
   removeAnalysis?: DeleteTransport
+  accountLoggedIn?: boolean
+  onSaved?: () => void
 }
 
 export function AnalysisProgress({
@@ -40,11 +42,17 @@ export function AnalysisProgress({
   loadStatus,
   onDeleted,
   removeAnalysis,
+  accountLoggedIn = false,
+  onSaved,
 }: AnalysisProgressProps) {
   const query = useAnalysisStatus(analysisId, loadStatus)
 
   if (query.isPending) {
-    return <p className="status-loading" role="status">正在读取真实分析状态…</p>
+    return (
+      <p className="status-loading" role="status">
+        正在读取真实分析状态…
+      </p>
+    )
   }
   if (query.error || !query.data) {
     return (
@@ -62,10 +70,51 @@ export function AnalysisProgress({
 
   const status = query.data
   const percentage = Math.round(status.progress * 100)
+  const phases = [
+    { label: '验证音频', stages: ['queued', 'validating', 'decoding'] },
+    { label: '节奏与调性', stages: ['rhythm', 'tonality'] },
+    { label: '结构与和弦', stages: ['structure', 'chords'] },
+    { label: '整理结果', stages: ['evidence'] },
+  ]
+  const phase = phases.findIndex((item) => item.stages.includes(status.stage))
+  if (status.stage === 'complete') {
+    return (
+      <div className="analysis-progress analysis-progress--complete">
+        <details className="analysis-receipt">
+          <summary>
+            <span className="analysis-receipt__check" aria-hidden="true">
+              ✓
+            </span>
+            <h2>分析完成</h2>
+            <span>音乐已展开，开始聆听与探索</span>
+            <span className="analysis-receipt__more">查看记录</span>
+          </summary>
+          <div className="analysis-receipt__body">
+            <p>
+              分析进度 {percentage}% · {stageDescription(status)}
+            </p>
+            <dl className="status-metadata">
+              <div>
+                <dt>保留期限</dt>
+                <dd>{formatExpiry(status.expires_at)}</dd>
+              </div>
+            </dl>
+          </div>
+        </details>
+        <AnalysisWorkspace
+          analysisId={analysisId}
+          accountLoggedIn={accountLoggedIn}
+          expiresAt={status.expires_at}
+          loadResult={loadResult}
+          onDeleted={onDeleted}
+          removeAnalysis={removeAnalysis}
+          onSaved={onSaved}
+        />
+      </div>
+    )
+  }
   return (
-    <div
-      className={`analysis-progress${status.stage === 'complete' ? ' analysis-progress--complete' : ''}`}
-    >
+    <div className="analysis-progress">
       <div className="analysis-progress__heading" aria-live="polite">
         <div>
           <p className="eyebrow">分析进度</p>
@@ -75,6 +124,22 @@ export function AnalysisProgress({
       </div>
 
       <progress aria-label="分析进度" max={100} value={percentage} />
+      {phase >= 0 && (
+        <ol className="analysis-phases" aria-label="分析阶段">
+          {phases.map((item, index) => (
+            <li
+              key={item.label}
+              aria-current={index === phase ? 'step' : undefined}
+              data-complete={index < phase}
+            >
+              <span aria-hidden="true">
+                {index < phase ? '✓' : String(index + 1).padStart(2, '0')}
+              </span>
+              {item.label}
+            </li>
+          ))}
+        </ol>
+      )}
       <p
         className="stage-description"
         role={status.stage === 'failed' ? 'alert' : undefined}
@@ -88,29 +153,21 @@ export function AnalysisProgress({
           <dd>{formatExpiry(status.expires_at)}</dd>
         </div>
       </dl>
-      {status.stage === 'complete' ? (
-        <AnalysisWorkspace
-          analysisId={analysisId}
-          expiresAt={status.expires_at}
-          loadResult={loadResult}
-          onDeleted={onDeleted}
-          removeAnalysis={removeAnalysis}
-        />
-      ) : null}
     </div>
   )
 }
 
 function stageDescription(status: AnalysisStatus): string {
-  if (status.stage === 'queued') return '任务正在单工作队列中等待，不会用本地计时器伪造进度。'
-  if (status.stage === 'complete') return '可验证分析已经持久化，可以继续查看结果。'
+  if (status.stage === 'queued')
+    return '音频已收到，正在等待分析。可以保持页面打开。'
+  if (status.stage === 'complete') return '音乐已展开，开始聆听与探索。'
   if (status.stage === 'failed') {
     const code = status.error_code ?? 'analysis_failed'
     return `${analysisFailureMessage(code)}（稳定错误码：${code}）。`
   }
   if (status.stage === 'expired') return '加密音频与访问能力已按保留规则到期。'
   if (status.stage === 'deleted') return '这项分析已被主动删除。'
-  return '当前百分比与阶段均来自 MuseEcho 后端检查点。'
+  return '正在提取音乐线索，进度会随实际分析更新。'
 }
 
 function analysisFailureMessage(code: string): string {

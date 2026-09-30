@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 from alembic import command
@@ -23,6 +24,7 @@ from museecho.domain.models import (
 )
 from museecho.domain.status import AnalysisJob, AnalysisStage, SourceKind
 from museecho.infrastructure.db import create_session_factory
+from museecho.infrastructure.migrate import upgrade_database
 from museecho.infrastructure.repositories import (
     AccessGrantModel,
     AnalysisJobModel,
@@ -181,7 +183,68 @@ def test_alembic_creates_the_exact_fresh_schema_and_is_clean(tmp_path):
         "section_events",
         "time_series",
         "track_analyses",
+        "users",
+        "user_sessions",
+        "account_tokens",
+        "auth_attempts",
+        "saved_analyses",
     }
+
+
+def test_migration_uses_explicit_runtime_config_path(tmp_path, monkeypatch):
+    database_path = tmp_path / "runtime-config" / "museecho.db"
+    monkeypatch.setenv("MUSEECHO_ALEMBIC_CONFIG", str(Path("alembic.ini").resolve()))
+
+    upgrade_database(database_path)
+
+    factory = create_session_factory(f"sqlite:///{database_path.as_posix()}")
+    with factory() as session:
+        assert session.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == (
+            "0002"
+        )
+
+
+def test_migration_adopts_unversioned_pre_account_database(tmp_path):
+    database_path = tmp_path / "legacy.db"
+    config = Config("alembic.ini")
+    database_url = f"sqlite:///{database_path.as_posix()}"
+    config.set_main_option("sqlalchemy.url", database_url)
+    command.upgrade(config, "0001")
+    factory = create_session_factory(database_url)
+    with factory.begin() as connection:
+        connection.execute(text("DROP TABLE alembic_version"))
+
+    upgrade_database(database_path)
+
+    with factory() as session:
+        assert session.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == (
+            "0002"
+        )
+    assert "users" in inspect(factory.kw["bind"]).get_table_names()
+
+
+def test_migration_adopts_full_schema_created_by_legacy_startup(tmp_path):
+    database_path = tmp_path / "create-all.db"
+    database_url = f"sqlite:///{database_path.as_posix()}"
+    init_db(database_url)
+
+    upgrade_database(database_path)
+
+    factory = create_session_factory(database_url)
+    with factory() as session:
+        assert session.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == (
+            "0002"
+        )
+
+
+def test_migration_rejects_partial_unversioned_schema(tmp_path):
+    database_path = tmp_path / "partial.db"
+    connection = create_session_factory(f"sqlite:///{database_path.as_posix()}")
+    with connection.begin() as session:
+        session.execute(text("CREATE TABLE analysis_jobs (id TEXT PRIMARY KEY)"))
+
+    with pytest.raises(RuntimeError, match="does not match the MuseEcho base schema"):
+        upgrade_database(database_path)
 
 
 def test_repository_saves_result_aggregate_and_completion_atomically(tmp_path):

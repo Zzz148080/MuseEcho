@@ -1,0 +1,81 @@
+@font-face {
+  font-family: 'Noto Sans SC';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url(/fonts/notosanssc-0.woff2) format('woff2');
+  unicode-range:
+    U+20-7e, U+3001-3002, U+4e00, U+4e03, U+4e09-4e0b, U+4e0d-4e0e, U+4e13,
+    U+4e2a, U+4e2d, U+4e3a-4e3b, U+4e45, U+4e48, U+4e4b, U+4e50, U+4e5f, U+4e86,
+    U+4e8b-4e8c, U+4e8e, U+4e94, U+4eab, U+4eae, U+4ec0, U+4ec5, U+4ecd-4ece,
+    U+4ed6, U+4ee3, U+4ee5, U+4ef6, U+4efb, U+4f1a, U+4f20, U+4f30, U+4f4d-4f4f,
+    U+4f55, U+4f59, U+4f5c, U+4f60, U+4f7f, U+4f8b, U+4f9b, U+4fdd, U+4fe1,
+    U+4fee, U+500d, U+5019, U+505c, U+5148, U+514b, U+514d, U+5165, U+5168,
+    U+516d, U+5171, U+5173, U+5176, U+517c, U+5185, U+518d, U+51c6, U+51d1,
+    U+51e0, U+51ed, U+51fa-51fb, U+5206, U+5217, U+5219, U+521b, U+5220, U+5224,
+    U+522b, U+5230, U+5236-5237, U+524d, U+5269, U+526f, U+529b, U+529f-52a1,
+    U+52a8, U+5316, U+533a, U+5347, U+534a, U+539f, U+53d1, U+53d6, U+53d8,
+    U+53ea, U+53ef-53f0, U+53f7, U+5408, U+540d-540e, U+5411, U+5417, U+5426,
+    U+542b-542c, U+5448, U+547d, U+548c, U+54cd, U+5531, U+5668, U+56db, U+56de,
+    U+56f4, U+56fe, U+5728, U+5730, U+5747, U+5750, U+578b, U+5883, U+58f0,
+    U+5907, U+590d, U+591a, U+5927, U+5931, U+594f, U+59cb, U+5b58, U+5b83,
+    U+5b89, U+5b8c, U+5b9a, U+5b9e, U+5ba4, U+5bb9, U+5bbd, U+5bc6, U+5bf9,
+    U+5c06, U+5c0f, U+5c1a, U+5c1d, U+5c31, U+5c3e, U+5c40, U+5c42, U+5c55,
+    U+5de5, U+5df1-5df2, U+5e03, U+5e26, U+5e38, U+5e73, U+5e76, U+5e94, U+5ea6,
+    U+5efa, U+5f00, U+5f0f, U+5f15, U+5f20, U+5f26, U+5f31, U+5f3a, U+5f53,
+    U+5f55, U+5f62, U+5f85, U+5fc3, U+5fc6, U+6001, U+6027, U+6062, U+606f,
+    U+60a8, U+60c5, U+611f, U+6162, U+61c2, U+6210-6211, U+6216, U+6240, U+624b,
+    U+6253, U+6269, U+62cd, U+62d6, U+62e9, U+6301, U+6309, U+636e, U+63a2,
+    U+63a5, U+63a7, U+63d0, U+6458, U+6491, U+64ad, U+652f, U+6536, U+653e,
+    U+6548, U+655b, U+6570, U+6574, U+6587, U+65ad, U+65b0, U+65b9, U+65e0,
+    U+65f6, U+660e, U+661f, U+662f, U+663e, U+6670, U+6682, U+66f2, U+66f4,
+    U+66ff-6700, U+6709, U+670d, U+6717, U+671f, U+672a, U+672c, U+6743, U+675f,
+    U+6761, U+6765, U+6784, U+6790, U+679c, U+67d4, U+67e5, U+6807, U+6821,
+    U+6837-6839, U+683c, U+6865, U+68c0, U+6982, U+6b21, U+6b4c, U+6b62-6b65,
+    U+6bb5, U+6bd4, U+6c1b, U+6c38, U+6c42, U+6ca1, U+6cbf, U+6cd5, U+6ce2,
+    U+6d41, U+6d4b, U+6d4f, U+6d88, U+6df1, U+6e05, U+6e90, U+6f14, U+70b9,
+    U+7136, U+7167, U+7247, U+72b6, U+731c, U+7387, U+73b0, U+7406, U+7434,
+    U+751f, U+7528, U+753b, U+7559, U+7684, U+76f8, U+7701, U+770b, U+771f,
+    U+7740, U+77ed, U+7801, U+786e, U+793a, U+79bb, U+79d2, U+79f0, U+7a0b,
+    U+7a0d, U+7a33, U+7a7a, U+7acb, U+7aef, U+7b26, U+7b2c, U+7b49, U+7b54,
+    U+7b97, U+7ba1, U+7c7b, U+7cfb, U+7d22, U+7d27, U+7e41, U+7ea6-7ea7, U+7eaf,
+    U+7ebf, U+7ec4, U+7ec6, U+7ecf, U+7ed3, U+7edc, U+7edf, U+7ee7, U+7eea,
+    U+7eed, U+7f00, U+7f16, U+7f29, U+7f51, U+7f6e, U+800c, U+8046, U+80fd,
+    U+817b, U+81ea, U+81f3, U+8282, U+82e5, U+8425, U+843d, U+84c4, U+8868,
+    U+88ab, U+8981, U+89c1, U+89c4, U+89c6, U+89c8, U+89e3, U+8ba4, U+8bb0,
+    U+8bba, U+8bbe-8bbf, U+8bc1, U+8bc6, U+8bd5, U+8be6, U+8bef, U+8bf4, U+8bf7,
+    U+8bfb, U+8c03, U+8d25, U+8d77, U+8d85, U+8db3, U+8ddd, U+8df3, U+8f68,
+    U+8f6c, U+8f74, U+8f7d, U+8f83, U+8f93, U+8fc7, U+8fd4, U+8fd9, U+8fdb,
+    U+8fde, U+8ff0, U+9000, U+9009, U+9010, U+901a, U+901f-9020, U+9053, U+907f,
+    U+90e8, U+91c7, U+91ca, U+91cc-91cf, U+949f, U+94a2, U+94a5, U+9519, U+952e,
+    U+957f, U+95e8, U+95ee, U+95f4, U+9614, U+9636, U+9645, U+964d, U+9650,
+    U+9664, U+968f, U+9700, U+9759, U+975e, U+9760, U+9762, U+97f3, U+9875,
+    U+9879, U+9884, U+9891, U+9898, U+98ce, U+9996, U+9a8c, U+9aa4, U+9ad8,
+    U+9f13;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url(/fonts/manrope-0.woff2) format('woff2');
+  unicode-range: U+20-7e;
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/ibmplexmono-0.woff2) format('woff2');
+  unicode-range: U+20-7e;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/fonts/ibmplexmono-1.woff2) format('woff2');
+  unicode-range: U+20-7e;
+}

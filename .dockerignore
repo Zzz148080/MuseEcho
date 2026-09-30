@@ -3,6 +3,9 @@
 .gitlab-ci.yml
 .worktrees
 .venv
+.npm-cache
+.uv-cache
+.pytest-*
 **/__pycache__
 **/*.egg-info
 **/.pytest_cache

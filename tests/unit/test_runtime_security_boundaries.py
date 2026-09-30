@@ -50,7 +50,11 @@ def test_runtime_source_has_single_external_process_boundary():
         ("src/museecho/analysis/decode.py", "Popen"),
         ("src/museecho/analysis/decode.py", "run"),
     }
-    assert forbidden_native_parser_imports == set()
+    assert forbidden_native_parser_imports == {
+        # Migration only opens the application-owned SQLite database. Uploaded
+        # media still crosses the single ffmpeg/ffprobe subprocess boundary.
+        ("src/museecho/infrastructure/migrate.py", "sqlite3"),
+    }
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="the production image is Linux")

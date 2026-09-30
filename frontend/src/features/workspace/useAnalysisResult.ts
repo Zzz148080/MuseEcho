@@ -7,9 +7,10 @@ export type ResultLoader = (analysisId: string) => Promise<AnalysisResult>
 export function useAnalysisResult(
   analysisId: string,
   loadResult: ResultLoader = getAnalysisResult,
+  cacheScope: 'live' | 'saved' = 'live',
 ) {
   return useQuery({
-    queryKey: ['analysis-result', analysisId],
+    queryKey: [cacheScope === 'saved' ? 'saved-analysis-result' : 'analysis-result', analysisId],
     queryFn: async () => {
       const result = await loadResult(analysisId)
       if (result.analysis_id !== analysisId) {

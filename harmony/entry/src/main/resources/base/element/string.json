@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "MuseEcho 音乐分析工作台"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "连接安全的音乐分析服务"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "MuseEcho"
+    }
+  ]
+}

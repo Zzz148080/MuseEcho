@@ -19,7 +19,24 @@ $savedGatewayConfigId = $env:MUSEECHO_EXPECTED_GATEWAY_CONFIG_ID
 Push-Location $repositoryRoot
 try {
     $env:MUSEECHO_SECRETS_DIR = '.\repository-relative-secrets-must-not-win'
-    $configText = & docker compose --profile production config --format json
+    $savedErrorPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & docker compose version *> $null
+        $pluginAvailable = $LASTEXITCODE -eq 0
+    } finally {
+        $ErrorActionPreference = $savedErrorPreference
+    }
+    if ($pluginAvailable) {
+        $composeExecutable = 'docker'
+        $composePrefix = @('compose')
+    } elseif (Get-Command docker-compose -ErrorAction SilentlyContinue) {
+        $composeExecutable = 'docker-compose'
+        $composePrefix = @()
+    } else {
+        throw 'Docker Compose is unavailable'
+    }
+    $configText = & $composeExecutable @composePrefix --profile production config --format json
     if ($LASTEXITCODE -ne 0) { throw 'production Compose config failed' }
     $config = $configText | ConvertFrom-Json
     $secretMount = @($config.services.app.volumes) |

@@ -16,8 +16,12 @@ check_requirements() {
     [[ "$(uname -s)" == Linux ]] || fail 'Tencent Cloud installation requires Linux'
     if [[ "${MUSEECHO_SKIP_CAPACITY_CHECK:-0}" != 1 ]]; then
         [[ "$(getconf _NPROCESSORS_ONLN)" -ge 2 ]] || fail 'at least 2 CPU cores are required'
-        [[ "$(awk '/MemTotal:/ { print $2 }' /proc/meminfo)" -ge 4194304 ]] || fail 'at least 4 GiB RAM is required'
-        local available_kib min_disk_kib
+        local available_kib min_disk_kib min_memory_kib
+        # Cloud hypervisors reserve part of a provisioned 4 GiB instance before
+        # Linux reports MemTotal. Accept the normal 3.75 GiB guest-visible floor.
+        min_memory_kib="${MUSEECHO_MIN_MEMORY_KIB:-3932160}"
+        [[ "$(awk '/MemTotal:/ { print $2 }' /proc/meminfo)" -ge "$min_memory_kib" ]] \
+            || fail 'at least 4 GiB provisioned RAM is required'
         min_disk_kib="${MUSEECHO_MIN_DISK_KIB:-20971520}"
         available_kib="$(df -Pk "$(dirname "$MUSEECHO_BASE")" | awk 'NR == 2 { print $4 }')"
         [[ "$available_kib" -ge "$min_disk_kib" ]] || fail 'insufficient disk for release, data, and backup budget'
@@ -46,7 +50,11 @@ check_requirements() {
 }
 
 install_firewall_rules() {
-    ufw allow 22/tcp
+    # Preserve an existing source-restricted SSH rule instead of widening it
+    # to every address. A new host with no SSH allowance still gets port 22.
+    if ! ufw status numbered | grep -Eq '22/tcp[[:space:]]+ALLOW IN'; then
+        ufw allow 22/tcp
+    fi
     ufw allow 80/tcp
     ufw allow 443/tcp
 }
@@ -78,17 +86,41 @@ install_layout() {
     else
         install -d -o root -g root -m 0755 "$MUSEECHO_BASE"
     fi
-    install_owned_dir 0750 "$MUSEECHO_DATA_DIR" "$MUSEECHO_RELEASES_DIR" "$MUSEECHO_CONFIG_DIR"
+    install_owned_dir 0700 "$MUSEECHO_DATA_DIR"
+    install_owned_dir 0750 "$MUSEECHO_RELEASES_DIR" "$MUSEECHO_CONFIG_DIR"
     install_owned_dir 0750 "$(dirname "$MUSEECHO_SECRETS_DIR")" "$MUSEECHO_SECRETS_DIR"
     : > "$MUSEECHO_DATA_DIR/.keep"
     : > "$MUSEECHO_RELEASES_DIR/.keep"
     chmod 0640 "$MUSEECHO_DATA_DIR/.keep" "$MUSEECHO_RELEASES_DIR/.keep"
+    if [[ -z "$MUSEECHO_ROOT_PREFIX" ]]; then
+        chown 10001:10001 "$MUSEECHO_DATA_DIR"
+    fi
     [[ ! -L "$MUSEECHO_RUNTIME_ENV" ]] || fail "runtime configuration must not be a symlink: $MUSEECHO_RUNTIME_ENV"
     if [[ ! -e "$MUSEECHO_RUNTIME_ENV" ]]; then
         umask 077
         printf '%s\n' \
             '# Non-secret deployment settings. Set MUSEECHO_DOMAIN before deploy.' \
             'MUSEECHO_DOMAIN=' \
+            '# Set to 1 when Cloudflare Tunnel terminates public TLS and proxies to this host.' \
+            'MUSEECHO_TUNNEL_MODE=0' \
+            '# Optional SMTP mode: set all fields and place the password in the referenced read-only secret file.' \
+            'MUSEECHO_SMTP_HOST=' \
+            'MUSEECHO_SMTP_PORT=587' \
+            'MUSEECHO_SMTP_USER=' \
+            'MUSEECHO_SMTP_PASSWORD_FILE=' \
+            'MUSEECHO_SMTP_SENDER=' \
+            '# Preferred Tencent SES API mode: set region, sender, two template IDs and both credential files.' \
+            'MUSEECHO_TENCENT_SES_REGION=' \
+            'MUSEECHO_TENCENT_SES_SENDER=' \
+            'MUSEECHO_TENCENT_SES_SECRET_ID_FILE=' \
+            'MUSEECHO_TENCENT_SES_SECRET_KEY_FILE=' \
+            'MUSEECHO_TENCENT_SES_VERIFY_TEMPLATE_ID=' \
+            'MUSEECHO_TENCENT_SES_RESET_TEMPLATE_ID=' \
+            '# Backups are kept for 30 days. Set an age recipient to encrypt new archives.' \
+            'MUSEECHO_BACKUP_RETENTION_DAYS=30' \
+            'MUSEECHO_BACKUP_AGE_RECIPIENT=' \
+            '# Restore-only path to the age identity; keep that file outside the repository.' \
+            'MUSEECHO_BACKUP_AGE_IDENTITY_FILE=' \
             '# Optional provider mode: set all three provider variables, or leave all empty.' \
             'MUSEECHO_PROVIDER_BASE_URL=' \
             'MUSEECHO_PROVIDER_MODEL=' \
@@ -108,7 +140,7 @@ install_layout() {
     systemctl daemon-reload
     systemctl enable museecho.service
     printf 'Install complete. Configure SSH key authentication and set PasswordAuthentication no after confirming key login.\n'
-    printf 'Place audio-kek (and optional provider-key) as 10001:10001 mode 0400 files in %s.\n' "$MUSEECHO_SECRETS_DIR"
+    printf 'Place audio-kek and optional provider/mail credential files as 10001:10001 mode 0400 files in %s.\n' "$MUSEECHO_SECRETS_DIR"
 }
 
 check_requirements

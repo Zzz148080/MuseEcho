@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../api/client'
@@ -12,6 +12,47 @@ const accepted: UploadAccepted = {
 }
 
 describe('UploadForm', () => {
+  it('validates dropped files through the same rules and rejects multiple files', () => {
+    const upload = vi.fn()
+    const { container } = render(<UploadForm onUpload={upload} />)
+    const dropzone = container.querySelector('.upload-dropzone')!
+    fireEvent.drop(dropzone, {
+      dataTransfer: { files: [new File(['x'], 'wrong.exe')] },
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent('不支持的音频格式')
+    fireEvent.drop(dropzone, {
+      dataTransfer: {
+        files: [new File(['x'], 'a.wav'), new File(['x'], 'b.wav')],
+      },
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '请一次选择一个音频文件',
+    )
+    fireEvent.drop(dropzone, {
+      dataTransfer: { files: [new File(['x'], '我的音乐.wav')] },
+    })
+    expect(screen.getByText('我的音乐.wav')).toBeVisible()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '开始分析' })).toBeDisabled()
+    expect(upload).not.toHaveBeenCalled()
+  })
+
+  it('does not replace the submitted file while an upload is pending', async () => {
+    const user = userEvent.setup()
+    const upload = vi.fn((_file: File) => new Promise<UploadAccepted>(() => {}))
+    const { container } = render(<UploadForm onUpload={upload} />)
+    const original = new File(['x'], 'original.wav')
+    await user.upload(screen.getByLabelText('音频文件'), original)
+    await user.click(screen.getByRole('checkbox', { name: /有权分析/ }))
+    await user.click(screen.getByRole('checkbox', { name: /加密保留/ }))
+    await user.click(screen.getByRole('button', { name: '开始分析' }))
+    fireEvent.drop(container.querySelector('.upload-dropzone')!, {
+      dataTransfer: { files: [new File(['y'], 'other.wav')] },
+    })
+    expect(screen.getByText('original.wav')).toBeVisible()
+    expect(screen.queryByText('other.wav')).not.toBeInTheDocument()
+    expect(upload.mock.calls[0][0]).toBe(original)
+  })
   it('uses an exact-suffix chooser and rejects adjacent MP4 and OGA formats', async () => {
     const user = userEvent.setup({ applyAccept: false })
     const onUpload = vi.fn().mockResolvedValue(accepted)
@@ -41,9 +82,12 @@ describe('UploadForm', () => {
     'track.aac',
     'track.ogg',
     'track.opus',
-  ])('preflights the supported %s suffix as an upload candidate', (filename) => {
-    expect(validateFile(new File(['audio'], filename))).toBeNull()
-  })
+  ])(
+    'preflights the supported %s suffix as an upload candidate',
+    (filename) => {
+      expect(validateFile(new File(['audio'], filename))).toBeNull()
+    },
+  )
 
   it('does not upload until legal-use and retention consent is checked', async () => {
     const user = userEvent.setup()
@@ -60,14 +104,16 @@ describe('UploadForm', () => {
     await user.click(screen.getByRole('checkbox', { name: /有权分析/ }))
     expect(submit).toBeDisabled()
 
-    await user.click(screen.getByRole('checkbox', { name: /加密保留最长 24 小时/ }))
+    await user.click(
+      screen.getByRole('checkbox', { name: /加密保留最长 24 小时/ }),
+    )
     expect(submit).toBeEnabled()
     await user.click(submit)
 
     expect(onUpload).toHaveBeenCalledTimes(1)
   })
 
-  it('accepts exactly 100 MB and rejects the first byte above it', async () => {
+  it('accepts exactly 256 MB and rejects the first byte above it', async () => {
     const user = userEvent.setup({ applyAccept: false })
     const onUpload = vi.fn().mockResolvedValue(accepted)
     render(<UploadForm onUpload={onUpload} />)
@@ -75,16 +121,16 @@ describe('UploadForm', () => {
     const boundary = new File(['audio'], 'boundary.mp3', {
       type: 'audio/mpeg',
     })
-    Object.defineProperty(boundary, 'size', { value: 100 * 1024 * 1024 })
+    Object.defineProperty(boundary, 'size', { value: 256 * 1024 * 1024 })
     expect(validateFile(boundary)).toBeNull()
 
     const oversized = new File(['audio'], 'track.mp3', { type: 'audio/mpeg' })
     Object.defineProperty(oversized, 'size', {
-      value: 100 * 1024 * 1024 + 1,
+      value: 256 * 1024 * 1024 + 1,
     })
     await user.upload(screen.getByLabelText(/音频文件/), oversized)
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/不能超过 100 MB/)
+    expect(screen.getByRole('alert')).toHaveTextContent(/不能超过 256 MB/)
     expect(onUpload).not.toHaveBeenCalled()
   })
 
@@ -103,10 +149,14 @@ describe('UploadForm', () => {
       new File(['RIFF'], 'track.wav', { type: 'audio/wav' }),
     )
     await user.click(screen.getByRole('checkbox', { name: /有权分析/ }))
-    await user.click(screen.getByRole('checkbox', { name: /加密保留最长 24 小时/ }))
+    await user.click(
+      screen.getByRole('checkbox', { name: /加密保留最长 24 小时/ }),
+    )
     await user.click(screen.getByRole('button', { name: /开始分析/ }))
 
-    expect(screen.getByRole('progressbar', { name: /上传进度/ })).toHaveValue(50)
+    expect(screen.getByRole('progressbar', { name: /上传进度/ })).toHaveValue(
+      50,
+    )
   })
 
   it('separates completed upload bytes from pending backend validation', async () => {
@@ -124,7 +174,9 @@ describe('UploadForm', () => {
       new File(['RIFF'], 'track.wav', { type: 'audio/wav' }),
     )
     await user.click(screen.getByRole('checkbox', { name: /有权分析/ }))
-    await user.click(screen.getByRole('checkbox', { name: /加密保留最长 24 小时/ }))
+    await user.click(
+      screen.getByRole('checkbox', { name: /加密保留最长 24 小时/ }),
+    )
     await user.click(screen.getByRole('button', { name: /开始分析/ }))
 
     expect(screen.getByText(/上传完成，等待后端验证/)).toBeVisible()
@@ -143,7 +195,9 @@ describe('UploadForm', () => {
       new File(['bad'], 'track.wav', { type: 'audio/wav' }),
     )
     await user.click(screen.getByRole('checkbox', { name: /有权分析/ }))
-    await user.click(screen.getByRole('checkbox', { name: /加密保留最长 24 小时/ }))
+    await user.click(
+      screen.getByRole('checkbox', { name: /加密保留最长 24 小时/ }),
+    )
     await user.click(screen.getByRole('button', { name: /开始分析/ }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -165,7 +219,9 @@ describe('UploadForm', () => {
       new File(['RIFF'], 'track.wav', { type: 'audio/wav' }),
     )
     await user.click(screen.getByRole('checkbox', { name: /有权分析/ }))
-    await user.click(screen.getByRole('checkbox', { name: /加密保留最长 24 小时/ }))
+    await user.click(
+      screen.getByRole('checkbox', { name: /加密保留最长 24 小时/ }),
+    )
     await user.click(screen.getByRole('button', { name: /开始分析/ }))
 
     const retry = await screen.findByRole('button', { name: /重试上传/ })
@@ -184,10 +240,14 @@ describe('UploadForm', () => {
       new File(['RIFF'], 'track.wav', { type: 'audio/wav' }),
     )
     await user.click(screen.getByRole('checkbox', { name: /有权分析/ }))
-    await user.click(screen.getByRole('checkbox', { name: /加密保留最长 24 小时/ }))
+    await user.click(
+      screen.getByRole('checkbox', { name: /加密保留最长 24 小时/ }),
+    )
     await user.click(screen.getByRole('button', { name: /开始分析/ }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/避免创建重复任务/)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /避免创建重复任务/,
+    )
     expect(screen.getByRole('button', { name: /开始分析/ })).toBeDisabled()
   })
 

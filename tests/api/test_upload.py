@@ -899,6 +899,79 @@ def test_request_body_limit_runs_before_multipart_parsing(tmp_path: Path):
     assert list(tmp_path.iterdir()) == []
 
 
+def test_staged_upload_accepts_idempotent_chunks_and_completes(tmp_path: Path):
+    client, repository, store, queue = _client(tmp_path, _valid_probe)
+    started = client.post(
+        "/api/analyses/uploads",
+        json={"filename": "large.wav", "size": 8, "media_type": "audio/wav"},
+    )
+
+    assert started.status_code == 201
+    grant = started.json()
+    headers = {"X-Upload-Token": grant["upload_token"]}
+    first = client.post(
+        f"/api/analyses/uploads/{grant['upload_id']}/chunks",
+        params={"offset": 0},
+        headers=headers,
+        files={"file": ("chunk", b"RIFF", "application/octet-stream")},
+    )
+    repeated = client.post(
+        f"/api/analyses/uploads/{grant['upload_id']}/chunks",
+        params={"offset": 0},
+        headers=headers,
+        files={"file": ("chunk", b"RIFF", "application/octet-stream")},
+    )
+    second = client.post(
+        f"/api/analyses/uploads/{grant['upload_id']}/chunks",
+        params={"offset": 4},
+        headers=headers,
+        files={"file": ("chunk", b"data", "application/octet-stream")},
+    )
+    completed = client.post(
+        f"/api/analyses/uploads/{grant['upload_id']}/complete",
+        headers=headers,
+    )
+
+    assert first.json() == {"next_offset": 4}
+    assert repeated.json() == {"next_offset": 4}
+    assert second.json() == {"next_offset": 8}
+    assert completed.status_code == 202
+    analysis_id = uuid.UUID(completed.json()["analysis_id"])
+    assert analysis_id in repository.jobs
+    assert store.writes == [(analysis_id, b"RIFFdata", "audio/wav")]
+    assert queue.submitted == [analysis_id]
+    assert completed.cookies.get("museecho_access")
+
+
+def test_staged_upload_rejects_gap_and_bad_token(tmp_path: Path):
+    client, repository, store, queue = _client(tmp_path, _valid_probe)
+    grant = client.post(
+        "/api/analyses/uploads",
+        json={"filename": "large.wav", "size": 8, "media_type": "audio/wav"},
+    ).json()
+    chunk_url = f"/api/analyses/uploads/{grant['upload_id']}/chunks"
+
+    missing = client.post(
+        chunk_url,
+        params={"offset": 4},
+        headers={"X-Upload-Token": grant["upload_token"]},
+        files={"file": ("chunk", b"data", "application/octet-stream")},
+    )
+    unauthorized = client.post(
+        chunk_url,
+        params={"offset": 0},
+        headers={"X-Upload-Token": "x" * 32},
+        files={"file": ("chunk", b"RIFF", "application/octet-stream")},
+    )
+
+    assert missing.status_code == 409
+    assert missing.json()["error"]["code"] == "staged_upload_conflict"
+    assert unauthorized.status_code == 404
+    assert repository.jobs == {}
+    assert store.writes == []
+    assert queue.submitted == []
+
+
 def test_chunked_request_without_content_length_is_still_capped(tmp_path: Path):
     validated = False
 
@@ -1115,7 +1188,7 @@ def test_default_upload_limit_accepts_exact_boundary_and_rejects_first_byte_abov
         temp_root=tmp_path,
         validator=validator,
     )
-    exact_limit = 100 * 1024 * 1024
+    exact_limit = 256 * 1024 * 1024
     accepted_source = GeneratedByteStream(exact_limit)
 
     submitted = service.submit(
@@ -1152,14 +1225,14 @@ def test_default_upload_limit_accepts_exact_boundary_and_rejects_first_byte_abov
     assert list(tmp_path.iterdir()) == []
 
 
-def test_default_request_limit_accepts_100_mib_file_boundary_and_rejects_next_byte():
+def test_default_request_limit_accepts_256_mib_file_boundary_and_rejects_next_byte():
     import asyncio
 
     from starlette.types import Message
 
     from museecho.api.analyses import UploadBodyLimitMiddleware
 
-    allowed_request_bytes = 100 * 1024 * 1024 + 64 * 1024
+    allowed_request_bytes = 256 * 1024 * 1024 + 64 * 1024
     downstream_calls = 0
 
     async def downstream(_scope, _receive, send):

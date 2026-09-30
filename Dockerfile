@@ -49,6 +49,7 @@ ENV PATH=/app/.venv/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     NUMBA_CACHE_DIR=/tmp/numba \
     MUSEECHO_DATA_ROOT=/data \
+    MUSEECHO_ALEMBIC_CONFIG=/app/alembic.ini \
     MUSEECHO_AUDIO_KEK_FILE=/run/secrets/audio-kek
 RUN --mount=type=cache,target=/var/cache/museecho-apt,sharing=locked \
     set -eu; \
@@ -95,6 +96,8 @@ RUN --mount=type=cache,target=/var/cache/museecho-apt,sharing=locked \
     chown --recursive 10001:10001 /app /data
 WORKDIR /app
 COPY --from=python-builder --chown=10001:10001 /app/.venv /app/.venv
+COPY --chown=10001:10001 alembic.ini /app/alembic.ini
+COPY --chown=10001:10001 migrations/ /app/migrations/
 USER 10001:10001
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=6 \
